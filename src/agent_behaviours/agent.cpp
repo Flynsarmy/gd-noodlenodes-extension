@@ -6,6 +6,7 @@
 #include <godot_cpp/classes/engine.hpp>
 #include <godot_cpp/classes/time.hpp>
 #include <godot_cpp/core/class_db.hpp>
+#include <vector>
 
 #ifdef DEBUG_ENABLED
 #include "../debugger/debugger_overlay.h"

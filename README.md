@@ -10,7 +10,7 @@ Noodle Nodes is an improved fork of [UtilityAI](https://github.com/JarkkoPar/Uti
 
 ## Compatibility
 
-Godot 4.4 or newer.
+Godot 4.7 or newer.
 
 ## Components
 
@@ -40,6 +40,7 @@ git submodule init && git submodule update
 ```
 scons platform=<valid platform>
 ```
+   `api_version` defaults to `4.7` (set in `SConstruct`). For Android, pass the NDK version that matches your Godot build, e.g. `ndk_version=29.0.14206865` for Godot 4.7.
 
 After compilation, the binaries are created in to the `demo/addons/noodle_nodes/` folder. If all goes well, you should be able to launch the demo project in Godot and start using the addon.
 

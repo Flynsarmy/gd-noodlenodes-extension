@@ -4,6 +4,7 @@
 #include <godot_cpp/classes/node.hpp>
 
 #include "considerations.h"
+#include <vector>
 
 namespace godot {
 

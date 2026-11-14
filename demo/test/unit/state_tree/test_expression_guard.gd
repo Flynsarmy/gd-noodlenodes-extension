@@ -44,3 +44,5 @@ func test_expression_satisfied_with_blackboard_vars() -> void:
 	_guard.expression = "bar=='foo'"
 	result = _guard.is_satisfied(_transition, _child)
 	assert_eq(result, false)
+	# Unknown blackboard keys make Expression fall back to `self`, which is null.
+	assert_engine_error("self can't be used because instance is null")

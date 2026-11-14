@@ -7,6 +7,7 @@
 #include <godot_cpp/classes/option_button.hpp>
 #include <godot_cpp/classes/rich_text_label.hpp>
 #include <godot_cpp/classes/tree.hpp>
+#include <vector>
 
 namespace godot {
 

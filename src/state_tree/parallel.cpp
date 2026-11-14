@@ -1,4 +1,5 @@
 #include "parallel.h"
+#include <vector>
 
 using namespace godot;
 

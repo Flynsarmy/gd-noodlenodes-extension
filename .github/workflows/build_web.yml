@@ -32,7 +32,7 @@ jobs:
         uses: ./godot-cpp/.github/actions/setup-godot-cpp
         with:
           platform: ${{ matrix.platform }}
-          em-version: 3.1.62
+          em-version: 4.0.11
 
       # Build GDExtension (with caches)
       - name: Cache .scons_cache

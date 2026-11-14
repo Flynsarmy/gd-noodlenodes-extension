@@ -41,6 +41,8 @@ jobs:
         with:
           platform: ${{ matrix.platform }}
           em-version: 3.1.62
+          # godot-cpp v10 defaults to NDK 28.x; pin the NDK that Godot 4.7 is built with.
+          ndk-version: 29.0.14206865
 
       # Build GDExtension (with caches)
       - name: Cache .scons_cache
@@ -54,7 +56,7 @@ jobs:
         env:
           SCONS_CACHE: ${{ github.workspace }}/.scons-cache/
         run: |
-          scons target=${{ matrix.target-type }} platform=${{ matrix.platform }} arch=${{ matrix.arch }} precision=${{ matrix.precision }}
+          scons target=${{ matrix.target-type }} platform=${{ matrix.platform }} arch=${{ matrix.arch }} precision=${{ matrix.precision }} ndk_version=29.0.14206865
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4

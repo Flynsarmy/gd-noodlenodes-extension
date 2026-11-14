@@ -1,6 +1,7 @@
 #include "node_query_system.h"
 #include <godot_cpp/classes/performance.hpp>
 #include <godot_cpp/classes/time.hpp>
+#include <vector>
 
 using namespace godot;
 

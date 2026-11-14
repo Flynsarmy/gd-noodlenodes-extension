@@ -39,7 +39,7 @@ void NNAngleVector3Sensor::_bind_methods() {
 NNAngleVector3Sensor::NNAngleVector3Sensor() {
 	_angle_radian = 0.0f;
 	_angle_degrees = 0.0f;
-	_max_angle_radian = 2.0f * Math_PI;
+	_max_angle_radian = 2.0f * Math::PI;
 	_max_angle_degrees = 360.0f;
 }
 

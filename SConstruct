@@ -2,7 +2,9 @@
 import os
 import sys
 
-env = SConscript("godot-cpp/SConstruct")
+# godot-cpp v10 is versioned independently of Godot. `api_version` selects the
+# Godot API JSON used to generate bindings (supported: 4.3 - 4.7).
+env = SConscript("godot-cpp/SConstruct", {"api_version": "4.7"})
 
 # For reference:
 # - CCFLAGS are compilation flags shared between C and C++

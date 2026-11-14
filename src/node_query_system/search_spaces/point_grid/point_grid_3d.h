@@ -2,6 +2,7 @@
 
 #include "../nqs.h"
 #include <godot_cpp/classes/node3d.hpp>
+#include <vector>
 
 namespace godot {
 

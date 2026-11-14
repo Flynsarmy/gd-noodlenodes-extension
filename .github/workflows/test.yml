@@ -15,18 +15,18 @@ jobs:
       # - name: Run GDUnit4 tests
       #   uses: MikeSchulze/gdUnit4-action@v1.1.5
       #   with:
-      #     godot-version: 4.4
+      #     godot-version: 4.7.2
       #     timeout: 3
       #     paths: "res://test"
       #     version: "installed"
       #     publish-report: false
-      #     report-name: report_Godot4.4-rc3_unit-tests
+      #     report-name: report_Godot4.7.2_unit-tests
       - name: Download Godot
         shell: sh
         run: |
-          curl -fLO https://github.com/godotengine/godot-builds/releases/download/4.4-rc3/Godot_v4.4-rc3_linux.x86_64.zip
-          unzip Godot_v4.4-rc3_linux.x86_64.zip -d /usr/local/bin
-          mv /usr/local/bin/Godot_v4.4-rc3_linux.x86_64 /usr/local/bin/godot
+          curl -fLO https://github.com/godotengine/godot-builds/releases/download/4.7.2-stable/Godot_v4.7.2-stable_linux.x86_64.zip
+          unzip Godot_v4.7.2-stable_linux.x86_64.zip -d /usr/local/bin
+          mv /usr/local/bin/Godot_v4.7.2-stable_linux.x86_64 /usr/local/bin/godot
           chmod +x /usr/local/bin/godot
       - name: Run tests
         shell: sh

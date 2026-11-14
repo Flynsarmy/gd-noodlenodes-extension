@@ -2,6 +2,7 @@
 
 #include "ticked_nodes.h"
 #include "transition.h"
+#include <vector>
 
 namespace godot {
 

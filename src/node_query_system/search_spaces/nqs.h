@@ -4,6 +4,7 @@
 #include "../noodle_nodes.h"
 #include "../search_criteria/nqs.h"
 #include <godot_cpp/classes/node.hpp>
+#include <vector>
 
 namespace godot {
 

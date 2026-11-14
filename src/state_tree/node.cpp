@@ -1,4 +1,5 @@
 #include "node.h"
+#include <vector>
 
 using namespace godot;
 

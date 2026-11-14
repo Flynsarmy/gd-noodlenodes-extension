@@ -12,7 +12,7 @@ config_version=5
 
 config/name="Noodle Nodes Demo"
 run/main_scene="uid://cxdnms85j3rw1"
-config/features=PackedStringArray("4.4", "GL Compatibility")
+config/features=PackedStringArray("4.7", "GL Compatibility")
 run/max_fps=60
 config/icon="res://icon.svg"
 

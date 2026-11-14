@@ -3,6 +3,7 @@
 #include "../agent_behaviours/sensors.h"
 #include "nodes.h"
 #include <godot_cpp/classes/node.hpp>
+#include <vector>
 
 namespace godot {
 

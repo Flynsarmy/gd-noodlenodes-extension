@@ -8,6 +8,7 @@
 #include <godot_cpp/core/class_db.hpp>
 #ifdef DEBUG_ENABLED
 #include "../debugger/debugger_overlay.h"
+#include <vector>
 #endif
 
 using namespace godot;

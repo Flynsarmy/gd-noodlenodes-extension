@@ -7,6 +7,7 @@
 #include "action_group.h"
 #include "behaviours.h"
 #include "considerations.h"
+#include <vector>
 
 namespace godot {
 

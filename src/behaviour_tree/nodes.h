@@ -4,6 +4,7 @@
 #include "../noodle_nodes.h"
 #include "definitions.h"
 #include <godot_cpp/classes/node.hpp>
+#include <vector>
 
 namespace godot {
 
