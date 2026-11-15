@@ -233,6 +233,21 @@ void NNSTBranchNodes::_apply_active_states(std::vector<NNSTTickedNodes *> &new_a
 		}
 
 		NNSTTickedNodes *state = states_to_enter[i];
+
+		// A nested transition requested from an on_exit_state() callback may
+		// have replaced the active children that were adopted above. Don't
+		// enter a state that is no longer part of the branch's active list.
+		bool is_still_active = false;
+		for (unsigned int j = 0; j < _num_active_states; j++) {
+			if (_active_states[j] == state) {
+				is_still_active = true;
+				break;
+			}
+		}
+		if (!is_still_active) {
+			continue;
+		}
+
 		state->set_root(p_root);
 		state->_transition_in();
 	}

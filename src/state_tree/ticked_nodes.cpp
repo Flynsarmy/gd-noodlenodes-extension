@@ -62,6 +62,7 @@ NNSTTickedNodes::NNSTTickedNodes() {
 	_score = 0.0;
 	_invert_score = false;
 	_root = nullptr;
+	_is_exiting = false;
 }
 
 NNSTTickedNodes::~NNSTTickedNodes() {
@@ -236,6 +237,15 @@ bool NNSTTickedNodes::transition_to(NodePath path_to_node) {
 		return false;
 	}
 
+	// Re-entering any part of an exiting lineage would be undone by the
+	// outer exit, potentially leaving active descendants of an inactive state.
+	for (Node *ancestor = to_state; ancestor != nullptr; ancestor = ancestor->get_parent()) {
+		NNSTTickedNodes *state = godot::Object::cast_to<NNSTTickedNodes>(ancestor);
+		if (state != nullptr && state->_is_exiting) {
+			return false;
+		}
+	}
+
 	NNSTBranchNodes *common_ancestor = _get_common_ancestor(this, to_state);
 	if (common_ancestor == nullptr) {
 		return false;
@@ -276,10 +286,16 @@ bool NNSTTickedNodes::transition_to(NodePath path_to_node) {
 		return false;
 	}
 
-	// Transition out the from_states lineage.
+	// Transition out the from_states lineage. The child stays registered as the
+	// common ancestor's active child until its exit completes. An on_exit_state()
+	// callback is allowed to request a transition to a sibling; that nested
+	// transition must still see the state that is exiting as the active child,
+	// otherwise it would be discarded as a transition from a branch that was
+	// never entered. _transition_out() is reentrancy-safe, so the nested
+	// transition's own attempt to transition this state out is a no-op.
 	NNSTTickedNodes *child = active_child_states[0];
-	common_ancestor->_remove_active_child_state(child);
 	child->_transition_out();
+	common_ancestor->_remove_active_child_state(child);
 
 	// An on_exit_state() callback may have transitioned the branch while its
 	// old states were exiting. Don't overwrite that transition with this one.
@@ -347,19 +363,33 @@ void NNSTTickedNodes::_transition_in() {
 };
 
 void NNSTTickedNodes::_transition_out() {
-	if (_internal_status == 0) {
+	// on_exit_state() runs user code that may request a transition. When that
+	// transition transitions this state out (typically to redirect to a
+	// sibling), it calls back into _transition_out() while the outer exit is
+	// still in progress. Treat the nested call as a no-op so each state exits
+	// exactly once and on_exit_state() cannot recurse into itself.
+	if (_internal_status != ST_INTERNAL_STATUS_ACTIVE || _is_exiting) {
 		return;
 	}
 
-	for (int i = _num_active_states - 1; i >= 0; i--) {
-		NNSTTickedNodes *cur_active_state = _active_states[i];
+	_is_exiting = true;
+
+	// Exit the active children leaf-first. A child's on_exit_state() may request
+	// a transition that changes this branch's active child list while we are
+	// iterating it, so re-read the list every iteration. Remove a child only
+	// after its exit completes, which keeps it visible to a nested sibling
+	// transition requested from that child's on_exit_state().
+	while (_num_active_states > 0) {
+		NNSTTickedNodes *cur_active_state = _active_states[_num_active_states - 1];
 		cur_active_state->_transition_out();
+		_remove_active_child_state(cur_active_state);
 	}
 
 	on_exit_state();
 	set_internal_status(ST_INTERNAL_STATUS_INACTIVE);
 	_active_states.clear();
 	_num_active_states = 0;
+	_is_exiting = false;
 };
 
 bool NNSTTickedNodes::on_enter_condition() {

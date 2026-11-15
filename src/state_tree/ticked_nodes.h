@@ -15,6 +15,10 @@ private:
 	int _evaluation_method;
 	float _score;
 	bool _invert_score;
+	// True while _transition_out() is running. on_exit_state() can request a
+	// transition that ends up calling _transition_out() on this same state
+	// again; the flag stops that nested call from recursing.
+	bool _is_exiting;
 
 protected:
 	static void _bind_methods();

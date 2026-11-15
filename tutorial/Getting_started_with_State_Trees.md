@@ -109,6 +109,8 @@ The `transition_to()` method can be called anywhere in the state's script code. 
 
 Any active state that is no longer active after the call to `transition_to()` will call its `on_exit_state()` method. Similarly, any inactive state that gets activated will call its `on_enter_state()` method. 
 
+A valid `transition_to()` call made from `on_exit_state()` is honored without the transition that triggered the exit overwriting the redirect. The redirect is synchronous, so its entry callbacks can run before the original exit callback returns. Targets whose state or ancestors are still exiting are rejected with `false` to avoid reactivating a lineage that the ongoing exit would undo.
+
 When the root node `tick()` method is called, all the active states will call their `on_tick()` methods, starting from the root node and going down the tree to the leaf node.
 
 
