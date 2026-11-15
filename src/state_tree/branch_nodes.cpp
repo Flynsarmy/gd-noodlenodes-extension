@@ -5,6 +5,7 @@
 #include <godot_cpp/classes/engine.hpp>
 #include <godot_cpp/classes/time.hpp>
 #include <godot_cpp/core/class_db.hpp>
+#include <godot_cpp/core/object.hpp>
 #include <vector>
 
 using namespace godot;
@@ -34,6 +35,9 @@ void NNSTBranchNodes::_bind_methods() {
 // Constructor and destructor.
 
 NNSTBranchNodes::NNSTBranchNodes() {
+	_child_states.clear();
+	_child_considerations.clear();
+	_child_transitions.clear();
 	_active_states.clear();
 	_internal_status = ST_INTERNAL_STATUS_INACTIVE;
 	_child_state_selection_rule = NNSTNodeChildStateSelectionRule::ON_ENTER_CONDITION_METHOD;
@@ -42,6 +46,8 @@ NNSTBranchNodes::NNSTBranchNodes() {
 	_num_child_considerations = 0;
 	_num_child_transitions = 0;
 	_num_active_states = 0;
+	_last_notification_had_child_removal = false;
+	_needs_reselection = false;
 
 #ifdef DEBUG_ENABLED
 	_last_evaluated_timestamp = 0;
@@ -101,12 +107,69 @@ void NNSTBranchNodes::on_unhandled_key_input(const Ref<InputEvent> &event) {
 	}
 }
 
+NNSTTickedNodes *NNSTBranchNodes::_resolve_state(ObjectID state_id) const {
+	return godot::Object::cast_to<NNSTTickedNodes>(ObjectDB::get_instance(state_id));
+}
+
+bool NNSTBranchNodes::_contains_child_state(ObjectID state_id) const {
+	for (unsigned int i = 0; i < _child_states.size(); i++) {
+		if (_child_states[i] == state_id) {
+			return true;
+		}
+	}
+	return false;
+}
+
+NNSTTickedNodes *NNSTBranchNodes::_get_child_state(ObjectID state_id) const {
+	// The cached child list can be stale while user callbacks are running.
+	// Resolve the ID and verify the node is still one of this branch's direct
+	// children before returning it.
+	NNSTTickedNodes *state = _resolve_state(state_id);
+	if (state == nullptr || state->get_parent() != this || !_contains_child_state(state_id)) {
+		return nullptr;
+	}
+	return state;
+}
+
+bool NNSTBranchNodes::_has_active_state(ObjectID state_id) const {
+	for (unsigned int i = 0; i < _active_states.size(); i++) {
+		if (_active_states[i] == state_id) {
+			return true;
+		}
+	}
+	return false;
+}
+
+NNSTTickedNodes *NNSTBranchNodes::_get_active_state(ObjectID state_id) const {
+	if (!_has_active_state(state_id)) {
+		return nullptr;
+	}
+	return _get_child_state(state_id);
+}
+
+std::vector<NNSTTickedNodes *> NNSTBranchNodes::_get_active_child_states() const {
+	std::vector<NNSTTickedNodes *> states;
+	states.reserve(_active_states.size());
+	for (unsigned int i = 0; i < _active_states.size(); i++) {
+		NNSTTickedNodes *state = _get_active_state(_active_states[i]);
+		if (state != nullptr) {
+			states.push_back(state);
+		}
+	}
+	return states;
+}
+
 void NNSTBranchNodes::_add_active_child_state(NNSTTickedNodes *child_state) {
-	if (child_state == nullptr) {
+	if (child_state == nullptr || child_state->get_parent() != this) {
 		return;
 	}
 
-	_active_states.push_back(child_state);
+	ObjectID state_id = ObjectID(child_state->get_instance_id());
+	if (state_id.is_null() || _has_active_state(state_id)) {
+		return;
+	}
+
+	_active_states.push_back(state_id);
 	_num_active_states++;
 }
 
@@ -115,12 +178,54 @@ void NNSTBranchNodes::_remove_active_child_state(NNSTTickedNodes *child_state) {
 		return;
 	}
 
-	for (unsigned int i = 0; i < _num_active_states; i++) {
-		if (_active_states[i] == child_state) {
+	ObjectID state_id = ObjectID(child_state->get_instance_id());
+	for (unsigned int i = 0; i < _active_states.size(); i++) {
+		if (_active_states[i] == state_id) {
 			_active_states.erase(_active_states.begin() + i);
 			_num_active_states--;
 			break;
 		}
+	}
+}
+
+void NNSTBranchNodes::_on_child_predelete(NNSTTickedNodes *child_state) {
+	_remove_active_child_state(child_state);
+}
+
+void NNSTBranchNodes::_reconcile_active_child_states() {
+	if (_active_states.empty()) {
+		_num_active_states = 0;
+		return;
+	}
+
+	std::vector<ObjectID> retained_states;
+	std::vector<ObjectID> removed_states;
+	for (unsigned int i = 0; i < _active_states.size(); i++) {
+		ObjectID state_id = _active_states[i];
+		if (_contains_child_state(state_id)) {
+			retained_states.push_back(state_id);
+		} else if (ObjectDB::get_instance(state_id) != nullptr) {
+			// The state still exists but is no longer our child. It may have
+			// been removed or reparented, so let it run on_exit_state().
+			removed_states.push_back(state_id);
+		}
+		// Otherwise the state was freed. Its pointer is already invalid and
+		// is simply dropped.
+	}
+
+	_active_states = retained_states;
+	_num_active_states = (unsigned int)_active_states.size();
+
+	for (unsigned int i = 0; i < removed_states.size(); i++) {
+		NNSTTickedNodes *state = _resolve_state(removed_states[i]);
+		if (state == nullptr) {
+			continue;
+		}
+		// A callback may have re-added the state to this branch.
+		if (state->get_parent() == this) {
+			continue;
+		}
+		state->_transition_out();
 	}
 }
 
@@ -181,47 +286,81 @@ NNSTBranchNodes *NNSTBranchNodes::_get_common_ancestor(NNSTTickedNodes *from_sta
  * state list (and crash) or be overwritten when the _transition_in() call
  * returned.
  */
-void NNSTBranchNodes::_apply_active_states(std::vector<NNSTTickedNodes *> &new_active_states, NNSTRoot *p_root) {
+void NNSTBranchNodes::_apply_active_states(std::vector<ObjectID> &new_active_states, NNSTRoot *p_root) {
 	// A transition from on_enter_state() may already have transitioned this
 	// branch out. If so, leave the tree alone.
 	if (_internal_status != ST_INTERNAL_STATUS_ACTIVE) {
 		return;
 	}
 
-	std::vector<NNSTTickedNodes *> states_to_exit;
-	for (unsigned int i = 0; i < _num_active_states; i++) {
-		bool found = false;
-		for (unsigned int j = 0; j < new_active_states.size(); j++) {
-			if (new_active_states[j] == _active_states[i]) {
-				found = true;
-				break;
-			}
-		}
-		if (!found) {
-			states_to_exit.push_back(_active_states[i]);
-		}
-	}
+	// Copy the current list before running any callbacks. A state's
+	// on_enter_state() / on_exit_state() can free or reparent siblings, so the
+	// live list must never be indexed across a callback.
+	const std::vector<ObjectID> old_active_states = _active_states;
 
-	std::vector<NNSTTickedNodes *> states_to_enter;
+	std::vector<ObjectID> next_active_states;
+	next_active_states.reserve(new_active_states.size());
 	for (unsigned int i = 0; i < new_active_states.size(); i++) {
+		ObjectID state_id = new_active_states[i];
+		if (state_id.is_null() || _get_child_state(state_id) == nullptr) {
+			continue;
+		}
+		bool already_added = false;
+		for (unsigned int j = 0; j < next_active_states.size(); j++) {
+			if (next_active_states[j] == state_id) {
+				already_added = true;
+				break;
+			}
+		}
+		if (!already_added) {
+			next_active_states.push_back(state_id);
+		}
+	}
+
+	std::vector<ObjectID> states_to_exit;
+	for (unsigned int i = 0; i < old_active_states.size(); i++) {
 		bool found = false;
-		for (unsigned int j = 0; j < _num_active_states; j++) {
-			if (_active_states[j] == new_active_states[i]) {
+		for (unsigned int j = 0; j < next_active_states.size(); j++) {
+			if (next_active_states[j] == old_active_states[i]) {
 				found = true;
 				break;
 			}
 		}
 		if (!found) {
-			states_to_enter.push_back(new_active_states[i]);
+			states_to_exit.push_back(old_active_states[i]);
 		}
 	}
 
-	_active_states = new_active_states;
+	std::vector<ObjectID> states_to_enter;
+	for (unsigned int i = 0; i < next_active_states.size(); i++) {
+		bool found = false;
+		for (unsigned int j = 0; j < old_active_states.size(); j++) {
+			if (old_active_states[j] == next_active_states[i]) {
+				found = true;
+				break;
+			}
+		}
+		if (!found) {
+			states_to_enter.push_back(next_active_states[i]);
+		}
+	}
+
+	_active_states = next_active_states;
 	_num_active_states = (unsigned int)_active_states.size();
 
 	// do on_exit for any states no longer active
 	for (unsigned int i = 0; i < states_to_exit.size(); i++) {
-		states_to_exit[i]->_transition_out();
+		NNSTTickedNodes *state = _resolve_state(states_to_exit[i]);
+		if (state == nullptr) {
+			// The previous exit callback freed this state.
+			continue;
+		}
+		// A callback may have re-added the state to this branch since it was
+		// removed from the adopted list.
+		if (_has_active_state(states_to_exit[i])) {
+			continue;
+		}
+		state->_transition_out();
 	}
 
 	// And then enter the new states.
@@ -232,7 +371,15 @@ void NNSTBranchNodes::_apply_active_states(std::vector<NNSTTickedNodes *> &new_a
 			break;
 		}
 
-		NNSTTickedNodes *state = states_to_enter[i];
+		// The state may have been freed or transitioned away by an earlier
+		// callback. Re-resolve instead of using the pointer captured above.
+		if (!_has_active_state(states_to_enter[i])) {
+			continue;
+		}
+		NNSTTickedNodes *state = _get_child_state(states_to_enter[i]);
+		if (state == nullptr) {
+			continue;
+		}
 		state->set_root(p_root);
 		state->_transition_in();
 	}
@@ -244,7 +391,7 @@ void NNSTBranchNodes::_apply_active_states(std::vector<NNSTTickedNodes *> &new_a
  *
  * Only activates up to 1 child for each node (CompoundState).
  */
-void NNSTBranchNodes::_evaluate_child_activations(std::vector<NNSTTickedNodes *> &nodes) {
+void NNSTBranchNodes::_evaluate_child_activations(std::vector<ObjectID> &nodes) {
 	// Implemented on child nodes
 }
 
@@ -277,6 +424,8 @@ void NNSTBranchNodes::_notification(int p_what) {
 			return;
 		}
 
+		const std::vector<ObjectID> previous_child_states = _child_states;
+
 		_child_states.clear();
 		_child_considerations.clear();
 		_child_transitions.clear();
@@ -287,11 +436,33 @@ void NNSTBranchNodes::_notification(int p_what) {
 			} else if (NNSTTransition *tns = godot::Object::cast_to<NNSTTransition>(get_child(i))) {
 				_child_transitions.push_back(tns);
 			} else if (NNSTTickedNodes *stnode = godot::Object::cast_to<NNSTTickedNodes>(get_child(i))) {
-				_child_states.push_back(stnode);
+				_child_states.push_back(ObjectID(stnode->get_instance_id()));
 			}
 		} //endfor child nodes
 		_num_child_states = (unsigned int)_child_states.size();
 		_num_child_considerations = (unsigned int)_child_considerations.size();
 		_num_child_transitions = (unsigned int)_child_transitions.size();
+
+		bool child_state_removed = false;
+		if (p_what == NOTIFICATION_CHILD_ORDER_CHANGED) {
+			for (unsigned int i = 0; i < previous_child_states.size(); i++) {
+				if (!_contains_child_state(previous_child_states[i])) {
+					child_state_removed = true;
+					break;
+				}
+			}
+		}
+		_last_notification_had_child_removal = child_state_removed;
+
+		// The active list normally only holds live children, but a child can be
+		// freed, removed or reparented without an explicit transition. Drop
+		// those entries before any subclass reacts to the notification.
+		_reconcile_active_child_states();
+
+		if (child_state_removed && _internal_status == ST_INTERNAL_STATUS_ACTIVE && _active_states.empty()) {
+			// Don't enter replacement states while a subtree is being torn
+			// down. The next tick performs the normal reselection.
+			_needs_reselection = true;
+		}
 	}
 }

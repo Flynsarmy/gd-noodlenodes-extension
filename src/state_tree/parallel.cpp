@@ -21,6 +21,7 @@ NNSTParallel::~NNSTParallel() {
 // Handling functions.
 
 void NNSTParallel::_transition_in() {
+	_needs_reselection = false;
 	// This method is called when the child list changes. If we were already
 	// active but had no active children, we don't want to run on_enter_state()
 	// again.
@@ -29,7 +30,7 @@ void NNSTParallel::_transition_in() {
 		on_enter_state();
 	}
 
-	std::vector<NNSTTickedNodes *> new_active_states;
+	std::vector<ObjectID> new_active_states;
 	_evaluate_child_activations(new_active_states);
 
 	_apply_active_states(new_active_states, get_root());
@@ -38,11 +39,15 @@ void NNSTParallel::_transition_in() {
 /**
  * Loops through children attempting to enter them in order.
  */
-void NNSTParallel::_evaluate_child_activations(std::vector<NNSTTickedNodes *> &nodes) {
+void NNSTParallel::_evaluate_child_activations(std::vector<ObjectID> &nodes) {
+	// Snapshot child IDs because on_enter_condition() can remove, reparent or
+	// free siblings while this is running.
+	const std::vector<ObjectID> child_state_ids = _child_states;
+
 	// Childs are evaluated by using the user-defined on_enter_condition method.
-	for (unsigned int i = 0; i < _num_child_states; i++) {
-		NNSTTickedNodes *stnode = _child_states[i];
-		if (!stnode->get_is_enabled()) {
+	for (unsigned int i = 0; i < child_state_ids.size(); i++) {
+		NNSTTickedNodes *stnode = _get_child_state(child_state_ids[i]);
+		if (stnode == nullptr || !stnode->get_is_enabled()) {
 			continue;
 		}
 
@@ -51,7 +56,7 @@ void NNSTParallel::_evaluate_child_activations(std::vector<NNSTTickedNodes *> &n
 		}
 
 		// Activate the child and evaluate its children
-		nodes.push_back(stnode);
+		nodes.push_back(child_state_ids[i]);
 	}
 }
 

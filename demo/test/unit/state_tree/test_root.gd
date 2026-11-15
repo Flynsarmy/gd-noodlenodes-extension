@@ -57,3 +57,49 @@ func test_on_enter_condition_works_on_children() -> void:
 	_root.tick(0.1)
 	assert_eq(_child1.get_is_active(), false)
 	assert_eq(_child2.get_is_active(), true)
+
+## Freeing an active child must not leave a stale pointer for tick() to use.
+## The remaining child is selected on the next tick.
+func test_active_child_freed_before_tick_is_safe() -> void:
+	var _root: NNSTRoot = add_child_autofree(NNSTRoot.new())
+	var _child: NNSTNode = NNSTNode.new()
+	var _sibling: NNSTNode = NNSTNode.new()
+
+	_root.add_child(_child)
+	_root.add_child(_sibling)
+	assert_eq(_child.get_is_active(), true)
+
+	_child.free()
+
+	# This used to dereference the freed active state.
+	_root.tick(0.1)
+
+	assert_eq(_root.get_is_active(), true)
+	assert_eq(_sibling.get_is_active(), true)
+
+## Removing an active child exits it, and the next tick selects a sibling.
+func test_removing_active_child_exits_it_and_reselects() -> void:
+	var _root: NNSTRoot = add_child_autofree(NNSTRoot.new())
+	var _child: NNSTNode = load("res://test/unit/state_tree/node_on_call_logger.gd").new()
+	var _sibling: NNSTNode = load("res://test/unit/state_tree/node_on_call_logger.gd").new()
+	_root.blackboard = { "log": [] }
+	_root.add_child(_child)
+	_root.add_child(_sibling)
+	_child.name = "Child"
+	_sibling.name = "Sibling"
+	autofree(_child)
+
+	assert_eq(_child.get_is_active(), true)
+	_root.blackboard['log'] = []
+
+	_root.remove_child(_child)
+
+	assert_eq(_child.get_is_active(), false)
+	assert_eq((_root.blackboard['log'] as Array).count("Child on_exit_state"), 1)
+
+	_root.tick(0.1)
+
+	var log: Array = _root.blackboard['log']
+	assert_eq(log.count("Child on_exit_state"), 1)
+	assert_has(log, "Sibling on_enter_state")
+	assert_eq(_sibling.get_is_active(), true)

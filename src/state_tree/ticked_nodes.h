@@ -15,6 +15,7 @@ private:
 	int _evaluation_method;
 	float _score;
 	bool _invert_score;
+	bool _is_exiting;
 
 protected:
 	static void _bind_methods();

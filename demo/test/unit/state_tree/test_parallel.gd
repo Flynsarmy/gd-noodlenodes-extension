@@ -3,6 +3,20 @@ extends GutTest
 @warning_ignore('unused_parameter')
 @warning_ignore('return_value_discarded')
 
+class FreeSiblingOnTick extends NNSTNode:
+	var target: Node
+
+	func on_tick(_delta: float) -> void:
+		if is_instance_valid(target):
+			target.free()
+
+class FreeSiblingOnEnter extends NNSTNode:
+	var target: Node
+
+	func on_enter_state() -> void:
+		if is_instance_valid(target):
+			target.free()
+
 ## Confirm on_* methods are called when they should be
 func test_all_children_ticked() -> void:
 	var _root: NNSTRoot = add_child_autofree(NNSTRoot.new())
@@ -113,3 +127,105 @@ func test_parallel_branches_tick_correct_nodes() -> void:
 	assert_eq(_child2.get_is_active(), true)
 	assert_eq(_grandchild21.get_is_active(), true)
 	assert_eq(_grandchild22.get_is_active(), false)
+
+## Removing one active parallel child exits only that child; the other keeps
+## running without a stale active-list entry.
+func test_removing_active_parallel_child_exits_only_that_child() -> void:
+	var _root: NNSTRoot = add_child_autofree(NNSTRoot.new())
+	var _parallel: NNSTParallel = NNSTParallel.new()
+	var _child1: NNSTNode = load("res://test/unit/state_tree/node_on_call_logger.gd").new()
+	var _child2: NNSTNode = load("res://test/unit/state_tree/node_on_call_logger.gd").new()
+	_root.blackboard = { "log": [] }
+	_child1.name = "Child1"
+	_child2.name = "Child2"
+	_parallel.add_child(_child1)
+	_parallel.add_child(_child2)
+	_root.add_child(_parallel)
+
+	assert_eq(_child1.get_is_active(), true)
+	assert_eq(_child2.get_is_active(), true)
+	_root.blackboard['log'] = []
+
+	_parallel.remove_child(_child2)
+	autofree(_child2)
+
+	assert_eq(_child2.get_is_active(), false)
+	assert_eq((_root.blackboard['log'] as Array).count("Child2 on_exit_state"), 1)
+	assert_eq(_child1.get_is_active(), true)
+
+	_root.tick(0.1)
+
+	assert_eq(_child1.get_is_active(), true)
+	assert_eq((_root.blackboard['log'] as Array).count("Child2 on_exit_state"), 1)
+
+## A child may free an active sibling from on_tick(). Snapshotting the active
+## list by instance ID keeps the remaining iteration safe.
+func test_freeing_active_sibling_during_tick_is_safe() -> void:
+	var _root: NNSTRoot = add_child_autofree(NNSTRoot.new())
+	var _parallel: NNSTParallel = NNSTParallel.new()
+	var _child1: FreeSiblingOnTick = FreeSiblingOnTick.new()
+	var _child2: NNSTNode = NNSTNode.new()
+	_child1.name = "Child1"
+	_child2.name = "Child2"
+	_parallel.add_child(_child1)
+	_parallel.add_child(_child2)
+	_child1.target = _child2
+	_root.add_child(_parallel)
+
+	# This used to tick Child2 after Child1 freed it.
+	_root.tick(0.1)
+	_root.tick(0.1)
+
+	assert_eq(_child1.get_is_active(), true)
+	assert_eq(is_instance_valid(_child2), false)
+
+## A child may free an active sibling from on_enter_state(). The pending
+## enter list must be re-resolved after the callback.
+func test_freeing_active_sibling_during_entry_is_safe() -> void:
+	var _root: NNSTRoot = add_child_autofree(NNSTRoot.new())
+	var _parallel: NNSTParallel = NNSTParallel.new()
+	var _child1: FreeSiblingOnEnter = FreeSiblingOnEnter.new()
+	var _child2: NNSTNode = NNSTNode.new()
+	_child1.name = "Child1"
+	_child2.name = "Child2"
+	_parallel.add_child(_child1)
+	_parallel.add_child(_child2)
+	_child1.target = _child2
+	_root.add_child(_parallel)
+
+	# This used to enter Child2 after Child1's on_enter_state() freed it.
+	assert_eq(_child1.get_is_active(), true)
+	assert_eq(is_instance_valid(_child2), false)
+
+	_root.tick(0.1)
+	assert_eq(_child1.get_is_active(), true)
+
+## Reparenting an active child exits it from its old branch and the new active
+## branch enters it without keeping a stale pointer in the old active list.
+func test_reparenting_active_child_updates_both_branches() -> void:
+	var _root: NNSTRoot = add_child_autofree(NNSTRoot.new())
+	var _parallel: NNSTParallel = NNSTParallel.new()
+	var _branch1: NNSTNode = NNSTNode.new()
+	var _branch2: NNSTNode = NNSTNode.new()
+	var _leaf: NNSTNode = load("res://test/unit/state_tree/node_on_call_logger.gd").new()
+	_root.blackboard = { "log": [] }
+	_leaf.name = "Leaf"
+	_branch1.add_child(_leaf)
+	_parallel.add_child(_branch1)
+	_parallel.add_child(_branch2)
+	_root.add_child(_parallel)
+
+	assert_eq(_branch1.get_is_active(), true)
+	assert_eq(_branch2.get_is_active(), true)
+	assert_eq(_leaf.get_is_active(), true)
+	_root.blackboard['log'] = []
+
+	_leaf.reparent(_branch2)
+
+	assert_eq(_leaf.get_parent(), _branch2)
+	assert_eq((_root.blackboard['log'] as Array).count("Leaf on_exit_state"), 1)
+	assert_eq(_leaf.get_is_active(), true)
+
+	_root.tick(0.1)
+	assert_eq(_leaf.get_is_active(), true)
+	assert_eq((_root.blackboard['log'] as Array).count("Leaf on_exit_state"), 1)

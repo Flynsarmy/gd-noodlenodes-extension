@@ -92,6 +92,7 @@ void NNSTRoot::tick(float delta) {
 #endif
 
 	if (_num_active_states == 0) {
+		_needs_reselection = false;
 		_transition_in();
 	}
 
@@ -106,9 +107,14 @@ void NNSTRoot::tick(float delta) {
 	} //endfor sensors
 
 	// If there are active states, tick their custom method from the
-	// root to the active leaf.
-	for (unsigned int i = 0; i < _num_active_states; i++) {
-		NNSTTickedNodes *stnode = _active_states[i];
+	// root to the active leaf. The list is snapshotted by instance ID because
+	// a child's on_tick() may free, remove or reparent another active child.
+	const std::vector<ObjectID> active_state_ids = _active_states;
+	for (unsigned int i = 0; i < active_state_ids.size(); i++) {
+		NNSTTickedNodes *stnode = _get_active_state(active_state_ids[i]);
+		if (stnode == nullptr) {
+			continue;
+		}
 
 		stnode->set_root(this);
 		stnode->on_tick(delta);
@@ -120,8 +126,12 @@ void NNSTRoot::tick(float delta) {
 }
 
 void NNSTRoot::send_event(String name) {
-	for (unsigned int i = 0; i < _num_active_states; i++) {
-		NNSTTickedNodes *stnode = _active_states[i];
+	const std::vector<ObjectID> active_state_ids = _active_states;
+	for (unsigned int i = 0; i < active_state_ids.size(); i++) {
+		NNSTTickedNodes *stnode = _get_active_state(active_state_ids[i]);
+		if (stnode == nullptr) {
+			continue;
+		}
 		stnode->send_event(name);
 	}
 }
@@ -132,14 +142,18 @@ void NNSTRoot::send_event(String name) {
  *
  * Only activates up to 1 child for each node (CompoundState).
  */
-void NNSTRoot::_evaluate_child_activations(std::vector<NNSTTickedNodes *> &nodes) {
+void NNSTRoot::_evaluate_child_activations(std::vector<ObjectID> &nodes) {
 	// std::vector<NNSTNode *> nodes;
+
+	// Snapshot child IDs because on_enter_condition() / evaluate() callbacks can
+	// remove, reparent or free siblings while this is running.
+	const std::vector<ObjectID> child_state_ids = _child_states;
 
 	if (get_child_state_selection_rule() == NNSTNodeChildStateSelectionRule::ON_ENTER_CONDITION_METHOD) {
 		// Childs are evaluated by using the user-defined on_enter_condition method.
-		for (unsigned int i = 0; i < _num_child_states; i++) {
-			NNSTTickedNodes *stnode = _child_states[i];
-			if (!stnode->get_is_enabled()) {
+		for (unsigned int i = 0; i < child_state_ids.size(); i++) {
+			NNSTTickedNodes *stnode = _get_child_state(child_state_ids[i]);
+			if (stnode == nullptr || !stnode->get_is_enabled()) {
 				continue;
 			}
 
@@ -148,31 +162,30 @@ void NNSTRoot::_evaluate_child_activations(std::vector<NNSTTickedNodes *> &nodes
 			}
 
 			// Activate the child and evaluate its children
-			nodes.push_back(stnode);
+			nodes.push_back(child_state_ids[i]);
 
 			// Only 1 child gets activated
 			break;
 		}
 	} else if (get_child_state_selection_rule() == NNSTNodeChildStateSelectionRule::UTILITY_SCORING) {
 		// Childs are evaluated by using Utility-based scoring.
-		NNSTTickedNodes *highest_scoring_state_to_activate = nullptr;
+		ObjectID highest_scoring_state_to_activate;
 		float highest_score = -9999999.9999;
-		for (unsigned int i = 0; i < _num_child_states; i++) {
-			NNSTTickedNodes *stnode = _child_states[i];
-
-			if (!stnode->get_is_enabled()) {
+		for (unsigned int i = 0; i < child_state_ids.size(); i++) {
+			NNSTTickedNodes *stnode = _get_child_state(child_state_ids[i]);
+			if (stnode == nullptr || !stnode->get_is_enabled()) {
 				continue;
 			}
 
 			float score = stnode->evaluate();
 			if (score > highest_score) {
 				highest_score = score;
-				highest_scoring_state_to_activate = stnode;
+				highest_scoring_state_to_activate = child_state_ids[i];
 			}
 		}
 
 		// Return the highest scoring state that can activate.
-		if (highest_scoring_state_to_activate != nullptr) {
+		if (!highest_scoring_state_to_activate.is_null()) {
 			// Activate the child and evaluate its children
 			nodes.push_back(highest_scoring_state_to_activate);
 		}
@@ -182,13 +195,14 @@ void NNSTRoot::_evaluate_child_activations(std::vector<NNSTTickedNodes *> &nodes
 }
 
 void NNSTRoot::_transition_in() {
+	_needs_reselection = false;
 	set_internal_status(ST_INTERNAL_STATUS_ACTIVE);
 
 	if (_num_active_states > 0) {
 		return;
 	}
 
-	std::vector<NNSTTickedNodes *> new_active_states;
+	std::vector<ObjectID> new_active_states;
 	_evaluate_child_activations(new_active_states);
 
 	_apply_active_states(new_active_states, this);
@@ -209,9 +223,12 @@ void NNSTRoot::_notification(int p_what) {
 			return;
 		}
 
-		for (unsigned int i = 0; i < _num_child_states; i++) {
-			NNSTTickedNodes *stnode = _child_states[i];
-			stnode->set_root(this);
+		const std::vector<ObjectID> child_state_ids = _child_states;
+		for (unsigned int i = 0; i < child_state_ids.size(); i++) {
+			NNSTTickedNodes *stnode = _get_child_state(child_state_ids[i]);
+			if (stnode != nullptr) {
+				stnode->set_root(this);
+			}
 		}
 
 		_child_sensors.clear();
@@ -228,8 +245,13 @@ void NNSTRoot::_notification(int p_what) {
 
 		// This will do nothing if we already have an active child. We want to
 		// call it on child order changed incase the root has no active children
-		// when another child gets added.
-		_transition_in();
+		// when another child gets added. If the change was caused by a child
+		// being deleted, wait for the next tick so teardown doesn't enter new
+		// states. A node that has already left the tree (for example while its
+		// parent is being freed) must not enter states either.
+		if (is_inside_tree() && !_last_notification_had_child_removal && !_needs_reselection) {
+			_transition_in();
+		}
 
 		return;
 	}
