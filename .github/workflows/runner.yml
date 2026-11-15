@@ -21,6 +21,9 @@ jobs:
     build_linux:
         needs: [lint]
         uses: ./.github/workflows/build_linux.yml
+    build_macos:
+        needs: [lint]
+        uses: ./.github/workflows/build_macos.yml
     build_windows:
         needs: [lint]
         uses: ./.github/workflows/build_windows.yml
@@ -28,7 +31,7 @@ jobs:
         needs: [lint]
         uses: ./.github/workflows/build_web.yml
     group_builds:
-        needs: [build_android, build_linux, build_windows, build_web]
+        needs: [build_android, build_linux, build_macos, build_windows, build_web]
         uses: ./.github/workflows/group_builds.yml
     test:
         needs: [group_builds]
