@@ -2,7 +2,7 @@
 
 #include "../agent_behaviours/considerations.h"
 #include "definitions.h"
-#include "nodes.h"
+#include "state_tree/nodes.h"
 #include <godot_cpp/classes/input_event.hpp>
 #include <godot_cpp/classes/node.hpp>
 #include <godot_cpp/core/gdvirtual.gen.inc>
