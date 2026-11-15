@@ -66,7 +66,7 @@
 			This is the time the [method run_queries] method is allowed to run per frame, in usec (microseconds). When the time runs out, they will resume from where they left off on the next physics frame.
 		</member>
 		<member name="time_allocation_pct_to_high_priority_queries" type="float" setter="set_time_allocation_pct_to_high_priority_queries" getter="get_time_allocation_pct_to_high_priority_queries" default="0.8">
-			Value between 0..1, determines how much of the [member run_queries_time_budget_per_frame] is used for high-priority queries. The time left over is used for the regular priority queries.
+			Value between 0..1, determines how much of the [member run_queries_time_budget_per_frame] is used for high-priority queries. The time left over is used for the regular priority queries. If the high-priority queries use up the whole frame budget, the regular priority queries are skipped for that frame and resume on a later frame.
 		</member>
 	</members>
 </class>

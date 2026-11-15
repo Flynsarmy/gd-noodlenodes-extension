@@ -186,11 +186,13 @@ void NNNodeQuerySystem::run_queries() {
 	uint64_t regular_query_start_time_usec = godot::Time::get_singleton()->get_ticks_usec();
 
 	if (_num_active_regular_priority_queries > 0 && _regular_queries.size() > 0) {
-		frame_time_left -= (regular_query_start_time_usec - method_start_time_usec);
-		if (frame_time_left <= 0) {
+		// Compare before subtracting to avoid unsigned wraparound after an overrun.
+		uint64_t elapsed_before_regular_queries_usec = regular_query_start_time_usec - method_start_time_usec;
+		if (elapsed_before_regular_queries_usec >= frame_time_left) {
 			_run_queries_time_elapsed_usec = godot::Time::get_singleton()->get_ticks_usec() - method_start_time_usec;
 			return; // Too bad, no time left for regular priority queries :(
 		}
+		frame_time_left -= elapsed_before_regular_queries_usec;
 
 		while (true) {
 			if (_current_regular_query_index >= _regular_queries.size()) {

@@ -1,0 +1,103 @@
+extends GutTest
+
+# Regression tests for NNNodeQuerySystem.run_queries() budget handling.
+#
+# High priority queries can overrun the per-frame run budget. The remaining
+# budget for regular priority queries is unsigned, so it must be checked
+# before subtracting the elapsed time; otherwise it wraps around and the
+# regular queries run with an effectively unlimited time allowance.
+
+const NUM_CANDIDATES := 12
+
+
+class SlowCriterion extends NNCustomSearchCriterion:
+	var apply_count := 0
+
+	func apply_criterion(_node) -> void:
+		apply_count += 1
+		OS.delay_usec(2000)
+
+
+class CountingCriterion extends NNCustomSearchCriterion:
+	var apply_count := 0
+
+	func apply_criterion(_node) -> void:
+		apply_count += 1
+
+
+func _make_candidates(count: int) -> Node:
+	var candidates: Node = Node.new()
+	for i in count:
+		candidates.add_child(Node.new())
+	add_child_autofree(candidates)
+	return candidates
+
+
+func _make_query(candidates: Node, criterion: NNCustomSearchCriterion) -> NNNodeChildrenSearchSpace:
+	var query: NNNodeChildrenSearchSpace = NNNodeChildrenSearchSpace.new()
+	query.parent_node = candidates
+	query.add_child(criterion)
+	add_child_autofree(query)
+	return query
+
+
+func _make_nqs(run_budget_usec: int, execute_budget_usec: int) -> NNNodeQuerySystem:
+	var nqs: NNNodeQuerySystem = NNNodeQuerySystem.new()
+	nqs.run_queries_time_budget_per_frame_usec = run_budget_usec
+	# Recompute the high priority allocation after changing the frame budget.
+	nqs.time_allocation_pct_to_high_priority_queries = 0.8
+	nqs.high_priority_query_per_frame_execute_query_time_budget_usec = execute_budget_usec
+	nqs.regular_query_per_frame_execute_query_time_budget_usec = execute_budget_usec
+	return nqs
+
+
+# When high priority work overruns the frame budget, regular priority queries
+# must not run at all in that frame.
+func test_regular_query_does_not_run_after_high_priority_overruns_budget() -> void:
+	var nqs: NNNodeQuerySystem = _make_nqs(100, 10000)
+	var candidates: Node = _make_candidates(NUM_CANDIDATES)
+	var high_criterion: SlowCriterion = SlowCriterion.new()
+	var regular_criterion: CountingCriterion = CountingCriterion.new()
+	var high_query: NNNodeChildrenSearchSpace = _make_query(candidates, high_criterion)
+	var regular_query: NNNodeChildrenSearchSpace = _make_query(candidates, regular_criterion)
+
+	assert_eq(nqs.post_query(high_query, true), 1)
+	assert_eq(nqs.post_query(regular_query, false), 1)
+
+	nqs.run_queries()
+
+	assert_gt(high_criterion.apply_count, 0, "high priority query should be executed first")
+	assert_eq(regular_criterion.apply_count, 0, "regular criterion must not execute after the high priority queries overrun the frame budget")
+	assert_true(regular_query.is_query_still_running, "regular query should remain pending for a later frame")
+
+	# Detach the queries from the local system before freeing them. Their
+	# _exit_tree() also calls stop_query() on the global singleton.
+	nqs.stop_query(high_query)
+	nqs.stop_query(regular_query)
+	nqs.free()
+
+
+# When high priority work leaves budget available, regular priority queries
+# must still run as before.
+func test_regular_query_runs_when_high_priority_leaves_budget() -> void:
+	var nqs: NNNodeQuerySystem = _make_nqs(1000000, 20000)
+	var candidates: Node = _make_candidates(3)
+	var high_criterion: CountingCriterion = CountingCriterion.new()
+	var regular_criterion: CountingCriterion = CountingCriterion.new()
+	var high_query: NNNodeChildrenSearchSpace = _make_query(candidates, high_criterion)
+	var regular_query: NNNodeChildrenSearchSpace = _make_query(candidates, regular_criterion)
+
+	assert_eq(nqs.post_query(high_query, true), 1)
+	assert_eq(nqs.post_query(regular_query, false), 1)
+
+	nqs.run_queries()
+
+	assert_gt(high_criterion.apply_count, 0, "high priority query should be executed first")
+	assert_eq(regular_criterion.apply_count, 3, "regular criterion should execute for every candidate when budget is left")
+	assert_false(regular_query.is_query_still_running, "regular query should complete when budget is left")
+
+	# Detach the queries from the local system before freeing them. Their
+	# _exit_tree() also calls stop_query() on the global singleton.
+	nqs.stop_query(high_query)
+	nqs.stop_query(regular_query)
+	nqs.free()
