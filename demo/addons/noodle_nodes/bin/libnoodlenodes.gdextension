@@ -15,8 +15,8 @@ macos.debug = "res://addons/noodle_nodes/bin/libnoodlenodes.macos.template_debug
 macos.release = "res://addons/noodle_nodes/bin/libnoodlenodes.macos.template_release.framework"
 linux.debug.x86_64 = "res://addons/noodle_nodes/bin/libnoodlenodes.linux.template_debug.x86_64.so"
 linux.release.x86_64 = "res://addons/noodle_nodes/bin/libnoodlenodes.linux.template_release.x86_64.so"
-web.debug.wasm32 = "res://addons/noodle_nodes/bin/libnoodlenodes.web.template_debug.wasm32.so"
-web.release.wasm32 = "res://addons/noodle_nodes/bin/libnoodlenodes.web.template_release.wasm32.so"
+web.debug.wasm32 = "res://addons/noodle_nodes/bin/libnoodlenodes.web.template_debug.wasm32.wasm"
+web.release.wasm32 = "res://addons/noodle_nodes/bin/libnoodlenodes.web.template_release.wasm32.wasm"
 
 [icons]
 NoodleNodes = "res://addons/noodle_nodes/icons/NNDefault.svg"
