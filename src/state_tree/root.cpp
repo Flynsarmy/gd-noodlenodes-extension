@@ -18,12 +18,14 @@ using namespace godot;
 void NNSTRoot::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("set_blackboard", "blackboard"), &NNSTRoot::set_blackboard);
 	ClassDB::bind_method(D_METHOD("get_blackboard"), &NNSTRoot::get_blackboard);
+	// The blackboard is a Dictionary<String, Variant>. Typed dictionary hints use
+	// the format "key_type;value_type", where "Variant" accepts any value type.
 	ADD_PROPERTY(
 			PropertyInfo(
 					Variant::DICTIONARY,
 					"blackboard",
-					PROPERTY_HINT_TYPE_STRING,
-					vformat("%s:;%s/%s", Variant::STRING, Variant::OBJECT, PROPERTY_HINT_RESOURCE_TYPE)),
+					PROPERTY_HINT_DICTIONARY_TYPE,
+					vformat("%s;%s", Variant::get_type_name(Variant::STRING), "Variant")),
 			"set_blackboard",
 			"get_blackboard");
 
@@ -54,6 +56,8 @@ NNSTRoot::NNSTRoot() {
 	_num_child_sensors = 0;
 
 	_blackboard = Dictionary();
+	// Typed as Dictionary<String, Variant>. A NIL value type accepts any value.
+	_blackboard.set_typed(Variant::STRING, StringName(), Variant(), Variant::NIL, StringName(), Variant());
 }
 
 NNSTRoot::~NNSTRoot() {
@@ -72,7 +76,9 @@ uint64_t NNSTRoot::get_total_tick_usec() const {
 #endif
 
 void NNSTRoot::set_blackboard(Dictionary blackboard) {
-	_blackboard = blackboard;
+	// assign() enforces the String key type: non-String keys are rejected with
+	// an error and the existing blackboard is left untouched.
+	_blackboard.assign(blackboard);
 };
 Dictionary NNSTRoot::get_blackboard() const {
 	return _blackboard;

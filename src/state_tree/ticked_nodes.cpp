@@ -84,13 +84,13 @@ NNSTRoot *NNSTTickedNodes::get_root() const {
 	return _root;
 }
 
-bool NNSTTickedNodes::set_blackboard(const Variant &p_key, const Variant &p_value) {
+bool NNSTTickedNodes::set_blackboard(const String &p_key, const Variant &p_value) {
 	ERR_FAIL_COND_V_MSG(_root == nullptr, false, "Tree root not set on this node. Can't retrieve blackboard.");
 
 	return get_root()->get_blackboard().set(p_key, p_value);
 }
 
-Variant NNSTTickedNodes::get_blackboard(const Variant &p_key, const Variant &p_default) const {
+Variant NNSTTickedNodes::get_blackboard(const String &p_key, const Variant &p_default) const {
 	ERR_FAIL_COND_V_MSG(_root == nullptr, p_default, "Tree root not set on this node. Can't retrieve blackboard.");
 
 	return get_root()->get_blackboard().get(p_key, p_default);

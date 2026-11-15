@@ -24,7 +24,7 @@
 		</method>
 	</methods>
 	<members>
-		<member name="blackboard" type="Dictionary" setter="set_blackboard" getter="get_blackboard" default="{}">
+		<member name="blackboard" type="Dictionary[String, Variant]" setter="set_blackboard" getter="get_blackboard" default="{}">
 			A dictionary to use for optional state data.
 		</member>
 		<member name="total_tick_usec" type="int" setter="set_total_tick_usec" getter="get_total_tick_usec" default="0">
