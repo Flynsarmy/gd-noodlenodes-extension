@@ -246,7 +246,8 @@ float NNBehaviour::evaluate() {
 void NNBehaviour::start_behaviour() {
 	_current_cooldown_seconds = _cooldown_seconds;
 	_current_cooldown_turns = _cooldown_turns;
-	_current_action_index = 0;
+	// No action selected yet; start the search at child index 0.
+	_current_action_index = -1;
 	//_current_action_node = nullptr;
 	//_current_action_node = update_behaviour();
 	emit_signal("behaviour_entered");
@@ -265,40 +266,43 @@ NNAction *NNBehaviour::update_behaviour() {
 
 Node *NNBehaviour::step_actions() {
 	//WARN_PRINT("NNBehaviour::step_actions() " + get_name());
-	if (_current_action_index >= get_child_count())
-		return nullptr;
-
-	// Check if the node is an action.
-	Node *current_node = get_child(_current_action_index);
-	if (NNAction *current_action = godot::Object::cast_to<NNAction>(current_node)) {
-		if (!current_action->get_is_finished()) {
-			return current_node;
-		}
-		// If the action fails, clean up and end stepping.
-		if (current_action->get_has_failed()) {
-			current_action->end_action();
+	Node *current_node = nullptr;
+	if (_current_action_index >= 0) {
+		if (_current_action_index >= get_child_count())
 			return nullptr;
-		}
-		current_action->end_action();
-	} else {
-		//WARN_PRINT("NNBehaviour::step_actions(): Checking if the current index is an action group.");
-		// Check if the current index has an action group and if that group has a follow-up action.
-		if (NNActionGroup *current_action_group = godot::Object::cast_to<NNActionGroup>(current_node)) {
-			//WARN_PRINT("NNBehaviour::step_actions(): Yes, current action is an action group. Stepping...");
-			current_action = godot::Object::cast_to<NNAction>(current_action_group->step_actions());
-			//if( _current_action_node == nullptr ) WARN_PRINT("NNBehaviour::step_actions(): group sent back a NULL action pointer.");
-			if (current_action != nullptr)
-				return current_action;
-			//WARN_PRINT("NNBehaviour::step_actions(): Action has completed, ending action for the action group.");
-			// If the group fails, clean up and end stepping.
-			if (current_action_group->get_has_failed()) {
-				current_action_group->end_action();
+
+		// Check if the node is an action.
+		current_node = get_child(_current_action_index);
+		if (NNAction *current_action = godot::Object::cast_to<NNAction>(current_node)) {
+			if (!current_action->get_is_finished()) {
+				return current_node;
+			}
+			// If the action fails, clean up and end stepping.
+			if (current_action->get_has_failed()) {
+				current_action->end_action();
 				return nullptr;
 			}
-			current_action_group->end_action();
-			//WARN_PRINT("NNBehaviour::step_actions(): Action group action ended.");
-		} //endif current node index is action group
-	} //endif current node index is an action
+			current_action->end_action();
+		} else {
+			//WARN_PRINT("NNBehaviour::step_actions(): Checking if the current index is an action group.");
+			// Check if the current index has an action group and if that group has a follow-up action.
+			if (NNActionGroup *current_action_group = godot::Object::cast_to<NNActionGroup>(current_node)) {
+				//WARN_PRINT("NNBehaviour::step_actions(): Yes, current action is an action group. Stepping...");
+				current_action = godot::Object::cast_to<NNAction>(current_action_group->step_actions());
+				//if( _current_action_node == nullptr ) WARN_PRINT("NNBehaviour::step_actions(): group sent back a NULL action pointer.");
+				if (current_action != nullptr)
+					return current_action;
+				//WARN_PRINT("NNBehaviour::step_actions(): Action has completed, ending action for the action group.");
+				// If the group fails, clean up and end stepping.
+				if (current_action_group->get_has_failed()) {
+					current_action_group->end_action();
+					return nullptr;
+				}
+				current_action_group->end_action();
+				//WARN_PRINT("NNBehaviour::step_actions(): Action group action ended.");
+			} //endif current node index is action group
+		} //endif current node index is an action
+	} //endif an action has been selected
 	//WARN_PRINT("NNBehaviour::step_actions(): Finding a new action...");
 
 	++_current_action_index;
