@@ -194,6 +194,8 @@ void NNAgent::evaluate_options(float delta) {
 			unsigned int num_bgi_behaviours = behavioursNode->get_num_child_behaviours();
 			for (unsigned int c = 0; c < num_bgi_behaviours; ++c) {
 				NNBehaviours *bgiNode = behavioursNode->get_child_behaviours()[c]; //bgiBehaviours[c];
+				if (!bgiNode->get_is_enabled())
+					continue;
 				if (bgiNode->is_behaviour_group())
 					continue;
 				float bgiScore = bgiNode->evaluate();
