@@ -278,12 +278,17 @@ bool NNNQSSearchSpaces::execute_query(uint64_t time_budget_usec) {
 	uint64_t method_time_limit_timestamp_usec = method_start_time_usec + time_budget_usec;
 	uint64_t time_budget_remaining_usec = time_budget_usec;
 
-	if (!get_is_enabled())
+	if (!get_is_enabled()) {
+		_is_query_still_running = false;
 		return true;
-	if (Engine::get_singleton()->is_editor_hint())
+	}
+	if (Engine::get_singleton()->is_editor_hint()) {
+		_is_query_still_running = false;
 		return true;
+	}
 	if (get_child_count() < 1) {
 		WARN_PRINT("NNNodeQuerySystem::execute_query() - No search criteria nodes added.");
+		_is_query_still_running = false;
 		return true;
 	}
 

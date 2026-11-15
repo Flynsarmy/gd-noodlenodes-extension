@@ -65,6 +65,8 @@ void NNNodeQuerySystem::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("initialize_performance_counters"), &NNNodeQuerySystem::initialize_performance_counters);
 	ClassDB::bind_method(D_METHOD("get_run_queries_time_elapsed_usec"), &NNNodeQuerySystem::get_run_queries_time_elapsed_usec);
 	ClassDB::bind_method(D_METHOD("get_post_queries_time_elapsed_usec"), &NNNodeQuerySystem::get_post_queries_time_elapsed_usec);
+	ClassDB::bind_method(D_METHOD("get_num_active_high_priority_queries"), &NNNodeQuerySystem::get_num_active_high_priority_queries);
+	ClassDB::bind_method(D_METHOD("get_num_active_regular_priority_queries"), &NNNodeQuerySystem::get_num_active_regular_priority_queries);
 }
 
 // Getters and setters.
@@ -126,6 +128,14 @@ int NNNodeQuerySystem::get_post_queries_time_elapsed_usec() const {
 	return (_post_high_priority_queries_time_elapsed_usec + _post_regular_queries_time_elapsed_usec);
 }
 
+int NNNodeQuerySystem::get_num_active_high_priority_queries() const {
+	return (int)_num_active_high_priority_queries;
+}
+
+int NNNodeQuerySystem::get_num_active_regular_priority_queries() const {
+	return (int)_num_active_regular_priority_queries;
+}
+
 // Handling methods.
 
 void NNNodeQuerySystem::initialize_performance_counters() {
@@ -169,10 +179,12 @@ void NNNodeQuerySystem::run_queries() {
 				bool is_completed = current_query->execute_query(_high_priority_query_per_frame_execute_query_time_budget_usec);
 				if (is_completed) {
 					//queries_to_delete.push_back(_current_high_priority_query_index);
-					_high_priority_queries[_current_high_priority_query_index] = nullptr;
-					_available_high_priority_query_indexes.push_back(_current_high_priority_query_index);
-					--_num_active_high_priority_queries;
-					current_query->set_nqs_query_index(-1);
+					// A "query_completed" callback may already have stopped this query
+					// or stopped and re-posted it. Only release the slot if the query
+					// was not restarted by a callback and the slot still owns it.
+					if (!current_query->get_is_query_still_running()) {
+						_release_query_slot(current_query, true);
+					}
 				}
 			}
 
@@ -204,10 +216,11 @@ void NNNodeQuerySystem::run_queries() {
 				bool is_completed = current_query->execute_query(_regular_query_per_frame_execute_query_time_budget_usec);
 				if (is_completed) {
 					//queries_to_delete.push_back(_current_regular_query_index);
-					_available_regular_query_indexes.push_back(_current_regular_query_index);
-					_regular_queries[_current_regular_query_index] = nullptr;
-					--_num_active_regular_priority_queries;
-					current_query->set_nqs_query_index(-1);
+					// See the high priority loop above for why a callback may have
+					// already changed this slot.
+					if (!current_query->get_is_query_still_running()) {
+						_release_query_slot(current_query, false);
+					}
 				}
 			}
 
@@ -279,6 +292,37 @@ int NNNodeQuerySystem::post_query(NNNQSSearchSpaces *search_space, bool is_high_
 	return 1;
 }
 
+bool NNNodeQuerySystem::_release_query_slot(NNNQSSearchSpaces *search_space, bool is_high_priority) {
+	if (search_space == nullptr) {
+		return false;
+	}
+
+	const int query_index = search_space->get_nqs_query_index();
+	if (query_index < 0) {
+		return false; // Not in the scheduler.
+	}
+
+	godot::TypedArray<NNNQSSearchSpaces> &queries = is_high_priority ? _high_priority_queries : _regular_queries;
+	std::vector<int> &available_query_indexes = is_high_priority ? _available_high_priority_query_indexes : _available_regular_query_indexes;
+	unsigned int &num_active_queries = is_high_priority ? _num_active_high_priority_queries : _num_active_regular_priority_queries;
+
+	// The index can be stale if the query list was cleared while the query was
+	// posted, or if the slot has already been reused by another query.
+	if (query_index >= (int)queries.size() ||
+			godot::Object::cast_to<NNNQSSearchSpaces>(queries[query_index]) != search_space) {
+		search_space->set_nqs_query_index(-1);
+		return false;
+	}
+
+	ERR_FAIL_COND_V_MSG(num_active_queries == 0, false, "Cannot release an occupied query slot with no active queries.");
+	queries[query_index] = nullptr;
+	available_query_indexes.push_back(query_index);
+	--num_active_queries;
+	search_space->set_nqs_query_index(-1);
+	search_space->set_is_query_still_running(false);
+	return true;
+}
+
 bool NNNodeQuerySystem::stop_query(NNNQSSearchSpaces *search_space) {
 	if (search_space == nullptr) {
 		return false; // Not stopped, nullptr.
@@ -286,17 +330,7 @@ bool NNNodeQuerySystem::stop_query(NNNQSSearchSpaces *search_space) {
 	if (search_space->get_nqs_query_index() < 0) {
 		return false; // Not stopped, invalid index.
 	}
-	if (search_space->get_nqs_query_is_high_priority()) {
-		_high_priority_queries[search_space->get_nqs_query_index()] = nullptr;
-		_available_high_priority_query_indexes.push_back(search_space->get_nqs_query_index());
-		search_space->set_nqs_query_index(-1);
-		return true;
-	}
-
-	_regular_queries[search_space->get_nqs_query_index()] = nullptr;
-	_available_regular_query_indexes.push_back(search_space->get_nqs_query_index());
-	search_space->set_nqs_query_index(-1);
-	return true;
+	return _release_query_slot(search_space, search_space->get_nqs_query_is_high_priority());
 }
 
 void NNNodeQuerySystem::clear_queries() {
