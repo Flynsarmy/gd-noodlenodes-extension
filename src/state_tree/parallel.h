@@ -19,7 +19,7 @@ public:
 
 	// Handling functions.
 	virtual void _transition_in() override;
-	virtual void _evaluate_child_activations(std::vector<NNSTTickedNodes *> &nodes) override;
+	virtual void _evaluate_child_activations(std::vector<ObjectID> &nodes) override;
 };
 
 } //namespace godot

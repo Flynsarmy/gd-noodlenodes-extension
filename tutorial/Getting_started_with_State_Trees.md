@@ -111,6 +111,8 @@ Any active state that is no longer active after the call to `transition_to()` wi
 
 When the root node `tick()` method is called, all the active states will call their `on_tick()` methods, starting from the root node and going down the tree to the leaf node.
 
+Removing or reparenting an active child exits it and its active descendants once. Freeing a state removes it from the active list without calling its exit handler during destruction. If an active branch loses its last active child, it selects a replacement on the next tick using its usual selection rule; the branch itself is not re-entered. Other active children of a parallel state keep running.
+
 
 
 ## 4. Utility enabled State Trees in Utility AI GDExtension

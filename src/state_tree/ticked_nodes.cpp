@@ -61,6 +61,7 @@ NNSTTickedNodes::NNSTTickedNodes() {
 	_evaluation_method = NNSTTickedNodesEvaluationMethod::Multiply;
 	_score = 0.0;
 	_invert_score = false;
+	_is_exiting = false;
 	_root = nullptr;
 }
 
@@ -73,9 +74,12 @@ void NNSTTickedNodes::set_root(NNSTRoot *p_root) {
 	_root = p_root;
 
 	if (!Engine::get_singleton()->is_editor_hint()) {
-		for (unsigned int i = 0; i < _num_child_states; i++) {
-			NNSTTickedNodes *stnode = _child_states[i];
-			stnode->set_root(p_root);
+		const std::vector<ObjectID> child_state_ids = _child_states;
+		for (unsigned int i = 0; i < child_state_ids.size(); i++) {
+			NNSTTickedNodes *stnode = _get_child_state(child_state_ids[i]);
+			if (stnode != nullptr) {
+				stnode->set_root(p_root);
+			}
 		}
 	}
 }
@@ -139,8 +143,12 @@ void NNSTTickedNodes::send_event(String name) {
 		}
 	}
 
-	for (unsigned int i = 0; i < _num_active_states; i++) {
-		_active_states[i]->send_event(name);
+	const std::vector<ObjectID> active_state_ids = _active_states;
+	for (unsigned int i = 0; i < active_state_ids.size(); i++) {
+		NNSTTickedNodes *state = _get_active_state(active_state_ids[i]);
+		if (state != nullptr) {
+			state->send_event(name);
+		}
 	}
 }
 
@@ -263,18 +271,25 @@ bool NNSTTickedNodes::transition_to(NodePath path_to_node) {
 
 	// Get the to_states lineage before changing anything, so a broken lineage
 	// can't leave the tree with the old branch transitioned out. The lineage is
-	// ordered from the to_state up to the common ancestor.
-	Vector<NNSTBranchNodes *> lineage;
+	// ordered from the to_state up to the common ancestor. Only instance IDs
+	// are kept because the exit callback below can free or reparent any of
+	// these nodes.
+	std::vector<ObjectID> lineage;
 	NNSTBranchNodes *parent = to_state;
-	lineage.push_back(parent);
+	lineage.push_back(ObjectID(parent->get_instance_id()));
 	while (parent != nullptr && parent != common_ancestor) {
 		parent = godot::Object::cast_to<NNSTBranchNodes>(parent->get_parent());
-		lineage.push_back(parent);
+		if (parent == nullptr) {
+			break;
+		}
+		lineage.push_back(ObjectID(parent->get_instance_id()));
 	}
 
-	if (lineage.size() < 2 || lineage[lineage.size() - 1] != common_ancestor) {
+	if (lineage.size() < 2 || lineage[lineage.size() - 1] != ObjectID(common_ancestor->get_instance_id())) {
 		return false;
 	}
+
+	const ObjectID common_ancestor_id = ObjectID(common_ancestor->get_instance_id());
 
 	// Transition out the from_states lineage.
 	NNSTTickedNodes *child = active_child_states[0];
@@ -284,10 +299,25 @@ bool NNSTTickedNodes::transition_to(NodePath path_to_node) {
 	// An on_exit_state() callback may have transitioned the branch while its
 	// old states were exiting. Don't overwrite that transition with this one.
 	// The event was still handled, so report success and leave the tree as the
-	// nested transition left it.
+	// nested transition left it. Resolve the branch again because the callback
+	// may also have freed it.
+	common_ancestor = godot::Object::cast_to<NNSTBranchNodes>(ObjectDB::get_instance(common_ancestor_id));
+	if (common_ancestor == nullptr) {
+		return true;
+	}
 	if (common_ancestor->get_internal_status() != ST_INTERNAL_STATUS_ACTIVE ||
 			!common_ancestor->_get_active_child_states().empty()) {
 		return true;
+	}
+
+	// Exit callbacks can reparent the target or one of its ancestors. IDs
+	// remain valid in that case, but the captured lineage no longer does.
+	for (unsigned int i = 1; i < lineage.size(); i++) {
+		NNSTBranchNodes *branch = godot::Object::cast_to<NNSTBranchNodes>(ObjectDB::get_instance(lineage[i]));
+		NNSTTickedNodes *state = godot::Object::cast_to<NNSTTickedNodes>(ObjectDB::get_instance(lineage[i - 1]));
+		if (branch == nullptr || state == nullptr || state->get_parent() != branch) {
+			return true;
+		}
 	}
 
 	// Transition in the to_states lineage from the common ancestor down. Each
@@ -297,7 +327,11 @@ bool NNSTTickedNodes::transition_to(NodePath path_to_node) {
 	// lineage bottom-up (as this used to) entered a state before its ancestors
 	// were registered, so any transition_to() it requested was seen as coming
 	// from a branch that had never been entered and was discarded.
-	common_ancestor->_add_active_child_state(godot::Object::cast_to<NNSTTickedNodes>(lineage[lineage.size() - 2]));
+	NNSTTickedNodes *lineage_first_child = godot::Object::cast_to<NNSTTickedNodes>(ObjectDB::get_instance(lineage[lineage.size() - 2]));
+	if (lineage_first_child == nullptr) {
+		return true;
+	}
+	common_ancestor->_add_active_child_state(lineage_first_child);
 
 	// The root node itself has no root pointer. Resolve it from the common
 	// ancestor so the entered states still receive the tree root.
@@ -307,8 +341,11 @@ bool NNSTTickedNodes::transition_to(NodePath path_to_node) {
 	}
 
 	for (int i = (int)lineage.size() - 1; i >= 1; i--) {
-		NNSTBranchNodes *lineage_branch = lineage[i];
-		NNSTTickedNodes *lineage_child = godot::Object::cast_to<NNSTTickedNodes>(lineage[i - 1]);
+		NNSTBranchNodes *lineage_branch = godot::Object::cast_to<NNSTBranchNodes>(ObjectDB::get_instance(lineage[i]));
+		NNSTTickedNodes *lineage_child = godot::Object::cast_to<NNSTTickedNodes>(ObjectDB::get_instance(lineage[i - 1]));
+		if (lineage_branch == nullptr || lineage_child == nullptr) {
+			return true;
+		}
 
 		// A transition requested from an on_enter_state() callback (in this
 		// loop or in the transition out above) may have moved the tree away
@@ -325,8 +362,8 @@ bool NNSTTickedNodes::transition_to(NodePath path_to_node) {
 		// the one being transitioned to.
 		if (i > 1 && lineage_child->get_internal_status() != ST_INTERNAL_STATUS_ACTIVE) {
 			NNSTBranchNodes *next_branch = godot::Object::cast_to<NNSTBranchNodes>(lineage_child);
-			NNSTTickedNodes *next_child = godot::Object::cast_to<NNSTTickedNodes>(lineage[i - 2]);
-			if (next_branch != nullptr && !_has_active_child_state(next_branch, next_child)) {
+			NNSTTickedNodes *next_child = godot::Object::cast_to<NNSTTickedNodes>(ObjectDB::get_instance(lineage[i - 2]));
+			if (next_branch != nullptr && next_child != nullptr && !_has_active_child_state(next_branch, next_child)) {
 				next_branch->_add_active_child_state(next_child);
 			}
 		}
@@ -347,12 +384,24 @@ void NNSTTickedNodes::_transition_in() {
 };
 
 void NNSTTickedNodes::_transition_out() {
-	if (_internal_status == 0) {
+	if (_internal_status == ST_INTERNAL_STATUS_INACTIVE || _is_exiting) {
 		return;
 	}
 
-	for (int i = _num_active_states - 1; i >= 0; i--) {
-		NNSTTickedNodes *cur_active_state = _active_states[i];
+	// Removing a state during its exit callback reconciles its parent's
+	// active list and can request the same exit again.
+	_is_exiting = true;
+	const std::vector<ObjectID> active_state_ids = _active_states;
+	for (int i = (int)active_state_ids.size() - 1; i >= 0; i--) {
+		// A callback from an earlier child may have already removed this state
+		// or transitioned the branch. Re-check before resolving/dereferencing.
+		if (!_has_active_state(active_state_ids[i])) {
+			continue;
+		}
+		NNSTTickedNodes *cur_active_state = _resolve_state(active_state_ids[i]);
+		if (cur_active_state == nullptr) {
+			continue;
+		}
 		cur_active_state->_transition_out();
 	}
 
@@ -360,6 +409,7 @@ void NNSTTickedNodes::_transition_out() {
 	set_internal_status(ST_INTERNAL_STATUS_INACTIVE);
 	_active_states.clear();
 	_num_active_states = 0;
+	_is_exiting = false;
 };
 
 bool NNSTTickedNodes::on_enter_condition() {
@@ -381,11 +431,25 @@ void NNSTTickedNodes::on_exit_state() {
 }
 
 void NNSTTickedNodes::on_tick(float delta) {
+	// A deleted active child (for example during teardown or an explicit free)
+	// cannot be replaced from inside the child order notification. Do the
+	// normal selection now that the tree is in a safe state.
+	if (_needs_reselection && _internal_status == ST_INTERNAL_STATUS_ACTIVE && _active_states.empty()) {
+		_needs_reselection = false;
+		_transition_in();
+	}
+
 	call("on_tick", delta);
 	emit_signal("state_ticked", delta);
 
-	for (unsigned int i = 0; i < _num_active_states; i++) {
-		NNSTTickedNodes *stnode = _active_states[i];
+	// The callback above (and every child tick below) may free, remove or
+	// reparent active states. Snapshot IDs and re-resolve before each child.
+	const std::vector<ObjectID> active_state_ids = _active_states;
+	for (unsigned int i = 0; i < active_state_ids.size(); i++) {
+		NNSTTickedNodes *stnode = _get_active_state(active_state_ids[i]);
+		if (stnode == nullptr) {
+			continue;
+		}
 
 		stnode->on_tick(delta);
 	}
@@ -398,6 +462,16 @@ void NNSTTickedNodes::on_tick(float delta) {
 // Godot virtuals.
 
 void NNSTTickedNodes::_notification(int p_what) {
+	if (p_what == NOTIFICATION_PREDELETE) {
+		// A child being deleted cannot run on_exit_state() safely. Drop it from
+		// its parent's active list before the pointer becomes invalid so a root
+		// tick later in the frame can never dereference a destroyed node.
+		if (NNSTBranchNodes *parent_branch = godot::Object::cast_to<NNSTBranchNodes>(get_parent())) {
+			parent_branch->_on_child_predelete(this);
+		}
+		return;
+	}
+
 	NNSTBranchNodes::_notification(p_what);
 
 	if (p_what == NOTIFICATION_READY || p_what == NOTIFICATION_CHILD_ORDER_CHANGED) {
@@ -405,15 +479,21 @@ void NNSTTickedNodes::_notification(int p_what) {
 			return;
 		}
 
-		for (unsigned int i = 0; i < _num_child_states; i++) {
-			NNSTTickedNodes *stnode = _child_states[i];
-			stnode->set_root(get_root());
+		const std::vector<ObjectID> child_state_ids = _child_states;
+		for (unsigned int i = 0; i < child_state_ids.size(); i++) {
+			NNSTTickedNodes *stnode = _get_child_state(child_state_ids[i]);
+			if (stnode != nullptr) {
+				stnode->set_root(get_root());
+			}
 		}
 
 		// This will do nothing if we already have an active child. We want to
 		// call it on child order changed incase the root has no active children
-		// when another child gets added.
-		if (_internal_status == ST_INTERNAL_STATUS_ACTIVE) {
+		// when another child gets added. If the change was caused by a child
+		// being deleted, wait for the next tick so teardown doesn't enter new
+		// states. A node that has already left the tree (for example while its
+		// parent is being freed) must not enter states either.
+		if (_internal_status == ST_INTERNAL_STATUS_ACTIVE && is_inside_tree() && !_last_notification_had_child_removal && !_needs_reselection) {
 			_transition_in();
 		}
 	}

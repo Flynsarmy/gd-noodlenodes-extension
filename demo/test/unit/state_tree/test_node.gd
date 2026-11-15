@@ -129,3 +129,28 @@ func test_initial_state_only_accepts_immediate_children() -> void:
 
 	_node.initial_state = NodePath('.')
 	assert_eq(_node.initial_state, NodePath(''))
+
+## Freeing an active grandchild must reconcile the parent's active list before
+## the next tick, and the parent should select its remaining child.
+func test_active_grandchild_freed_before_tick_is_safe() -> void:
+	var _root: NNSTRoot = add_child_autofree(NNSTRoot.new())
+	var _parent: NNSTNode = NNSTNode.new()
+	var _child: NNSTNode = load("res://test/unit/state_tree/node_on_call_logger.gd").new()
+	var _sibling: NNSTNode = load("res://test/unit/state_tree/node_on_call_logger.gd").new()
+	_root.blackboard = { "log": [] }
+	_child.name = "Child"
+	_sibling.name = "Sibling"
+	_parent.add_child(_child)
+	_parent.add_child(_sibling)
+	_root.add_child(_parent)
+
+	assert_eq(_parent.get_is_active(), true)
+	assert_eq(_child.get_is_active(), true)
+
+	_child.free()
+
+	# The freed grandchild used to be ticked through the parent.
+	_root.tick(0.1)
+
+	assert_eq(_parent.get_is_active(), true)
+	assert_eq(_sibling.get_is_active(), true)

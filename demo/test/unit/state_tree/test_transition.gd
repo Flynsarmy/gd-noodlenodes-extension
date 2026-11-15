@@ -13,6 +13,31 @@ class RedirectOnEnterNode extends NNSTNode:
 		if not target_path.is_empty():
 			transition_to(target_path)
 
+class FreeTargetOnExitNode extends NNSTNode:
+	var target: Node
+	var exit_count: int = 0
+
+	func on_exit_state() -> void:
+		exit_count += 1
+		if is_instance_valid(target):
+			target.free()
+
+class RemoveSelfOnExitNode extends NNSTNode:
+	var exit_count: int = 0
+
+	func on_exit_state() -> void:
+		exit_count += 1
+		if get_parent() != null:
+			get_parent().remove_child(self)
+
+class ReparentTargetOnExitNode extends NNSTNode:
+	var target: Node
+	var destination: Node
+
+	func on_exit_state() -> void:
+		if is_instance_valid(target) and target.get_parent() != destination:
+			target.reparent(destination)
+
 func test_state_transitions_successfully() -> void:
 	var _root: NNSTRoot = add_child_autofree(NNSTRoot.new())
 	var _node1: NNSTNode = NNSTNode.new()
@@ -377,3 +402,63 @@ func test_ancestor_on_enter_state_redirect_skips_descendants() -> void:
 	assert_eq(_leaf.get_is_active(), false)
 	assert_eq(_end.get_is_active(), true)
 	assert_eq(_leaf.enter_count, 0)
+
+## An on_exit_state() callback may free the state being transitioned to. The
+## transition must not keep using that pointer while entering the new lineage.
+func test_exit_callback_freeing_transition_target_is_safe() -> void:
+	var _root: NNSTRoot = add_child_autofree(NNSTRoot.new())
+	var _source: FreeTargetOnExitNode = FreeTargetOnExitNode.new()
+	var _target: NNSTNode = NNSTNode.new()
+	_source.name = "Source"
+	_target.name = "Target"
+	_root.add_child(_source)
+	_root.add_child(_target)
+
+	assert_eq(_source.get_is_active(), true)
+	_source.target = _target
+
+	# This used to dereference Target after Source's exit callback freed it.
+	assert_eq(_source.transition_to(_source.get_path_to(_target)), true)
+
+	assert_eq(_source.exit_count, 1)
+	assert_eq(_source.get_is_active(), false)
+	assert_eq(is_instance_valid(_target), false)
+
+func test_child_removing_itself_during_branch_exit_exits_once() -> void:
+	var _root: NNSTRoot = add_child_autofree(NNSTRoot.new())
+	var _branch: NNSTNode = NNSTNode.new()
+	var _leaf: RemoveSelfOnExitNode = autofree(RemoveSelfOnExitNode.new())
+	var _target: NNSTNode = NNSTNode.new()
+	_branch.name = "Branch"
+	_target.name = "Target"
+	_branch.add_child(_leaf)
+	_root.add_child(_branch)
+	_root.add_child(_target)
+
+	assert_true(_branch.transition_to(_branch.get_path_to(_target)))
+
+	assert_eq(_leaf.exit_count, 1)
+	assert_false(_leaf.get_is_active())
+	assert_null(_leaf.get_parent())
+	assert_true(_target.get_is_active())
+
+func test_exit_callback_reparenting_target_does_not_block_reselection() -> void:
+	var _root: NNSTRoot = add_child_autofree(NNSTRoot.new())
+	var _destination: Node = add_child_autofree(Node.new())
+	var _source: ReparentTargetOnExitNode = ReparentTargetOnExitNode.new()
+	var _target: NNSTNode = NNSTNode.new()
+	_source.name = "Source"
+	_target.name = "Target"
+	_source.target = _target
+	_source.destination = _destination
+	_root.add_child(_source)
+	_root.add_child(_target)
+
+	assert_true(_source.transition_to(_source.get_path_to(_target)))
+	assert_eq(_target.get_parent(), _destination)
+	assert_false(_target.get_is_active())
+
+	_root.tick(0.1)
+
+	assert_true(_source.get_is_active())
+	assert_false(_target.get_is_active())
