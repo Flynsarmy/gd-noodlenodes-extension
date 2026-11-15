@@ -54,7 +54,8 @@ public:
 
 	virtual float evaluate();
 	virtual void send_event(String name) override;
-	virtual void transition_to(NodePath path_to_node);
+	// Returns true if the transition was applied.
+	virtual bool transition_to(NodePath path_to_node);
 
 	virtual void _transition_in() override;
 	virtual void _transition_out();

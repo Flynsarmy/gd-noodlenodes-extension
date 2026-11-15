@@ -123,11 +123,18 @@ bool NNSTTickedNodes::get_is_on_entered_condition_true() const {
 // Handling methods.
 
 void NNSTTickedNodes::send_event(String name) {
+	// Try every transition with this event name in child order. A transition
+	// that matches by name can still decline (failed guard, stale target), in
+	// which case the remaining transitions, and then the active children,
+	// still get a chance to handle the event.
 	for (unsigned int i = 0; i < _num_child_transitions; i++) {
-		if (_child_transitions[i]->get_event_name() == name) {
-			if (_child_transitions[i]->_can_transition()) {
-				transition_to(_child_transitions[i]->get_to().slice(1));
-			}
+		if (_child_transitions[i]->get_event_name() != name) {
+			continue;
+		}
+		if (!_child_transitions[i]->_can_transition()) {
+			continue;
+		}
+		if (transition_to(_child_transitions[i]->get_to().slice(1))) {
 			return;
 		}
 	}
@@ -219,30 +226,30 @@ float NNSTTickedNodes::evaluate() {
 	return _score;
 }
 
-void NNSTTickedNodes::transition_to(NodePath path_to_node) {
+bool NNSTTickedNodes::transition_to(NodePath path_to_node) {
 	// NNSTBranchNodes *parent = godot::Object::cast_to<NNSTBranchNodes>(get_parent());
 	// if (!parent) {
-	// 	return;
+	// 	return false;
 	// }
 	NNSTTickedNodes *to_state = get_node<NNSTTickedNodes>(path_to_node);
 	if (to_state == nullptr) {
-		return;
+		return false;
 	}
 
 	NNSTBranchNodes *common_ancestor = _get_common_ancestor(this, to_state);
 	if (common_ancestor == nullptr) {
-		return;
+		return false;
 	}
 
 	if (!_can_transition_to(this, to_state)) {
-		return;
+		return false;
 	}
 
 	// If the common ancestor is a parallel node, the to_node's lineage is already
 	// partially active and we'll need to figure out where the youngest non-active
 	// part is so let's not worry about that for now.
 	if (common_ancestor->is_class("NNSTParallel")) {
-		return;
+		return false;
 	}
 
 	// The branch hasn't been entered yet (for example a transition requested
@@ -251,7 +258,7 @@ void NNSTTickedNodes::transition_to(NodePath path_to_node) {
 	// of sync, so wait for the tree to enter this branch normally.
 	const std::vector<NNSTTickedNodes *> active_child_states = common_ancestor->_get_active_child_states();
 	if (active_child_states.empty()) {
-		return;
+		return false;
 	}
 
 	// Get the to_states lineage before changing anything, so a broken lineage
@@ -266,7 +273,7 @@ void NNSTTickedNodes::transition_to(NodePath path_to_node) {
 	}
 
 	if (lineage.size() < 2 || lineage[lineage.size() - 1] != common_ancestor) {
-		return;
+		return false;
 	}
 
 	// Transition out the from_states lineage.
@@ -276,9 +283,11 @@ void NNSTTickedNodes::transition_to(NodePath path_to_node) {
 
 	// An on_exit_state() callback may have transitioned the branch while its
 	// old states were exiting. Don't overwrite that transition with this one.
+	// The event was still handled, so report success and leave the tree as the
+	// nested transition left it.
 	if (common_ancestor->get_internal_status() != ST_INTERNAL_STATUS_ACTIVE ||
 			!common_ancestor->_get_active_child_states().empty()) {
-		return;
+		return true;
 	}
 
 	// Transition in the to_states lineage from the common ancestor down. Each
@@ -304,10 +313,11 @@ void NNSTTickedNodes::transition_to(NodePath path_to_node) {
 		// A transition requested from an on_enter_state() callback (in this
 		// loop or in the transition out above) may have moved the tree away
 		// from this lineage. Stop rather than re-entering stale states or
-		// overwriting the nested transition.
+		// overwriting the nested transition. The nested transition handled the
+		// event, so report success.
 		if (lineage_branch->get_internal_status() != ST_INTERNAL_STATUS_ACTIVE ||
 				!_has_active_child_state(lineage_branch, lineage_child)) {
-			return;
+			return true;
 		}
 
 		// Register the branch's own child before entering it, so its
@@ -328,6 +338,8 @@ void NNSTTickedNodes::transition_to(NodePath path_to_node) {
 			lineage_child->_transition_in();
 		}
 	}
+
+	return true;
 }
 
 void NNSTTickedNodes::_transition_in() {

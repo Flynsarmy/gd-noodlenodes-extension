@@ -39,7 +39,7 @@
 			<return type="void" />
 			<param index="0" name="name" type="String" />
 			<description>
-				Sends an event to all active children of the current state in order, followed by their children and so on until the event is consumed. Events will trigger transitions and actions via emitted signals.
+				Sends an event to all active children of the current state in order, followed by their children and so on until the event is consumed. Events will trigger transitions and actions via emitted signals. Every transition with a matching event name is tried in child order; a transition whose guard fails does not consume the event, so the remaining transitions and the active children still receive it.
 			</description>
 		</method>
 	</methods>

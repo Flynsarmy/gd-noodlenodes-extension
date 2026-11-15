@@ -119,6 +119,119 @@ func test_transition_with_failing_guard() -> void:
 	assert_eq(_node1.get_is_active(), true)
 	assert_eq(_node2.get_is_active(), false)
 
+## A transition whose guard fails must not stop a later transition with the
+## same event name from being tried (a guarded priority chain).
+func test_failed_guard_falls_through_to_next_same_named_transition() -> void:
+	var _root: NNSTRoot = add_child_autofree(NNSTRoot.new())
+	var _node1: NNSTNode = NNSTNode.new()
+	var _node2: NNSTNode = NNSTNode.new()
+	var _node3: NNSTNode = NNSTNode.new()
+	var _blocked: NNSTTransition = NNSTTransition.new()
+	var _allowed: NNSTTransition = NNSTTransition.new()
+	var _guard: NNSTExpressionGuard = NNSTExpressionGuard.new()
+
+	_root.add_child(_node1)
+	_root.add_child(_node2)
+	_root.add_child(_node3)
+	_node1.add_child(_blocked)
+	_node1.add_child(_allowed)
+
+	_blocked.event_name = 'go'
+	_blocked.to = _blocked.get_path_to(_node2)
+	_blocked.guard = _guard
+	_guard.expression = "1==0"
+
+	_allowed.event_name = 'go'
+	_allowed.to = _allowed.get_path_to(_node3)
+
+	_root.tick(0.1)
+	_root.send_event('go')
+
+	assert_eq(_node1.get_is_active(), false)
+	assert_eq(_node2.get_is_active(), false)
+	assert_eq(_node3.get_is_active(), true)
+
+## A parent's inapplicable guarded transition must not mask an active child's
+## handler for the same event.
+func test_failed_parent_guard_falls_through_to_active_child() -> void:
+	var _root: NNSTRoot = add_child_autofree(NNSTRoot.new())
+	var _node1: NNSTNode = NNSTNode.new()
+	var _node11: NNSTNode = NNSTNode.new()
+	var _node12: NNSTNode = NNSTNode.new()
+	var _node2: NNSTNode = NNSTNode.new()
+	var _parent_transition: NNSTTransition = NNSTTransition.new()
+	var _child_transition: NNSTTransition = NNSTTransition.new()
+	var _guard: NNSTExpressionGuard = NNSTExpressionGuard.new()
+
+	_node1.add_child(_node11)
+	_node1.add_child(_node12)
+	_node1.add_child(_parent_transition)
+	_node11.add_child(_child_transition)
+	_root.add_child(_node1)
+	_root.add_child(_node2)
+
+	_parent_transition.event_name = 'hit'
+	_parent_transition.to = _parent_transition.get_path_to(_node2)
+	_parent_transition.guard = _guard
+	_guard.expression = "1==0"
+
+	_child_transition.event_name = 'hit'
+	_child_transition.to = _child_transition.get_path_to(_node12)
+
+	_root.tick(0.1)
+	assert_eq(_node1.get_is_active(), true)
+	assert_eq(_node11.get_is_active(), true)
+
+	_root.send_event('hit')
+
+	assert_eq(_node1.get_is_active(), true)
+	assert_eq(_node11.get_is_active(), false)
+	assert_eq(_node12.get_is_active(), true)
+	assert_eq(_node2.get_is_active(), false)
+
+## Once a matching transition applies, later same-named transitions must not
+## also run; child order is the priority order.
+func test_first_applicable_transition_wins() -> void:
+	var _root: NNSTRoot = add_child_autofree(NNSTRoot.new())
+	var _node1: NNSTNode = NNSTNode.new()
+	var _node2: NNSTNode = NNSTNode.new()
+	var _node3: NNSTNode = NNSTNode.new()
+	var _first: NNSTTransition = NNSTTransition.new()
+	var _second: NNSTTransition = NNSTTransition.new()
+
+	_root.add_child(_node1)
+	_root.add_child(_node2)
+	_root.add_child(_node3)
+	_node1.add_child(_first)
+	_node1.add_child(_second)
+
+	_first.event_name = 'go'
+	_first.to = _first.get_path_to(_node2)
+	_second.event_name = 'go'
+	_second.to = _second.get_path_to(_node3)
+
+	_root.tick(0.1)
+	_root.send_event('go')
+
+	assert_eq(_node1.get_is_active(), false)
+	assert_eq(_node2.get_is_active(), true)
+	assert_eq(_node3.get_is_active(), false)
+
+func test_transition_to_reports_whether_it_applied() -> void:
+	var _root: NNSTRoot = add_child_autofree(NNSTRoot.new())
+	var _node1: NNSTNode = NNSTNode.new()
+	var _node2: NNSTNode = NNSTNode.new()
+	var _not_a_state: Node = Node.new()
+
+	_root.add_child(_node1)
+	_root.add_child(_node2)
+	_node1.add_child(_not_a_state)
+
+	assert_eq(_node1.transition_to(_node1.get_path_to(_node2)), true)
+	assert_eq(_node1.get_is_active(), false)
+	assert_eq(_node2.get_is_active(), true)
+	assert_eq(_node1.transition_to(_node1.get_path_to(_not_a_state)), false)
+
 ## This test ensures active child counts don't screw up when transitioning in
 ## and out of grandchild states repeatedly.
 func test_transition_into_and_out_of_grandchild_twice() -> void:

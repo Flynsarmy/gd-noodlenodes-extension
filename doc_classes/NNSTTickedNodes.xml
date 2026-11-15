@@ -69,10 +69,10 @@
 			</description>
 		</method>
 		<method name="transition_to">
-			<return type="void" />
+			<return type="bool" />
 			<param index="0" name="new_state_nodepath" type="NodePath" />
 			<description>
-				Transitions between states in the Stae Tree. Requires a [NodePath] (relative to the node calling this method) for the target state. During a transition, all active children of the *from* state will be exited and any children of the *to* state will be evaluated for entering.
+				Transitions between states in the Stae Tree. Requires a [NodePath] (relative to the node calling this method) for the target state. During a transition, all active children of the *from* state will be exited and any children of the *to* state will be evaluated for entering. Returns [code]true[/code] if the transition was applied, or [code]false[/code] if it could not be (for example an invalid target, an inapplicable guard, or a branch that has not been entered yet).
 			</description>
 		</method>
 	</methods>
