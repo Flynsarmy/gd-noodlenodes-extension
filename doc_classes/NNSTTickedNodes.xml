@@ -43,7 +43,7 @@
 		<method name="on_exit_state" qualifiers="virtual">
 			<return type="void" />
 			<description>
-				Logic to clean up before exiting. This will execute before the corrosponding signal.
+				Logic to clean up before exiting. This will execute before the corrosponding signal. A valid [method transition_to] call from this method replaces the transition that triggered the exit. Targets whose state or ancestors are still exiting are rejected to prevent activation of a lineage that the ongoing exit would undo.
 			</description>
 		</method>
 		<method name="on_tick" qualifiers="virtual">

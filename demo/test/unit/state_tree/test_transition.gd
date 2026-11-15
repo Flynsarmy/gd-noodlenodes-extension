@@ -6,12 +6,32 @@ extends GutTest
 ## Test helper: optionally transitions to another state when entered.
 class RedirectOnEnterNode extends NNSTNode:
 	var target_path: NodePath
+	var applied = null
 	var enter_count: int = 0
+	var exit_count: int = 0
 
 	func on_enter_state() -> void:
 		enter_count += 1
 		if not target_path.is_empty():
-			transition_to(target_path)
+			applied = transition_to(target_path)
+
+	func on_exit_state() -> void:
+		exit_count += 1
+
+## Test helper: optionally transitions to another state when exited.
+class RedirectOnExitNode extends NNSTNode:
+	var target_path: NodePath
+	var applied = null
+	var enter_count: int = 0
+	var exit_count: int = 0
+
+	func on_enter_state() -> void:
+		enter_count += 1
+
+	func on_exit_state() -> void:
+		exit_count += 1
+		if not target_path.is_empty():
+			applied = transition_to(target_path)
 
 class FreeTargetOnExitNode extends NNSTNode:
 	var target: Node
@@ -462,3 +482,229 @@ func test_exit_callback_reparenting_target_does_not_block_reselection() -> void:
 
 	assert_true(_source.get_is_active())
 	assert_false(_target.get_is_active())
+
+## A transition requested from on_exit_state() redirects to a sibling. The
+## transition that triggered the exit must not overwrite the redirect.
+func test_transition_from_on_exit_state_redirects_to_sibling() -> void:
+	var _root: NNSTRoot = NNSTRoot.new()
+	_root.name = "Root"
+	var _node1: RedirectOnExitNode = RedirectOnExitNode.new()
+	_node1.name = "Node1"
+	var _node2: RedirectOnEnterNode = RedirectOnEnterNode.new()
+	_node2.name = "Node2"
+	var _node3: RedirectOnEnterNode = RedirectOnEnterNode.new()
+	_node3.name = "Node3"
+
+	_root.add_child(_node1)
+	_root.add_child(_node2)
+	_root.add_child(_node3)
+	add_child_autofree(_root)
+
+	_node1.target_path = _node1.get_path_to(_node3)
+
+	assert_eq(_node1.transition_to(_node1.get_path_to(_node2)), true)
+	assert_eq(_node1.applied, true)
+	assert_eq(_node1.get_is_active(), false)
+	assert_eq(_node2.get_is_active(), false)
+	assert_eq(_node3.get_is_active(), true)
+	assert_eq(_node1.enter_count, 1)
+	assert_eq(_node1.exit_count, 1)
+	assert_eq(_node2.enter_count, 0)
+	assert_eq(_node2.exit_count, 0)
+	assert_eq(_node3.enter_count, 1)
+	assert_eq(_node3.exit_count, 0)
+
+	# Ticking again must leave the redirected sibling active and must not
+	# re-enter the outer transition's target.
+	_root.tick(0.1)
+
+	assert_eq(_node1.get_is_active(), false)
+	assert_eq(_node2.get_is_active(), false)
+	assert_eq(_node3.get_is_active(), true)
+	assert_eq(_node1.exit_count, 1)
+	assert_eq(_node3.enter_count, 1)
+
+## An on_exit_state() redirect requested by an active child is honored even
+## while its parent (and therefore the child) is exiting.
+func test_transition_from_child_on_exit_state_redirects() -> void:
+	var _root: NNSTRoot = NNSTRoot.new()
+	_root.name = "Root"
+	var _parent: RedirectOnExitNode = RedirectOnExitNode.new()
+	_parent.name = "Parent"
+	var _child: RedirectOnExitNode = RedirectOnExitNode.new()
+	_child.name = "Child"
+	var _node2: NNSTNode = NNSTNode.new()
+	_node2.name = "Node2"
+	var _node3: NNSTNode = NNSTNode.new()
+	_node3.name = "Node3"
+
+	_parent.add_child(_child)
+	_root.add_child(_parent)
+	_root.add_child(_node2)
+	_root.add_child(_node3)
+	add_child_autofree(_root)
+
+	_child.target_path = _child.get_path_to(_node3)
+
+	assert_eq(_parent.get_is_active(), true)
+	assert_eq(_child.get_is_active(), true)
+
+	assert_eq(_parent.transition_to(_parent.get_path_to(_node2)), true)
+	assert_eq(_child.applied, true)
+	assert_eq(_parent.get_is_active(), false)
+	assert_eq(_child.get_is_active(), false)
+	assert_eq(_node2.get_is_active(), false)
+	assert_eq(_node3.get_is_active(), true)
+	assert_eq(_parent.exit_count, 1)
+	assert_eq(_child.exit_count, 1)
+
+## A state entered by an on_exit_state() redirect may itself redirect from
+## on_enter_state(); the most nested transition wins and neither state is left
+## active or entered twice.
+func test_on_exit_redirect_target_can_redirect_on_enter() -> void:
+	var _root: NNSTRoot = NNSTRoot.new()
+	_root.name = "Root"
+	var _node1: RedirectOnExitNode = RedirectOnExitNode.new()
+	_node1.name = "Node1"
+	var _node2: NNSTNode = NNSTNode.new()
+	_node2.name = "Node2"
+	var _node3: RedirectOnEnterNode = RedirectOnEnterNode.new()
+	_node3.name = "Node3"
+	var _node4: NNSTNode = NNSTNode.new()
+	_node4.name = "Node4"
+
+	_root.add_child(_node1)
+	_root.add_child(_node2)
+	_root.add_child(_node3)
+	_root.add_child(_node4)
+	add_child_autofree(_root)
+
+	_node1.target_path = _node1.get_path_to(_node3)
+	_node3.target_path = _node3.get_path_to(_node4)
+
+	assert_eq(_node1.transition_to(_node1.get_path_to(_node2)), true)
+	assert_eq(_node1.applied, true)
+	assert_eq(_node1.get_is_active(), false)
+	assert_eq(_node2.get_is_active(), false)
+	assert_eq(_node3.get_is_active(), false)
+	assert_eq(_node4.get_is_active(), true)
+	assert_eq(_node1.exit_count, 1)
+	assert_eq(_node3.enter_count, 1)
+	assert_eq(_node3.exit_count, 1)
+
+	_root.tick(0.1)
+
+	assert_eq(_node1.get_is_active(), false)
+	assert_eq(_node2.get_is_active(), false)
+	assert_eq(_node3.get_is_active(), false)
+	assert_eq(_node4.get_is_active(), true)
+
+## A transition requested before the tree has been entered remains a safe
+## no-op rather than activating a state without its ancestors.
+func test_transition_before_tree_entry_is_not_applied() -> void:
+	var _root: NNSTRoot = autofree(NNSTRoot.new())
+	var _node1: NNSTNode = NNSTNode.new()
+	var _node2: NNSTNode = NNSTNode.new()
+
+	_root.add_child(_node1)
+	_root.add_child(_node2)
+
+	assert_eq(_node1.get_is_active(), false)
+	assert_eq(_node1.transition_to(_node1.get_path_to(_node2)), false)
+	assert_eq(_node1.get_is_active(), false)
+	assert_eq(_node2.get_is_active(), false)
+
+func test_exit_redirect_within_active_parent_preserves_ancestors() -> void:
+	var _root: NNSTRoot = NNSTRoot.new()
+	var _parent: RedirectOnExitNode = RedirectOnExitNode.new()
+	var _start: RedirectOnExitNode = RedirectOnExitNode.new()
+	var _outer_target: RedirectOnEnterNode = RedirectOnEnterNode.new()
+	var _redirect_target: RedirectOnEnterNode = RedirectOnEnterNode.new()
+	_parent.add_child(_start)
+	_parent.add_child(_outer_target)
+	_parent.add_child(_redirect_target)
+	_root.add_child(_parent)
+	add_child_autofree(_root)
+	_start.target_path = _start.get_path_to(_redirect_target)
+
+	assert_true(_start.transition_to(_start.get_path_to(_outer_target)))
+	assert_eq(_start.applied, true)
+	assert_true(_root.get_is_active())
+	assert_true(_parent.get_is_active())
+	assert_false(_start.get_is_active())
+	assert_false(_outer_target.get_is_active())
+	assert_true(_redirect_target.get_is_active())
+	assert_eq(_parent.enter_count, 1)
+	assert_eq(_parent.exit_count, 0)
+	assert_eq(_start.exit_count, 1)
+	assert_eq(_outer_target.enter_count, 0)
+	assert_eq(_redirect_target.enter_count, 1)
+
+func test_entry_redirect_cannot_activate_descendant_of_exiting_state() -> void:
+	var _root: NNSTRoot = NNSTRoot.new()
+	var _start: RedirectOnExitNode = RedirectOnExitNode.new()
+	var _leaf: RedirectOnEnterNode = RedirectOnEnterNode.new()
+	var _outer_target: RedirectOnEnterNode = RedirectOnEnterNode.new()
+	var _redirect_target: RedirectOnEnterNode = RedirectOnEnterNode.new()
+	_start.add_child(_leaf)
+	_root.add_child(_start)
+	_root.add_child(_outer_target)
+	_root.add_child(_redirect_target)
+	add_child_autofree(_root)
+	_start.target_path = _start.get_path_to(_redirect_target)
+	_redirect_target.target_path = _redirect_target.get_path_to(_leaf)
+
+	assert_true(_start.transition_to(_start.get_path_to(_outer_target)))
+	assert_eq(_start.applied, true)
+	assert_eq(_redirect_target.applied, false)
+	assert_true(_root.get_is_active())
+	assert_false(_start.get_is_active())
+	assert_false(_leaf.get_is_active())
+	assert_false(_outer_target.get_is_active())
+	assert_true(_redirect_target.get_is_active())
+	assert_eq(_start.enter_count, 1)
+	assert_eq(_start.exit_count, 1)
+	assert_eq(_leaf.enter_count, 1)
+	assert_eq(_leaf.exit_count, 1)
+	assert_eq(_outer_target.enter_count, 0)
+	assert_eq(_redirect_target.enter_count, 1)
+	assert_eq(_redirect_target.exit_count, 0)
+
+	_root.tick(0.1)
+	assert_false(_start.get_is_active())
+	assert_false(_leaf.get_is_active())
+	assert_true(_redirect_target.get_is_active())
+	assert_eq(_leaf.enter_count, 1)
+
+func test_parallel_child_exit_redirect_exits_remaining_children_once() -> void:
+	var _root: NNSTRoot = NNSTRoot.new()
+	var _parallel: NNSTParallel = NNSTParallel.new()
+	var _child1: RedirectOnExitNode = RedirectOnExitNode.new()
+	var _child2: RedirectOnExitNode = RedirectOnExitNode.new()
+	var _outer_target: RedirectOnEnterNode = RedirectOnEnterNode.new()
+	var _redirect_target: RedirectOnEnterNode = RedirectOnEnterNode.new()
+	_parallel.add_child(_child1)
+	_parallel.add_child(_child2)
+	_root.add_child(_parallel)
+	_root.add_child(_outer_target)
+	_root.add_child(_redirect_target)
+	add_child_autofree(_root)
+	_child2.target_path = _child2.get_path_to(_redirect_target)
+
+	assert_true(_parallel.transition_to(_parallel.get_path_to(_outer_target)))
+	assert_eq(_child2.applied, true)
+	assert_true(_root.get_is_active())
+	assert_false(_parallel.get_is_active())
+	assert_false(_child1.get_is_active())
+	assert_false(_child2.get_is_active())
+	assert_false(_outer_target.get_is_active())
+	assert_true(_redirect_target.get_is_active())
+	assert_eq(_child1.exit_count, 1)
+	assert_eq(_child2.exit_count, 1)
+	assert_eq(_outer_target.enter_count, 0)
+	assert_eq(_redirect_target.enter_count, 1)
+
+	_root.tick(0.1)
+	assert_eq(_child1.exit_count, 1)
+	assert_eq(_child2.exit_count, 1)
+	assert_eq(_redirect_target.enter_count, 1)

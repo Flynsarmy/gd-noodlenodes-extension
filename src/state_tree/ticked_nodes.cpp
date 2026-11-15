@@ -244,6 +244,15 @@ bool NNSTTickedNodes::transition_to(NodePath path_to_node) {
 		return false;
 	}
 
+	// Re-entering any part of an exiting lineage would be undone by the
+	// outer exit, potentially leaving active descendants of an inactive state.
+	for (Node *ancestor = to_state; ancestor != nullptr; ancestor = ancestor->get_parent()) {
+		NNSTTickedNodes *state = godot::Object::cast_to<NNSTTickedNodes>(ancestor);
+		if (state != nullptr && state->_is_exiting) {
+			return false;
+		}
+	}
+
 	NNSTBranchNodes *common_ancestor = _get_common_ancestor(this, to_state);
 	if (common_ancestor == nullptr) {
 		return false;
@@ -291,10 +300,16 @@ bool NNSTTickedNodes::transition_to(NodePath path_to_node) {
 
 	const ObjectID common_ancestor_id = ObjectID(common_ancestor->get_instance_id());
 
-	// Transition out the from_states lineage.
+	// Transition out the from_states lineage. The child stays registered as the
+	// common ancestor's active child until its exit completes. An on_exit_state()
+	// callback is allowed to request a transition to a sibling; that nested
+	// transition must still see the state that is exiting as the active child,
+	// otherwise it would be discarded as a transition from a branch that was
+	// never entered. _transition_out() is reentrancy-safe, so the nested
+	// transition's own attempt to transition this state out is a no-op.
 	NNSTTickedNodes *child = active_child_states[0];
-	common_ancestor->_remove_active_child_state(child);
 	child->_transition_out();
+	common_ancestor->_remove_active_child_state(child);
 
 	// An on_exit_state() callback may have transitioned the branch while its
 	// old states were exiting. Don't overwrite that transition with this one.
@@ -388,8 +403,11 @@ void NNSTTickedNodes::_transition_out() {
 		return;
 	}
 
-	// Removing a state during its exit callback reconciles its parent's
-	// active list and can request the same exit again.
+	// on_exit_state() runs user code that may request a transition. When that
+	// transition transitions this state out (typically to redirect to a
+	// sibling), it calls back into _transition_out() while the outer exit is
+	// still in progress. The flag makes the nested call a no-op so each state
+	// exits exactly once and on_exit_state() cannot recurse into itself.
 	_is_exiting = true;
 	const std::vector<ObjectID> active_state_ids = _active_states;
 	for (int i = (int)active_state_ids.size() - 1; i >= 0; i--) {
