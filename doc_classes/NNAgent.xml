@@ -74,7 +74,7 @@
 			This property shows what was the selected behaviour after the latest [method evaluate_options] method call.
 		</member>
 		<member name="num_behaviours_to_select" type="int" setter="set_num_behaviours_to_select" getter="get_num_behaviours_to_select" default="1">
-			Pick a behaviour out of top [member num_behaviours_to_select] behaviours found after reasoning.
+			Pick uniformly from up to this many eligible behaviours with the highest scores. Equal scores retain evaluation order when the list is full. Must be between 1 and 16; invalid assignments report an error and leave the value unchanged.
 		</member>
 		<member name="thinking_delay_in_seconds" type="float" setter="set_thinking_delay_in_seconds" getter="get_thinking_delay_in_seconds" default="1.0">
 			Delay time forced between calls to the method [method evaluate_options].

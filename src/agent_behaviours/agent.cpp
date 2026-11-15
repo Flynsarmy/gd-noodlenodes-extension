@@ -361,36 +361,26 @@ void NNAgent::evaluate_options(float delta) {
 }
 
 void NNAgent::place_into_top_n_behaviour_list(NNBehaviourGroup *behaviour_group, NNBehaviour *behaviour, float score) {
-	// First on the list.
-	if (_num_possible_behaviours == 0) {
-		_top_scoring_behaviours_group_nodes[0] = behaviour_group;
-		_top_scoring_behaviours_nodes[0] = behaviour;
-		_top_scoring_behaviours_score[0] = score;
-		_num_possible_behaviours = 1;
-		return;
-	}
-
-	// Somewhere in the list.
-	int place_in_behaviour_list = -1;
-	for (int b = 0; b < _num_behaviours_to_select; ++b) {
+	// Search filled slots only; equal scores retain evaluation order.
+	int place_in_behaviour_list = _num_possible_behaviours;
+	for (int b = 0; b < _num_possible_behaviours; ++b) {
 		if (score > _top_scoring_behaviours_score[b]) {
 			place_in_behaviour_list = b;
 			break;
 		}
 	}
-	if (place_in_behaviour_list < 0)
-		return; // Not better than anything else on the list.
 
-	// Last on the list.
-	if (place_in_behaviour_list == _num_behaviours_to_select - 1) {
-		_top_scoring_behaviours_group_nodes[_num_behaviours_to_select - 1] = behaviour_group;
-		_top_scoring_behaviours_nodes[_num_behaviours_to_select - 1] = behaviour;
-		_top_scoring_behaviours_score[_num_behaviours_to_select - 1] = score;
+	// The list is full and this score is not better than any of the kept ones.
+	if (place_in_behaviour_list >= _num_behaviours_to_select) {
 		return;
 	}
 
-	// In the beginning or in the middle of a list.
-	for (int b = _num_behaviours_to_select - 1; b > place_in_behaviour_list; --b) {
+	// A full list drops its last entry instead of shifting past capacity.
+	int last_slot = _num_possible_behaviours;
+	if (last_slot >= _num_behaviours_to_select) {
+		last_slot = _num_behaviours_to_select - 1;
+	}
+	for (int b = last_slot; b > place_in_behaviour_list; --b) {
 		_top_scoring_behaviours_group_nodes[b] = _top_scoring_behaviours_group_nodes[b - 1];
 		_top_scoring_behaviours_nodes[b] = _top_scoring_behaviours_nodes[b - 1];
 		_top_scoring_behaviours_score[b] = _top_scoring_behaviours_score[b - 1];
@@ -499,6 +489,8 @@ NNAction *NNAgent::get_current_action_node() const {
 }
 
 void NNAgent::set_num_behaviours_to_select(int num_behaviours_to_select) {
+	ERR_FAIL_COND_MSG(num_behaviours_to_select < 1 || num_behaviours_to_select > UTILITYAIAGENT_MAX_TOP_SCORING_BEHAVIOURS,
+			"NNAgent::set_num_behaviours_to_select(): num_behaviours_to_select must be between 1 and 16.");
 	_num_behaviours_to_select = num_behaviours_to_select;
 }
 
