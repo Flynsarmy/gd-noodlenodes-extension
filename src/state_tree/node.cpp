@@ -115,45 +115,10 @@ void NNSTNode::_transition_in() {
 		return;
 	}
 
-	NNSTTickedNodes *cur_active_state;
 	std::vector<NNSTTickedNodes *> new_active_states;
 	_evaluate_child_activations(new_active_states);
 
-	// do on_exit for any states no longer active
-	for (unsigned int i = 0; i < _num_active_states; i++) {
-		cur_active_state = _active_states[i];
-
-		bool found = false;
-		for (unsigned int j = 0; j < new_active_states.size(); j++) {
-			if (new_active_states[j] == cur_active_state) {
-				found = true;
-				break;
-			}
-		}
-		if (!found) {
-			cur_active_state->_transition_out();
-		}
-	}
-
-	// And then enter the new states.
-	for (unsigned int i = 0; i < new_active_states.size(); i++) {
-		cur_active_state = new_active_states[i];
-
-		bool found = false;
-		for (unsigned int j = 0; j < _num_active_states; j++) {
-			if (_active_states[j] == cur_active_state) {
-				found = true;
-				break;
-			}
-		}
-		if (!found) {
-			cur_active_state->set_root(get_root());
-			cur_active_state->_transition_in();
-		}
-	}
-
-	_active_states = new_active_states;
-	_num_active_states = _active_states.size();
+	_apply_active_states(new_active_states, get_root());
 };
 
 // Godot virtuals.

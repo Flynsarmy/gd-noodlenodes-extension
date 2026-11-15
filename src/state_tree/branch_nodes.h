@@ -10,6 +10,7 @@
 
 namespace godot {
 
+class NNSTRoot; // Forward declaration
 class NNSTTransition; // Forward declaration
 class NNSTTickedNodes; // Forward declaration
 
@@ -83,6 +84,10 @@ public:
 	virtual bool _can_transition_to(NNSTTickedNodes *from_state, NNSTTickedNodes *to_state);
 	virtual NNSTBranchNodes *_get_common_ancestor(NNSTTickedNodes *from_state, NNSTTickedNodes *to_state);
 	virtual void _evaluate_child_activations(std::vector<NNSTTickedNodes *> &nodes);
+
+	// Adopts a new list of active child states and transitions out of / in to
+	// the states that changed. Used by the _transition_in() implementations.
+	void _apply_active_states(std::vector<NNSTTickedNodes *> &new_active_states, NNSTRoot *p_root);
 
 	GDVIRTUAL1(on_input, Ref<InputEvent>);
 	GDVIRTUAL1(on_unhandled_input, Ref<InputEvent>);

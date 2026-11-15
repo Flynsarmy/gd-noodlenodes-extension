@@ -6,6 +6,20 @@
 
 using namespace godot;
 
+/**
+ * Returns true if `child_state` is currently one of the branch's active child states.
+ */
+static bool _has_active_child_state(NNSTBranchNodes *branch, NNSTTickedNodes *child_state) {
+	std::vector<NNSTTickedNodes *> active_states = branch->_get_active_child_states();
+	for (unsigned int i = 0; i < active_states.size(); i++) {
+		if (active_states[i] == child_state) {
+			return true;
+		}
+	}
+
+	return false;
+}
+
 // Method binds.
 
 void NNSTTickedNodes::_bind_methods() {
@@ -225,26 +239,91 @@ void NNSTTickedNodes::transition_to(NodePath path_to_node) {
 	// If the common ancestor is a parallel node, the to_node's lineage is already
 	// partially active and we'll need to figure out where the youngest non-active
 	// part is so let's not worry about that for now.
-	if (!common_ancestor->is_class("NNSTParallel")) {
-		// Transition out the from_states lineage
-		NNSTTickedNodes *child = common_ancestor->_get_active_child_states()[0];
-		common_ancestor->_remove_active_child_state(child);
-		child->_transition_out();
+	if (common_ancestor->is_class("NNSTParallel")) {
+		return;
+	}
 
-		// Transition in the to_states lineage
-		NNSTBranchNodes *parent = this;
-		Vector<NNSTBranchNodes *> lineage;
-		parent = to_state;
+	// The branch hasn't been entered yet (for example a transition requested
+	// before the root's first tick). There is no active child to transition out
+	// of, and entering the new one here would leave the branch's ancestors out
+	// of sync, so wait for the tree to enter this branch normally.
+	const std::vector<NNSTTickedNodes *> active_child_states = common_ancestor->_get_active_child_states();
+	if (active_child_states.empty()) {
+		return;
+	}
+
+	// Get the to_states lineage before changing anything, so a broken lineage
+	// can't leave the tree with the old branch transitioned out. The lineage is
+	// ordered from the to_state up to the common ancestor.
+	Vector<NNSTBranchNodes *> lineage;
+	NNSTBranchNodes *parent = to_state;
+	lineage.push_back(parent);
+	while (parent != nullptr && parent != common_ancestor) {
+		parent = godot::Object::cast_to<NNSTBranchNodes>(parent->get_parent());
 		lineage.push_back(parent);
-		// Get the lineage
-		while (parent != nullptr && parent != common_ancestor) {
-			parent = godot::Object::cast_to<NNSTBranchNodes>(parent->get_parent());
-			lineage.push_back(parent);
-		};
+	}
 
-		for (int i = 1; i < lineage.size(); i++) {
-			lineage[i]->_add_active_child_state(godot::Object::cast_to<NNSTTickedNodes>(lineage[i - 1]));
-			lineage[i - 1]->_transition_in();
+	if (lineage.size() < 2 || lineage[lineage.size() - 1] != common_ancestor) {
+		return;
+	}
+
+	// Transition out the from_states lineage.
+	NNSTTickedNodes *child = active_child_states[0];
+	common_ancestor->_remove_active_child_state(child);
+	child->_transition_out();
+
+	// An on_exit_state() callback may have transitioned the branch while its
+	// old states were exiting. Don't overwrite that transition with this one.
+	if (common_ancestor->get_internal_status() != ST_INTERNAL_STATUS_ACTIVE ||
+			!common_ancestor->_get_active_child_states().empty()) {
+		return;
+	}
+
+	// Transition in the to_states lineage from the common ancestor down. Each
+	// branch is given its new active child before that child is entered, so a
+	// state's on_enter_state() always sees a consistent tree: its ancestors are
+	// active and its own active child is already registered. Entering the
+	// lineage bottom-up (as this used to) entered a state before its ancestors
+	// were registered, so any transition_to() it requested was seen as coming
+	// from a branch that had never been entered and was discarded.
+	common_ancestor->_add_active_child_state(godot::Object::cast_to<NNSTTickedNodes>(lineage[lineage.size() - 2]));
+
+	// The root node itself has no root pointer. Resolve it from the common
+	// ancestor so the entered states still receive the tree root.
+	NNSTRoot *tree_root = get_root();
+	if (tree_root == nullptr) {
+		tree_root = godot::Object::cast_to<NNSTRoot>(common_ancestor);
+	}
+
+	for (int i = (int)lineage.size() - 1; i >= 1; i--) {
+		NNSTBranchNodes *lineage_branch = lineage[i];
+		NNSTTickedNodes *lineage_child = godot::Object::cast_to<NNSTTickedNodes>(lineage[i - 1]);
+
+		// A transition requested from an on_enter_state() callback (in this
+		// loop or in the transition out above) may have moved the tree away
+		// from this lineage. Stop rather than re-entering stale states or
+		// overwriting the nested transition.
+		if (lineage_branch->get_internal_status() != ST_INTERNAL_STATUS_ACTIVE ||
+				!_has_active_child_state(lineage_branch, lineage_child)) {
+			return;
+		}
+
+		// Register the branch's own child before entering it, so its
+		// _transition_in() doesn't evaluate and choose a different child than
+		// the one being transitioned to.
+		if (i > 1 && lineage_child->get_internal_status() != ST_INTERNAL_STATUS_ACTIVE) {
+			NNSTBranchNodes *next_branch = godot::Object::cast_to<NNSTBranchNodes>(lineage_child);
+			NNSTTickedNodes *next_child = godot::Object::cast_to<NNSTTickedNodes>(lineage[i - 2]);
+			if (next_branch != nullptr && !_has_active_child_state(next_branch, next_child)) {
+				next_branch->_add_active_child_state(next_child);
+			}
+		}
+
+		if (lineage_child->get_internal_status() != ST_INTERNAL_STATUS_ACTIVE) {
+			if (tree_root != nullptr) {
+				lineage_child->set_root(tree_root);
+			}
+			lineage_child->_transition_in();
 		}
 	}
 }

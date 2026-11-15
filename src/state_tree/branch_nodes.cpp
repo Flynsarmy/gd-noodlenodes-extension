@@ -170,6 +170,75 @@ NNSTBranchNodes *NNSTBranchNodes::_get_common_ancestor(NNSTTickedNodes *from_sta
 }
 
 /**
+ * Replaces the active child state list, transitioning out of the states that
+ * are no longer active and in to the states that have become active.
+ *
+ * The new list is adopted *before* the states are entered or exited. A state's
+ * on_enter_state(), on_exit_state() or on_tick() method can call
+ * transition_to(), which changes the active state lists of the common ancestor.
+ * If the list was assigned after entering the children (as it used to be), a
+ * transition requested while entering a state would either see an empty active
+ * state list (and crash) or be overwritten when the _transition_in() call
+ * returned.
+ */
+void NNSTBranchNodes::_apply_active_states(std::vector<NNSTTickedNodes *> &new_active_states, NNSTRoot *p_root) {
+	// A transition from on_enter_state() may already have transitioned this
+	// branch out. If so, leave the tree alone.
+	if (_internal_status != ST_INTERNAL_STATUS_ACTIVE) {
+		return;
+	}
+
+	std::vector<NNSTTickedNodes *> states_to_exit;
+	for (unsigned int i = 0; i < _num_active_states; i++) {
+		bool found = false;
+		for (unsigned int j = 0; j < new_active_states.size(); j++) {
+			if (new_active_states[j] == _active_states[i]) {
+				found = true;
+				break;
+			}
+		}
+		if (!found) {
+			states_to_exit.push_back(_active_states[i]);
+		}
+	}
+
+	std::vector<NNSTTickedNodes *> states_to_enter;
+	for (unsigned int i = 0; i < new_active_states.size(); i++) {
+		bool found = false;
+		for (unsigned int j = 0; j < _num_active_states; j++) {
+			if (_active_states[j] == new_active_states[i]) {
+				found = true;
+				break;
+			}
+		}
+		if (!found) {
+			states_to_enter.push_back(new_active_states[i]);
+		}
+	}
+
+	_active_states = new_active_states;
+	_num_active_states = (unsigned int)_active_states.size();
+
+	// do on_exit for any states no longer active
+	for (unsigned int i = 0; i < states_to_exit.size(); i++) {
+		states_to_exit[i]->_transition_out();
+	}
+
+	// And then enter the new states.
+	for (unsigned int i = 0; i < states_to_enter.size(); i++) {
+		// Exiting a state calls user code which may in turn transition this
+		// branch out. Don't re-enter children of an inactive branch.
+		if (_internal_status != ST_INTERNAL_STATUS_ACTIVE) {
+			break;
+		}
+
+		NNSTTickedNodes *state = states_to_enter[i];
+		state->set_root(p_root);
+		state->_transition_in();
+	}
+}
+
+/**
  * Searches children for states to activate using the appropriate
  * activation method based on the `get_child_state_selection_rule()` setting.
  *
