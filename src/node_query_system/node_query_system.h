@@ -22,6 +22,8 @@ private:
 	unsigned int _num_active_high_priority_queries;
 	unsigned int _num_active_regular_priority_queries;
 
+	bool _release_query_slot(NNNQSSearchSpaces *search_space, bool is_high_priority);
+
 	int _current_high_priority_query_index;
 	int _current_regular_query_index;
 
@@ -67,6 +69,9 @@ public:
 
 	int get_run_queries_time_elapsed_usec() const;
 	int get_post_queries_time_elapsed_usec() const;
+
+	int get_num_active_high_priority_queries() const;
+	int get_num_active_regular_priority_queries() const;
 
 	// Handling methods.
 	void initialize_performance_counters();

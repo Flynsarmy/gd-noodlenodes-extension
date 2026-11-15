@@ -17,6 +17,18 @@
 				Empties the list of queries to run per frame. Call this when you need to clean up, i.e. in the [member Node._ready] and [member Node._exit_tree] methods.
 			</description>
 		</method>
+		<method name="get_num_active_high_priority_queries" qualifiers="const">
+			<return type="int" />
+			<description>
+				Returns the number of high priority queries currently posted to the system.
+			</description>
+		</method>
+		<method name="get_num_active_regular_priority_queries" qualifiers="const">
+			<return type="int" />
+			<description>
+				Returns the number of regular priority queries currently posted to the system.
+			</description>
+		</method>
 		<method name="get_post_queries_time_elapsed_usec" qualifiers="const">
 			<return type="int" />
 			<description>
@@ -51,7 +63,7 @@
 			<return type="bool" />
 			<param index="0" name="search_space" type="NNNQSSearchSpaces" />
 			<description>
-				This stops the search_space query by removing it from the list of queries to be executed when the method [method run_queries] is called.
+				This stops the search_space query by removing it from the list of queries to be executed when the method [method run_queries] is called. The search space's [member NNNQSSearchSpaces.is_query_still_running] is set to [code]false[/code]. Returns [code]true[/code] when this call removed the query, and [code]false[/code] when the search space was not posted (including repeated calls for a query that was already stopped or completed).
 			</description>
 		</method>
 	</methods>

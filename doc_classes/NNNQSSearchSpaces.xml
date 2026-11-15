@@ -34,6 +34,7 @@
 			The time it takes to handle the [signal query_completed] signal (i.e. your result handling code).
 		</member>
 		<member name="is_query_still_running" type="bool" setter="set_is_query_still_running" getter="get_is_query_still_running" default="false">
+			Whether the query is still in progress. This is set to [code]true[/code] when the query is posted with [method NNNodeQuerySystem.post_query] and to [code]false[/code] when it completes or is stopped with [method NNNodeQuerySystem.stop_query].
 		</member>
 		<member name="is_run_in_debug_mode" type="bool" setter="set_is_run_in_debug_mode" getter="get_is_run_in_debug_mode" default="false">
 			If [code]true[/code], the search spaces add two variables in to the nodes they process: [member NNNQSSearchCriteria.is_filtered] and [member NNNQSSearchCriteria.score] and set their values based on the criteria.
