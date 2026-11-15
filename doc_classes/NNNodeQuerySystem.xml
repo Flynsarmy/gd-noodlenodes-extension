@@ -14,7 +14,7 @@
 		<method name="clear_queries">
 			<return type="void" />
 			<description>
-				Empties the list of queries to run per frame. Call this when you need to clean up, i.e. in the [member Node._ready] and [member Node._exit_tree] methods.
+				Stops and unregisters every posted query in both the high priority and regular priority lists. The search spaces are left intact and can be posted again afterwards. Call this when you need to clean up, i.e. in the [member Node._ready] and [member Node._exit_tree] methods.
 			</description>
 		</method>
 		<method name="get_post_queries_time_elapsed_usec" qualifiers="const">

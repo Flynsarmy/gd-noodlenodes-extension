@@ -298,8 +298,32 @@ bool NNNodeQuerySystem::stop_query(NNNQSSearchSpaces *search_space) {
 }
 
 void NNNodeQuerySystem::clear_queries() {
+	// Unregister every posted search space before dropping the lists. The
+	// search space stores its own query index, so leaving it behind would make
+	// stop_query() (also called from _exit_tree()) index an empty list.
+	for (int i = 0; i < _high_priority_queries.size(); ++i) {
+		NNNQSSearchSpaces *search_space = godot::Object::cast_to<NNNQSSearchSpaces>(_high_priority_queries[i]);
+		if (search_space == nullptr) {
+			continue;
+		}
+		search_space->set_nqs_query_index(-1);
+		search_space->set_is_query_still_running(false);
+	}
+	for (int i = 0; i < _regular_queries.size(); ++i) {
+		NNNQSSearchSpaces *search_space = godot::Object::cast_to<NNNQSSearchSpaces>(_regular_queries[i]);
+		if (search_space == nullptr) {
+			continue;
+		}
+		search_space->set_nqs_query_index(-1);
+		search_space->set_is_query_still_running(false);
+	}
+
 	_high_priority_queries.clear();
 	_regular_queries.clear();
 	_available_high_priority_query_indexes.clear();
 	_available_regular_query_indexes.clear();
+	_num_active_high_priority_queries = 0;
+	_num_active_regular_priority_queries = 0;
+	_current_high_priority_query_index = 0;
+	_current_regular_query_index = 0;
 }
