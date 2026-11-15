@@ -41,6 +41,7 @@ NNAngleVector3Sensor::NNAngleVector3Sensor() {
 	_angle_degrees = 0.0f;
 	_max_angle_radian = 2.0f * Math::PI;
 	_max_angle_degrees = 360.0f;
+	_one_over_max_angle_radian = 1.0f / _max_angle_radian;
 }
 
 NNAngleVector3Sensor::~NNAngleVector3Sensor() {

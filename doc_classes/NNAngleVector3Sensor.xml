@@ -4,6 +4,7 @@
 		Accepts two vectors, calculates the angle between them and scales it to [code]0..1[/code] range.
 	</brief_description>
 	<description>
+		The angle is divided by [member max_angle_radian]. With the default maximum of 360 degrees (2 PI radians), perpendicular vectors produce a [member NNSensors.sensor_value] of [code]0.25[/code] without configuring the maximum.
 	</description>
 	<tutorials>
 	</tutorials>
