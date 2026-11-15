@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <class name="NNBTParallel" inherits="NNBTCompositeNodes" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
 	<brief_description>
-		Ticks all its child nodes. If any of the nodes returns [enum NNBTNodes.Status] [code]SUCCESS[/code] or [code]RUNNING[/code], the parallel node returns it back to its parent.
+		Ticks all its enabled child nodes and combines their statuses. [code]RUNNING[/code] takes precedence over [code]FAILURE[/code], and [code]FAILURE[/code] takes precedence over [code]SUCCESS[/code].
 	</brief_description>
 	<description>
-		The parallel node ticks all its child nodes. If any of the nodes returns [code]FAILURE[/code] or [code]RUNNING[/code], the parallel node returns it back to its parent. If the child nodes return both [code]FAILURE[/code] and [code]RUNNING[/code] statuses, the [code]RUNNING[/code] status is returned to the parent node.
+		The parallel node ticks all its enabled child nodes, regardless of child order. If any child returns [code]RUNNING[/code], the parallel node returns [code]RUNNING[/code]. Otherwise, if any child returns [code]FAILURE[/code], it returns [code]FAILURE[/code]. Otherwise it returns [code]SUCCESS[/code]. Disabled children are skipped.
 	</description>
 	<tutorials>
 	</tutorials>

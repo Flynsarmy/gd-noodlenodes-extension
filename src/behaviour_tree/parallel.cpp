@@ -50,7 +50,8 @@ NNBTNodes::Status NNBTParallel::tick(Variant blackboard, float delta) {
 	//    _is_first_tick = false;
 	//    emit_signal("btnode_entered", blackboard, delta);
 	//}
-	Status parallelresult = Status::SUCCESS;
+	bool has_failure = false;
+	bool has_running = false;
 	for (unsigned int i = 0; i < _num_child_btnodes; i++) {
 		NNBTNodes *btnode = _child_btnodes[i];
 		//if( btnode != nullptr ) {
@@ -59,13 +60,21 @@ NNBTNodes::Status NNBTParallel::tick(Variant blackboard, float delta) {
 		}
 		Status result = btnode->tick(blackboard, delta);
 		if (result == Status::FAILURE) {
-			parallelresult = Status::FAILURE;
+			has_failure = true;
 		} else if (result == Status::RUNNING) {
-			parallelresult = Status::RUNNING;
+			has_running = true;
 		}
 		//}//endif node was of correct type
 	} //endfor btnodes
 	//emit_signal("btnode_ticked", blackboard, delta);
+	// RUNNING takes precedence over FAILURE, which takes precedence over
+	// SUCCESS, regardless of child order.
+	Status parallelresult = Status::SUCCESS;
+	if (has_running) {
+		parallelresult = Status::RUNNING;
+	} else if (has_failure) {
+		parallelresult = Status::FAILURE;
+	}
 	if (parallelresult != Status::RUNNING) {
 		set_internal_status(BT_INTERNAL_STATUS_COMPLETED);
 		//emit_signal("btnode_exited", blackboard, delta);
