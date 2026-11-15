@@ -77,7 +77,9 @@ bool NNBTRunNQSQuery::get_is_high_priority() const {
 
 void NNBTRunNQSQuery::reset_bt_node() {
 	_query_state = QS_IDLE;
-	_nqs_search_space->reset_query_variables();
+	if (_nqs_search_space != nullptr) {
+		_nqs_search_space->reset_query_variables();
+	}
 }
 
 NNBTNodes::Status NNBTRunNQSQuery::tick(Variant blackboard, float delta) {
