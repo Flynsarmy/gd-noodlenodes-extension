@@ -44,3 +44,13 @@ scons platform=<valid platform>
 
 After compilation, the binaries are created in to the `demo/addons/noodle_nodes/` folder. If all goes well, you should be able to launch the demo project in Godot and start using the addon.
 
+### VS Code IntelliSense
+
+Generate a compilation database matching the build and let the C/C++ extension use it with:
+
+```
+scons compiledb=yes
+```
+
+`.vscode/c_cpp_properties.json` points at the generated `compile_commands.json` and provides the same include paths and defines as a fallback.
+
