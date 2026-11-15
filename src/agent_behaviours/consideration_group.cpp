@@ -64,6 +64,7 @@ float NNConsiderationGroup::evaluate() {
 	if (num_children < 1)
 		return 0.0f;
 	float child_score = 0.0f;
+	unsigned int num_evaluated = 0;
 	for (int i = 0; i < num_children; i++) {
 		Node *node = get_child(i);
 		if (node == nullptr)
@@ -82,19 +83,19 @@ float NNConsiderationGroup::evaluate() {
 
 		switch (_evaluation_method) {
 			case NNConsiderationGroupEvaluationMethod::Min: {
-				if (i == 0)
+				if (num_evaluated == 0)
 					_score = child_score;
 				if (child_score < _score)
 					_score = child_score;
 			} break;
 			case NNConsiderationGroupEvaluationMethod::Max: {
-				if (i == 0)
+				if (num_evaluated == 0)
 					_score = child_score;
 				if (child_score > _score)
 					_score = child_score;
 			} break;
 			case NNConsiderationGroupEvaluationMethod::Multiply: {
-				if (i == 0)
+				if (num_evaluated == 0)
 					_score = child_score;
 				else
 					_score *= child_score;
@@ -120,11 +121,11 @@ float NNConsiderationGroup::evaluate() {
 			default:
 				_score += child_score;
 		} //end switch evaluation method
-
+		++num_evaluated;
 	} //endfor children
 
-	if (_evaluation_method == NNConsiderationGroupEvaluationMethod::Mean) {
-		_score = _score / ((float)num_children);
+	if (_evaluation_method == NNConsiderationGroupEvaluationMethod::Mean && num_evaluated > 0) {
+		_score = _score / ((float)num_evaluated);
 	}
 
 	if (_invert_score) {

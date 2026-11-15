@@ -76,7 +76,7 @@ float NNBehaviourGroup::evaluate() {
 	// compared to the set value to determine if the behaviours
 	// within the group should be evaluated.
 	_score = 0.0f;
-	int num_consideration_nodes_handled = 0;
+	unsigned int num_evaluated = 0;
 
 	// Evaluate the children.
 	//for( int i = 0; i < num_children; i++ ) {
@@ -89,26 +89,25 @@ float NNBehaviourGroup::evaluate() {
 		if (!considerationsNode->get_is_enabled())
 			continue;
 		float child_score = considerationsNode->evaluate();
-		++num_consideration_nodes_handled;
 		if (considerationsNode->get_has_vetoed()) {
 			_score = 0.0f;
 			return _score; //return false; // The consideration vetoed this behaviour group.
 		}
 		switch (_evaluation_method) {
 			case NNConsiderationGroup::NNConsiderationGroupEvaluationMethod::Min: {
-				if (i == 0)
+				if (num_evaluated == 0)
 					_score = child_score;
 				if (child_score < _score)
 					_score = child_score;
 			} break;
 			case NNConsiderationGroup::NNConsiderationGroupEvaluationMethod::Max: {
-				if (i == 0)
+				if (num_evaluated == 0)
 					_score = child_score;
 				if (child_score > _score)
 					_score = child_score;
 			} break;
 			case NNConsiderationGroup::NNConsiderationGroupEvaluationMethod::Multiply: {
-				if (i == 0)
+				if (num_evaluated == 0)
 					_score = child_score;
 				else
 					_score *= child_score;
@@ -127,7 +126,12 @@ float NNBehaviourGroup::evaluate() {
 			default:
 				_score += child_score;
 		} //end switch evaluation method
+		++num_evaluated;
 	} //endfor children
+
+	if (_evaluation_method == NNConsiderationGroup::NNConsiderationGroupEvaluationMethod::Mean && num_evaluated > 0) {
+		_score = _score / ((float)num_evaluated);
+	}
 
 	//if( num_consideration_nodes_handled == 0 ) return true;
 

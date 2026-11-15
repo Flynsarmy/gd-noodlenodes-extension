@@ -48,6 +48,7 @@ float NNSensorGroup::evaluate_sensor_value() {
 	if (num_children < 1)
 		return 0.0f;
 	float child_sensor_value = 0.0f;
+	int num_evaluated = 0;
 	for (int i = 0; i < num_children; i++) {
 		Node *node = get_child(i);
 		if (node == nullptr)
@@ -61,19 +62,19 @@ float NNSensorGroup::evaluate_sensor_value() {
 
 		switch (_evaluation_method) {
 			case NNSensorGroupEvaluationMethod::Min: {
-				if (i == 0)
+				if (num_evaluated == 0)
 					sensor_value = child_sensor_value;
 				if (child_sensor_value < sensor_value)
 					sensor_value = child_sensor_value;
 			} break;
 			case NNSensorGroupEvaluationMethod::Max: {
-				if (i == 0)
+				if (num_evaluated == 0)
 					sensor_value = child_sensor_value;
 				if (child_sensor_value > sensor_value)
 					sensor_value = child_sensor_value;
 			} break;
 			case NNSensorGroupEvaluationMethod::Multiply: {
-				if (i == 0)
+				if (num_evaluated == 0)
 					sensor_value = child_sensor_value;
 				else
 					sensor_value *= child_sensor_value;
@@ -94,11 +95,12 @@ float NNSensorGroup::evaluate_sensor_value() {
 			default:
 				sensor_value += child_sensor_value;
 		} //end switch evaluation method
+		++num_evaluated;
 
 	} //endfor children
 
-	if (_evaluation_method == NNSensorGroupEvaluationMethod::Mean) {
-		sensor_value = sensor_value / ((float)num_children);
+	if (_evaluation_method == NNSensorGroupEvaluationMethod::Mean && num_evaluated > 0) {
+		sensor_value = sensor_value / ((float)num_evaluated);
 	}
 
 	if (_invert_sensor_value) {

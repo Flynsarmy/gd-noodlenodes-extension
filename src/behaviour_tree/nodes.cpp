@@ -207,6 +207,7 @@ float NNBTNodes::evaluate() {
 	//    return _score;
 	//}
 	float child_score = 0.0f;
+	unsigned int num_evaluated = 0;
 	for (unsigned int i = 0; i < _num_child_considerations; i++) {
 		//Node* node = get_child(i);
 		//if( node == nullptr ) continue;
@@ -223,19 +224,19 @@ float NNBTNodes::evaluate() {
 
 		switch (_evaluation_method) {
 			case NNBTNodesEvaluationMethod::Min: {
-				if (i == 0)
+				if (num_evaluated == 0)
 					_score = child_score;
 				if (child_score < _score)
 					_score = child_score;
 			} break;
 			case NNBTNodesEvaluationMethod::Max: {
-				if (i == 0)
+				if (num_evaluated == 0)
 					_score = child_score;
 				if (child_score > _score)
 					_score = child_score;
 			} break;
 			case NNBTNodesEvaluationMethod::Multiply: {
-				if (i == 0)
+				if (num_evaluated == 0)
 					_score = child_score;
 				else
 					_score *= child_score;
@@ -263,11 +264,12 @@ float NNBTNodes::evaluate() {
 			default:
 				_score += child_score;
 		} //end switch evaluation method
+		++num_evaluated;
 
 	} //endfor children
 
-	if (_evaluation_method == NNBTNodesEvaluationMethod::Mean) {
-		_score = _score / ((float)_num_child_considerations);
+	if (_evaluation_method == NNBTNodesEvaluationMethod::Mean && num_evaluated > 0) {
+		_score = _score / ((float)num_evaluated);
 	}
 
 	if (_invert_score) {

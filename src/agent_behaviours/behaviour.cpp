@@ -189,6 +189,7 @@ float NNBehaviour::evaluate() {
 	//for( int i = 0; i < num_children; i++ ) {
 	//NNConsiderations* considerationNode = godot::Object::cast_to<NNConsiderations>(get_child(i));
 	float child_score = 0.0f;
+	unsigned int num_evaluated = 0;
 	for (unsigned int i = 0; i < _num_child_considerations; i++) {
 		NNConsiderations *considerationNode = _child_considerations[i];
 		//if( considerationNode == nullptr ) continue;
@@ -201,19 +202,19 @@ float NNBehaviour::evaluate() {
 		}
 		switch (_evaluation_method) {
 			case NNConsiderationGroup::NNConsiderationGroupEvaluationMethod::Min: {
-				if (i == 0)
+				if (num_evaluated == 0)
 					_score = child_score;
 				if (child_score < _score)
 					_score = child_score;
 			} break;
 			case NNConsiderationGroup::NNConsiderationGroupEvaluationMethod::Max: {
-				if (i == 0)
+				if (num_evaluated == 0)
 					_score = child_score;
 				if (child_score > _score)
 					_score = child_score;
 			} break;
 			case NNConsiderationGroup::NNConsiderationGroupEvaluationMethod::Multiply: {
-				if (i == 0)
+				if (num_evaluated == 0)
 					_score = child_score;
 				else
 					_score *= child_score;
@@ -232,7 +233,12 @@ float NNBehaviour::evaluate() {
 			default:
 				_score += child_score;
 		} //end switch evaluation method
+		++num_evaluated;
 	} //endfor children
+
+	if (_evaluation_method == NNConsiderationGroup::NNConsiderationGroupEvaluationMethod::Mean && num_evaluated > 0) {
+		_score = _score / ((float)num_evaluated);
+	}
 
 	return _score;
 }
