@@ -15,8 +15,7 @@ env = SConscript("godot-cpp/SConstruct", {"api_version": "4.7"})
 # - LINKFLAGS are for linking flags
 
 # tweak this if you want to use different folders, or more folders, to store your source code in.
-# Edit: Added the specialsensors subfolder.
-env.Append(CPPPATH=["src/","src/sensors","src/considerations", "src/node_query_system", "src/node_query_system/search_spaces", "src/node_query_system/search_criteria", "src/node_query_system/search_spaces/point_grid", "src/behaviour_tree"])
+env.Append(CPPPATH=["src/", "src/node_query_system", "src/node_query_system/search_spaces", "src/node_query_system/search_criteria", "src/node_query_system/search_spaces/point_grid", "src/behaviour_tree"])
 sources = Glob("src/*.cpp")
 sources += Glob("src/agent_behaviours/*.cpp")
 sources += Glob("src/behaviour_tree/*.cpp")
