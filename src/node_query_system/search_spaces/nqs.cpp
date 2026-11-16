@@ -9,6 +9,7 @@ NNNQSSearchSpaces::NNNQSSearchSpaces() {
 	_top_n_to_find = 1;
 	_nqs_query_index = -1;
 	_nqs_query_is_high_priority = true;
+	_nqs_query_registration = 0;
 	_is_query_still_running = false;
 	_is_search_space_fetched = false;
 	_is_criteria_handled = false;
@@ -138,6 +139,18 @@ void NNNQSSearchSpaces::set_nqs_query_is_high_priority(bool nqs_query_is_high_pr
 
 bool NNNQSSearchSpaces::get_nqs_query_is_high_priority() const {
 	return _nqs_query_is_high_priority;
+}
+
+void NNNQSSearchSpaces::set_nqs_query_registration(uint64_t nqs_query_registration) {
+	_nqs_query_registration = nqs_query_registration;
+}
+
+uint64_t NNNQSSearchSpaces::get_nqs_query_registration() const {
+	return _nqs_query_registration;
+}
+
+void NNNQSSearchSpaces::bump_nqs_query_registration() {
+	++_nqs_query_registration;
 }
 
 TypedArray<Node> NNNQSSearchSpaces::get_searchspace_nodes() const {

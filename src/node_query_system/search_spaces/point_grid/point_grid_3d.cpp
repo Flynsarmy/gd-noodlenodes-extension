@@ -1,5 +1,4 @@
 #include "point_grid_3d.h"
-#include <godot_cpp/classes/engine.hpp>
 #include <godot_cpp/classes/navigation_server3d.hpp>
 #include <godot_cpp/classes/scene_tree.hpp>
 #include <godot_cpp/classes/time.hpp>
@@ -20,18 +19,36 @@ NNPointGrid3DSearchSpace::NNPointGrid3DSearchSpace() {
 }
 
 NNPointGrid3DSearchSpace::~NNPointGrid3DSearchSpace() {
-	for (int i = 0; i < _point_grid.size(); i++) {
-		Node3D *node = godot::Object::cast_to<Node3D>(_point_grid[i]);
-		memfree(node);
-		_point_grid[i] = nullptr;
-	} //endfor point grid points
-	_point_grid.clear();
-	/**
-	if( _point_grid_parent_node != nullptr ) {
-		memfree(_point_grid_parent_node);
-		_point_grid_parent_node = nullptr;
+	destroy_generated_point_grid_nodes();
+}
+
+void NNPointGrid3DSearchSpace::destroy_generated_point_grid_nodes() {
+	// Swap the ids into a local vector so a reentrant call (for example from a
+	// node being deleted) finds an empty list and cannot free anything twice.
+	std::vector<uint64_t> generated_node_ids;
+	generated_node_ids.swap(_generated_point_grid_node_ids);
+
+	for (size_t i = 0; i < generated_node_ids.size(); i++) {
+		// The node may legitimately be gone already: the point grid parent node
+		// can be freed before this search space, and user code may free points
+		// individually. Looking the id up is safe, using the object is not.
+		Object *object = ObjectDB::get_instance(generated_node_ids[i]);
+		if (object == nullptr) {
+			continue;
+		}
+		Node3D *node = godot::Object::cast_to<Node3D>(object);
+		if (node == nullptr) {
+			continue;
+		}
+		// memdelete() is the Godot object destructor: it notifies the node, which
+		// removes it from _point_grid_parent_node. Never memfree() a Godot object.
+		memdelete(node);
 	}
-	/**/
+
+	// _point_grid may hold user supplied nodes; drop the references without
+	// deleting them, and never dereference the (possibly stale) parent pointer.
+	_point_grid.clear();
+	_point_grid_parent_node = nullptr;
 }
 
 void NNPointGrid3DSearchSpace::_bind_methods() {
@@ -81,16 +98,6 @@ void NNPointGrid3DSearchSpace::_bind_methods() {
 	ADD_PROPERTY(PropertyInfo(Variant::ARRAY, "point_grid", PROPERTY_HINT_ARRAY_TYPE, vformat("%s/%s:%s", Variant::OBJECT, PROPERTY_HINT_RESOURCE_TYPE, "Node3D")), "set_point_grid", "get_point_grid");
 }
 
-// Godot virtuals.
-
-void NNPointGrid3DSearchSpace::_ready() {
-	//if( !get_is_enabled() ) return;
-	if (Engine::get_singleton()->is_editor_hint())
-		return;
-	initialize_search_space();
-	//create_point_grid();
-}
-
 // Getters and setters.
 
 void NNPointGrid3DSearchSpace::set_point_grid_type(int point_grid_type) {
@@ -131,9 +138,13 @@ int NNPointGrid3DSearchSpace::get_point_grid_lattice_type() const {
 }
 
 void NNPointGrid3DSearchSpace::set_point_grid_base_spacing_vector3(Vector3 point_grid_base_spacing_vector) {
-	if (_point_grid_base_spacing_vector.x > 0.0f && _point_grid_base_spacing_vector.y > 0.0f && _point_grid_base_spacing_vector.z > 0.0f) {
-		_point_grid_base_spacing_vector = point_grid_base_spacing_vector;
+	// Only accept a finite, strictly positive spacing on all axes. An invalid
+	// value must not replace the previous one, otherwise later valid
+	// assignments would be rejected because of the corrupted stored state.
+	if (!point_grid_base_spacing_vector.is_finite() || point_grid_base_spacing_vector.x <= 0.0f || point_grid_base_spacing_vector.y <= 0.0f || point_grid_base_spacing_vector.z <= 0.0f) {
+		return;
 	}
+	_point_grid_base_spacing_vector = point_grid_base_spacing_vector;
 }
 
 Vector3 NNPointGrid3DSearchSpace::get_point_grid_base_spacing_vector3() const {
@@ -255,11 +266,18 @@ void NNPointGrid3DSearchSpace::create_point_grid_nodes(Node3D *template_node) {
 		_point_grid_parent_node->add_child(new_node); //, false, godot::Node::InternalMode::INTERNAL_MODE_BACK );
 		new_node->set_position(_point_grid_default_positions[i] + _offset_vector);
 		_point_grid.push_back(new_node);
+		_generated_point_grid_node_ids.push_back(static_cast<uint64_t>(new_node->get_instance_id()));
 	} //endfor default positions
 }
 
 void NNPointGrid3DSearchSpace::create_rectangular_point_grid() {
 	_point_grid_default_positions.clear();
+	// Defensive progress check: the spacing drives the loop increments, so a
+	// non-finite or non-positive value would never terminate the loops below.
+	if (!_point_grid_base_spacing_vector.is_finite() || _point_grid_base_spacing_vector.x <= 0.0f || _point_grid_base_spacing_vector.y <= 0.0f || _point_grid_base_spacing_vector.z <= 0.0f) {
+		ERR_FAIL_MSG("NNPointGrid3DSearchSpace::create_rectangular_point_grid(): Error, point_grid_base_spacing_vector must be finite and greater than zero on all required axes (x, y and z).");
+		return;
+	}
 	float y = -0.5f * _grid_size.y;
 	float max_y = 0.5f * _grid_size.y;
 	float max_x = 0.5f * _grid_size.x;
