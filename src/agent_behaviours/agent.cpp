@@ -586,12 +586,31 @@ void NNAgent::_notification( int p_what ) {
 }
 */
 
+#ifdef DEBUG_ENABLED
+void NNAgent::_notification(int p_what) {
+	if (p_what != NOTIFICATION_ENTER_TREE && p_what != NOTIFICATION_EXIT_TREE) {
+		return;
+	}
+	if (Engine::get_singleton()->is_editor_hint()) {
+		return;
+	}
+
+	NNDebuggerOverlay *debugger_overlay = NNDebuggerOverlay::get_singleton();
+	if (debugger_overlay == nullptr) {
+		return;
+	}
+
+	if (p_what == NOTIFICATION_ENTER_TREE) {
+		debugger_overlay->register_ai_agent(get_instance_id());
+	} else {
+		debugger_overlay->deregister_ai_agent(get_instance_id());
+	}
+}
+#endif
+
 void NNAgent::_ready() {
 	if (Engine::get_singleton()->is_editor_hint())
 		return;
-#ifdef DEBUG_ENABLED
-	NNDebuggerOverlay::get_singleton()->register_ai_agent(this->get_instance_id());
-#endif
 	for (int i = 0; i < get_child_count(); i++) {
 		if (NNBehaviours *beh = godot::Object::cast_to<NNBehaviours>(get_child(i))) {
 			_child_behaviours.push_back(beh);

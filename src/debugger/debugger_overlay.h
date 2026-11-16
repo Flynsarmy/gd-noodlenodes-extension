@@ -7,6 +7,8 @@
 #include <godot_cpp/classes/option_button.hpp>
 #include <godot_cpp/classes/rich_text_label.hpp>
 #include <godot_cpp/classes/tree.hpp>
+#include <godot_cpp/core/object_id.hpp>
+#include <godot_cpp/variant/string.hpp>
 #include <vector>
 
 namespace godot {
@@ -15,20 +17,43 @@ class NNDebuggerOverlay : public Node {
 	GDCLASS(NNDebuggerOverlay, Node)
 
 private:
+	// Registries hold instance IDs so freed roots are never dereferenced.
 	std::vector<ObjectID> _behaviour_trees;
 	std::vector<ObjectID> _state_trees;
 	std::vector<ObjectID> _agents;
 
 	static NNDebuggerOverlay *_singleton;
 
-	Control *_debugger_overlay_scene;
+	// The overlay scene is resolved through its ObjectID on every use. This lets
+	// a detached overlay be reattached and makes a freed overlay harmless.
+	ObjectID _overlay_scene_id;
 	OptionButton *_type_selection;
 	OptionButton *_root_selection;
 	RichTextLabel *_debug_messages;
+	Tree *_selected_tree;
 
 	int _current_type_selection;
 	int _current_root_selection;
-	Node *_current_root_selection_node;
+	ObjectID _selected_root_id;
+
+	uint64_t _registry_revision;
+	int _rendered_type_selection;
+	uint64_t _rendered_registry_revision;
+
+	Control *_get_overlay_scene() const;
+	bool _bind_overlay_view(Control *overlay);
+	void _clear_view();
+	void _clear_selected_tree();
+
+	const std::vector<ObjectID> *_get_registry_for_type(int type) const;
+	Node *_resolve_root_for_type(int type, ObjectID instance_id) const;
+	int _register_object(std::vector<ObjectID> &registry, uint64_t instance_id);
+	void _deregister_object(std::vector<ObjectID> &registry, uint64_t instance_id);
+	String _root_label(Node *root) const;
+
+	void _rebuild_root_items();
+	void _ensure_root_items();
+	void _refresh_selected_root_view();
 
 protected:
 	static void _bind_methods();

@@ -1,0 +1,87 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://demo_06_debugger/tutorial_scene.gd" id="1_scene"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_status"]
+bg_color = Color(0.04, 0.05, 0.08, 0.88)
+corner_radius_top_left = 6
+corner_radius_top_right = 6
+corner_radius_bottom_right = 6
+corner_radius_bottom_left = 6
+content_margin_left = 12.0
+content_margin_top = 6.0
+content_margin_right = 12.0
+content_margin_bottom = 6.0
+
+[node name="DebuggerShowcase" type="Node2D"]
+script = ExtResource("1_scene")
+
+[node name="Backdrop" type="CanvasLayer" parent="."]
+layer = -1
+
+[node name="Background" type="ColorRect" parent="Backdrop"]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.055, 0.065, 0.095, 1)
+
+[node name="Title" type="Label" parent="Backdrop"]
+anchors_preset = 10
+anchor_right = 1.0
+offset_left = 24.0
+offset_top = 104.0
+offset_right = -24.0
+offset_bottom = 142.0
+grow_horizontal = 2
+theme_override_colors/font_color = Color(0.82, 0.88, 1, 1)
+theme_override_colors/font_outline_color = Color(0.02, 0.03, 0.06, 1)
+theme_override_constants/outline_size = 8
+theme_override_font_sizes/font_size = 28
+text = "Noodle Nodes - Debugger Showcase"
+horizontal_alignment = 1
+
+[node name="Subtitle" type="Label" parent="Backdrop"]
+anchors_preset = 10
+anchor_right = 1.0
+offset_left = 24.0
+offset_top = 142.0
+offset_right = -24.0
+offset_bottom = 164.0
+grow_horizontal = 2
+theme_override_colors/font_color = Color(0.62, 0.7, 0.85, 1)
+theme_override_colors/font_outline_color = Color(0.02, 0.03, 0.06, 1)
+theme_override_constants/outline_size = 6
+theme_override_font_sizes/font_size = 13
+text = "Agent Behaviours (green)  /  Behaviour Trees (blue)  /  State Trees (orange)  -  press F1 to toggle the debugger overlay"
+horizontal_alignment = 1
+
+[node name="Props" type="Node2D" parent="."]
+
+[node name="DebuggerLayer" type="CanvasLayer" parent="."]
+
+[node name="HudLayer" type="CanvasLayer" parent="."]
+layer = 2
+
+[node name="StatusBar" type="PanelContainer" parent="HudLayer"]
+anchors_preset = 12
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 8.0
+offset_top = -40.0
+offset_right = -8.0
+offset_bottom = -8.0
+grow_horizontal = 2
+grow_vertical = 0
+mouse_filter = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_status")
+
+[node name="Label" type="Label" parent="HudLayer/StatusBar"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_colors/font_color = Color(0.86, 0.9, 1, 1)
+theme_override_font_sizes/font_size = 14
+text = "Loading..."
+horizontal_alignment = 1

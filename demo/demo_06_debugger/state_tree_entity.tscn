@@ -1,0 +1,84 @@
+[gd_scene load_steps=13 format=3]
+
+[ext_resource type="Texture2D" path="res://assets/Standard sprites upd.png" id="1_texture"]
+[ext_resource type="Script" path="res://demo_06_debugger/state_tree_entity.gd" id="2_entity"]
+[ext_resource type="Script" path="res://demo_06_debugger/st_moving.gd" id="3_moving"]
+[ext_resource type="Script" path="res://demo_06_debugger/st_moving_closer.gd" id="4_closer"]
+[ext_resource type="Script" path="res://demo_06_debugger/st_moving_away.gd" id="5_away"]
+[ext_resource type="Script" path="res://demo_06_debugger/st_waiting.gd" id="6_waiting"]
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_frame_1"]
+atlas = ExtResource("1_texture")
+region = Rect2(16, 32, 16, 16)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_frame_2"]
+atlas = ExtResource("1_texture")
+region = Rect2(32, 32, 16, 16)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_frame_3"]
+atlas = ExtResource("1_texture")
+region = Rect2(48, 32, 16, 16)
+
+[sub_resource type="SpriteFrames" id="SpriteFrames_entity"]
+animations = [{
+"frames": [],
+"loop": true,
+"name": &"default",
+"speed": 5.0
+}, {
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_frame_1")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_frame_2")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_frame_3")
+}],
+"loop": true,
+"name": &"moving",
+"speed": 5.0
+}]
+
+[sub_resource type="Curve" id="Curve_too_far"]
+_data = [Vector2(0.4, 0), 0.0, 0.0, 0, 0, Vector2(0.5, 1), 0.0, 0.0, 0, 0]
+point_count = 2
+
+[sub_resource type="Curve" id="Curve_too_close"]
+_data = [Vector2(0.14, 1), 0.0, 0.0, 0, 0, Vector2(0.25, 0), 0.0, 0.0, 0, 0]
+point_count = 2
+
+[node name="state_tree_entity" type="AnimatedSprite2D"]
+scale = Vector2(2, 2)
+sprite_frames = SubResource("SpriteFrames_entity")
+animation = &"moving"
+script = ExtResource("2_entity")
+
+[node name="NNSTRoot" type="NNSTRoot" parent="."]
+
+[node name="MouseSensor" type="NNDistanceVector2Sensor" parent="NNSTRoot"]
+max_distance = 200.0
+is_distance_calculated = true
+is_direction_vector_calculated = true
+
+[node name="Moving" type="NNSTNode" parent="NNSTRoot"]
+child_state_selection_rule = 1
+script = ExtResource("3_moving")
+
+[node name="Moving closer" type="NNSTNode" parent="NNSTRoot/Moving"]
+script = ExtResource("4_closer")
+
+[node name="Too far from the cursor" type="NNConsideration" parent="NNSTRoot/Moving/Moving closer" node_paths=PackedStringArray("input_sensor")]
+input_sensor = NodePath("../../../MouseSensor")
+activation_curve = SubResource("Curve_too_far")
+
+[node name="Moving away" type="NNSTNode" parent="NNSTRoot/Moving"]
+script = ExtResource("5_away")
+
+[node name="Too close to the cursor" type="NNConsideration" parent="NNSTRoot/Moving/Moving away" node_paths=PackedStringArray("input_sensor")]
+input_sensor = NodePath("../../../MouseSensor")
+activation_curve = SubResource("Curve_too_close")
+
+[node name="Waiting" type="NNSTNode" parent="NNSTRoot"]
+script = ExtResource("6_waiting")

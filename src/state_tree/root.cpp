@@ -213,6 +213,21 @@ void NNSTRoot::_transition_in() {
 void NNSTRoot::_notification(int p_what) {
 	NNSTBranchNodes::_notification(p_what);
 
+#ifdef DEBUG_ENABLED
+	if (p_what == NOTIFICATION_ENTER_TREE || p_what == NOTIFICATION_EXIT_TREE) {
+		if (!Engine::get_singleton()->is_editor_hint()) {
+			NNDebuggerOverlay *debugger_overlay = NNDebuggerOverlay::get_singleton();
+			if (debugger_overlay != nullptr) {
+				if (p_what == NOTIFICATION_ENTER_TREE) {
+					debugger_overlay->register_state_tree(get_instance_id());
+				} else {
+					debugger_overlay->deregister_state_tree(get_instance_id());
+				}
+			}
+		}
+	}
+#endif
+
 	if (p_what == NOTIFICATION_READY || p_what == NOTIFICATION_CHILD_ORDER_CHANGED) {
 		if (Engine::get_singleton()->is_editor_hint()) {
 			return;
@@ -238,10 +253,6 @@ void NNSTRoot::_notification(int p_what) {
 			}
 		}
 		_num_child_sensors = (unsigned int)_child_sensors.size();
-
-#ifdef DEBUG_ENABLED
-		NNDebuggerOverlay::get_singleton()->register_state_tree(this->get_instance_id());
-#endif
 
 		// This will do nothing if we already have an active child. We want to
 		// call it on child order changed incase the root has no active children

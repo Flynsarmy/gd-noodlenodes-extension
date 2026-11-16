@@ -5,6 +5,7 @@
 #include <godot_cpp/classes/resource_loader.hpp>
 #include <godot_cpp/classes/scene_tree.hpp>
 #include <godot_cpp/classes/time.hpp>
+#include <godot_cpp/classes/timer.hpp>
 
 #include "../agent_behaviours/agent.h"
 #include "../agent_behaviours/behaviour.h"
@@ -18,6 +19,8 @@
 
 using namespace godot;
 
+static const char *const NN_DEBUGGER_OVERLAY_SCENE_PATH = "res://addons/noodle_nodes/debugger/noodle_nodes_debugger_overlay.tscn";
+
 NNDebuggerOverlay *NNDebuggerOverlay::_singleton = nullptr;
 
 NNDebuggerOverlay *NNDebuggerOverlay::get_singleton() {
@@ -26,17 +29,23 @@ NNDebuggerOverlay *NNDebuggerOverlay::get_singleton() {
 
 NNDebuggerOverlay::NNDebuggerOverlay() {
 	_singleton = this;
-	_debugger_overlay_scene = nullptr;
-	_current_type_selection = -1;
-	_current_root_selection = -1;
-	_current_root_selection_node = nullptr;
 	_type_selection = nullptr;
 	_root_selection = nullptr;
 	_debug_messages = nullptr;
+	_selected_tree = nullptr;
+	_current_type_selection = -1;
+	_current_root_selection = -1;
+	_registry_revision = 0;
+	_rendered_type_selection = -2;
+	_rendered_registry_revision = 0;
 }
 
 NNDebuggerOverlay::~NNDebuggerOverlay() {
-	_singleton = nullptr;
+	_clear_view();
+	_overlay_scene_id = ObjectID();
+	if (_singleton == this) {
+		_singleton = nullptr;
+	}
 }
 
 void NNDebuggerOverlay::_bind_methods() {
@@ -57,242 +66,476 @@ void NNDebuggerOverlay::_bind_methods() {
 
 // Handling methods.
 
-int NNDebuggerOverlay::register_behaviour_tree(uint64_t instance_id) {
-	ObjectID new_objectID = ObjectID();
-	new_objectID = instance_id;
-	int index = _behaviour_trees.size();
-	_behaviour_trees.push_back(new_objectID);
+int NNDebuggerOverlay::_register_object(std::vector<ObjectID> &registry, uint64_t instance_id) {
+	ERR_FAIL_COND_V_MSG(instance_id == 0, -1, "NNDebuggerOverlay: Cannot register an invalid instance ID.");
+
+	ObjectID object_id(instance_id);
+	for (unsigned int i = 0; i < registry.size(); i++) {
+		if (registry[i] == object_id) {
+			return (int)i;
+		}
+	}
+
+	int index = (int)registry.size();
+	registry.push_back(object_id);
+	_registry_revision++;
 	return index;
+}
+
+void NNDebuggerOverlay::_deregister_object(std::vector<ObjectID> &registry, uint64_t instance_id) {
+	ObjectID object_id(instance_id);
+	for (std::vector<ObjectID>::iterator it = registry.begin(); it != registry.end(); ++it) {
+		if (*it == object_id) {
+			registry.erase(it);
+			_registry_revision++;
+			return;
+		}
+	}
+}
+
+int NNDebuggerOverlay::register_behaviour_tree(uint64_t instance_id) {
+	return _register_object(_behaviour_trees, instance_id);
 }
 
 int NNDebuggerOverlay::register_state_tree(uint64_t instance_id) {
-	ObjectID new_objectID = ObjectID();
-	new_objectID = instance_id;
-	int index = _state_trees.size();
-	_state_trees.push_back(new_objectID);
-	return index;
+	return _register_object(_state_trees, instance_id);
 }
 
 int NNDebuggerOverlay::register_ai_agent(uint64_t instance_id) {
-	ObjectID new_objectID = ObjectID();
-	new_objectID = instance_id;
-	int index = _agents.size();
-	_agents.push_back(new_objectID);
-	return index;
+	return _register_object(_agents, instance_id);
 }
 
-void NNDebuggerOverlay::deregister_behaviour_tree(uint64_t index) {
+void NNDebuggerOverlay::deregister_behaviour_tree(uint64_t instance_id) {
+	_deregister_object(_behaviour_trees, instance_id);
 }
 
-void NNDebuggerOverlay::deregister_state_tree(uint64_t index) {
+void NNDebuggerOverlay::deregister_state_tree(uint64_t instance_id) {
+	_deregister_object(_state_trees, instance_id);
 }
 
-void NNDebuggerOverlay::deregister_ai_agent(uint64_t index) {
+void NNDebuggerOverlay::deregister_ai_agent(uint64_t instance_id) {
+	_deregister_object(_agents, instance_id);
+}
+
+Control *NNDebuggerOverlay::_get_overlay_scene() const {
+	if (_overlay_scene_id.is_null()) {
+		return nullptr;
+	}
+	return Object::cast_to<Control>(ObjectDB::get_instance((uint64_t)_overlay_scene_id));
+}
+
+void NNDebuggerOverlay::_clear_view() {
+	_type_selection = nullptr;
+	_root_selection = nullptr;
+	_debug_messages = nullptr;
+	_selected_tree = nullptr;
+	_current_type_selection = -1;
+	_current_root_selection = -1;
+	_selected_root_id = ObjectID();
+	_rendered_type_selection = -2;
+	_rendered_registry_revision = 0;
+}
+
+void NNDebuggerOverlay::_clear_selected_tree() {
+	if (_selected_tree != nullptr) {
+		_selected_tree->clear();
+	}
+}
+
+bool NNDebuggerOverlay::_bind_overlay_view(Control *overlay) {
+	ERR_FAIL_NULL_V_MSG(overlay, false, "NNDebuggerOverlay::_bind_overlay_view(): The overlay scene is null.");
+
+	OptionButton *type_selection = Object::cast_to<OptionButton>(overlay->get_node_or_null("HBoxContainer/VBoxContainer/SelectType"));
+	ERR_FAIL_NULL_V_MSG(type_selection, false, "NNDebuggerOverlay::_bind_overlay_view(): Missing 'HBoxContainer/VBoxContainer/SelectType' OptionButton in the overlay scene.");
+
+	OptionButton *root_selection = Object::cast_to<OptionButton>(overlay->get_node_or_null("HBoxContainer/VBoxContainer/SelectTree"));
+	ERR_FAIL_NULL_V_MSG(root_selection, false, "NNDebuggerOverlay::_bind_overlay_view(): Missing 'HBoxContainer/VBoxContainer/SelectTree' OptionButton in the overlay scene.");
+
+	RichTextLabel *debug_messages = Object::cast_to<RichTextLabel>(overlay->get_node_or_null("HBoxContainer/TextVBoxContainer/DebugTextArea"));
+	ERR_FAIL_NULL_V_MSG(debug_messages, false, "NNDebuggerOverlay::_bind_overlay_view(): Missing 'HBoxContainer/TextVBoxContainer/DebugTextArea' RichTextLabel in the overlay scene.");
+
+	Tree *selected_tree = Object::cast_to<Tree>(overlay->get_node_or_null("SelectedTree"));
+	ERR_FAIL_NULL_V_MSG(selected_tree, false, "NNDebuggerOverlay::_bind_overlay_view(): Missing 'SelectedTree' Tree in the overlay scene.");
+
+	Timer *refresh_timer = Object::cast_to<Timer>(overlay->get_node_or_null("RefreshTimer"));
+	ERR_FAIL_NULL_V_MSG(refresh_timer, false, "NNDebuggerOverlay::_bind_overlay_view(): Missing 'RefreshTimer' Timer in the overlay scene.");
+
+	// Connections are checked before use so reopening a detached overlay does not
+	// attach duplicate callbacks.
+	const Callable exit_callable(this, "on_exit_tree");
+	if (!overlay->is_connected("tree_exited", exit_callable)) {
+		overlay->connect("tree_exited", exit_callable);
+	}
+
+	const Callable type_selected_callable(this, "on_type_item_selected");
+	if (!type_selection->is_connected("item_selected", type_selected_callable)) {
+		type_selection->connect("item_selected", type_selected_callable);
+	}
+
+	const Callable root_selected_callable(this, "on_root_item_selected");
+	if (!root_selection->is_connected("item_selected", root_selected_callable)) {
+		root_selection->connect("item_selected", root_selected_callable);
+	}
+
+	const Callable update_callable(this, "update_ui");
+	if (!refresh_timer->is_connected("timeout", update_callable)) {
+		refresh_timer->connect("timeout", update_callable);
+	}
+
+	_type_selection = type_selection;
+	_root_selection = root_selection;
+	_debug_messages = debug_messages;
+	_selected_tree = selected_tree;
+	return true;
 }
 
 void NNDebuggerOverlay::add_as_child_of(Node *debugger_parent_node) {
-	if (debugger_parent_node == nullptr) {
-		//WARN_PRINT("parent is null");
+	ERR_FAIL_NULL_MSG(debugger_parent_node, "NNDebuggerOverlay::add_as_child_of(): The debugger parent node must not be null.");
+	ERR_FAIL_COND_MSG(debugger_parent_node == this, "NNDebuggerOverlay::add_as_child_of(): The debugger overlay cannot be its own parent.");
+	ERR_FAIL_COND_MSG(debugger_parent_node->is_queued_for_deletion(), "NNDebuggerOverlay::add_as_child_of(): The debugger parent node is queued for deletion.");
+
+	Control *overlay = _get_overlay_scene();
+	if (overlay != nullptr && overlay->is_queued_for_deletion()) {
+		// Detach the dying overlay immediately so a reopen in the same frame can
+		// reuse the expected node name and does not create two live siblings.
+		Node *old_parent = overlay->get_parent();
+		if (old_parent != nullptr) {
+			old_parent->remove_child(overlay);
+		}
+		_overlay_scene_id = ObjectID();
+		overlay = nullptr;
+	}
+
+	if (overlay != nullptr && overlay->get_parent() != nullptr) {
+		if (overlay->get_parent() != debugger_parent_node) {
+			ERR_FAIL_MSG("NNDebuggerOverlay::add_as_child_of(): The debugger overlay is already attached to another parent.");
+		}
+
+		// Already attached. Rebind defensively (the view may have been cleared by
+		// a tree exit) but never add a second overlay or duplicate connections.
+		if (!_bind_overlay_view(overlay)) {
+			_clear_view();
+			return;
+		}
+		update_ui();
 		return;
 	}
-	if (_debugger_overlay_scene == nullptr) {
-		Ref<PackedScene> scene_template = godot::ResourceLoader::get_singleton()->load("res://addons/noodle_nodes/debugger/noodle_nodes_debugger_overlay.tscn");
-		_debugger_overlay_scene = godot::Object::cast_to<Control>(scene_template->instantiate());
 
-	} //endif live debugger scene is not loaded.
-	_debug_messages = _debugger_overlay_scene->get_node<RichTextLabel>("HBoxContainer/TextVBoxContainer/DebugTextArea");
+	if (overlay == nullptr) {
+		Ref<PackedScene> scene_template = ResourceLoader::get_singleton()->load(NN_DEBUGGER_OVERLAY_SCENE_PATH);
+		ERR_FAIL_COND_MSG(scene_template.is_null(), String("NNDebuggerOverlay::add_as_child_of(): Failed to load '") + String(NN_DEBUGGER_OVERLAY_SCENE_PATH) + "'.");
 
-	debugger_parent_node->add_child(_debugger_overlay_scene);
-	_debugger_overlay_scene->connect("tree_exited", Callable(this, "on_exit_tree"));
+		Node *instance = scene_template->instantiate();
+		ERR_FAIL_NULL_MSG(instance, "NNDebuggerOverlay::add_as_child_of(): Failed to instantiate the debugger overlay scene.");
 
-	// Connect the signals.
-	_type_selection = _debugger_overlay_scene->get_node<OptionButton>("HBoxContainer/VBoxContainer/SelectType");
-	if (_type_selection == nullptr) {
-		//WARN_PRINT("select type is null");
+		Control *new_overlay = Object::cast_to<Control>(instance);
+		if (new_overlay == nullptr) {
+			memdelete(instance);
+			ERR_FAIL_MSG("NNDebuggerOverlay::add_as_child_of(): The debugger overlay scene root must be a Control.");
+		}
+
+		_overlay_scene_id = new_overlay->get_instance_id();
+		if (!_bind_overlay_view(new_overlay)) {
+			_overlay_scene_id = ObjectID();
+			_clear_view();
+			memdelete(new_overlay);
+			return;
+		}
+
+		debugger_parent_node->add_child(new_overlay);
+		on_type_item_selected(0);
+		update_ui();
 		return;
 	}
-	_type_selection->connect("item_selected", Callable(this, "on_type_item_selected"));
 
-	_root_selection = _debugger_overlay_scene->get_node<OptionButton>("HBoxContainer/VBoxContainer/SelectTree");
-	if (_root_selection == nullptr) {
-		//WARN_PRINT("select root is null");
+	// The overlay is alive but detached. Reuse it instead of creating a second
+	// overlay, which also keeps its connections singular.
+	if (!_bind_overlay_view(overlay)) {
+		_overlay_scene_id = ObjectID();
+		_clear_view();
+		memdelete(overlay);
 		return;
 	}
-	_root_selection->connect("item_selected", Callable(this, "on_root_item_selected"));
-	_current_type_selection = -1;
+
+	debugger_parent_node->add_child(overlay);
 	on_type_item_selected(0);
-	//WARN_PRINT("ALL DONE!");
+	update_ui();
 }
 
 // UI Handling methods.
 
-void NNDebuggerOverlay::on_type_item_selected(int item) {
-	//WARN_PRINT("--0");
-
-	if (item == _current_type_selection) {
-		return;
-	}
-	_current_type_selection = item;
-	_current_root_selection = -1;
-	_current_root_selection_node = nullptr;
-	//WARN_PRINT("--1");
-	//OptionButton* select_root = _debugger_overlay_scene->get_node<OptionButton>("SelectTree");
-	_root_selection->clear();
-	_root_selection->add_item("Select a root node");
-
-	//WARN_PRINT("--3");
-	//WARN_PRINT(String("Got: ") + String(item));
-	switch (item) {
-		case 1: { // Agent behaviours.
-			for (int i = 0; i < _agents.size(); i++) {
-				ObjectID helper = ObjectID();
-				helper = _agents[i];
-				if (!helper.is_valid()) {
-					continue;
-				}
-				NNAgent *agent = godot::Object::cast_to<NNAgent>(ObjectDB::get_instance(_agents[i]));
-				if (agent == nullptr) {
-					continue;
-				}
-				_root_selection->add_item(String(agent->get_owner()->get_name()) + ": " + String(agent->get_name()));
-			} //endfor
-			//WARN_PRINT("--6");
+const std::vector<ObjectID> *NNDebuggerOverlay::_get_registry_for_type(int type) const {
+	switch (type) {
+		case 1: {
+			return &_agents;
 		} break;
-		case 2: { // Behaviour trees.
-			for (int i = 0; i < _behaviour_trees.size(); i++) {
-				ObjectID helper = ObjectID();
-				helper = _behaviour_trees[i];
-				if (!helper.is_valid()) {
-					continue;
-				}
-				NNBTRoot *btroot = godot::Object::cast_to<NNBTRoot>(ObjectDB::get_instance(_behaviour_trees[i]));
-				if (btroot == nullptr) {
-					continue;
-				}
-				_root_selection->add_item(String(btroot->get_owner()->get_name()) + ": " + String(btroot->get_name()));
-			} //endfor
-			//WARN_PRINT("--4");
+		case 2: {
+			return &_behaviour_trees;
 		} break;
-		case 3: { // State trees.
-			for (int i = 0; i < _state_trees.size(); i++) {
-				ObjectID helper = ObjectID();
-				helper = _state_trees[i];
-				if (!helper.is_valid()) {
-					continue;
-				}
-				NNSTRoot *stroot = godot::Object::cast_to<NNSTRoot>(ObjectDB::get_instance(_state_trees[i]));
-				if (stroot == nullptr) {
-					continue;
-				}
-				_root_selection->add_item(String(stroot->get_owner()->get_name()) + ": " + String(stroot->get_name()));
-			} //endfor
-			//WARN_PRINT("--5");
+		case 3: {
+			return &_state_trees;
 		} break;
-		default: { // No selection.
+		default: {
 		} break;
 	}
-
-	//WARN_PRINT("--7");
+	return nullptr;
 }
 
-void NNDebuggerOverlay::on_root_item_selected(int item) {
-	if (item == 0 || _root_selection == nullptr || _type_selection == nullptr)
+Node *NNDebuggerOverlay::_resolve_root_for_type(int type, ObjectID instance_id) const {
+	if (instance_id.is_null()) {
+		return nullptr;
+	}
+
+	Object *object = ObjectDB::get_instance((uint64_t)instance_id);
+	if (object == nullptr) {
+		return nullptr;
+	}
+
+	switch (type) {
+		case 1: {
+			return Object::cast_to<NNAgent>(object);
+		} break;
+		case 2: {
+			return Object::cast_to<NNBTRoot>(object);
+		} break;
+		case 3: {
+			return Object::cast_to<NNSTRoot>(object);
+		} break;
+		default: {
+		} break;
+	}
+	return nullptr;
+}
+
+String NNDebuggerOverlay::_root_label(Node *root) const {
+	ERR_FAIL_NULL_V(root, String());
+
+	Node *owner = root->get_owner();
+	if (owner != nullptr) {
+		return String(owner->get_name()) + ": " + String(root->get_name());
+	}
+	return String(root->get_name()) + " (no owner)";
+}
+
+void NNDebuggerOverlay::_rebuild_root_items() {
+	if (_root_selection == nullptr) {
 		return;
-	_current_root_selection = item - 1; // The 0th item is the "Select a root node" text.
-	Tree *tree = _debugger_overlay_scene->get_node<Tree>("SelectedTree");
-	if (!tree)
+	}
+
+	_root_selection->clear();
+	_root_selection->add_item("Select a root node");
+	_root_selection->set_item_metadata(0, Variant((int64_t)0));
+
+	const std::vector<ObjectID> *registry = _get_registry_for_type(_current_type_selection);
+	if (registry != nullptr) {
+		for (unsigned int i = 0; i < registry->size(); i++) {
+			ObjectID instance_id = (*registry)[i];
+			Node *root = _resolve_root_for_type(_current_type_selection, instance_id);
+			if (root == nullptr) {
+				continue;
+			}
+
+			int item_index = _root_selection->get_item_count();
+			_root_selection->add_item(_root_label(root));
+			_root_selection->set_item_metadata(item_index, Variant((int64_t)(uint64_t)instance_id));
+		}
+	}
+
+	// Preserve the selected root by instance ID while the list is rebuilt. This
+	// also keeps selection correct when roots before it are freed.
+	int selected_index = 0;
+	if (_selected_root_id.is_valid()) {
+		for (int i = 1; i < _root_selection->get_item_count(); i++) {
+			Variant metadata = _root_selection->get_item_metadata(i);
+			if (metadata.get_type() != Variant::INT) {
+				continue;
+			}
+			ObjectID item_id((uint64_t)(int64_t)metadata);
+			if (item_id == _selected_root_id) {
+				selected_index = i;
+				break;
+			}
+		}
+
+		if (selected_index == 0) {
+			// The selected root was removed or freed.
+			_selected_root_id = ObjectID();
+			_current_root_selection = -1;
+			_clear_selected_tree();
+		}
+	}
+
+	_root_selection->select(selected_index);
+	_current_root_selection = selected_index;
+	_rendered_type_selection = _current_type_selection;
+	_rendered_registry_revision = _registry_revision;
+}
+
+void NNDebuggerOverlay::_ensure_root_items() {
+	if (_root_selection == nullptr) {
 		return;
-	tree->clear();
-	TreeItem *root_item = tree->create_item();
-	if (!root_item)
+	}
+	if (_rendered_type_selection == _current_type_selection && _rendered_registry_revision == _registry_revision) {
 		return;
+	}
+	_rebuild_root_items();
+}
+
+void NNDebuggerOverlay::on_type_item_selected(int item) {
+	if (_get_overlay_scene() == nullptr) {
+		_clear_view();
+		return;
+	}
+	if (_type_selection == nullptr || _root_selection == nullptr) {
+		return;
+	}
+	if (item < 0 || item >= _type_selection->get_item_count()) {
+		return;
+	}
+
+	_current_type_selection = item;
+	_current_root_selection = -1;
+	_selected_root_id = ObjectID();
+	_type_selection->select(item);
+	_clear_selected_tree();
+	_rebuild_root_items();
+}
+
+void NNDebuggerOverlay::_refresh_selected_root_view() {
+	if (_selected_tree == nullptr) {
+		return;
+	}
+
+	Node *root = _resolve_root_for_type(_current_type_selection, _selected_root_id);
+	if (root == nullptr) {
+		if (_selected_root_id.is_valid()) {
+			_selected_root_id = ObjectID();
+			_current_root_selection = -1;
+			if (_root_selection != nullptr && _root_selection->get_item_count() > 0) {
+				_root_selection->select(0);
+				_current_root_selection = 0;
+			}
+		}
+		_clear_selected_tree();
+		return;
+	}
+
+	_selected_tree->clear();
+	TreeItem *root_item = _selected_tree->create_item();
+	if (root_item == nullptr) {
+		return;
+	}
+
 	root_item->set_custom_font_size(0, 10);
 	root_item->set_custom_font_size(1, 10);
 	root_item->set_custom_font_size(2, 10);
-	_current_root_selection_node = nullptr;
-	switch (_current_type_selection) {
-		case 1: { // Agent behaviours.
-			NNAgent *agent = godot::Object::cast_to<NNAgent>(ObjectDB::get_instance(_agents[_current_root_selection]));
-			_current_root_selection_node = agent;
-			root_item->set_text(0, agent->get_name());
-			tree_add_child_nodes(tree, root_item, agent);
-		} break;
-		case 2: { // Behaviour trees.
-			// todo: * show the Behaviour Tree debugging view
-			//       * update the debugging view with the selected behaviour tree data.
-			NNBTRoot *btroot = godot::Object::cast_to<NNBTRoot>(ObjectDB::get_instance(_behaviour_trees[_current_root_selection]));
-			_current_root_selection_node = btroot;
-			root_item->set_text(0, btroot->get_name());
-			tree_add_child_nodes(tree, root_item, btroot);
-		} break;
-		case 3: { // State trees.
-			NNSTRoot *stroot = godot::Object::cast_to<NNSTRoot>(ObjectDB::get_instance(_state_trees[_current_root_selection]));
-			_current_root_selection_node = stroot;
-			root_item->set_text(0, stroot->get_name());
-			tree_add_child_nodes(tree, root_item, stroot);
-		} break;
-		default: { // No selection.
-		} break;
-	} //end switch
-	/**/
+	root_item->set_text(0, root->get_name());
+	tree_add_child_nodes(_selected_tree, root_item, root);
+}
+
+void NNDebuggerOverlay::on_root_item_selected(int item) {
+	if (_get_overlay_scene() == nullptr) {
+		_clear_view();
+		return;
+	}
+	if (_root_selection == nullptr || _selected_tree == nullptr) {
+		return;
+	}
+	if (item < 0 || item >= _root_selection->get_item_count()) {
+		return;
+	}
+
+	if (item == 0) { // The 0th item is the "Select a root node" placeholder.
+		_current_root_selection = 0;
+		_selected_root_id = ObjectID();
+		_root_selection->select(0);
+		_clear_selected_tree();
+		return;
+	}
+
+	Variant metadata = _root_selection->get_item_metadata(item);
+	if (metadata.get_type() != Variant::INT) {
+		_current_root_selection = 0;
+		_selected_root_id = ObjectID();
+		_root_selection->select(0);
+		_clear_selected_tree();
+		return;
+	}
+
+	ObjectID instance_id((uint64_t)(int64_t)metadata);
+	Node *root = _resolve_root_for_type(_current_type_selection, instance_id);
+	if (root == nullptr) {
+		// The item outlived its root. Drop the selection rather than indexing the
+		// unfiltered registry.
+		_current_root_selection = 0;
+		_selected_root_id = ObjectID();
+		_root_selection->select(0);
+		_clear_selected_tree();
+		return;
+	}
+
+	_current_root_selection = item;
+	_selected_root_id = instance_id;
+	_root_selection->select(item);
+	_refresh_selected_root_view();
 }
 
 void NNDebuggerOverlay::on_exit_tree() {
-	// The overlay node is exiting the tree, so clear all the pointers.
-	_debugger_overlay_scene->disconnect("tree_exited", Callable(this, "on_exit_tree"));
-	_debugger_overlay_scene = nullptr;
-	_type_selection = nullptr;
-	_root_selection = nullptr;
-	_debug_messages = nullptr;
-	_current_type_selection = -1;
-	_current_root_selection = -1;
-	_current_root_selection_node = nullptr;
-
-	_agents.clear();
-	_behaviour_trees.clear();
-	_state_trees.clear();
+	// The overlay view is gone (closed, detached or freed). Clear only view
+	// state; registered AI roots may still be alive and are kept for reopening.
+	_clear_view();
 }
 
 // Handling methods.
 
 void NNDebuggerOverlay::update_ui() {
-	on_root_item_selected(_current_root_selection + 1);
-	godot::String msg = godot::String("Agents: ") + godot::String::num_int64(_agents.size()) + godot::String(" ") + godot::String("| BTrees: ") + godot::String::num_int64(_behaviour_trees.size()) + godot::String(" ") + godot::String("| STrees: ") + godot::String::num_int64(_state_trees.size()) + godot::String(".\n") + godot::String(" ") + godot::String::num_int64(_state_trees.size()) + godot::String(".\n");
-	if (_current_root_selection_node != nullptr) {
-		Node *root_owner = _current_root_selection_node->get_owner();
+	Control *overlay = _get_overlay_scene();
+	if (overlay == nullptr || !overlay->is_inside_tree()) {
+		return;
+	}
+	if (_debug_messages == nullptr || _root_selection == nullptr) {
+		return;
+	}
+
+	_ensure_root_items();
+	_refresh_selected_root_view();
+
+	int agent_count = 0;
+	for (unsigned int i = 0; i < _agents.size(); i++) {
+		if (_resolve_root_for_type(1, _agents[i]) != nullptr) {
+			agent_count++;
+		}
+	}
+	int behaviour_tree_count = 0;
+	for (unsigned int i = 0; i < _behaviour_trees.size(); i++) {
+		if (_resolve_root_for_type(2, _behaviour_trees[i]) != nullptr) {
+			behaviour_tree_count++;
+		}
+	}
+	int state_tree_count = 0;
+	for (unsigned int i = 0; i < _state_trees.size(); i++) {
+		if (_resolve_root_for_type(3, _state_trees[i]) != nullptr) {
+			state_tree_count++;
+		}
+	}
+
+	godot::String msg = godot::String("Agents: ") + godot::String::num_int64(agent_count) + godot::String(" | BTrees: ") + godot::String::num_int64(behaviour_tree_count) + godot::String(" | STrees: ") + godot::String::num_int64(state_tree_count) + godot::String(".\n");
+
+	Node *selected_root = _resolve_root_for_type(_current_type_selection, _selected_root_id);
+	if (selected_root != nullptr) {
+		Node *root_owner = selected_root->get_owner();
 		if (root_owner != nullptr) {
 			msg = msg + godot::String("Currently inspecting: [b][color=green]") + root_owner->get_name() + godot::String("[/color][/b]\n");
 		} else {
-			msg = msg + godot::String("[b][color=gray]No owner[/color][/b]\n");
+			msg = msg + godot::String("Currently inspecting: [b][color=gray]No owner[/color][/b] ") + selected_root->get_name() + godot::String("\n");
 		}
 	}
-	/**
-		 switch(_current_type_selection) {
-			case 1: { // Behaviour trees.
-				// todo: * show the Behaviour Tree debugging view
-				//       * update the debugging view with the selected behaviour tree data.
-				NNBTRoot* btroot = godot::Object::cast_to<NNBTRoot>(ObjectDB::get_instance(_behaviour_trees[_current_root_selection]));
 
-
-
-			} break;
-			case 2: { // State trees.
-				NNSTRoot* stroot = godot::Object::cast_to<NNSTRoot>(ObjectDB::get_instance(_state_trees[_current_root_selection]));
-
-
-			} break;
-			default: { // Agent behaviours.
-				NNAgent* agent = godot::Object::cast_to<NNAgent>(ObjectDB::get_instance(_agents[_current_root_selection]));
-
-
-			} break;
-		}//end switch
-	/**/
 	_debug_messages->set_text(msg);
 }
 
 void NNDebuggerOverlay::tree_add_child_nodes(Tree *tree, TreeItem *parent_node, Node *parent_ai_node) {
-	if (parent_ai_node == nullptr || parent_node == nullptr) {
+	if (tree == nullptr || parent_ai_node == nullptr || parent_node == nullptr) {
 		return;
 	}
 	uint64_t current_timestamp = godot::Time::get_singleton()->get_ticks_usec();
@@ -388,7 +631,7 @@ void  NNDebuggerOverlay::tree_update_child_nodes( Tree* tree, TreeItem* parent_n
 	for( int i = 0; i < parent_ai_node->get_child_count(); i++ ) {
 		Node* next_ai_node = parent_ai_node->get_child(i);
 		TreeItem* next_tree_item = parent_node->get_child(i);
-		if( !next_ai_node || !next_tree_item) break;
+		if( !next_ai_node || !next_tree_item ) break;
 
 
 		float score = 0.0f;

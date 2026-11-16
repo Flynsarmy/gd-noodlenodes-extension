@@ -1,8 +1,16 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <class name="NNDebuggerOverlay" inherits="Node" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
 	<brief_description>
+		Debug-only singleton that shows the runtime state of Noodle Nodes AI roots in an overlay.
 	</brief_description>
 	<description>
+		This class is registered as the [code]AIDebuggerOverlay[/code] engine singleton in debug builds only. Use [method Engine.has_singleton] before accessing it, so that exported release builds that do not contain the singleton keep working:
+		[codeblock]
+		if Engine.has_singleton("AIDebuggerOverlay"):
+		    Engine.get_singleton("AIDebuggerOverlay").call("add_as_child_of", $CanvasLayer)
+		[/codeblock]
+		[NNAgent], [NNBTRoot], and [NNSTRoot] nodes register themselves with the singleton when they enter the scene tree outside the editor. The registered roots are listed in the overlay, where a type can be selected first and then one of the roots of that type. The overlay shows the selected root's hierarchy with its scores, and refreshes about ten times per second.
+		The singleton owns a single overlay instance at a time. Removing the overlay (for example with [method Node.queue_free]) closes the view without unregistering AI roots that are still in the scene tree, and calling [method add_as_child_of] again reopens it with those roots still listed.
 	</description>
 	<tutorials>
 	</tutorials>
@@ -11,28 +19,33 @@
 			<return type="void" />
 			<param index="0" name="debugger_parent_node" type="Node" />
 			<description>
+				Instantiates the debugger overlay scene and adds it as a child of [param debugger_parent_node]. The parent is usually a [CanvasLayer] or a [Control] that covers the screen. The singleton has only one overlay instance at a time, so add it to a single parent. Call this method again after the overlay has been removed to reopen it; AI roots that are still in the scene tree remain registered and are listed again.
 			</description>
 		</method>
 		<method name="on_exit_tree">
 			<return type="void" />
 			<description>
+				Internal callback connected to the overlay's [signal Node.tree_exited] signal when the overlay is added. It releases the overlay's UI references so the overlay can be removed and opened again later. The registered AI roots are kept.
 			</description>
 		</method>
 		<method name="on_root_item_selected">
 			<return type="void" />
 			<param index="0" name="item" type="int" />
 			<description>
+				Internal callback for the root selector of the overlay. Item [code]0[/code] is the placeholder; the other items are the registered roots of the currently selected type, offset by one because of the placeholder. It is connected automatically by [method add_as_child_of] and is not normally called directly.
 			</description>
 		</method>
 		<method name="on_type_item_selected">
 			<return type="void" />
 			<param index="0" name="item" type="int" />
 			<description>
+				Internal callback for the type selector of the overlay. Item [code]0[/code] clears the root selection, [code]1[/code] selects Agent Behaviours, [code]2[/code] selects Behaviour Trees, and [code]3[/code] selects State Trees. It is connected automatically by [method add_as_child_of] and is not normally called directly.
 			</description>
 		</method>
 		<method name="update_ui">
 			<return type="void" />
 			<description>
+				Refreshes the overlay's debug text and the tree of the selected root from the live AI nodes. The overlay's refresh timer calls this method about every 0.1 seconds, so calling it manually is not necessary.
 			</description>
 		</method>
 	</methods>

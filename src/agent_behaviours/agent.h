@@ -116,7 +116,9 @@ public:
 
 	// Godot virtuals
 	void _ready() override;
-	//virtual void _notification( int p_what ) override;
+#ifdef DEBUG_ENABLED
+	virtual void _notification(int p_what);
+#endif
 	void _process(double delta) override;
 	void _physics_process(double delta) override;
 };

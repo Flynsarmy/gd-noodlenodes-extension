@@ -152,11 +152,25 @@ NNBTNodes::Status NNBTRoot::tick(Variant blackboard, float delta) {
 void NNBTRoot::_notification(int p_what) {
 	NNBTNodes::_notification(p_what);
 
+#ifdef DEBUG_ENABLED
+	if (p_what == NOTIFICATION_ENTER_TREE || p_what == NOTIFICATION_EXIT_TREE) {
+		if (!Engine::get_singleton()->is_editor_hint()) {
+			NNDebuggerOverlay *debugger_overlay = NNDebuggerOverlay::get_singleton();
+			if (debugger_overlay != nullptr) {
+				if (p_what == NOTIFICATION_ENTER_TREE) {
+					debugger_overlay->register_behaviour_tree(get_instance_id());
+				} else {
+					debugger_overlay->deregister_behaviour_tree(get_instance_id());
+				}
+			}
+		}
+	}
+#endif
+
 	if (p_what == NOTIFICATION_READY || p_what == NOTIFICATION_CHILD_ORDER_CHANGED) {
 #ifdef DEBUG_ENABLED
 		if (Engine::get_singleton()->is_editor_hint())
 			return;
-		NNDebuggerOverlay::get_singleton()->register_behaviour_tree(this->get_instance_id());
 #endif
 		_child_sensors.clear();
 		for (int i = 0; i < get_child_count(); i++) {
