@@ -31,10 +31,16 @@ NNBTRunNQSQuery::NNBTRunNQSQuery() {
 	_time_budget_usec = 200;
 	_top_n_to_find = 1;
 	_query_state = QS_IDLE;
+	_has_query_completed = false;
+	_owns_query = false;
+	_posted_query_registration = 0;
 	_is_high_priority = true;
 }
 
 NNBTRunNQSQuery::~NNBTRunNQSQuery() {
+	// Do not touch the search space here: it may already be freed. Godot drops
+	// connections whose target object is destroyed.
+	_query_completed_callable = Callable();
 	_nqs_search_space_cache = ObjectID();
 	_nqs = nullptr;
 }
@@ -51,10 +57,20 @@ void NNBTRunNQSQuery::set_nqs_search_space(NNNQSSearchSpaces *nqs_search_space) 
 	if (_nqs_search_space_cache == search_space_id) {
 		return;
 	}
+	// The old space keeps its scheduled query if we simply forget it. Release a
+	// query we posted, but never one owned by another poster, and drop the old
+	// completion connection so it cannot complete the new space's run.
+	NNNQSSearchSpaces *previous_search_space = _resolve_nqs_search_space();
+	_release_in_flight_query(previous_search_space);
+	_disconnect_query_completed(previous_search_space);
+
 	_nqs_search_space_cache = search_space_id;
 	// A different search space owns any new query. Do not inherit the previous
 	// space's in-flight state, which would otherwise mask the new query.
 	_query_state = QS_IDLE;
+	_has_query_completed = false;
+	_owns_query = false;
+	_posted_query_registration = 0;
 }
 
 NNNQSSearchSpaces *NNBTRunNQSQuery::get_nqs_search_space() const {
@@ -97,15 +113,83 @@ bool NNBTRunNQSQuery::get_is_high_priority() const {
 // Handling methods.
 
 void NNBTRunNQSQuery::reset_bt_node() {
-	_query_state = QS_IDLE;
 	NNNQSSearchSpaces *search_space = _resolve_nqs_search_space();
+	// A run is starting over: a completion from the previous run must not be
+	// able to finish the next one.
+	_release_in_flight_query(search_space);
+	_disconnect_query_completed(search_space);
+	// Only a query this leaf posted may have its variables reset. A rejected
+	// post belongs to another poster, and clearing its progress would corrupt it.
+	const bool had_own_query = _owns_query;
+	_has_query_completed = false;
+	_owns_query = false;
+	_posted_query_registration = 0;
+	_query_state = QS_IDLE;
 	if (search_space == nullptr) {
 		// The space may have been freed while the leaf still referenced it.
 		// Drop the stale reference instead of dereferencing it.
 		_nqs_search_space_cache = ObjectID();
 		return;
 	}
-	search_space->reset_query_variables();
+	if (had_own_query) {
+		search_space->reset_query_variables();
+	}
+}
+
+bool NNBTRunNQSQuery::_connect_query_completed(NNNQSSearchSpaces *p_search_space) {
+	if (p_search_space == nullptr) {
+		return false;
+	}
+	// Bind the instance ID and registration rather than relying on the signal's
+	// search-space argument: a callback must not touch a stale pointer, and only
+	// the registration this leaf posted may complete the current run.
+	_query_completed_callable = callable_mp(this, &NNBTRunNQSQuery::_on_query_completed)
+										.bind(static_cast<int64_t>(_nqs_search_space_cache),
+												static_cast<int64_t>(_posted_query_registration));
+	Error error = p_search_space->connect("query_completed", _query_completed_callable, Object::CONNECT_ONE_SHOT);
+	if (error != OK) {
+		_query_completed_callable = Callable();
+		return false;
+	}
+	return true;
+}
+
+void NNBTRunNQSQuery::_disconnect_query_completed(NNNQSSearchSpaces *p_search_space) {
+	if (p_search_space == nullptr || !_query_completed_callable.is_valid()) {
+		_query_completed_callable = Callable();
+		return;
+	}
+	if (p_search_space->is_connected("query_completed", _query_completed_callable)) {
+		p_search_space->disconnect("query_completed", _query_completed_callable);
+	}
+	_query_completed_callable = Callable();
+}
+
+void NNBTRunNQSQuery::_release_in_flight_query(NNNQSSearchSpaces *p_search_space) {
+	if (p_search_space == nullptr || _nqs == nullptr || !_owns_query) {
+		return;
+	}
+	// The registration proves the scheduled query is the one this leaf posted.
+	// If an external stop/re-post changed it, the query is not ours to stop.
+	if (p_search_space->get_nqs_query_index() < 0 ||
+			p_search_space->get_nqs_query_registration() != _posted_query_registration) {
+		return;
+	}
+	_nqs->stop_query(p_search_space);
+}
+
+void NNBTRunNQSQuery::_on_query_completed(Object *p_search_space, int64_t p_search_space_instance_id, int64_t p_query_registration) {
+	(void)p_search_space; // Unused: the bound IDs are authoritative.
+	if (ObjectID(static_cast<uint64_t>(p_search_space_instance_id)) != _nqs_search_space_cache) {
+		return; // Completion from a space this leaf no longer references.
+	}
+	if (static_cast<uint64_t>(p_query_registration) != _posted_query_registration) {
+		return; // Completion from a previous registration of the same space.
+	}
+	if (_query_state != QS_RUNNING) {
+		return; // Only an in-flight query can be promoted to completed.
+	}
+	_has_query_completed = true;
 }
 
 NNBTNodes::Status NNBTRunNQSQuery::tick(Variant blackboard, float delta) {
@@ -115,10 +199,60 @@ NNBTNodes::Status NNBTRunNQSQuery::tick(Variant blackboard, float delta) {
 		// state so a later reassignment can post a fresh query.
 		_nqs_search_space_cache = ObjectID();
 		_query_state = QS_IDLE;
+		_has_query_completed = false;
+		_owns_query = false;
+		_posted_query_registration = 0;
 		set_internal_status(BT_INTERNAL_STATUS_COMPLETED);
 		set_tick_result(Status::FAILURE);
 		return Status::FAILURE;
 	}
+	if (_nqs == nullptr) {
+		// Ticked before the singleton was resolved (for example before _ready).
+		_query_state = QS_IDLE;
+		_has_query_completed = false;
+		_owns_query = false;
+		_posted_query_registration = 0;
+		set_internal_status(BT_INTERNAL_STATUS_COMPLETED);
+		set_tick_result(Status::FAILURE);
+		return Status::FAILURE;
+	}
+
+	// Resolve the in-flight query before the reset rules run. Otherwise a reset
+	// rule could clear the state and turn a cancelled query into a fresh post,
+	// hiding the cancellation from this tick.
+	if (_query_state == QS_RUNNING) {
+		if (_has_query_completed) {
+			_query_state = QS_COMPLETED;
+		} else if (!search_space->get_is_query_still_running()) {
+			// The space stopped without the completion signal: cancelled through
+			// stop_query()/clear_queries(), or the query never really started.
+			_query_state = QS_CANCELLED;
+		}
+	}
+
+	if (_query_state == QS_CANCELLED) {
+		// Drop anything still scheduled for this run (for example a space that
+		// never actually started because it was disabled) and detach the
+		// completion listener before reporting the failure.
+		_release_in_flight_query(search_space);
+		_disconnect_query_completed(search_space);
+		_has_query_completed = false;
+		// Distinct from completion: report failure so callers cannot mistake a
+		// cancelled query for a successful one.
+		set_internal_status(BT_INTERNAL_STATUS_COMPLETED);
+		set_tick_result(Status::FAILURE);
+		_owns_query = false;
+		_posted_query_registration = 0;
+		// Arm the next tick to post a fresh query. The reset rules decide when
+		// that tick happens; NEVER leaves the failure latched. Without this the
+		// cancelled state would be returned forever and the leaf could never run
+		// again after a cancellation.
+		if (get_reset_rule() != NNBTNodesResetRule::NEVER) {
+			_query_state = QS_IDLE;
+		}
+		return Status::FAILURE;
+	}
+
 	set_internal_status(BT_INTERNAL_STATUS_TICKED);
 	//if( _is_first_tick ) {
 	//    _is_first_tick = false;
@@ -129,8 +263,37 @@ NNBTNodes::Status NNBTRunNQSQuery::tick(Variant blackboard, float delta) {
 		case QS_IDLE: {
 			search_space->set_top_n_to_find(_top_n_to_find);
 			//_nqs_search_space_node->start_query(_time_budget_usec);
-			_nqs->post_query(search_space, _is_high_priority);
+			// A leftover one-shot connection from an abandoned run must not fire
+			// for the query posted below.
+			_disconnect_query_completed(search_space);
+			_has_query_completed = false;
+			int post_result = _nqs->post_query(search_space, _is_high_priority);
+			if (post_result != 1) {
+				// The singleton rejected the post (for example because another
+				// poster already scheduled this space). That is a failure, not a
+				// running query.
+				_owns_query = false;
+				_posted_query_registration = 0;
+				_query_state = QS_IDLE;
+				set_internal_status(BT_INTERNAL_STATUS_COMPLETED);
+				set_tick_result(Status::FAILURE);
+				return Status::FAILURE;
+			}
+			_owns_query = true;
+			_posted_query_registration = search_space->get_nqs_query_registration();
 			_query_state = QS_RUNNING;
+			if (!_connect_query_completed(search_space)) {
+				// Without the completion signal a genuine completion is
+				// indistinguishable from a cancellation. Do not leave an
+				// unobservable query scheduled.
+				_release_in_flight_query(search_space);
+				_owns_query = false;
+				_posted_query_registration = 0;
+				_query_state = QS_IDLE;
+				set_internal_status(BT_INTERNAL_STATUS_COMPLETED);
+				set_tick_result(Status::FAILURE);
+				return Status::FAILURE;
+			}
 			set_tick_result(Status::RUNNING);
 			//emit_signal("btnode_ticked", blackboard, delta);
 			return Status::RUNNING;
@@ -168,14 +331,21 @@ void NNBTRunNQSQuery::_physics_process(double delta) {
 		// state so a later reassignment posts a fresh query.
 		_nqs_search_space_cache = ObjectID();
 		_query_state = QS_IDLE;
+		_has_query_completed = false;
+		_owns_query = false;
+		_posted_query_registration = 0;
 		return;
 	}
 	if (_nqs == nullptr)
 		return;
 	if (_query_state == QS_RUNNING) {
-		bool is_still_running = search_space->get_is_query_still_running(); //->execute_query(_time_budget_usec);
-		if (!is_still_running) {
+		if (_has_query_completed) {
+			// Genuine completion is signalled explicitly; an empty result set is
+			// still a successful completion.
 			_query_state = QS_COMPLETED;
+		} else if (!search_space->get_is_query_still_running()) {
+			// Stopped without a completion signal (stop_query/clear_queries).
+			_query_state = QS_CANCELLED;
 		}
 	}
 }
