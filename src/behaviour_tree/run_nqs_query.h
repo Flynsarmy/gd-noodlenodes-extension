@@ -4,6 +4,7 @@
 #include "../node_query_system/search_spaces/nqs.h"
 #include "task_nodes.h"
 #include <godot_cpp/classes/node.hpp>
+#include <godot_cpp/core/object.hpp>
 
 #define QS_IDLE 0
 #define QS_RUNNING 1
@@ -15,8 +16,9 @@ class NNBTRunNQSQuery : public NNBTTaskNodes {
 	GDCLASS(NNBTRunNQSQuery, NNBTTaskNodes)
 
 private:
-	//ObjectID                  _nqs_search_space_cache;
-	NNNQSSearchSpaces *_nqs_search_space;
+	// Non-owning reference to the search space, tracked by instance ID. The node
+	// can be freed at any time, so every use resolves the ID through ObjectDB.
+	ObjectID _nqs_search_space_cache;
 	NNNodeQuerySystem *_nqs;
 
 	int _time_budget_usec;
@@ -24,6 +26,8 @@ private:
 	bool _is_high_priority;
 
 	int _query_state;
+
+	NNNQSSearchSpaces *_resolve_nqs_search_space() const;
 
 protected:
 	static void _bind_methods();
