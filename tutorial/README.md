@@ -45,4 +45,6 @@ To be added.
 
 ## Node documentation
 
-You can find the latest node documentation [here](../documentation/Nodes_latest.md).
+The node reference is included in editor builds of the extension. With the extension installed in your project, choose **Help > Search Help** in the Godot editor and search for a node's class name, such as `NNAgent`, `NNBehaviour`, or `NNBTRoot`, to read its properties, methods, and signals.
+
+The class reference is generated from the XML files in the [`doc_classes/`](../doc_classes) directory. These XML files are the source for the in-editor documentation, not a rendered reference.

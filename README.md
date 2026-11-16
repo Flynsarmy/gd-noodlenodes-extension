@@ -22,11 +22,13 @@ Godot 4.7 or newer.
 
 ## How to use the nodes
 
-You can find the tutorials [here](https://github.com/Flynsarmy/Noodle_Nodes/tree/main/tutorial).
+You can find the tutorials [here](tutorial/README.md).
 
 ## Documentation
 
-You can find the documentation [here](https://github.com/Flynsarmy/Noodle_Nodes/blob/main/documentation/Nodes_latest.md).
+The node reference is included in editor builds of the extension. With the extension installed in your project, choose **Help > Search Help** in the Godot editor and search for a node's class name, such as `NNAgent`, `NNBehaviour`, or `NNBTRoot`, to read its properties, methods, and signals.
+
+The class reference is generated from the XML files in [`doc_classes/`](doc_classes). These XML files are the source for the in-editor documentation, not a rendered reference.
 
 
 ## Compiling from source
