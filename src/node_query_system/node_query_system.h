@@ -22,7 +22,10 @@ private:
 	unsigned int _num_active_high_priority_queries;
 	unsigned int _num_active_regular_priority_queries;
 
-	bool _release_query_slot(NNNQSSearchSpaces *search_space, bool is_high_priority);
+	bool _release_query_slot(NNNQSSearchSpaces *search_space,
+			bool is_high_priority,
+			int expected_query_index = -1,
+			uint64_t expected_registration = 0);
 
 	int _current_high_priority_query_index;
 	int _current_regular_query_index;
