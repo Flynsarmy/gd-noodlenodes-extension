@@ -20,18 +20,36 @@ NNPointGrid3DSearchSpace::NNPointGrid3DSearchSpace() {
 }
 
 NNPointGrid3DSearchSpace::~NNPointGrid3DSearchSpace() {
-	for (int i = 0; i < _point_grid.size(); i++) {
-		Node3D *node = godot::Object::cast_to<Node3D>(_point_grid[i]);
-		memfree(node);
-		_point_grid[i] = nullptr;
-	} //endfor point grid points
-	_point_grid.clear();
-	/**
-	if( _point_grid_parent_node != nullptr ) {
-		memfree(_point_grid_parent_node);
-		_point_grid_parent_node = nullptr;
+	destroy_generated_point_grid_nodes();
+}
+
+void NNPointGrid3DSearchSpace::destroy_generated_point_grid_nodes() {
+	// Swap the ids into a local vector so a reentrant call (for example from a
+	// node being deleted) finds an empty list and cannot free anything twice.
+	std::vector<uint64_t> generated_node_ids;
+	generated_node_ids.swap(_generated_point_grid_node_ids);
+
+	for (size_t i = 0; i < generated_node_ids.size(); i++) {
+		// The node may legitimately be gone already: the point grid parent node
+		// can be freed before this search space, and user code may free points
+		// individually. Looking the id up is safe, using the object is not.
+		Object *object = ObjectDB::get_instance(generated_node_ids[i]);
+		if (object == nullptr) {
+			continue;
+		}
+		Node3D *node = godot::Object::cast_to<Node3D>(object);
+		if (node == nullptr) {
+			continue;
+		}
+		// memdelete() is the Godot object destructor: it notifies the node, which
+		// removes it from _point_grid_parent_node. Never memfree() a Godot object.
+		memdelete(node);
 	}
-	/**/
+
+	// _point_grid may hold user supplied nodes; drop the references without
+	// deleting them, and never dereference the (possibly stale) parent pointer.
+	_point_grid.clear();
+	_point_grid_parent_node = nullptr;
 }
 
 void NNPointGrid3DSearchSpace::_bind_methods() {
@@ -255,6 +273,7 @@ void NNPointGrid3DSearchSpace::create_point_grid_nodes(Node3D *template_node) {
 		_point_grid_parent_node->add_child(new_node); //, false, godot::Node::InternalMode::INTERNAL_MODE_BACK );
 		new_node->set_position(_point_grid_default_positions[i] + _offset_vector);
 		_point_grid.push_back(new_node);
+		_generated_point_grid_node_ids.push_back(static_cast<uint64_t>(new_node->get_instance_id()));
 	} //endfor default positions
 }
 
