@@ -15,6 +15,7 @@
 			<param index="1" name="p_state" type="NNSTTickedNodes" />
 			<description>
 				Returns [code]true[/code] if [member expression] evaluates to [code]true[/code], [code]false[/code] otherwise.
+				Returns [code]false[/code] and reports an error when [param p_state] is [code]null[/code] or its state chart root cannot be found. [param p_transition] may be [code]null[/code]; it is only used to identify the guard in diagnostic messages.
 			</description>
 		</method>
 	</methods>
