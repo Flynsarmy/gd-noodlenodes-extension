@@ -38,7 +38,7 @@ NNActionGroup::NNActionGroup() {
 	_current_action_index = 0;
 	_if_else_boolean_value = true;
 
-	_rnd->set_seed(time(0));
+	_rnd->randomize();
 }
 
 NNActionGroup::~NNActionGroup() {

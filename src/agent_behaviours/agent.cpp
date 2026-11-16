@@ -97,7 +97,7 @@ NNAgent::NNAgent() {
 	_thinking_delay_in_seconds_current_timer = 0.0f;
 	_current_behaviour_bias = 0.1f;
 
-	_rng->set_seed(time(0));
+	_rng->randomize();
 
 #ifdef DEBUG_ENABLED
 	_total_evaluate_options_usec = 0;
