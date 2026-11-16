@@ -13,9 +13,6 @@ public:
 	NNPointGrid3DSearchSpace();
 	~NNPointGrid3DSearchSpace();
 
-	// Godot virtuals.
-	void _ready() override;
-
 	// Getters and setters for attributes.
 
 	void set_point_grid_type(int point_grid_type);
