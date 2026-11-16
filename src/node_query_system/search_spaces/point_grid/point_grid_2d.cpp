@@ -1,5 +1,4 @@
 #include "point_grid_2d.h"
-#include <godot_cpp/classes/engine.hpp>
 #include <godot_cpp/classes/navigation_server2d.hpp>
 #include <godot_cpp/classes/scene_tree.hpp>
 #include <godot_cpp/classes/time.hpp>
@@ -79,16 +78,6 @@ void NNPointGrid2DSearchSpace::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("set_point_grid", "point_grid"), &NNPointGrid2DSearchSpace::set_point_grid);
 	ClassDB::bind_method(D_METHOD("get_point_grid"), &NNPointGrid2DSearchSpace::get_point_grid);
 	ADD_PROPERTY(PropertyInfo(Variant::ARRAY, "point_grid", PROPERTY_HINT_ARRAY_TYPE, vformat("%s/%s:%s", Variant::OBJECT, PROPERTY_HINT_RESOURCE_TYPE, "Node2D")), "set_point_grid", "get_point_grid");
-}
-
-// Godot virtuals.
-
-void NNPointGrid2DSearchSpace::_ready() {
-	//if( !get_is_enabled() ) return;
-	if (Engine::get_singleton()->is_editor_hint())
-		return;
-	initialize_search_space();
-	//create_point_grid();
 }
 
 // Getters and setters.
