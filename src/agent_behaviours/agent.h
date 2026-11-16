@@ -10,6 +10,7 @@
 #include "behaviour.h"
 #include "behaviour_group.h"
 #include "sensors.h"
+#include <godot_cpp/core/object_id.hpp>
 #include <vector>
 
 #define UTILITYAIAGENT_MAX_TOP_SCORING_BEHAVIOURS 16
@@ -21,16 +22,19 @@ class NNAgent : public NoodleNodes {
 
 private:
 	Ref<RandomNumberGenerator> _rng;
-	NNBehaviourGroup *_current_behaviour_group_node;
-	NNBehaviour *_current_behaviour_node;
-	NNAction *_current_action_node;
+	// Scene nodes are tracked by instance ID. They can be freed, removed or
+	// reparented from arbitrary engine/user callbacks between uses, so a raw
+	// pointer must never be kept as durable state.
+	ObjectID _current_behaviour_group_id;
+	ObjectID _current_behaviour_id;
+	ObjectID _current_action_id;
 
 	float _current_behaviour_bias;
 
 	int _num_behaviours_to_select;
 	int _num_possible_behaviours;
-	NNBehaviourGroup *_top_scoring_behaviours_group_nodes[UTILITYAIAGENT_MAX_TOP_SCORING_BEHAVIOURS];
-	NNBehaviour *_top_scoring_behaviours_nodes[UTILITYAIAGENT_MAX_TOP_SCORING_BEHAVIOURS];
+	ObjectID _top_scoring_behaviour_group_ids[UTILITYAIAGENT_MAX_TOP_SCORING_BEHAVIOURS];
+	ObjectID _top_scoring_behaviour_ids[UTILITYAIAGENT_MAX_TOP_SCORING_BEHAVIOURS];
 	float _top_scoring_behaviours_score[UTILITYAIAGENT_MAX_TOP_SCORING_BEHAVIOURS];
 	godot::String _top_scoring_behaviour_name;
 	godot::String _current_behaviour_name;
@@ -43,15 +47,30 @@ private:
 	uint64_t _total_update_behaviour_usec;
 #endif
 
-	std::vector<NNSensors *> _child_sensors;
-	std::vector<NNBehaviours *> _child_behaviours;
+	std::vector<ObjectID> _child_sensor_ids;
+	std::vector<ObjectID> _child_behaviour_ids;
 	//std::vector<NNBehaviourGroup*> _child_behaviour_groups;
 	unsigned int _num_child_sensors;
 	unsigned int _num_child_behaviours;
 
+	void _refresh_child_caches();
+	void _reconcile_selected_nodes();
+
+	NNBehaviourGroup *_resolve_behaviour_group(const ObjectID &behaviour_group_id) const;
+	NNBehaviour *_resolve_behaviour(const ObjectID &behaviour_id) const;
+	NNAction *_resolve_action(const ObjectID &action_id) const;
+
+	bool _is_behaviour_available(NNBehaviour *behaviour) const;
+	bool _is_action_available(NNAction *action, NNBehaviour *behaviour) const;
+
+	NNSensors *_get_child_sensor(const ObjectID &sensor_id) const;
+	NNBehaviours *_get_child_behaviour(const ObjectID &behaviour_id) const;
+	NNBehaviours *_get_group_child_behaviour(const ObjectID &behaviour_group_id, const ObjectID &behaviour_id) const;
+	void _emit_node_signal(const char *signal_name, const ObjectID &node_id);
+
 protected:
 	static void _bind_methods();
-	void place_into_top_n_behaviour_list(NNBehaviourGroup *behaviour_group, NNBehaviour *behaviour, float score);
+	void place_into_top_n_behaviour_list(const ObjectID &behaviour_group_id, const ObjectID &behaviour_id, float score);
 
 #ifdef DEBUG_ENABLED
 	uint64_t _last_evaluated_timestamp;
@@ -115,10 +134,7 @@ public:
 	void abort_current_behaviour();
 
 	// Godot virtuals
-	void _ready() override;
-#ifdef DEBUG_ENABLED
-	virtual void _notification(int p_what);
-#endif
+	void _notification(int p_what);
 	void _process(double delta) override;
 	void _physics_process(double delta) override;
 };
