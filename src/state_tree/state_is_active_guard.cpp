@@ -4,7 +4,7 @@ using namespace godot;
 
 void NNSTStateIsActiveGuard::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_state"), &NNSTStateIsActiveGuard::get_state);
-	ClassDB::bind_method(D_METHOD("set_state", "guard"), &NNSTStateIsActiveGuard::set_state);
+	ClassDB::bind_method(D_METHOD("set_state", "state"), &NNSTStateIsActiveGuard::set_state);
 	ADD_PROPERTY(PropertyInfo(Variant::NODE_PATH, "state", PROPERTY_HINT_NODE_PATH_VALID_TYPES, "NNSTTickedNodes"), "set_state", "get_state");
 
 	ClassDB::bind_method(D_METHOD("is_satisfied", "p_transition", "p_state"), &NNSTStateIsActiveGuard::is_satisfied);

@@ -49,7 +49,6 @@ void NNSTRoot::_bind_methods() {
 NNSTRoot::NNSTRoot() {
 #ifdef DEBUG_ENABLED
 	_total_tick_usec = 0;
-	_total_transition_usec = 0;
 #endif
 
 	_child_sensors.clear();
