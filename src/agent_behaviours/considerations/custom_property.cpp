@@ -2,6 +2,7 @@
 #include <godot_cpp/classes/engine.hpp>
 #include <godot_cpp/classes/random_number_generator.hpp>
 #include <godot_cpp/core/class_db.hpp>
+#include <godot_cpp/core/math.hpp>
 
 using namespace godot;
 
@@ -52,8 +53,8 @@ Node *NNCustomPropertyConsideration::get_node_with_property() const {
 }
 
 void NNCustomPropertyConsideration::set_property_max_value(float property_max_value) {
-	if (_property_max_value == 0.0)
-		return;
+	ERR_FAIL_COND_MSG(!Math::is_finite(property_max_value) || property_max_value == 0.0,
+			"NNCustomPropertyConsideration::set_property_max_value(): property_max_value must be finite and non-zero.");
 	_property_max_value = property_max_value;
 	_one_over_property_max_value = 1.0 / _property_max_value;
 }
@@ -96,7 +97,7 @@ void NNCustomPropertyConsideration::initialize_consideration() {
 	if (Engine::get_singleton()->is_editor_hint())
 		return;
 	if (_property_max_value != 0.0) {
-		_one_over_property_max_value = _property_max_value;
+		_one_over_property_max_value = 1.0 / _property_max_value;
 	}
 }
 

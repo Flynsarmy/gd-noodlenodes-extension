@@ -243,7 +243,7 @@ float NNBehaviour::evaluate() {
 	return _score;
 }
 
-void NNBehaviour::start_behaviour() {
+NNAction *NNBehaviour::start_behaviour() {
 	_current_cooldown_seconds = _cooldown_seconds;
 	_current_cooldown_turns = _cooldown_turns;
 	// No action selected yet; start the search at child index 0.
@@ -251,7 +251,9 @@ void NNBehaviour::start_behaviour() {
 	//_current_action_node = nullptr;
 	//_current_action_node = update_behaviour();
 	emit_signal("behaviour_entered");
-	update_behaviour();
+	// Return the started action so the agent can track it. The entered signal
+	// runs user code first, so the caller must re-resolve by ID before use.
+	return update_behaviour();
 }
 
 void NNBehaviour::end_behaviour() {

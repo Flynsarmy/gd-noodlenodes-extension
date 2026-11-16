@@ -50,6 +50,11 @@ float NNIntRangeSensor::evaluate_sensor_value() {
 	}
 	/**/
 	// Relative value, so calculate the position within the interval.
+	if (_range_length <= 0) {
+		// Degenerate range (equal or reversed bounds).
+		set_sensor_value(0.0f);
+		return get_sensor_value();
+	}
 	float range_result = ((float)(_range_value - _range_min_value)) * _one_over_range_length;
 	if (range_result < 0.0) {
 		range_result = 0.0;
@@ -61,19 +66,20 @@ float NNIntRangeSensor::evaluate_sensor_value() {
 	return get_sensor_value();
 }
 
-// Getters and Setters.
-
-void NNIntRangeSensor::set_range_min_value(int range_min_value) {
-	if (_range_min_value == _range_max_value) {
-		return;
-	}
-	_range_min_value = range_min_value;
+void NNIntRangeSensor::_recalculate_range_length() {
 	_range_length = _range_max_value - _range_min_value;
-	if (_range_length != 0) {
+	if (_range_length > 0) {
 		_one_over_range_length = 1.0 / (float)_range_length;
 	} else {
 		_one_over_range_length = 0.0;
 	}
+}
+
+// Getters and Setters.
+
+void NNIntRangeSensor::set_range_min_value(int range_min_value) {
+	_range_min_value = range_min_value;
+	_recalculate_range_length();
 }
 
 int NNIntRangeSensor::get_range_min_value() const {
@@ -81,16 +87,8 @@ int NNIntRangeSensor::get_range_min_value() const {
 }
 
 void NNIntRangeSensor::set_range_max_value(int range_max_value) {
-	if (_range_min_value == _range_max_value) {
-		return;
-	}
 	_range_max_value = range_max_value;
-	_range_length = _range_max_value - _range_min_value;
-	if (_range_length != 0) {
-		_one_over_range_length = 1.0 / (float)_range_length;
-	} else {
-		_one_over_range_length = 0.0;
-	}
+	_recalculate_range_length();
 }
 
 int NNIntRangeSensor::get_range_max_value() const {
