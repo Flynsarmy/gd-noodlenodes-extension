@@ -91,6 +91,7 @@ NNBTNodes::Status NNBTSelector::tick(Variant blackboard, float delta) {
 	} //endwhile children to tick
 	//_current_child_index = -1;
 	set_internal_status(BT_INTERNAL_STATUS_COMPLETED);
+	set_tick_result(Status::FAILURE);
 	//emit_signal("btnode_exited", blackboard, delta);
 	return Status::FAILURE;
 }
