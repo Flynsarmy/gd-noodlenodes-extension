@@ -74,7 +74,7 @@ public:
 	// Handling functions.
 
 	float evaluate() override;
-	void start_behaviour();
+	NNAction *start_behaviour();
 	void end_behaviour();
 	NNAction *update_behaviour();
 

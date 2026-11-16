@@ -4,6 +4,7 @@
 #include <godot_cpp/classes/node.hpp>
 
 #include "considerations.h"
+#include <godot_cpp/core/object_id.hpp>
 #include <vector>
 
 namespace godot {
@@ -26,7 +27,10 @@ protected:
 	std::vector<NNConsiderations *> _child_considerations;
 	unsigned int _num_child_considerations;
 
-	std::vector<NNBehaviours *> _child_behaviours;
+	// Child behaviours are stored by instance ID. A child can be freed by user
+	// code while its parent still holds cached state, so the pointers must be
+	// resolved through ObjectDB before every use.
+	std::vector<ObjectID> _child_behaviour_ids;
 	unsigned int _num_child_behaviours;
 
 public:
@@ -55,7 +59,9 @@ public:
 	void set_score(float score) { _score = score; };
 	float get_score() const { return _score; };
 
-	std::vector<NNBehaviours *> get_child_behaviours() const { return _child_behaviours; };
+	std::vector<ObjectID> get_child_behaviour_ids() const { return _child_behaviour_ids; };
+	ObjectID get_child_behaviour_id(unsigned int index) const;
+	NNBehaviours *get_child_behaviour(unsigned int index) const;
 	unsigned int get_num_child_behaviours() const { return _num_child_behaviours; };
 
 	void _notification(int p_what);

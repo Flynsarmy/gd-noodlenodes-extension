@@ -419,8 +419,12 @@ void NNSTBranchNodes::_notification(int p_what) {
 			return;
 		}
 
-		// Wait for _ready first before doing child order change updates
-		if (p_what == NOTIFICATION_CHILD_ORDER_CHANGED && _internal_status != ST_INTERNAL_STATUS_ACTIVE) {
+		// Wait until this branch has entered the tree and run _ready before
+		// trusting a child order notification. Readiness is deliberately
+		// separate from the active status: an inactive branch still has to
+		// refresh its child caches, otherwise children added, removed or
+		// reordered after _ready stay invisible when it is later entered.
+		if (p_what == NOTIFICATION_CHILD_ORDER_CHANGED && !is_node_ready()) {
 			return;
 		}
 

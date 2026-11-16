@@ -1,6 +1,7 @@
 #include "float_range.h"
 
 #include <godot_cpp/core/class_db.hpp>
+#include <godot_cpp/core/math.hpp>
 
 using namespace godot;
 
@@ -50,8 +51,15 @@ float NNFloatRangeSensor::evaluate_sensor_value() {
 	}
 	/**/
 	// Relative value, so calculate the position within the interval.
+	if (!(_range_length > 0.0f) || !Math::is_finite(_range_length) || _one_over_range_length == 0.0f) {
+		// Degenerate range (equal or reversed bounds) or non-finite bounds.
+		set_sensor_value(0.0f);
+		return get_sensor_value();
+	}
 	float range_result = ((_range_value - _range_min_value)) * _one_over_range_length;
-	if (range_result < 0.0f) {
+	if (!Math::is_finite(range_result)) {
+		range_result = 0.0f;
+	} else if (range_result < 0.0f) {
 		range_result = 0.0f;
 	} else if (range_result > 1.0f) {
 		range_result = 1.0f;
@@ -60,19 +68,23 @@ float NNFloatRangeSensor::evaluate_sensor_value() {
 	return get_sensor_value();
 }
 
-// Getters and Setters.
-
-void NNFloatRangeSensor::set_range_min_value(float range_min_value) {
-	if (_range_min_value == _range_max_value) {
-		return;
-	}
-	_range_min_value = range_min_value;
+void NNFloatRangeSensor::_recalculate_range_length() {
 	_range_length = _range_max_value - _range_min_value;
-	if (_range_length != 0.0f) {
+	if (_range_length > 0.0f && Math::is_finite(_range_length)) {
 		_one_over_range_length = 1.0f / _range_length;
+		if (!Math::is_finite(_one_over_range_length)) {
+			_one_over_range_length = 0.0f;
+		}
 	} else {
 		_one_over_range_length = 0.0f;
 	}
+}
+
+// Getters and Setters.
+
+void NNFloatRangeSensor::set_range_min_value(float range_min_value) {
+	_range_min_value = range_min_value;
+	_recalculate_range_length();
 }
 
 float NNFloatRangeSensor::get_range_min_value() const {
@@ -80,16 +92,8 @@ float NNFloatRangeSensor::get_range_min_value() const {
 }
 
 void NNFloatRangeSensor::set_range_max_value(float range_max_value) {
-	if (_range_min_value == _range_max_value) {
-		return;
-	}
 	_range_max_value = range_max_value;
-	_range_length = _range_max_value - _range_min_value;
-	if (_range_length != 0.0f) {
-		_one_over_range_length = 1.0f / _range_length;
-	} else {
-		_one_over_range_length = 0.0f;
-	}
+	_recalculate_range_length();
 }
 
 float NNFloatRangeSensor::get_range_max_value() const {

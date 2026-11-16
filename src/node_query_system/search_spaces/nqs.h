@@ -59,6 +59,10 @@ private:
 
 	int _nqs_query_index; // Index of the query in the singleton.
 	bool _nqs_query_is_high_priority;
+	// Monotonic token identifying the current scheduler registration. A
+	// completion may only release the registration it started with, even if a
+	// callback stopped and re-posted the query into the same index.
+	uint64_t _nqs_query_registration;
 
 protected:
 	static void _bind_methods();
@@ -95,6 +99,10 @@ public:
 
 	void set_nqs_query_is_high_priority(bool nqs_query_is_high_priority);
 	bool get_nqs_query_is_high_priority() const;
+
+	void set_nqs_query_registration(uint64_t nqs_query_registration);
+	uint64_t get_nqs_query_registration() const;
+	void bump_nqs_query_registration();
 
 	virtual TypedArray<Node> get_searchspace_nodes() const;
 

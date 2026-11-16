@@ -15,6 +15,8 @@ private:
 	float _one_over_range_length;
 	int _range_value;
 
+	void _recalculate_range_length();
+
 protected:
 	static void _bind_methods();
 

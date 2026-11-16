@@ -13,6 +13,7 @@ private:
 	int _action_execution_rule;
 	int _error_handling_rule;
 	int _current_action_index;
+	bool _current_action_started;
 	bool _if_else_boolean_value;
 
 	Ref<RandomNumberGenerator> _rnd;
