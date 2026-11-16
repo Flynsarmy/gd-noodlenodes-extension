@@ -49,7 +49,6 @@ void NNSTRoot::_bind_methods() {
 NNSTRoot::NNSTRoot() {
 #ifdef DEBUG_ENABLED
 	_total_tick_usec = 0;
-	_total_transition_usec = 0;
 #endif
 
 	_child_sensors.clear();
@@ -233,8 +232,11 @@ void NNSTRoot::_notification(int p_what) {
 			return;
 		}
 
-		// Wait for _ready first before doing child order change updates
-		if (p_what == NOTIFICATION_CHILD_ORDER_CHANGED && _internal_status != ST_INTERNAL_STATUS_ACTIVE) {
+		// Wait until this node has entered the tree and run _ready before
+		// trusting a child order notification. Readiness is deliberately
+		// separate from the active status so an inactive branch still refreshes
+		// its child caches (and sensors below) for a later transition in.
+		if (p_what == NOTIFICATION_CHILD_ORDER_CHANGED && !is_node_ready()) {
 			return;
 		}
 
@@ -260,7 +262,12 @@ void NNSTRoot::_notification(int p_what) {
 		// being deleted, wait for the next tick so teardown doesn't enter new
 		// states. A node that has already left the tree (for example while its
 		// parent is being freed) must not enter states either.
-		if (is_inside_tree() && !_last_notification_had_child_removal && !_needs_reselection) {
+		//
+		// Only the root's own readiness may activate it. A child order change
+		// must not enter a ready-but-inactive root: inactive here means it was
+		// transitioned out on purpose, so its owner decides when to re-enter it.
+		if (is_inside_tree() && !_last_notification_had_child_removal && !_needs_reselection &&
+				(p_what == NOTIFICATION_READY || _internal_status == ST_INTERNAL_STATUS_ACTIVE)) {
 			_transition_in();
 		}
 

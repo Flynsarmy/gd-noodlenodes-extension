@@ -9,7 +9,7 @@ NNAngleToVector3XZSearchCriterion::NNAngleToVector3XZSearchCriterion() {
 	_min_angle_radians = godot::Math::deg_to_rad(_min_angle_degrees);
 	_max_angle_radians = godot::Math::deg_to_rad(_max_angle_degrees);
 	_angle_to_direction_vector = Vector3(0.0, 0.0, -1.0);
-	_xz_angle_vector = Vector2(1.0, 0.0);
+	_xz_angle_vector = _project_direction_to_xz(_angle_to_direction_vector);
 }
 
 NNAngleToVector3XZSearchCriterion::~NNAngleToVector3XZSearchCriterion() {
@@ -43,11 +43,19 @@ void NNAngleToVector3XZSearchCriterion::_initialize_criterion() {
 	_one_over_span_radians = 1.0f / _span_radians;
 }
 
+Vector2 NNAngleToVector3XZSearchCriterion::_project_direction_to_xz(Vector3 direction) const {
+	// Project a direction onto the XZ plane. The same signed projection must be
+	// used for the reference direction and for the candidate node forward
+	// vector (-global_transform.basis.z), so that an aligned node has an angle
+	// of zero and rotating around +Y produces a signed angle.
+	return Vector2(-direction.z, direction.x);
+}
+
 // Getters and setters.
 
 void NNAngleToVector3XZSearchCriterion::set_angle_to_direction_vector(Vector3 angle_to_direction_vector) {
 	_angle_to_direction_vector = angle_to_direction_vector;
-	_xz_angle_vector = Vector2(-_angle_to_direction_vector.z, _angle_to_direction_vector.x);
+	_xz_angle_vector = _project_direction_to_xz(_angle_to_direction_vector);
 }
 
 Vector3 NNAngleToVector3XZSearchCriterion::get_angle_to_direction_vector() const {
@@ -94,7 +102,7 @@ void NNAngleToVector3XZSearchCriterion::apply_criterion(Node *node, bool &filter
 	_score = 1.0f;
 
 	Vector3 node3d_direction_vector = -node3d->get_global_transform().basis.get_column(2);
-	Vector2 node3d_2d_direction_vector = Vector2(node3d_direction_vector.z, node3d_direction_vector.x);
+	Vector2 node3d_2d_direction_vector = _project_direction_to_xz(node3d_direction_vector);
 
 	float angle = _xz_angle_vector.angle_to(node3d_2d_direction_vector);
 

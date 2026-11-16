@@ -2,6 +2,7 @@
 
 #include "task_nodes.h"
 #include <godot_cpp/classes/node.hpp>
+#include <vector>
 
 namespace godot {
 
@@ -12,6 +13,9 @@ private:
 	//int _tick_result;
 	NNBTNodes *_node_reference;
 	ObjectID _cache;
+
+	NNBTNodes *_get_live_node_reference();
+	static bool _can_reach(NNBTNodes *p_from, NNBTNodes *p_target, std::vector<ObjectID> &r_visited);
 
 protected:
 	static void _bind_methods();
