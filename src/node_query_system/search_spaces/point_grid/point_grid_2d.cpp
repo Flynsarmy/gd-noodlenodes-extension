@@ -149,9 +149,13 @@ int NNPointGrid2DSearchSpace::get_point_grid_lattice_type() const {
 }
 
 void NNPointGrid2DSearchSpace::set_point_grid_base_spacing_vector2(Vector2 point_grid_base_spacing_vector) {
-	if (_point_grid_base_spacing_vector.x > 0.0f && _point_grid_base_spacing_vector.y > 0.0f) {
-		_point_grid_base_spacing_vector = point_grid_base_spacing_vector;
+	// Only accept a finite, strictly positive spacing on both axes. An invalid
+	// value must not replace the previous one, otherwise later valid
+	// assignments would be rejected because of the corrupted stored state.
+	if (!point_grid_base_spacing_vector.is_finite() || point_grid_base_spacing_vector.x <= 0.0f || point_grid_base_spacing_vector.y <= 0.0f) {
+		return;
 	}
+	_point_grid_base_spacing_vector = point_grid_base_spacing_vector;
 }
 
 Vector2 NNPointGrid2DSearchSpace::get_point_grid_base_spacing_vector2() const {
@@ -279,6 +283,12 @@ void NNPointGrid2DSearchSpace::create_point_grid_nodes(Node2D *template_node) {
 
 void NNPointGrid2DSearchSpace::create_rectangular_point_grid() {
 	_point_grid_default_positions.clear();
+	// Defensive progress check: the spacing drives the loop increments, so a
+	// non-finite or non-positive value would never terminate the loops below.
+	if (!_point_grid_base_spacing_vector.is_finite() || _point_grid_base_spacing_vector.x <= 0.0f || _point_grid_base_spacing_vector.y <= 0.0f) {
+		ERR_FAIL_MSG("NNPointGrid2DSearchSpace::create_rectangular_point_grid(): Error, point_grid_base_spacing_vector must be finite and greater than zero on all required axes (x and y).");
+		return;
+	}
 	float y = -0.5f * _grid_size.y;
 	float max_y = 0.5f * _grid_size.y;
 	float max_x = 0.5f * _grid_size.x;
