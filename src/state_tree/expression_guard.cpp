@@ -20,6 +20,11 @@ void NNSTExpressionGuard::set_expression(const String &p_expression) {
 }
 
 bool NNSTExpressionGuard::is_satisfied(NNSTTransition *p_transition, NNSTTickedNodes *p_state) {
+	if (p_state == nullptr) {
+		ERR_PRINT("Could not find state node, cannot evaluate expression");
+		return false;
+	}
+
 	NNSTRoot *p_root = p_state->get_root();
 
 	if (!p_root) {
