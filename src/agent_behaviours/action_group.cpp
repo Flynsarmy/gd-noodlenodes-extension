@@ -6,6 +6,15 @@
 
 using namespace godot;
 
+// Returns true when the child is an NNAction or NNActionGroup that can run.
+static bool _is_enabled_action_or_group(Node *p_node) {
+	if (NNAction *action = godot::Object::cast_to<NNAction>(p_node))
+		return action->get_is_enabled();
+	if (NNActionGroup *group = godot::Object::cast_to<NNActionGroup>(p_node))
+		return group->get_is_enabled();
+	return false;
+}
+
 // Method binds.
 
 void NNActionGroup::_bind_methods() {
@@ -36,6 +45,7 @@ NNActionGroup::NNActionGroup() {
 	_action_execution_rule = NNActionGroupExecutionRule::Sequence;
 	_error_handling_rule = NNActionGroupErrorHandlingRule::EndExecution;
 	_current_action_index = 0;
+	_current_action_started = false;
 	_if_else_boolean_value = true;
 
 	_rnd->set_seed(time(0));
@@ -47,13 +57,37 @@ NNActionGroup::~NNActionGroup() {
 // Handling functions.
 
 bool NNActionGroup::start_action() {
+	_current_action_started = false;
 	if (get_child_count() <= 0) {
 		_current_action_index = -1;
 		return false;
 	}
 	switch (_action_execution_rule) {
 		case NNActionGroupExecutionRule::PickOneAtRandom: {
-			_current_action_index = _rnd->randi_range(0, get_child_count() - 1);
+			// Only enabled children are candidates. With every child enabled this
+			// draws the same single rand range and ordinal mapping as before, so
+			// existing random streams stay unchanged.
+			int enabled_count = 0;
+			for (int i = 0; i < get_child_count(); ++i) {
+				if (_is_enabled_action_or_group(get_child(i)))
+					++enabled_count;
+			}
+			if (enabled_count <= 0) {
+				_current_action_index = -1;
+			} else {
+				int chosen_ordinal = _rnd->randi_range(0, enabled_count - 1);
+				_current_action_index = -1;
+				int enabled_ordinal = -1;
+				for (int i = 0; i < get_child_count(); ++i) {
+					if (!_is_enabled_action_or_group(get_child(i)))
+						continue;
+					++enabled_ordinal;
+					if (enabled_ordinal == chosen_ordinal) {
+						_current_action_index = i;
+						break;
+					}
+				}
+			}
 		} break;
 		case NNActionGroupExecutionRule::IfElse: {
 			if (_if_else_boolean_value) {
@@ -87,6 +121,7 @@ bool NNActionGroup::start_action() {
 
 bool NNActionGroup::end_action() {
 	_current_action_index = -1;
+	_current_action_started = false;
 	return true;
 }
 
@@ -99,36 +134,69 @@ Node *NNActionGroup::step_actions() {
 		// The action has been picked earlier, so check if it has finished.
 		Node *current_node = get_child(_current_action_index);
 		if (NNAction *action_node = godot::Object::cast_to<NNAction>(current_node)) {
-			if (!action_node->get_is_finished())
-				return action_node;
-			// The action has finished, has it failed?
-			if (action_node->get_has_failed()) {
-				// Failed, so fail the group and end/continue based on error handling rule.
-				action_node->end_action();
-				set_has_failed(true);
-				emit_signal("action_failed", action_node, this);
-				if (_error_handling_rule == NNActionGroupErrorHandlingRule::EndExecution) {
-					return nullptr;
+			if (!action_node->get_is_enabled()) {
+				// A disabled action must not run. If it was already running, let it
+				// exit cleanly, then fall through to the execution rule so a
+				// Sequence can advance past it.
+				if (_current_action_started) {
+					action_node->end_action();
+					_current_action_started = false;
 				}
+			} else if (!action_node->get_is_finished()) {
+				if (!_current_action_started) {
+					action_node->start_action();
+					_current_action_started = true;
+				}
+				return action_node;
 			} else {
-				// Success, so end and let the stepping continue.
-				action_node->end_action();
-			} //endif action has failed
-		} else {
-			if (NNActionGroup *current_action_group = godot::Object::cast_to<NNActionGroup>(current_node)) {
-				//WARN_PRINT("NNActionGroup::step_actions(): Stepping action group " + get_name() + " and proceeding to step a subgroup " + current_action_group->get_name());
-				action_node = godot::Object::cast_to<NNAction>(current_action_group->step_actions());
-				if (action_node != nullptr)
-					return action_node;
-				if (current_action_group->get_has_failed()) {
-					current_action_group->end_action();
+				// The action has finished, has it failed?
+				if (action_node->get_has_failed()) {
+					// Failed, so fail the group and end/continue based on error handling rule.
+					action_node->end_action();
+					_current_action_started = false;
 					set_has_failed(true);
+					emit_signal("action_failed", action_node, this);
 					if (_error_handling_rule == NNActionGroupErrorHandlingRule::EndExecution) {
 						return nullptr;
 					}
 				} else {
-					current_action_group->end_action();
-				} //endif action group hs failed
+					// Success, so end and let the stepping continue.
+					action_node->end_action();
+					_current_action_started = false;
+				} //endif action has failed
+			} //endif action is enabled
+		} else {
+			if (NNActionGroup *current_action_group = godot::Object::cast_to<NNActionGroup>(current_node)) {
+				//WARN_PRINT("NNActionGroup::step_actions(): Stepping action group " + get_name() + " and proceeding to step a subgroup " + current_action_group->get_name());
+				if (!current_action_group->get_is_enabled()) {
+					// A disabled group must not run. If it was already running, let it
+					// exit cleanly, then fall through to the execution rule.
+					if (_current_action_started) {
+						current_action_group->end_action();
+						_current_action_started = false;
+					}
+				} else {
+					if (!_current_action_started) {
+						current_action_group->start_action();
+						_current_action_started = true;
+					}
+					// The subgroup started the action it returns, so it must not be
+					// started again by this group.
+					NNAction *sub_action = godot::Object::cast_to<NNAction>(current_action_group->step_actions());
+					if (sub_action != nullptr)
+						return sub_action;
+					if (current_action_group->get_has_failed()) {
+						current_action_group->end_action();
+						_current_action_started = false;
+						set_has_failed(true);
+						if (_error_handling_rule == NNActionGroupErrorHandlingRule::EndExecution) {
+							return nullptr;
+						}
+					} else {
+						current_action_group->end_action();
+						_current_action_started = false;
+					} //endif action group hs failed
+				} //endif action group is enabled
 			} // endif is action group node
 		} //endif is action node
 	} //endif has valid action index
@@ -137,6 +205,8 @@ Node *NNActionGroup::step_actions() {
 		case NNActionGroupExecutionRule::PickOneAtRandom:
 		//case NNActionGroupExecutionRule::IfPreviousActionFailedElse:
 		case NNActionGroupExecutionRule::IfElse: {
+			// The picked child is disabled or already done. Do not reroll or run
+			// another branch; this group simply produces no action.
 		} break;
 		case NNActionGroupExecutionRule::CustomRule: {
 			// Re-evaluate, the eval-function should return either a valid
@@ -147,16 +217,19 @@ Node *NNActionGroup::step_actions() {
 					if (NNAction *action_node = godot::Object::cast_to<NNAction>(get_child(_current_action_index))) {
 						if (action_node->get_is_enabled()) {
 							action_node->start_action();
+							_current_action_started = true;
 							return action_node;
 						}
 					} else if (NNActionGroup *action_group = godot::Object::cast_to<NNActionGroup>(get_child(_current_action_index))) {
 						if (action_group->get_is_enabled()) {
 							action_group->start_action();
-							action_node = godot::Object::cast_to<NNAction>(action_group->step_actions());
-							if (action_node != nullptr) {
-								action_node->start_action();
-								return action_node;
-							}
+							_current_action_started = true;
+							// The subgroup already started the action it returns.
+							NNAction *sub_action = godot::Object::cast_to<NNAction>(action_group->step_actions());
+							if (sub_action != nullptr)
+								return sub_action;
+							action_group->end_action();
+							_current_action_started = false;
 						}
 					} // endif is action or action_group
 				} //endif is valid action index
@@ -170,16 +243,19 @@ Node *NNActionGroup::step_actions() {
 				if (NNAction *action_node = godot::Object::cast_to<NNAction>(get_child(_current_action_index))) {
 					if (action_node->get_is_enabled()) {
 						action_node->start_action();
+						_current_action_started = true;
 						return action_node;
 					}
 				} else if (NNActionGroup *action_group = godot::Object::cast_to<NNActionGroup>(get_child(_current_action_index))) {
 					if (action_group->get_is_enabled()) {
 						action_group->start_action();
-						action_node = godot::Object::cast_to<NNAction>(action_group->step_actions());
-						if (action_node != nullptr) {
-							action_node->start_action();
-							return action_node;
-						}
+						_current_action_started = true;
+						// The subgroup started the action it returns.
+						NNAction *sub_action = godot::Object::cast_to<NNAction>(action_group->step_actions());
+						if (sub_action != nullptr)
+							return sub_action;
+						action_group->end_action();
+						_current_action_started = false;
 					}
 				} // endif is action or action_group
 				++_current_action_index;

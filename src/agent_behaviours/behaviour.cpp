@@ -330,7 +330,7 @@ Node *NNBehaviour::step_actions() {
 					//}
 					if (action_node != nullptr) {
 						//WARN_PRINT("NNBehaviour::step_actions(): Stepping function returned a valid action pointer." + _current_action_node->get_name());
-						action_node->start_action();
+						// The action group already started the action it returned.
 						return action_node;
 					}
 				} //endif action group is active
