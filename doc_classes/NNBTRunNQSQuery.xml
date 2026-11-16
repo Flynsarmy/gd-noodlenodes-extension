@@ -1,10 +1,11 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <class name="NNBTRunNQSQuery" inherits="NNBTTaskNodes" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
 	<brief_description>
-		Initialites Node Query System queries. They return running until the query has completed.
+		Runs a Node Query System query asynchronously.
 	</brief_description>
 	<description>
-		The Run NQS Query node can be used to initialite Node Query System queries. They return running until the query has completed.
+		Returns [constant NNBTNodes.RUNNING] until its query completes, then [constant NNBTNodes.SUCCESS], including when no results match. Returns [constant NNBTNodes.FAILURE] if the search space is missing, posting is rejected, or its query is cancelled or replaced.
+		Resetting, reassigning, or removing the leaf stops only the query registration it posted. Queries posted by another caller are left untouched. A reset does not start a new query until the leaf is ticked again.
 	</description>
 	<tutorials>
 	</tutorials>

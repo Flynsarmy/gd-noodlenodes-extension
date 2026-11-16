@@ -249,8 +249,7 @@ func test_configured_search_space_still_runs_and_resets() -> void:
 
 		assert_eq(_root.tick({}, 0.1), NNBTNodes.SUCCESS)
 		assert_eq(_child.internal_status, INTERNAL_STATUS_COMPLETED)
-		# WHEN_COMPLETED resets the query variables before the next run.
-		assert_true(_search_space.is_query_still_running)
+		assert_false(_search_space.is_query_still_running, "Resetting the leaf must not start an unscheduled query.")
 
 func _make_search_space() -> NNNodeChildrenSearchSpace:
 	var _search_space: NNNodeChildrenSearchSpace = NNNodeChildrenSearchSpace.new()
@@ -293,7 +292,7 @@ func test_search_space_freed_while_query_is_running_fails_without_crashing() -> 
 	_nqs.stop_query(_search_space)
 	_search_space.free()
 
-	# _physics_process runs on the leaf while its cached space is dead.
+	# Observe the dead reference after the tree has advanced.
 	await wait_physics_frames(2)
 
 	assert_null(_child.nqs_search_space)
@@ -370,7 +369,7 @@ func test_reassigning_search_space_while_a_query_runs_starts_a_new_query() -> vo
 
 	_nqs.stop_query(_fresh_space)
 
-func test_reassigning_search_space_after_physics_cleared_a_dead_reference_starts_a_new_query() -> void:
+func test_reassigning_search_space_after_a_dead_reference_is_observed_starts_a_new_query() -> void:
 	var _search_space: NNNodeChildrenSearchSpace = _make_search_space()
 	add_child(_search_space)
 	var _root: NNBTRoot = NNBTRoot.new()
@@ -384,8 +383,7 @@ func test_reassigning_search_space_after_physics_cleared_a_dead_reference_starts
 	var _nqs: NNNodeQuerySystem = Engine.get_singleton("NodeQuerySystem")
 	_nqs.stop_query(_search_space)
 	_search_space.free()
-	# _physics_process drops the dead reference and the stale running state.
-	await wait_physics_frames(2)
+	# Resolving the instance ID is safe even before the next tick.
 	assert_null(_child.nqs_search_space)
 
 	var _fresh_space: NNNodeChildrenSearchSpace = _make_search_space()
@@ -429,3 +427,66 @@ func test_stop_query_with_default_reset_rule_can_run_again() -> void:
 	_complete_query(_search_space)
 	await wait_physics_frames(2)
 	assert_eq(_root.tick({}, 0.1), NNBTNodes.SUCCESS)
+
+func test_replaced_query_is_not_adopted_or_cancelled() -> void:
+	for complete_replacement in [false, true]:
+		var space := _make_search_space()
+		add_child_autofree(space)
+		var nodes := _make_root_with_leaf(space, RESET_RULE_WHEN_COMPLETED)
+		var root: NNBTRoot = nodes[0]
+		var nqs: NNNodeQuerySystem = Engine.get_singleton("NodeQuerySystem")
+
+		assert_eq(root.tick({}, 0.1), NNBTNodes.RUNNING)
+		assert_true(nqs.stop_query(space))
+		assert_eq(nqs.post_query(space, false), 1)
+		if complete_replacement:
+			_complete_query(space)
+
+		assert_eq(root.tick({}, 0.1), NNBTNodes.FAILURE,
+				"The replacement query belongs to another poster, even if it completes.")
+		assert_eq(space.is_query_still_running, not complete_replacement)
+		assert_eq(nqs.get_num_active_regular_priority_queries(), 0 if complete_replacement else 1)
+		nqs.clear_queries()
+
+func test_freeing_leaf_releases_only_its_own_query() -> void:
+	for replace_query in [false, true]:
+		var space := _make_search_space()
+		add_child_autofree(space)
+		var nodes := _make_root_with_leaf(space, RESET_RULE_NEVER)
+		var root: NNBTRoot = nodes[0]
+		var leaf: NNBTRunNQSQuery = nodes[1]
+		var nqs: NNNodeQuerySystem = Engine.get_singleton("NodeQuerySystem")
+
+		assert_eq(root.tick({}, 0.1), NNBTNodes.RUNNING)
+		if replace_query:
+			assert_true(nqs.stop_query(space))
+			assert_eq(nqs.post_query(space, true), 1)
+		leaf.free()
+
+		assert_eq(space.is_query_still_running, replace_query)
+		assert_eq(nqs.get_num_active_high_priority_queries(), 1 if replace_query else 0)
+		nqs.clear_queries()
+
+func test_rejected_post_does_not_change_another_posters_result_limit() -> void:
+	var space := _make_search_space()
+	add_child_autofree(space)
+	space.top_n_to_find = 7
+	var nqs: NNNodeQuerySystem = Engine.get_singleton("NodeQuerySystem")
+	assert_eq(nqs.post_query(space, true), 1)
+	var nodes := _make_root_with_leaf(space, RESET_RULE_WHEN_COMPLETED)
+	var root: NNBTRoot = nodes[0]
+
+	assert_eq(root.tick({}, 0.1), NNBTNodes.FAILURE)
+	assert_eq(space.top_n_to_find, 7)
+
+func test_leaf_does_not_post_before_it_is_ready() -> void:
+	var space := _make_search_space()
+	add_child_autofree(space)
+	var leaf := NNBTRunNQSQuery.new()
+	leaf.nqs_search_space = space
+	var root := NNBTRoot.new()
+	root.add_child(leaf)
+
+	assert_eq(root.tick({}, 0.1), NNBTNodes.FAILURE)
+	assert_false(space.is_query_still_running)
+	root.free()

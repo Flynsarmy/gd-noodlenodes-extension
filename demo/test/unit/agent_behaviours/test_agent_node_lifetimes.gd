@@ -388,3 +388,52 @@ func test_normal_switch_exits_old_and_enters_new_exactly_once() -> void:
 	assert_eq(first_action_exits[0], 1, "the old action must exit exactly once")
 	assert_eq(first_behaviour_exits[0], 1, "the old behaviour must exit exactly once")
 	assert_eq(second_enters[0], 1, "the new action must enter exactly once")
+
+
+func test_group_changed_listener_can_free_the_selected_behaviour() -> void:
+	var agent := _make_agent()
+	var behaviour := _make_behaviour(1.0)
+	agent.add_child(behaviour)
+	var changed := []
+	agent.behaviour_group_changed.connect(func(_group: Node) -> void: behaviour.free(), CONNECT_ONE_SHOT)
+	agent.behaviour_changed.connect(func(node: Node) -> void: changed.append(node))
+
+	agent.evaluate_options(1.0)
+
+	assert_eq(changed.size(), 1)
+	assert_null(changed[0], "Resolve the behaviour after the preceding signal's listeners run.")
+	assert_null(agent.get_current_behaviour_node())
+	assert_null(agent.get_current_action_node())
+
+
+func test_exit_callback_disabling_the_candidate_prevents_selection() -> void:
+	var agent := _make_agent()
+	var first := _make_behaviour(1.0)
+	var second := _make_behaviour(0.5)
+	agent.add_child(first)
+	agent.add_child(second)
+	_select(agent)
+	var second_enters := _count_signal(second.behaviour_entered)
+	first.behaviour_exited.connect(func() -> void: second.is_enabled = false)
+	first.is_enabled = false
+
+	agent.evaluate_options(100.0)
+
+	assert_eq(second_enters[0], 0)
+	assert_null(agent.get_current_behaviour_node())
+	assert_null(agent.get_current_action_node())
+	assert_eq(agent.current_behaviour_name, "")
+
+
+func test_no_candidates_clears_the_current_behaviour_name() -> void:
+	var agent := _make_agent()
+	var behaviour := _make_behaviour(1.0)
+	behaviour.name = "Selected"
+	agent.add_child(behaviour)
+	_select(agent)
+	behaviour.is_enabled = false
+
+	agent.evaluate_options(100.0)
+
+	assert_null(agent.get_current_behaviour_node())
+	assert_eq(agent.current_behaviour_name, "")

@@ -53,13 +53,10 @@ private:
 
 	std::vector<ObjectID> _child_sensor_ids;
 	std::vector<ObjectID> _child_behaviour_ids;
-	//std::vector<NNBehaviourGroup*> _child_behaviour_groups;
-	unsigned int _num_child_sensors;
-	unsigned int _num_child_behaviours;
-
 	void _refresh_child_caches();
 	void _reconcile_selected_nodes();
 	void _end_current_action(bool emit_action_changed);
+	void _tick_selected_nodes(const char *signal_name, double delta);
 
 	NNBehaviourGroup *_resolve_behaviour_group(const ObjectID &behaviour_group_id) const;
 	NNBehaviour *_resolve_behaviour(const ObjectID &behaviour_id) const;
@@ -71,6 +68,7 @@ private:
 	NNSensors *_get_child_sensor(const ObjectID &sensor_id) const;
 	NNBehaviours *_get_child_behaviour(const ObjectID &behaviour_id) const;
 	NNBehaviours *_get_group_child_behaviour(const ObjectID &behaviour_group_id, const ObjectID &behaviour_id) const;
+	NNBehaviour *_get_candidate(const ObjectID &behaviour_group_id, const ObjectID &behaviour_id) const;
 	void _emit_node_signal(const char *signal_name, const ObjectID &node_id);
 
 protected:
@@ -101,9 +99,6 @@ public:
 	void set_current_behaviour_node(NNBehaviour *new_behaviour_node);
 	NNBehaviour *get_current_behaviour_node() const;
 
-	//void set_current_behaviour_index( int current_behaviour_index );
-	//int  get_current_behaviour_index() const;
-
 	void set_current_behaviour_name(godot::String current_behaviour_name);
 	godot::String get_current_behaviour_name() const;
 
@@ -126,9 +121,6 @@ public:
 	void set_total_update_behaviour_usec(uint64_t total_update_behaviour_usec);
 	uint64_t get_total_update_behaviour_usec() const;
 #endif
-	//void set_random_number_generator( RandomNumberGenerator rng );
-	//RandomNumberGenerator get_random_number_generator() const;
-
 	// Handling functions.
 
 	void evaluate_options(float delta);

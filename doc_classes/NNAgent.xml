@@ -23,7 +23,7 @@
 			<return type="void" />
 			<param index="0" name="delta" type="float" />
 			<description>
-				Gathers input from sensors and evaluates all the available behaviours by calculating a score for each of them and then choosing a random behaviour from the top [member num_behaviours_to_select] behaviours.
+				Gathers input from sensors and evaluates all the available behaviours by calculating a score for each of them and then choosing a random behaviour from the top [member num_behaviours_to_select] behaviours. Candidates must still be enabled and belong to this agent after evaluation and exit callbacks run.
 			</description>
 		</method>
 		<method name="get_current_action_node" qualifiers="const">
