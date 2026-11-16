@@ -28,6 +28,10 @@ private:
 	ObjectID _current_behaviour_group_id;
 	ObjectID _current_behaviour_id;
 	ObjectID _current_action_id;
+	// An action started during behaviour selection is only reported through
+	// action_changed on the next update_current_behaviour(), matching the
+	// historical signal timing.
+	bool _current_action_change_pending;
 
 	float _current_behaviour_bias;
 
@@ -55,6 +59,7 @@ private:
 
 	void _refresh_child_caches();
 	void _reconcile_selected_nodes();
+	void _end_current_action(bool emit_action_changed);
 
 	NNBehaviourGroup *_resolve_behaviour_group(const ObjectID &behaviour_group_id) const;
 	NNBehaviour *_resolve_behaviour(const ObjectID &behaviour_id) const;

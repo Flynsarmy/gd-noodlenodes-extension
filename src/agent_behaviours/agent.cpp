@@ -94,6 +94,7 @@ NNAgent::NNAgent() {
 	_top_scoring_behaviour_name = "";
 
 	_current_action_id = ObjectID();
+	_current_action_change_pending = false;
 
 	_thinking_delay_in_seconds = 1.0f; // One second delay in thinking of options.
 	_thinking_delay_in_seconds_current_timer = 0.0f;
@@ -233,6 +234,7 @@ void NNAgent::_reconcile_selected_nodes() {
 	if (!action_available && !_current_action_id.is_null()) {
 		ObjectID action_id = _current_action_id;
 		_current_action_id = ObjectID();
+		_current_action_change_pending = false;
 		if (action != nullptr) {
 			action->end_action();
 		}
@@ -262,6 +264,31 @@ void NNAgent::_reconcile_selected_nodes() {
 			live_behaviour_group->emit_signal("behaviour_group_exited");
 		}
 		_emit_node_signal("behaviour_group_exited", behaviour_group_id);
+	}
+}
+
+void NNAgent::_end_current_action(bool emit_action_changed) {
+	if (_current_action_id.is_null()) {
+		return;
+	}
+
+	// Clear the tracked ID before running any callback: end_action() and the
+	// action_exited listeners are user code and may re-enter the agent.
+	ObjectID action_id = _current_action_id;
+	_current_action_id = ObjectID();
+	_current_action_change_pending = false;
+
+	NNAction *action = _resolve_action(action_id);
+	if (action != nullptr) {
+		action->end_action();
+	}
+	// Resolve again so a freed action is signalled as null, never as a stale
+	// pointer.
+	_emit_node_signal("action_exited", action_id);
+	// Listeners may have selected a replacement action. Only report a null
+	// current action when nothing new was selected by the callback.
+	if (emit_action_changed && _current_action_id.is_null()) {
+		emit_signal("action_changed", Variant());
 	}
 }
 
@@ -412,10 +439,13 @@ void NNAgent::evaluate_options(float delta) {
 
 	// No behaviours found?
 	if (valid_candidate_indices.empty()) {
-		// Preserve the existing no-candidate cleanup: exit the current
-		// behaviour and group but leave action cleanup to update_behaviour().
-		if (!_current_behaviour_id.is_null()) {
-			ObjectID behaviour_id = _current_behaviour_id;
+		// End the current action first: its action_exited callbacks may re-enter
+		// and clear, abort or switch the tracked behaviour and group. Capture
+		// the IDs first, then only end what is still tracked afterwards.
+		ObjectID behaviour_id = _current_behaviour_id;
+		ObjectID behaviour_group_id = _current_behaviour_group_id;
+		_end_current_action(true);
+		if (!behaviour_id.is_null() && _current_behaviour_id == behaviour_id) {
 			_current_behaviour_id = ObjectID();
 			NNBehaviour *behaviour = _resolve_behaviour(behaviour_id);
 			if (behaviour != nullptr) {
@@ -423,8 +453,7 @@ void NNAgent::evaluate_options(float delta) {
 			}
 			_emit_node_signal("behaviour_exited", behaviour_id);
 		}
-		if (!_current_behaviour_group_id.is_null()) {
-			ObjectID behaviour_group_id = _current_behaviour_group_id;
+		if (!behaviour_group_id.is_null() && _current_behaviour_group_id == behaviour_group_id) {
 			_current_behaviour_group_id = ObjectID();
 			NNBehaviourGroup *behaviour_group = _resolve_behaviour_group(behaviour_group_id);
 			if (behaviour_group != nullptr) {
@@ -459,15 +488,7 @@ void NNAgent::evaluate_options(float delta) {
 	// Exit the current nodes. Clear each cached ID before running user
 	// callbacks so re-entrant calls see consistent state, and resolve again
 	// before emitting so a freed node is signalled as null.
-	if (!_current_action_id.is_null()) {
-		ObjectID action_id = _current_action_id;
-		_current_action_id = ObjectID();
-		NNAction *action = _resolve_action(action_id);
-		if (action != nullptr) {
-			action->end_action();
-		}
-		_emit_node_signal("action_exited", action_id);
-	}
+	_end_current_action(false);
 	if (!_current_behaviour_id.is_null()) {
 		ObjectID behaviour_id = _current_behaviour_id;
 		_current_behaviour_id = ObjectID();
@@ -588,8 +609,30 @@ void NNAgent::evaluate_options(float delta) {
 	}
 	_current_behaviour_name = new_behaviour->get_name();
 	_current_behaviour_id = new_behaviour_id;
-	new_behaviour->start_behaviour();
-	_current_action_id = ObjectID();
+	NNAction *started_action = new_behaviour->start_behaviour();
+	ObjectID started_action_id = started_action != nullptr ? ObjectID(started_action->get_instance_id()) : ObjectID();
+
+	// start_behaviour() emits user callbacks (behaviour_entered) and then starts
+	// an action (action_entered). Either callback may have freed, reparented,
+	// aborted or switched the selection, so re-resolve everything by ID before
+	// adopting anything.
+	NNBehaviour *live_behaviour = _resolve_behaviour(new_behaviour_id);
+	NNAction *live_action = _resolve_action(started_action_id);
+	bool behaviour_still_current = !new_behaviour_id.is_null() && _current_behaviour_id == new_behaviour_id && live_behaviour != nullptr && _is_behaviour_available(live_behaviour);
+	bool started_action_owned = live_action != nullptr && live_behaviour != nullptr && _is_action_available(live_action, live_behaviour);
+
+	if (!started_action_id.is_null()) {
+		if (behaviour_still_current && started_action_owned) {
+			_current_action_id = started_action_id;
+			_current_action_change_pending = true;
+		} else if (started_action_owned && _current_action_id != started_action_id) {
+			// A re-entrant callback aborted or switched away after this
+			// behaviour started its action. End only that untracked action and
+			// leave whatever the callback selected as the current action.
+			live_action->end_action();
+			_emit_node_signal("action_exited", started_action_id);
+		}
+	}
 
 	Object *signal_behaviour_group = new_behaviour_group_id.is_null() ? nullptr : ObjectDB::get_instance(new_behaviour_group_id);
 	Object *signal_behaviour = ObjectDB::get_instance(new_behaviour_id);
@@ -646,15 +689,7 @@ void NNAgent::update_current_behaviour() {
 	NNBehaviour *current_behaviour = _resolve_behaviour(_current_behaviour_id);
 	if (current_behaviour == nullptr) {
 		// No behaviour, so make sure the current action node is null as well.
-		if (!_current_action_id.is_null()) {
-			ObjectID action_id = _current_action_id;
-			_current_action_id = ObjectID();
-			NNAction *action = _resolve_action(action_id);
-			if (action != nullptr) {
-				action->end_action();
-			}
-			_emit_node_signal("action_changed", action_id);
-		}
+		_end_current_action(true);
 #ifdef DEBUG_ENABLED
 		_total_update_behaviour_usec = godot::Time::get_singleton()->get_ticks_usec() - method_start_time_usec;
 		NNPerformanceMonitorSingleton::get_singleton()->increment_total_time_elapsed_ai_agents_update_behaviour_usec(_total_update_behaviour_usec);
@@ -667,8 +702,15 @@ void NNAgent::update_current_behaviour() {
 
 	if (new_action_id != _current_action_id) {
 		_current_action_id = new_action_id;
+		_current_action_change_pending = false;
 		// Re-resolve: update_behaviour() may have run user callbacks that freed
 		// the action it returned.
+		Object *signal_action = new_action_id.is_null() ? nullptr : ObjectDB::get_instance(new_action_id);
+		emit_signal("action_changed", signal_action != nullptr ? Variant(signal_action) : Variant());
+	} else if (_current_action_change_pending) {
+		// The action was adopted when the behaviour was selected. Report it on
+		// the first update, where action_changed has historically fired.
+		_current_action_change_pending = false;
 		Object *signal_action = new_action_id.is_null() ? nullptr : ObjectDB::get_instance(new_action_id);
 		emit_signal("action_changed", signal_action != nullptr ? Variant(signal_action) : Variant());
 	}
@@ -704,17 +746,30 @@ void NNAgent::set_current_action_is_finished(bool is_finished) {
 void NNAgent::abort_current_behaviour() {
 	_reconcile_selected_nodes();
 
-	NNBehaviour *current_behaviour = _resolve_behaviour(_current_behaviour_id);
-	if (current_behaviour == nullptr) {
-		return;
+	// End the action first. Its action_exited listeners may re-enter and abort,
+	// switch or free the tracked behaviour, so only end the behaviour that was
+	// still tracked after the callback.
+	ObjectID behaviour_id = _current_behaviour_id;
+	_end_current_action(false);
+	if (!behaviour_id.is_null() && _current_behaviour_id == behaviour_id) {
+		_current_behaviour_id = ObjectID();
+		_current_behaviour_name = "";
+		NNBehaviour *current_behaviour = _resolve_behaviour(behaviour_id);
+		if (current_behaviour != nullptr) {
+			current_behaviour->end_behaviour();
+		}
+		emit_signal("behaviour_changed", Variant());
+	} else if (_current_behaviour_id.is_null()) {
+		// A re-entrant action_exited listener already ended the behaviour; do
+		// not end it twice. If it selected a replacement instead, leave that
+		// selection and its name intact.
+		_current_behaviour_name = "";
 	}
-
-	_current_behaviour_id = ObjectID();
-	_current_action_id = ObjectID();
-	_current_behaviour_name = "";
-	current_behaviour->end_behaviour();
-	emit_signal("behaviour_changed", Variant());
-	emit_signal("action_changed", Variant());
+	// A re-entrant listener may have selected a replacement action; only report
+	// a null current action when nothing new was selected.
+	if (_current_action_id.is_null()) {
+		emit_signal("action_changed", Variant());
+	}
 }
 
 // Getters and Setters.
