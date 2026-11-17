@@ -63,6 +63,12 @@ public:
 
 	virtual void _transition_in() override;
 	virtual void _transition_out();
+	// Called once when a real exit begins: after the inactive and reentrancy
+	// guards have passed and before the active children are exited. A nested
+	// exit requested by a callback while this state is already exiting does not
+	// call it again, so derived classes can capture state that the exit is
+	// about to destroy exactly once.
+	virtual void _on_transition_out_begin() {};
 
 	virtual bool on_enter_condition();
 	virtual void on_enter_state();

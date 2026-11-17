@@ -1,4 +1,5 @@
 #include "ticked_nodes.h"
+#include "history.h"
 #include "parallel.h"
 #include <state_tree/root.h>
 #include <godot_cpp/classes/engine.hpp>
@@ -18,6 +19,23 @@ static bool _has_active_child_state(NNSTBranchNodes *branch, NNSTTickedNodes *ch
 	}
 
 	return false;
+}
+
+/**
+ * Drops the Phase A registrations of a history restore that was aborted by an
+ * exiting or entering callback, so the abandoned remembered subtree cannot be
+ * inherited by a later entry. The history is resolved by ID because callbacks
+ * may have freed or moved it.
+ */
+static void _discard_history_registrations(const ObjectID &history_id, const NNSTHistoryStateSnapshot &history_entry) {
+	if (history_id.is_null()) {
+		return;
+	}
+
+	NNSTHistory *history = godot::Object::cast_to<NNSTHistory>(ObjectDB::get_instance(history_id));
+	if (history != nullptr) {
+		history->_discard_registrations(history_entry);
+	}
 }
 
 // Method binds.
@@ -239,10 +257,39 @@ bool NNSTTickedNodes::transition_to(NodePath path_to_node) {
 	// if (!parent) {
 	// 	return false;
 	// }
-	NNSTTickedNodes *to_state = get_node<NNSTTickedNodes>(path_to_node);
+	Node *target_node = get_node_or_null(path_to_node);
+	NNSTTickedNodes *to_state = Object::cast_to<NNSTTickedNodes>(target_node);
+	NNSTHistory *history = nullptr;
+	NNSTHistoryStateSnapshot history_entry;
 	if (to_state == nullptr) {
-		return false;
+		// A history is a pseudo-state, so it never becomes the transition
+		// target itself. Resolve it to the first state of the configuration it
+		// restores (or to its default state) and continue with the normal
+		// transition rules. The remembered descendants of that state are
+		// entered by the two phases further down.
+		history = Object::cast_to<NNSTHistory>(target_node);
+		if (history == nullptr) {
+			return false;
+		}
+
+		const std::vector<NNSTHistoryStateSnapshot> snapshot = history->_get_restore_snapshot();
+		if (snapshot.empty()) {
+			// Neither a valid snapshot nor a valid default state: leave the
+			// tree completely untouched.
+			return false;
+		}
+
+		history_entry = snapshot[0];
+		to_state = Object::cast_to<NNSTTickedNodes>(ObjectDB::get_instance(history_entry.state_id));
+		if (to_state == nullptr) {
+			return false;
+		}
 	}
+
+	// The exit callbacks below can free the history or the entry state, so only
+	// their IDs may be used after this point.
+	const ObjectID history_id = history != nullptr ? ObjectID(history->get_instance_id()) : ObjectID();
+	const ObjectID entry_state_id = ObjectID(to_state->get_instance_id());
 
 	// Re-entering any part of an exiting lineage would be undone by the
 	// outer exit, potentially leaving active descendants of an inactive state.
@@ -264,7 +311,9 @@ bool NNSTTickedNodes::transition_to(NodePath path_to_node) {
 
 	// If the common ancestor is a parallel node, the to_node's lineage is already
 	// partially active and we'll need to figure out where the youngest non-active
-	// part is so let's not worry about that for now.
+	// part is so let's not worry about that for now. This is a pre-existing
+	// transition limitation and is unrelated to history states: a restore into a
+	// parallel region still has to target a state outside that parallel.
 	if (common_ancestor->is_class("NNSTParallel")) {
 		return false;
 	}
@@ -335,6 +384,22 @@ bool NNSTTickedNodes::transition_to(NodePath path_to_node) {
 		}
 	}
 
+	// Phase A (history targets only): pre-register the remembered children on
+	// compound branches, bottom-up and without running user callbacks. The
+	// lineage below then enters the entry state, whose _transition_in() sees a
+	// registered child and short-circuits instead of selecting its own initial
+	// child. The history is resolved again because the exit callbacks may have
+	// freed it. Only the entry state's subtree is pre-registered: the other
+	// top-level entries are not part of this transition.
+	if (history_id.is_valid()) {
+		NNSTHistory *restored_history = godot::Object::cast_to<NNSTHistory>(ObjectDB::get_instance(history_id));
+		if (restored_history != nullptr) {
+			std::vector<NNSTHistoryStateSnapshot> entry_entries;
+			entry_entries.push_back(history_entry);
+			restored_history->_pre_register(entry_entries);
+		}
+	}
+
 	// Transition in the to_states lineage from the common ancestor down. Each
 	// branch is given its new active child before that child is entered, so a
 	// state's on_enter_state() always sees a consistent tree: its ancestors are
@@ -344,6 +409,7 @@ bool NNSTTickedNodes::transition_to(NodePath path_to_node) {
 	// from a branch that had never been entered and was discarded.
 	NNSTTickedNodes *lineage_first_child = godot::Object::cast_to<NNSTTickedNodes>(ObjectDB::get_instance(lineage[lineage.size() - 2]));
 	if (lineage_first_child == nullptr) {
+		_discard_history_registrations(history_id, history_entry);
 		return true;
 	}
 	common_ancestor->_add_active_child_state(lineage_first_child);
@@ -359,6 +425,7 @@ bool NNSTTickedNodes::transition_to(NodePath path_to_node) {
 		NNSTBranchNodes *lineage_branch = godot::Object::cast_to<NNSTBranchNodes>(ObjectDB::get_instance(lineage[i]));
 		NNSTTickedNodes *lineage_child = godot::Object::cast_to<NNSTTickedNodes>(ObjectDB::get_instance(lineage[i - 1]));
 		if (lineage_branch == nullptr || lineage_child == nullptr) {
+			_discard_history_registrations(history_id, history_entry);
 			return true;
 		}
 
@@ -369,6 +436,7 @@ bool NNSTTickedNodes::transition_to(NodePath path_to_node) {
 		// event, so report success.
 		if (lineage_branch->get_internal_status() != ST_INTERNAL_STATUS_ACTIVE ||
 				!_has_active_child_state(lineage_branch, lineage_child)) {
+			_discard_history_registrations(history_id, history_entry);
 			return true;
 		}
 
@@ -391,6 +459,27 @@ bool NNSTTickedNodes::transition_to(NodePath path_to_node) {
 		}
 	}
 
+	// Phase B (history targets only): the lineage loop entered the entry state
+	// itself, and its Phase A registration made it short-circuit. Enter the
+	// remembered descendants now, including the inner state of every parallel
+	// region the entry state selected. Everything is resolved again because the
+	// callbacks may have freed or moved nodes.
+	if (history_id.is_valid()) {
+		NNSTHistory *restored_history = godot::Object::cast_to<NNSTHistory>(ObjectDB::get_instance(history_id));
+		NNSTBranchNodes *restored_compound = restored_history != nullptr ? godot::Object::cast_to<NNSTBranchNodes>(restored_history->get_parent()) : nullptr;
+		NNSTTickedNodes *entry_state = godot::Object::cast_to<NNSTTickedNodes>(ObjectDB::get_instance(entry_state_id));
+		NNSTBranchNodes *entry_branch = godot::Object::cast_to<NNSTBranchNodes>(entry_state);
+		if (restored_compound != nullptr && entry_branch != nullptr &&
+				restored_compound->get_internal_status() == ST_INTERNAL_STATUS_ACTIVE &&
+				restored_compound->_is_active_child_state(entry_state)) {
+			restored_history->_enter(entry_branch, history_entry.children, tree_root);
+		} else {
+			// The entry state was replaced or the compound exited while it was
+			// being entered. Nothing will consume the pre-registered subtree.
+			_discard_history_registrations(history_id, history_entry);
+		}
+	}
+
 	return true;
 }
 
@@ -409,6 +498,13 @@ void NNSTTickedNodes::_transition_out() {
 	// still in progress. The flag makes the nested call a no-op so each state
 	// exits exactly once and on_exit_state() cannot recurse into itself.
 	_is_exiting = true;
+
+	// Only a real exit reaches this point, so derived classes capture state
+	// that the exit is about to destroy exactly once here. A nested exit
+	// requested by an exit callback returns on the guard above and does not
+	// call this hook again.
+	_on_transition_out_begin();
+
 	const std::vector<ObjectID> active_state_ids = _active_states;
 	for (int i = (int)active_state_ids.size() - 1; i >= 0; i--) {
 		// A callback from an earlier child may have already removed this state

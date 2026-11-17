@@ -159,6 +159,24 @@ std::vector<NNSTTickedNodes *> NNSTBranchNodes::_get_active_child_states() const
 	return states;
 }
 
+std::vector<ObjectID> NNSTBranchNodes::_get_active_state_ids() const {
+	std::vector<ObjectID> state_ids;
+	state_ids.reserve(_active_states.size());
+	for (unsigned int i = 0; i < _active_states.size(); i++) {
+		if (_get_child_state(_active_states[i]) != nullptr) {
+			state_ids.push_back(_active_states[i]);
+		}
+	}
+	return state_ids;
+}
+
+bool NNSTBranchNodes::_is_active_child_state(NNSTTickedNodes *child_state) const {
+	if (child_state == nullptr) {
+		return false;
+	}
+	return _has_active_state(ObjectID(child_state->get_instance_id()));
+}
+
 void NNSTBranchNodes::_add_active_child_state(NNSTTickedNodes *child_state) {
 	if (child_state == nullptr || child_state->get_parent() != this) {
 		return;
