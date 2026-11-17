@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="NNBTDelayer" inherits="NNBTDecoratorNodes" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
+	<brief_description>
+		Waits for [member wait_time] seconds of accumulated delta before ticking its child node for the first time.
+	</brief_description>
+	<description>
+		The delayer node waits for [member wait_time] seconds before it ticks its first enabled child node. The wait time is accumulated from the [code]delta[/code] passed to every tick that is spent waiting; it never uses the wall clock, so the delay is deterministic and pause-safe.
+
+		If [member wait_time] is [code]0[/code] or negative the child is ticked immediately on the first tick. On the tick where the accumulated time reaches [member wait_time] the child is ticked in that same tick, so the child's first result is never skipped or duplicated. Once the delay has elapsed the child is ticked directly on every subsequent tick, including while it returns [code]RUNNING[/code].
+
+		When the child returns a terminal result the delayer returns it unchanged, completes, and resets the timer so the next run starts with a fresh delay. An explicit reset, and the default reset rule, also restart the delay. A reset rule of [code]WhenTicked[/code] restarts the delay on every tick, so a positive [member wait_time] can never elapse under that rule.
+
+		The delayer must have exactly one enabled behaviour-tree child. With no enabled child it completes with [code]FAILURE[/code].
+	</description>
+	<tutorials>
+	</tutorials>
+	<methods>
+		<method name="get_time_waited" qualifiers="const">
+			<return type="float" />
+			<description>
+				Returns the amount of delta seconds accumulated towards [member wait_time] in the current delay.
+			</description>
+		</method>
+	</methods>
+	<members>
+		<member name="wait_time" type="float" setter="set_wait_time" getter="get_wait_time" default="0.0">
+			The delay in seconds of accumulated delta before the child node is ticked. [code]0[/code] or a negative value ticks the child immediately on the first tick. The property range hint is for authoring only.
+		</member>
+	</members>
+</class>
