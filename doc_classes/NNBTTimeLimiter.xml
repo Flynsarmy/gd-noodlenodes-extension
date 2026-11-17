@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="NNBTTimeLimiter" inherits="NNBTDecoratorNodes" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
+	<brief_description>
+		Fails its child node's run when the child has been running for longer than [member time_limit] seconds of accumulated delta.
+	</brief_description>
+	<description>
+		The time limiter node ticks its first enabled child node and watches how long the child stays running. The [code]delta[/code] of every tick whose child result is [code]RUNNING[/code] is accumulated; the limit is exceeded only when the accumulated time is strictly greater than [member time_limit]. Time is accumulated from delta only and never from the wall clock, so the limit is deterministic and pause-safe.
+
+		When the limit is exceeded the child subtree is reset, the accumulated time is cleared, and the node completes with [code]FAILURE[/code]. A [member time_limit] of [code]0[/code] or any negative value means unlimited and never times the child out; negative values are accepted unchanged and the property range hint is for authoring only. A reset rule of [code]WhenTicked[/code] clears the accumulated time on every tick, so a positive [member time_limit] can never be exceeded under that rule. An explicit reset of this node or of an ancestor, such as disabling and re-enabling the root, also clears the accumulated time. An interrupt, such as an ancestor switching to another branch, also clears the accumulated time.
+
+		A terminal child result passes through unchanged and completes the node immediately, so a fast [code]SUCCESS[/code] or [code]FAILURE[/code] is never altered.
+
+		The time limiter must have exactly one enabled behaviour-tree child. With no enabled child it completes with [code]FAILURE[/code].
+	</description>
+	<tutorials>
+	</tutorials>
+	<methods>
+		<method name="get_time_spent" qualifiers="const">
+			<return type="float" />
+			<description>
+				Returns the delta seconds accumulated while the child result was [code]RUNNING[/code] in the current run.
+			</description>
+		</method>
+	</methods>
+	<members>
+		<member name="time_limit" type="float" setter="set_time_limit" getter="get_time_limit" default="0.0">
+			The maximum number of delta seconds the child may keep returning [code]RUNNING[/code] before the node fails. [code]0[/code] or a negative value means unlimited. The property range hint is for authoring only.
+		</member>
+	</members>
+</class>

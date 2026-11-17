@@ -63,12 +63,17 @@
 #include "behaviour_tree/cooldown_msec.h"
 #include "behaviour_tree/cooldown_ticks.h"
 #include "behaviour_tree/decorator_nodes.h"
+#include "behaviour_tree/delayer.h"
+#include "behaviour_tree/failer.h"
 #include "behaviour_tree/fixed_result.h"
 #include "behaviour_tree/inverter.h"
 #include "behaviour_tree/limiter.h"
 #include "behaviour_tree/pass_through.h"
 #include "behaviour_tree/repeat_until.h"
 #include "behaviour_tree/repeater.h"
+#include "behaviour_tree/succeeder.h"
+#include "behaviour_tree/time_limiter.h"
+#include "behaviour_tree/until_fail.h"
 
 // Tasks
 #include "behaviour_tree/leaf.h"
@@ -224,6 +229,11 @@ void register_scene_classes() {
 	GDREGISTER_CLASS(NNBTPassThrough);
 	GDREGISTER_CLASS(NNBTCooldownTicks);
 	GDREGISTER_CLASS(NNBTCooldownMsec);
+	GDREGISTER_CLASS(NNBTDelayer);
+	GDREGISTER_CLASS(NNBTTimeLimiter);
+	GDREGISTER_CLASS(NNBTSucceeder);
+	GDREGISTER_CLASS(NNBTFailer);
+	GDREGISTER_CLASS(NNBTUntilFail);
 
 	// State tree.
 	GDREGISTER_CLASS(NNSTGuard);
