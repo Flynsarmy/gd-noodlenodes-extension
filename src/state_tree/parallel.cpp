@@ -1,4 +1,5 @@
 #include "parallel.h"
+#include <state_tree/root.h>
 #include <vector>
 
 using namespace godot;
@@ -22,6 +23,44 @@ NNSTParallel::~NNSTParallel() {
 
 bool NNSTParallel::is_parallel() const {
 	return true;
+}
+
+bool NNSTParallel::_dispatch_event_to_children(const String &name) {
+	bool consumed = false;
+
+	// Snapshot the IDs because an event handler may free, remove or reparent
+	// an active region while the event is being delivered.
+	const std::vector<ObjectID> active_state_ids = _active_states;
+
+	// A region's callback can transition this parallel state out (or out and
+	// back in). Capture the activation so the remaining regions are not
+	// delivered the event on behalf of a stale activation, and so the parallel
+	// state itself does not handle the event afterwards.
+	const ActivationIdentity activation = _capture_activation_identity();
+
+	for (unsigned int i = 0; i < active_state_ids.size(); i++) {
+		NNSTTickedNodes *state = _get_active_state(active_state_ids[i]);
+		if (state == nullptr) {
+			continue;
+		}
+
+		// Do not stop at the first consumer: every active region sees the
+		// event, and the parallel state reports whether any of them did.
+		if (state->_dispatch_event(name)) {
+			consumed = true;
+		}
+
+		if (!_is_dispatch_activation_valid(activation)) {
+			return true;
+		}
+
+		NNSTRoot *tree_root = _resolve_tree_root();
+		if (tree_root != nullptr && tree_root->get_is_event_processing_halted()) {
+			return true;
+		}
+	}
+
+	return consumed;
 }
 
 void NNSTParallel::_transition_in() {

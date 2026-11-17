@@ -19,6 +19,13 @@ class NNSTBranchNodes : public NNSTNodes {
 	GDCLASS(NNSTBranchNodes, NNSTNodes)
 
 private:
+	// Incremented on every real activation / deactivation. Event dispatch
+	// captures this before running user callbacks so a transition from an
+	// activation that has since been exited (or exited and re-entered) can be
+	// detected and discarded. A plain "is active" check cannot tell a stale
+	// activation from a new one.
+	uint64_t _activation_epoch;
+
 protected:
 	static void _bind_methods();
 
@@ -53,6 +60,12 @@ protected:
 	bool _has_active_state(ObjectID state_id) const;
 	bool _contains_child_state(ObjectID state_id) const;
 
+	// Returns the instance IDs of the child transitions that handle the given
+	// event name, in child order. Guards run user code that can free or
+	// reparent transition nodes, so callers must resolve each ID through
+	// ObjectDB before using it.
+	std::vector<ObjectID> _get_matching_transition_ids(const String &event_name) const;
+
 #ifdef DEBUG_ENABLED
 	uint64_t _last_evaluated_timestamp;
 	uint64_t _last_visited_timestamp;
@@ -65,6 +78,11 @@ public:
 	// Getters and setters for attributes.
 
 	bool get_is_active() const;
+
+	// Monotonic identity of this node's current activation. Changes on every
+	// ACTIVE <-> INACTIVE edge, so callers can tell whether an activation they
+	// captured before user callbacks is still the same live activation.
+	inline uint64_t get_activation_epoch() const { return _activation_epoch; };
 
 #ifdef DEBUG_ENABLED
 	inline uint64_t get_last_visited_timestamp() const { return _last_visited_timestamp; };

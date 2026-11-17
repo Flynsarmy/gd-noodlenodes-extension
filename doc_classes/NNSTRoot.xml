@@ -5,7 +5,9 @@
 	</brief_description>
 	<description>
 		This is the root node for a State Tree. To update the tree, you call the [method tick] method of its root node. This will tick all the child nodes.
-		The root also owns the change pipeline used by automatic transitions. Pending state changes, property changes and events are processed in that order, under a reentrancy lock, so a transition caused by a change is fully applied before the next change is handled.
+		Events sent with [method send_event] are queued and processed one at a time in FIFO order. The root is the last state to see an event: the event is delivered to the innermost active state first and bubbles up to its ancestors until a state consumes it. Only when no active child consumed the event are transitions attached directly to the root tried.
+		A transition attached directly to the root can only leave the root's current active child: when its target is the child that is already active, the transition does nothing. Re-entering a state directly is not supported either, because [method NNSTTickedNodes.transition_to] rejects a transition whose source and target are the same state. Transition to a different state first and then back to re-enter a state.
+		The root also owns the change pipeline used by automatic transitions. Pending state changes and property changes are processed before queued events, under a reentrancy lock, so a transition caused by a change is fully applied before the next change is handled.
 	</description>
 	<tutorials>
 	</tutorials>
@@ -33,18 +35,20 @@
 				Returns a list of child sensors.
 			</description>
 		</method>
+		<method name="send_event">
+			<return type="void" />
+			<param index="0" name="name" type="String" />
+			<description>
+				Queues an event for processing and emits [signal event_received]. Events are processed in FIFO order, one at a time. Calling this method from a callback (for example [method NNSTTickedNodes.on_enter_state], [method NNSTTickedNodes.on_exit_state] or a guard) queues the event instead of processing it recursively. The event is handled only after the transition that is running and all of its callbacks have completed, whether that transition came from an event or from a direct [method NNSTTickedNodes.transition_to] call.
+				Each event is delivered to the innermost active state first and then bubbles up through its ancestors until a state consumes it, so a compound state only handles the event when its active child did not. Transitions attached directly to the root are tried last; a root-level transition whose target is the currently active root child does nothing.
+				A processing pass that applies more than 100 transitions is treated as an infinite loop: an error is printed, the pending queue is discarded, the chart is marked invalid and later events are ignored.
+			</description>
+		</method>
 		<method name="tick">
 			<return type="void" />
 			<param index="0" name="delta" type="float" />
 			<description>
 				The [method tick] method is used to update the State Tree state. You can provide any Godot variant type as a parameter (usually a node used as an actor or a dictionary used as a blackboard), along with a delta-time. [code]blackboard[/code] and [code]delta[/code] are passed to the [method NNSTNodes.on_enter_state], [method NNSTNodes.on_exit_state], [method NNSTNodes.on_tick] and [method NNSTNodes.on_enter_condition] methods of the child nodes.
-			</description>
-		</method>
-		<method name="send_event">
-			<return type="void" />
-			<param index="0" name="name" type="String" />
-			<description>
-				Queues an event for the active states. The event triggers transitions whose [member NNSTTransition.event_name] matches, propagating from parent states to their active children until one handles it.
 			</description>
 		</method>
 		<method name="set_expression_property">
@@ -75,4 +79,12 @@
 			The time to complete a tick in usec.
 		</member>
 	</members>
+	<signals>
+		<signal name="event_received">
+			<param index="0" name="name" type="String" />
+			<description>
+				Emitted once for each event processed by this root, before the event is delivered to the active states. See [method send_event].
+			</description>
+		</signal>
+	</signals>
 </class>

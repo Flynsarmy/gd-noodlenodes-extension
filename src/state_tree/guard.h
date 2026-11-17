@@ -20,9 +20,6 @@ public:
 	// NONE, so custom guards that do not override this are only checked on
 	// STATE_ENTER (which every automatic transition supports).
 	virtual int get_supported_trigger_types() const;
-
-	Variant evaluate_expression(String context, NNSTRoot *state_chart, String expression, Variant default_value) const;
-	String path_of(Node *node) const;
 };
 
 } //namespace godot
