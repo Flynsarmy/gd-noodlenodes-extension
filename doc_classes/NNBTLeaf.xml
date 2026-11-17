@@ -4,12 +4,13 @@
 		Used for conditions and actions. You should define your own [code]on_tick()[/code] method where you do your logic.
 	</brief_description>
 	<description>
-		The leaf node is used for conditions and actions. You should define your own [method NNBTTaskNodes._tick] method where you do your logic.
+		The leaf node is used for conditions and actions. You should define your own [method NNBTTaskNodes.on_tick] method where you do your logic.
 		Example:
 		[gdscript]
 		func on_tick(blackboard: Variant, delta: float) -&gt; Status:
 		    return Status.SUCCESS
 		[/gdscript]
+		[method NNBTTaskNodes.on_tick] must return [code]SKIP[/code] (-2), [code]FAILURE[/code] (-1), [code]RUNNING[/code] (0) or [code]SUCCESS[/code] (1); any other return value logs an engine error and is treated as [code]FAILURE[/code].
 	</description>
 	<tutorials>
 	</tutorials>

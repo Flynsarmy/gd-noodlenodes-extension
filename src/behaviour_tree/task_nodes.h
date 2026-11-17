@@ -18,6 +18,10 @@ protected:
 
 	GDVIRTUAL2R(Status, on_tick, Variant, double);
 
+	// Rejects on_tick return values outside the documented Status enum.
+	// On rejection it reports a single engine error and returns FAILURE.
+	Status _validate_on_tick_result(const Variant &p_result) const;
+
 public:
 	NNBTTaskNodes();
 	~NNBTTaskNodes();

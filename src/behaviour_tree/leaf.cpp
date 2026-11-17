@@ -48,7 +48,7 @@ NNBTNodes::Status NNBTLeaf::tick(Variant blackboard, float delta) {
 	//}
 	godot::Variant result;
 	result = call("on_tick", blackboard, delta);
-	Status return_value = static_cast<Status>((int64_t)result); // or result.operator int64_t();
+	Status return_value = _validate_on_tick_result(result);
 
 	set_tick_result(return_value);
 

@@ -15,6 +15,7 @@
 			<param index="1" name="delta" type="float" />
 			<description>
 				Logic to be executed each tick.
+				Must return one of [code]SKIP[/code] (-2), [code]FAILURE[/code] (-1), [code]RUNNING[/code] (0) or [code]SUCCESS[/code] (1). Task nodes that use the return value report any other type or value as an engine error naming the node and handle it as [code]FAILURE[/code].
 			</description>
 		</method>
 	</methods>
