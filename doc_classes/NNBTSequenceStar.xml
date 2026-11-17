@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="NNBTSequenceStar" inherits="NNBTSequence" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
+	<brief_description>
+		A memory sequence that resumes at the child that failed instead of re-ticking the children that already succeeded.
+	</brief_description>
+	<description>
+		This node type is a memory sequence (also known as a sequence star).
+		It behaves like [NNBTSequence], but it remembers the current child index across a [code]FAILURE[/code]. The next run resumes at the failed child, so children that already succeeded are not ticked again. A [code]RUNNING[/code] child is resumed as usual.
+		The node only returns [code]SUCCESS[/code] when every enabled child succeeded. That success resets the memory, so the next run starts at child 0 again. A [code]FAILURE[/code] is terminal for the current run, but the memory is kept for the next run.
+		The default [code]reset_rule[/code] is Never, because a memory sequence whose memory is erased after every run would be pointless. Any other [code]reset_rule[/code], or an explicit reset, still clears the memory; disabling the node also clears it. Interrupting the node does not clear the memory, so a node that is ticked again after an interrupt continues at the stored child.
+		The inherited [member NNBTSequence.reactive] property takes precedence: when it is [code]true[/code], every tick starts at child 0 and the memory is unused.
+	</description>
+	<tutorials>
+	</tutorials>
+</class>

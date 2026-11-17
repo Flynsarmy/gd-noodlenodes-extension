@@ -1,11 +1,59 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <class name="NNBTParallel" inherits="NNBTCompositeNodes" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
 	<brief_description>
-		Ticks all its enabled child nodes and combines their statuses. [code]RUNNING[/code] takes precedence over [code]FAILURE[/code], and [code]FAILURE[/code] takes precedence over [code]SUCCESS[/code].
+		Ticks all its enabled child nodes and combines their statuses using [member success_policy] and [member failure_policy]. [code]RUNNING[/code] takes precedence over a combined [code]FAILURE[/code], which takes precedence over [code]SUCCESS[/code].
 	</brief_description>
 	<description>
-		The parallel node ticks all its enabled child nodes, regardless of child order. If any child returns [code]RUNNING[/code], the parallel node returns [code]RUNNING[/code]. Otherwise, if any child returns [code]FAILURE[/code], it returns [code]FAILURE[/code]. Otherwise it returns [code]SUCCESS[/code]. Disabled children are skipped.
+		The parallel node ticks every enabled child node, regardless of child order, and never early-exits. Disabled children are not ticked and are excluded from every count.
+
+		[code]SKIP[/code] results count as [code]SUCCESS[/code] for the policy evaluation. [code]SKIP[/code] never caused a failure and a lone [code]SKIP[/code] child returned [code]SUCCESS[/code], so the default policies reproduce the historical behaviour exactly.
+
+		After ticking every enabled child the node computes:
+		[codeblock]
+		if any child returned RUNNING:
+		    result = RUNNING
+		else:
+		    success_met = success_policy == REQUIRE_ALL ? num_success == num_enabled : num_success &gt; 0
+		    failure_met = failure_policy == REQUIRE_ALL ? num_failure == num_enabled : num_failure &gt; 0
+		    if success_met and failure_met:
+		        result = FAILURE
+		    elif success_met:
+		        result = SUCCESS
+		    elif failure_met:
+		        result = FAILURE
+		    else:
+		        result = FAILURE
+		[/codeblock]
+		The precedence is therefore [code]RUNNING[/code], then the both-met [code]FAILURE[/code] tie (which matches the historical failure-before-success behaviour), then [code]SUCCESS[/code], then [code]FAILURE[/code]. The final [code]FAILURE[/code] is the documented fallback for mixed outcomes under [constant SUCCESS_REQUIRE_ALL] and [constant FAILURE_REQUIRE_ALL], where neither policy is satisfied.
+
+		The defaults ([constant SUCCESS_REQUIRE_ALL] and [constant FAILURE_REQUIRE_ONE]) reproduce the original matrix: any [code]RUNNING[/code] child returns [code]RUNNING[/code], otherwise any [code]FAILURE[/code] child returns [code]FAILURE[/code], otherwise the node returns [code]SUCCESS[/code].
+
+		An empty parallel, or one whose children are all disabled, has no enabled children. "Require all" is then trivially true and "require one" is false, so the node returns [code]SUCCESS[/code] only with [constant SUCCESS_REQUIRE_ALL] and [constant FAILURE_REQUIRE_ONE]; every other policy combination returns [code]FAILURE[/code].
 	</description>
 	<tutorials>
 	</tutorials>
+	<members>
+		<member name="failure_policy" type="int" setter="set_failure_policy" getter="get_failure_policy" enum="FailurePolicy" default="0">
+			How many enabled children must return [code]FAILURE[/code] for the parallel node to fail. [constant FAILURE_REQUIRE_ONE] (default) fails when at least one enabled child fails; [constant FAILURE_REQUIRE_ALL] fails only when every enabled child fails.
+			Values outside the [enum FailurePolicy] range are rejected with a single engine error that names [code]set_failure_policy[/code], the received value and the valid range; the previous policy is kept.
+		</member>
+		<member name="success_policy" type="int" setter="set_success_policy" getter="get_success_policy" enum="SuccessPolicy" default="0">
+			How many enabled children must return [code]SUCCESS[/code] (or [code]SKIP[/code], which counts as a success) for the parallel node to succeed. [constant SUCCESS_REQUIRE_ALL] (default) requires every enabled child to succeed; [constant SUCCESS_REQUIRE_ONE] requires at least one.
+			Values outside the [enum SuccessPolicy] range are rejected with a single engine error that names [code]set_success_policy[/code], the received value and the valid range; the previous policy is kept.
+		</member>
+	</members>
+	<constants>
+		<constant name="SUCCESS_REQUIRE_ALL" value="0" enum="SuccessPolicy">
+			The parallel node returns [code]SUCCESS[/code] only when every enabled child succeeded. This is the default.
+		</constant>
+		<constant name="SUCCESS_REQUIRE_ONE" value="1" enum="SuccessPolicy">
+			The parallel node returns [code]SUCCESS[/code] when at least one enabled child succeeded.
+		</constant>
+		<constant name="FAILURE_REQUIRE_ONE" value="0" enum="FailurePolicy">
+			The parallel node returns [code]FAILURE[/code] when at least one enabled child failed. This is the default.
+		</constant>
+		<constant name="FAILURE_REQUIRE_ALL" value="1" enum="FailurePolicy">
+			The parallel node returns [code]FAILURE[/code] only when every enabled child failed.
+		</constant>
+	</constants>
 </class>

@@ -8,6 +8,10 @@ using namespace godot;
 // Method binds.
 
 void NNBTSelector::_bind_methods() {
+	ClassDB::bind_method(D_METHOD("set_reactive", "reactive"), &NNBTSelector::set_reactive);
+	ClassDB::bind_method(D_METHOD("get_reactive"), &NNBTSelector::get_reactive);
+	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "reactive", PROPERTY_HINT_NONE), "set_reactive", "get_reactive");
+
 	//ClassDB::bind_method(D_METHOD("set_is_reactive", "is_reactive"), &NNBTSelector::set_is_reactive);
 	//ClassDB::bind_method(D_METHOD("get_is_reactive"), &NNBTSelector::get_is_reactive);
 	//ADD_PROPERTY(PropertyInfo(Variant::BOOL, "is_reactive", PROPERTY_HINT_NONE), "set_is_reactive","get_is_reactive");
@@ -27,6 +31,7 @@ void NNBTSelector::_bind_methods() {
 
 NNBTSelector::NNBTSelector() {
 	_current_child_index = 0;
+	_is_reactive = false;
 	//_is_reactive = true;
 }
 
@@ -36,6 +41,14 @@ NNBTSelector::~NNBTSelector() {
 // Handling functions.
 
 // Getters and Setters.
+
+void NNBTSelector::set_reactive(bool p_reactive) {
+	_is_reactive = p_reactive;
+}
+
+bool NNBTSelector::get_reactive() const {
+	return _is_reactive;
+}
 
 /**
 void NNBTSelector::set_is_reactive( bool is_reactive ) {
@@ -65,6 +78,11 @@ NNBTNodes::Status NNBTSelector::_tick(Variant blackboard, float delta) {
 		reset_bt_node();
 	}
 	set_internal_status(BT_INTERNAL_STATUS_TICKED);
+	// A reactive selector re-evaluates from the first child on every tick
+	// instead of resuming from the child that was running previously.
+	if (_is_reactive) {
+		_current_child_index = 0;
+	}
 	//if( _is_first_tick ) {
 	//    _is_first_tick = false;
 	//    emit_signal("btnode_entered", blackboard, delta);
