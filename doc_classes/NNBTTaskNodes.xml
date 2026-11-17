@@ -4,7 +4,7 @@
 		Base class for Noodle Nodes behaviour tree task nodes.
 	</brief_description>
 	<description>
-		Provides a [method on_tick] method for task nodes to implement to run their custom logic.
+		Provides a [method on_tick] method for task nodes to implement to run their custom logic. Implementations must override [method on_tick]; the default returns [code]Status.FAILURE[/code].
 	</description>
 	<tutorials>
 	</tutorials>
