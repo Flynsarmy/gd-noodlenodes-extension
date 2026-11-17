@@ -6,6 +6,7 @@
 	<description>
 		The node reference node can be used to reference any behaviour tree node type anywhere in your scene. This gives a lot of flexibility when designing your AI behaviours.
 		For instance, you can have an AI agent that has a node reference in its behaviour tree for any items it picks up. Each item can then contain a sub behaviour tree that describes how the item can be used by the AI. When the AI picks up an item, the node reference is set to point to the sub-tree within the item node, and immediately the AI agent can use the item.
+		The [NNBTNodes] blackboard and actor helpers on a node reference resolve from the target's own position in the tree, so a target under a different [NNBTRoot] uses that root's blackboard and actor. A reparent-created reference cycle resolves to [code]null[/code] instead of recursing forever.
 	</description>
 	<tutorials>
 	</tutorials>

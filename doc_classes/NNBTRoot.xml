@@ -8,6 +8,8 @@
 		The root must have exactly one enabled behaviour tree child. It ticks the first enabled child and returns that child's result. Any further enabled behaviour tree children are ignored; the first time the root is ticked with more than one enabled behaviour tree child it reports a one-time error. The editor shows a configuration warning for the same configuration.
 		[NNSensors] child nodes are allowed in addition to the single behaviour tree child. Sensors do not count as behaviour tree children.
 		If no behaviour tree child is enabled, or the root has no children at all, [method tick] returns [code]FAILURE[/code].
+		The root owns an [NNBlackboard] resource exposed through [member blackboard]. Assigning [code]null[/code] is rejected with an engine error and the existing blackboard is kept.
+		[member actor] is resolved on demand every time it is read. The live explicit actor wins, then the node at [member actor_node_path], then the root's parent. Because resolution is computed on demand, entering the tree or reparenting re-resolves naturally, and a freed explicit actor falls through to the path or parent.
 	</description>
 	<tutorials>
 	</tutorials>
@@ -22,6 +24,15 @@
 		</method>
 	</methods>
 	<members>
+		<member name="actor" type="Node" setter="set_actor" getter="get_actor">
+			The explicit actor. Reading this property returns the resolved actor: the live explicit actor, otherwise the node at [member actor_node_path], otherwise the root's parent. Returns [code]null[/code] when none of those exist.
+		</member>
+		<member name="actor_node_path" type="NodePath" setter="set_actor_node_path" getter="get_actor_node_path">
+			Fallback actor path, used when no live explicit [member actor] is set. The path is resolved relative to this root.
+		</member>
+		<member name="blackboard" type="NNBlackboard" setter="set_blackboard_resource" getter="get_blackboard_resource">
+			The typed behaviour tree blackboard resource. It is created by the root and is authoritative for the [NNBTNodes] blackboard helpers. Assigning [code]null[/code] is rejected and the existing blackboard is kept.
+		</member>
 		<member name="total_tick_usec" type="int" setter="set_total_tick_usec" getter="get_total_tick_usec" default="0">
 			This is the total time in microseconds the call to the [method tick] method used.
 		</member>

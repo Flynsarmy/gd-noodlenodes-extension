@@ -5,6 +5,7 @@
 #include <godot_cpp/classes/engine.hpp>
 #include <godot_cpp/classes/time.hpp>
 #include <godot_cpp/core/class_db.hpp>
+#include <godot_cpp/core/object.hpp>
 
 #ifdef DEBUG_ENABLED
 #include "../debugger/debugger_overlay.h"
@@ -15,6 +16,16 @@ using namespace godot;
 // Method binds.
 
 void NNBTRoot::_bind_methods() {
+	ClassDB::bind_method(D_METHOD("set_blackboard_resource", "blackboard"), &NNBTRoot::set_blackboard_resource);
+	ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "blackboard", PROPERTY_HINT_RESOURCE_TYPE, "NNBlackboard"), "set_blackboard_resource", "get_blackboard_resource");
+
+	ClassDB::bind_method(D_METHOD("set_actor", "actor"), &NNBTRoot::set_actor);
+	ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "actor", PROPERTY_HINT_NODE_TYPE, "Node"), "set_actor", "get_actor");
+
+	ClassDB::bind_method(D_METHOD("set_actor_node_path", "actor_node_path"), &NNBTRoot::set_actor_node_path);
+	ClassDB::bind_method(D_METHOD("get_actor_node_path"), &NNBTRoot::get_actor_node_path);
+	ADD_PROPERTY(PropertyInfo(Variant::NODE_PATH, "actor_node_path"), "set_actor_node_path", "get_actor_node_path");
+
 #ifdef DEBUG_ENABLED
 	ADD_SUBGROUP("Debugging", "");
 
@@ -29,6 +40,8 @@ void NNBTRoot::_bind_methods() {
 // Constructor and destructor.
 
 NNBTRoot::NNBTRoot() {
+	_blackboard.instantiate();
+	_actor_id = ObjectID();
 #ifdef DEBUG_ENABLED
 	_total_tick_usec = 0;
 #endif
@@ -49,6 +62,48 @@ uint64_t NNBTRoot::get_total_tick_usec() const {
 	return _total_tick_usec;
 }
 #endif
+
+void NNBTRoot::set_blackboard_resource(const Ref<NNBlackboard> &p_blackboard) {
+	if (p_blackboard.is_null()) {
+		ERR_PRINT("NNBTRoot::set_blackboard_resource(): blackboard cannot be null; keeping the existing blackboard.");
+		return;
+	}
+	_blackboard = p_blackboard;
+}
+
+NNBlackboard *NNBTRoot::get_blackboard_resource() const {
+	return _blackboard.ptr();
+}
+
+void NNBTRoot::set_actor(Node *p_actor) {
+	_actor_id = p_actor != nullptr ? ObjectID(p_actor->get_instance_id()) : ObjectID();
+}
+
+Node *NNBTRoot::get_actor() const {
+	// Resolution is on demand so entering the tree or reparenting re-resolves
+	// naturally. The explicit actor wins, then actor_node_path, then parent.
+	if (!_actor_id.is_null()) {
+		if (Node *actor = godot::Object::cast_to<Node>(ObjectDB::get_instance(_actor_id))) {
+			return actor;
+		}
+	}
+
+	if (!_actor_node_path.is_empty()) {
+		if (Node *actor = get_node_or_null(_actor_node_path)) {
+			return actor;
+		}
+	}
+
+	return get_parent();
+}
+
+void NNBTRoot::set_actor_node_path(const NodePath &p_actor_node_path) {
+	_actor_node_path = p_actor_node_path;
+}
+
+NodePath NNBTRoot::get_actor_node_path() const {
+	return _actor_node_path;
+}
 
 // Handling functions.
 
