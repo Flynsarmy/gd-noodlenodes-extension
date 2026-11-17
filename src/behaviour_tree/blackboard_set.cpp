@@ -58,7 +58,7 @@ void NNBTBlackboardSet::_report_configuration_error(const String &p_reason) {
 	ERR_PRINT(vformat("%s node '%s' (%s) %s; returning FAILURE.", get_class(), get_name(), node_location, p_reason));
 }
 
-NNBTNodes::Status NNBTBlackboardSet::tick(Variant blackboard, float delta) {
+NNBTNodes::Status NNBTBlackboardSet::_tick(Variant blackboard, float delta) {
 	set_internal_status(BT_INTERNAL_STATUS_TICKED);
 
 	Status result = Status::FAILURE;

@@ -138,16 +138,39 @@ void NNBTNodeReference::reset() {
 
 	// Reparenting can introduce cycles after the setter's graph validation.
 	_is_resetting = true;
+	NNBTNodes::reset();
 	NNBTNodes *target = get_node_reference();
 	if (target != nullptr) {
-		target->reset();
+		// A target that another caller is still driving keeps its run. This
+		// covers a shared reference owned by another reference as well as a
+		// target running for a structural parent (a null owner).
+		const bool driven_by_another = target->get_is_running() && target->get_run_owner() != ObjectID(get_instance_id());
+		if (!driven_by_another) {
+			target->reset();
+		}
 	}
 	_is_resetting = false;
 }
 
-NNBTNodes::Status NNBTNodeReference::tick(Variant blackboard, float delta) {
+void NNBTNodeReference::_on_interrupt(Variant blackboard, float delta) {
+	if (_is_interrupting) {
+		ERR_PRINT("NNBTNodeReference::_on_interrupt(): Detected a cycle in node_reference links; aborting traversal.");
+		return;
+	}
+
+	_is_interrupting = true;
+	NNBTTaskNodes::_on_interrupt(blackboard, delta);
+	// Only the reference that owns the target's active run may cancel it.
+	NNBTNodes *target = get_node_reference();
+	if (target != nullptr && target->get_is_running() && target->get_run_owner() == ObjectID(get_instance_id())) {
+		target->interrupt();
+	}
+	_is_interrupting = false;
+}
+
+NNBTNodes::Status NNBTNodeReference::_tick(Variant blackboard, float delta) {
 	if (_is_ticking) {
-		ERR_PRINT("NNBTNodeReference::tick(): Detected a cycle in node_reference links; returning FAILURE.");
+		ERR_PRINT("NNBTNodeReference::_tick(): Detected a cycle in node_reference links; returning FAILURE.");
 		set_internal_status(BT_INTERNAL_STATUS_COMPLETED);
 		set_tick_result(Status::FAILURE);
 		return Status::FAILURE;
@@ -156,7 +179,20 @@ NNBTNodes::Status NNBTNodeReference::tick(Variant blackboard, float delta) {
 	_is_ticking = true;
 	set_internal_status(BT_INTERNAL_STATUS_TICKED);
 	NNBTNodes *target = get_node_reference();
-	Status result = target != nullptr ? target->tick(blackboard, delta) : Status::FAILURE;
+	Status result = Status::FAILURE;
+	if (target != nullptr) {
+		const ObjectID self_id(get_instance_id());
+		const ObjectID owner_id = target->get_run_owner();
+		// A shared target that another reference is still driving must be taken
+		// over: interrupt the old run so the new owner gets a fresh one. A run
+		// with no owner (for example a structural parent, or a reparent-induced
+		// reference cycle) is instead continued and claimed below.
+		if (target->get_is_running() && !owner_id.is_null() && owner_id != self_id) {
+			target->interrupt();
+		}
+		target->set_run_owner(self_id);
+		result = target->tick(blackboard, delta);
+	}
 	_is_ticking = false;
 	set_tick_result(result);
 	if (result != Status::RUNNING) {

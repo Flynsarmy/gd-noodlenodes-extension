@@ -25,10 +25,17 @@ NoodleNodes::~NoodleNodes() {
 
 // Handling functions.
 
+void NoodleNodes::_on_is_enabled_changed(bool p_is_enabled) {
+}
+
 // Getters and Setters.
 
 void NoodleNodes::set_is_enabled(bool is_enabled) {
+	if (_is_enabled == is_enabled) {
+		return;
+	}
 	_is_enabled = is_enabled;
+	_on_is_enabled_changed(is_enabled);
 }
 
 bool NoodleNodes::get_is_enabled() const {

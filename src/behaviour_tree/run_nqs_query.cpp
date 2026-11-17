@@ -110,7 +110,7 @@ void NNBTRunNQSQuery::_on_query_completed(Object *p_search_space, int64_t p_quer
 	}
 }
 
-NNBTNodes::Status NNBTRunNQSQuery::tick(Variant blackboard, float delta) {
+NNBTNodes::Status NNBTRunNQSQuery::_tick(Variant blackboard, float delta) {
 	NNNQSSearchSpaces *search_space = _resolve_nqs_search_space();
 	NNNodeQuerySystem *nqs = godot::Object::cast_to<NNNodeQuerySystem>(Engine::get_singleton()->get_singleton("NodeQuerySystem"));
 	Status result = Status::FAILURE;
@@ -159,6 +159,12 @@ NNBTNodes::Status NNBTRunNQSQuery::tick(Variant blackboard, float delta) {
 	}
 	set_tick_result(result);
 	return result;
+}
+
+void NNBTRunNQSQuery::_on_interrupt(Variant blackboard, float delta) {
+	// Stop only this leaf's own posted query before running the script hook.
+	reset_bt_node();
+	NNBTTaskNodes::_on_interrupt(blackboard, delta);
 }
 
 void NNBTRunNQSQuery::_exit_tree() {

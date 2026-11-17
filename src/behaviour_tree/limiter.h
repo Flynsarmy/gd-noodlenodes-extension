@@ -30,7 +30,7 @@ public:
 	// Handling functions.
 	virtual void reset_bt_node() override;
 
-	virtual Status tick(Variant blackboard, float delta) override;
+	virtual Status _tick(Variant blackboard, float delta) override;
 };
 
 } //namespace godot

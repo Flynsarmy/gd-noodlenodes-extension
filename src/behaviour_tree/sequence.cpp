@@ -25,7 +25,7 @@ void NNBTSequence::reset_bt_node() {
 	_current_child_index = 0;
 }
 
-NNBTNodes::Status NNBTSequence::tick(Variant blackboard, float delta) {
+NNBTNodes::Status NNBTSequence::_tick(Variant blackboard, float delta) {
 	if (get_internal_status() == BT_INTERNAL_STATUS_UNTICKED) {
 		_current_child_index = 0;
 		//emit_signal("btree_node_entered", blackboard, delta, this);
@@ -50,6 +50,7 @@ NNBTNodes::Status NNBTSequence::tick(Variant blackboard, float delta) {
 				//emit_signal("btnode_exited", blackboard, delta);
 				return Status::FAILURE;
 			} else if (result == Status::RUNNING) {
+				_interrupt_other_active_children(btnode);
 				return Status::RUNNING;
 			}
 		} //endif is active

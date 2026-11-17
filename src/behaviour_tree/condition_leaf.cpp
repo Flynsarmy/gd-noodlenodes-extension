@@ -21,8 +21,8 @@ NNBTConditionLeaf::~NNBTConditionLeaf() {
 
 // Handling methods.
 
-NNBTNodes::Status NNBTConditionLeaf::tick(Variant blackboard, float delta) {
-	const Status result = NNBTLeaf::tick(blackboard, delta);
+NNBTNodes::Status NNBTConditionLeaf::_tick(Variant blackboard, float delta) {
+	const Status result = NNBTLeaf::_tick(blackboard, delta);
 
 	if (result == Status::RUNNING && !_has_reported_running) {
 		_has_reported_running = true;

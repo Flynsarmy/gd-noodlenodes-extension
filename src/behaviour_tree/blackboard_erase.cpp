@@ -46,7 +46,7 @@ void NNBTBlackboardErase::_report_configuration_error(const String &p_reason) {
 	ERR_PRINT(vformat("%s node '%s' (%s) %s; returning FAILURE.", get_class(), get_name(), node_location, p_reason));
 }
 
-NNBTNodes::Status NNBTBlackboardErase::tick(Variant blackboard, float delta) {
+NNBTNodes::Status NNBTBlackboardErase::_tick(Variant blackboard, float delta) {
 	set_internal_status(BT_INTERNAL_STATUS_TICKED);
 
 	Status result = Status::FAILURE;

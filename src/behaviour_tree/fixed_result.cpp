@@ -36,7 +36,7 @@ NNBTNodes::Status NNBTFixedResult::get_fixed_result() const {
 
 // Handling methods.
 
-NNBTNodes::Status NNBTFixedResult::tick(Variant blackboard, float delta) {
+NNBTNodes::Status NNBTFixedResult::_tick(Variant blackboard, float delta) {
 	_report_extra_enabled_child_btnodes();
 
 	set_internal_status(BT_INTERNAL_STATUS_TICKED);

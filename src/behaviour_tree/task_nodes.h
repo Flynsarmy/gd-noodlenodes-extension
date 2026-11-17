@@ -18,6 +18,16 @@ protected:
 
 	GDVIRTUAL2R(Status, on_tick, Variant, double);
 
+	// Lifecycle script hooks. A script may implement any subset of them; the
+	// calls are silent when a hook is not defined.
+	virtual void _on_before_run(Variant blackboard, float delta) override;
+	virtual void _on_after_run(Variant blackboard, float delta) override;
+	virtual void _on_interrupt(Variant blackboard, float delta) override;
+
+	GDVIRTUAL2(on_before_run, Variant, double);
+	GDVIRTUAL2(on_after_run, Variant, double);
+	GDVIRTUAL2(on_interrupt, Variant, double);
+
 	// Rejects on_tick return values outside the documented Status enum.
 	// On rejection it reports a single engine error and returns FAILURE.
 	Status _validate_on_tick_result(const Variant &p_result) const;
