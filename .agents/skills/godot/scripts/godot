@@ -1,0 +1,69 @@
+#!/usr/bin/env bash
+# Resolve an installed Godot editor binary from Godot Version Manager and exec it.
+#
+# Usage:  godot [godot args...]
+#   GODOT_VERSION   Optional. Full app name (Godot_v4.4.1-stable) or a substring
+#                   (4.4.1). Defaults to Godot_v4.7.2-stable, or the newest
+#                   installed version if that one is missing.
+set -euo pipefail
+
+VERSIONS_DIR="$HOME/Library/Application Support/Godot/app_userdata/Godot Version Manager/versions"
+DEFAULT_APP="Godot_v4.7.2-stable.app"
+
+if [[ ! -d "$VERSIONS_DIR" ]]; then
+  echo "godot: versions directory not found: $VERSIONS_DIR" >&2
+  exit 1
+fi
+
+pick=""
+if [[ -n "${GODOT_VERSION:-}" ]]; then
+  # Exact app name first, then substring match.
+  for candidate in "$VERSIONS_DIR"/*.app; do
+    [[ -d "$candidate" ]] || continue
+    base="$(basename "$candidate")"
+    if [[ "$base" == "${GODOT_VERSION}" || "$base" == "${GODOT_VERSION}.app" ]]; then
+      pick="$candidate"
+      break
+    fi
+  done
+  if [[ -z "$pick" ]]; then
+    for candidate in "$VERSIONS_DIR"/*.app; do
+      [[ -d "$candidate" ]] || continue
+      if [[ "$(basename "$candidate")" == *"${GODOT_VERSION}"* ]]; then
+        pick="$candidate"
+        break
+      fi
+    done
+  fi
+  if [[ -z "$pick" ]]; then
+    echo "godot: no installed version matches GODOT_VERSION='${GODOT_VERSION}'" >&2
+    echo "available:" >&2
+    for candidate in "$VERSIONS_DIR"/*.app; do
+      [[ -d "$candidate" ]] && echo "  $(basename "$candidate" .app)" >&2
+    done
+    exit 1
+  fi
+else
+  pick="$VERSIONS_DIR/$DEFAULT_APP"
+  if [[ ! -d "$pick" ]]; then
+    # Fall back to any 4.x app, newest name wins by sort.
+    pick="$(ls -1d "$VERSIONS_DIR"/*.app 2>/dev/null | sort -V | tail -n 1 || true)"
+    if [[ -z "$pick" ]]; then
+      echo "godot: no installed Godot .app found in $VERSIONS_DIR" >&2
+      exit 1
+    fi
+  fi
+fi
+
+BIN="$pick/Contents/MacOS/Godot"
+if [[ ! -f "$BIN" ]]; then
+  echo "godot: executable not found: $BIN" >&2
+  exit 1
+fi
+if [[ ! -x "$BIN" ]]; then
+  echo "godot: $BIN is not executable (this install has bad permissions)." >&2
+  echo "       Fix with: chmod +x \"$BIN\"" >&2
+  exit 1
+fi
+
+exec "$BIN" "$@"
