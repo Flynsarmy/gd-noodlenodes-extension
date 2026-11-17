@@ -14,6 +14,18 @@ void NNBTTaskNodes::_bind_methods() {
 	GDVIRTUAL_BIND(on_tick, "blackboard", "delta");
 }
 
+bool NNBTTaskNodes::_call_on_tick(Variant blackboard, float delta, Variant &r_result) const {
+	if (!gdextension_interface::object_has_script_method(_owner, &_gdvirtual_on_tick_sn)) {
+		return false;
+	}
+
+	GDExtensionCallError call_error;
+	Variant args[2] = { blackboard, Variant(delta) };
+	const Variant *arg_ptrs[2] = { &args[0], &args[1] };
+	gdextension_interface::object_call_script_method(_owner, &_gdvirtual_on_tick_sn, (const GDExtensionConstVariantPtr *)arg_ptrs, 2, &r_result, &call_error);
+	return call_error.error == GDEXTENSION_CALL_OK;
+}
+
 NNBTNodes::Status NNBTTaskNodes::_validate_on_tick_result(const Variant &p_result) const {
 	const String accepted_values = "SKIP (-2), FAILURE (-1), RUNNING (0) or SUCCESS (1)";
 

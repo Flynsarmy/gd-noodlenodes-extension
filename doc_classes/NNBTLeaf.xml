@@ -5,6 +5,7 @@
 	</brief_description>
 	<description>
 		The leaf node is used for conditions and actions. You should define your own [method NNBTTaskNodes.on_tick] method where you do your logic.
+		A leaf that does not override [method NNBTTaskNodes.on_tick] returns [code]Status.FAILURE[/code] and reports an error once per node instance.
 		Example:
 		[gdscript]
 		func on_tick(blackboard: Variant, delta: float) -&gt; Status:
