@@ -37,7 +37,6 @@ void NNBTParallel::_bind_methods() {
 // Constructor and destructor.
 
 NNBTParallel::NNBTParallel() {
-	_current_child_index = 0;
 	_success_policy = SuccessPolicy::SUCCESS_REQUIRE_ALL;
 	_failure_policy = FailurePolicy::FAILURE_REQUIRE_ONE;
 	//_is_reactive = true;
@@ -47,6 +46,44 @@ NNBTParallel::~NNBTParallel() {
 }
 
 // Handling functions.
+
+void NNBTParallel::reset_bt_node() {
+	_child_results.clear();
+}
+
+void NNBTParallel::update_child_vectors() {
+	NNBTNodes::update_child_vectors();
+
+	// Drop the results of children that are no longer part of this node so a
+	// removed child is never looked up again.
+	for (std::map<NNBTNodes *, Status>::iterator it = _child_results.begin(); it != _child_results.end();) {
+		bool is_child = false;
+		for (unsigned int i = 0; i < _num_child_btnodes; i++) {
+			if (_child_btnodes[i] == it->first) {
+				is_child = true;
+				break;
+			}
+		}
+		if (is_child) {
+			++it;
+		} else {
+			it = _child_results.erase(it);
+		}
+	}
+}
+
+void NNBTParallel::_on_before_run(Variant blackboard, float delta) {
+	// Every run starts with fresh per-child memory.
+	_child_results.clear();
+}
+
+void NNBTParallel::_on_after_run(Variant blackboard, float delta) {
+	_child_results.clear();
+}
+
+void NNBTParallel::_on_interrupt(Variant blackboard, float delta) {
+	_child_results.clear();
+}
 
 // Getters and Setters.
 
@@ -84,62 +121,85 @@ bool NNBTParallel::get_is_reactive() const {
 }
 /**/
 
+NNBTNodes::Status NNBTParallel::_evaluate_policies(int p_num_enabled, int p_num_success, int p_num_failure) const {
+	// An empty parallel has p_num_enabled == 0, so "require all" is trivially
+	// true and "require one" is false.
+	bool success_met = (_success_policy == SuccessPolicy::SUCCESS_REQUIRE_ALL) ? (p_num_success == p_num_enabled) : (p_num_success > 0);
+	bool failure_met = (_failure_policy == FailurePolicy::FAILURE_REQUIRE_ALL) ? (p_num_failure == p_num_enabled) : (p_num_failure > 0);
+
+	if (success_met && failure_met) {
+		// Both-met tie goes to FAILURE, matching the historical matrix.
+		return Status::FAILURE;
+	}
+	if (success_met) {
+		return Status::SUCCESS;
+	}
+	if (failure_met) {
+		return Status::FAILURE;
+	}
+	if (p_num_success + p_num_failure == p_num_enabled) {
+		// Every enabled child is terminal but neither policy is met. This is
+		// the documented fallback for mixed outcomes under REQUIRE_ALL.
+		return Status::FAILURE;
+	}
+	// Some enabled children have no terminal result yet.
+	return Status::RUNNING;
+}
+
 NNBTNodes::Status NNBTParallel::_tick(Variant blackboard, float delta) {
 	set_internal_status(BT_INTERNAL_STATUS_TICKED);
-	//if( _is_first_tick ) {
-	//    _is_first_tick = false;
-	//    emit_signal("btnode_entered", blackboard, delta);
-	//}
-	// Every enabled child is ticked; this node never early-exits.
+
+	// The enabled count is fixed for this tick so a "require all" policy only
+	// becomes true once every enabled child has a terminal result.
 	int num_enabled = 0;
+	for (unsigned int i = 0; i < _num_child_btnodes; i++) {
+		if (_child_btnodes[i]->get_is_enabled()) {
+			++num_enabled;
+		}
+	}
+
 	int num_success = 0;
 	int num_failure = 0;
-	bool has_running = false;
 	for (unsigned int i = 0; i < _num_child_btnodes; i++) {
 		NNBTNodes *btnode = _child_btnodes[i];
-		//if( btnode != nullptr ) {
 		if (!btnode->get_is_enabled()) {
 			continue;
 		}
-		++num_enabled;
-		Status result = btnode->tick(blackboard, delta);
-		if (result == Status::FAILURE) {
-			++num_failure;
-		} else if (result == Status::RUNNING) {
-			has_running = true;
-		} else {
-			// SUCCESS and SKIP both count as a success so that the defaults
-			// below reproduce the historical behaviour exactly: SKIP never
-			// caused a failure, and a lone SKIP child returned SUCCESS.
-			++num_success;
+
+		std::map<NNBTNodes *, Status>::iterator recorded = _child_results.find(btnode);
+		if (recorded == _child_results.end()) {
+			Status result = btnode->tick(blackboard, delta);
+			if (result != Status::RUNNING) {
+				// SKIP and SUCCESS both count as a success. Only terminal
+				// results are remembered; a RUNNING child is ticked again on
+				// the next tick.
+				_child_results[btnode] = (result == Status::FAILURE) ? Status::FAILURE : Status::SUCCESS;
+				recorded = _child_results.find(btnode);
+			}
 		}
-		//}//endif node was of correct type
-	} //endfor btnodes
-	//emit_signal("btnode_ticked", blackboard, delta);
-	// RUNNING takes precedence over everything else, regardless of child order.
-	Status parallelresult;
-	if (has_running) {
-		parallelresult = Status::RUNNING;
-	} else {
-		// An empty parallel has num_enabled == 0, so "require all" is trivially
-		// true and "require one" is false.
-		bool success_met = (_success_policy == SuccessPolicy::SUCCESS_REQUIRE_ALL) ? (num_success == num_enabled) : (num_success > 0);
-		bool failure_met = (_failure_policy == FailurePolicy::FAILURE_REQUIRE_ALL) ? (num_failure == num_enabled) : (num_failure > 0);
-		if (success_met && failure_met) {
-			// Both-met tie goes to FAILURE, matching the historical matrix.
-			parallelresult = Status::FAILURE;
-		} else if (success_met) {
-			parallelresult = Status::SUCCESS;
-		} else {
-			// FAILURE is the documented fallback for mixed outcomes under
-			// SUCCESS_REQUIRE_ALL and FAILURE_REQUIRE_ALL.
-			parallelresult = Status::FAILURE;
+
+		if (recorded != _child_results.end()) {
+			if (recorded->second == Status::FAILURE) {
+				++num_failure;
+			} else {
+				++num_success;
+			}
+		}
+
+		// Evaluate after every child so a decided outcome returns immediately.
+		// The base tick() then interrupts any still-running children.
+		Status outcome = _evaluate_policies(num_enabled, num_success, num_failure);
+		if (outcome != Status::RUNNING) {
+			set_internal_status(BT_INTERNAL_STATUS_COMPLETED);
+			set_tick_result(outcome);
+			return outcome;
 		}
 	}
-	if (parallelresult != Status::RUNNING) {
+
+	Status outcome = _evaluate_policies(num_enabled, num_success, num_failure);
+	if (outcome != Status::RUNNING) {
 		set_internal_status(BT_INTERNAL_STATUS_COMPLETED);
-		//emit_signal("btnode_exited", blackboard, delta);
 	}
-	set_tick_result(parallelresult);
-	return parallelresult;
+	set_tick_result(outcome);
+	return outcome;
 }

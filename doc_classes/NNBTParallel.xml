@@ -1,32 +1,33 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <class name="NNBTParallel" inherits="NNBTCompositeNodes" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
 	<brief_description>
-		Ticks all its enabled child nodes and combines their statuses using [member success_policy] and [member failure_policy]. [code]RUNNING[/code] takes precedence over a combined [code]FAILURE[/code], which takes precedence over [code]SUCCESS[/code].
+		Ticks all its enabled child nodes and combines their accumulated results using [member success_policy] and [member failure_policy]. The policy is evaluated after every child tick and the node early-exits as soon as the outcome is decided.
 	</brief_description>
 	<description>
-		The parallel node ticks every enabled child node, regardless of child order, and never early-exits. Disabled children are not ticked and are excluded from every count.
+		A parallel node runs its enabled children concurrently. Within one run it remembers every child's terminal result and does not tick that child again until the next run. A child that returned [code]RUNNING[/code] has no remembered result yet and is ticked again on the next tick. Disabled children are not ticked and are excluded from every count.
 
 		[code]SKIP[/code] results count as [code]SUCCESS[/code] for the policy evaluation. [code]SKIP[/code] never caused a failure and a lone [code]SKIP[/code] child returned [code]SUCCESS[/code], so the default policies reproduce the historical behaviour exactly.
 
-		After ticking every enabled child the node computes:
+		The policies are evaluated after every child tick against the results accumulated so far in the current run:
 		[codeblock]
-		if any child returned RUNNING:
-		    result = RUNNING
+		success_met = success_policy == REQUIRE_ALL ? num_success == num_enabled : num_success &gt; 0
+		failure_met = failure_policy == REQUIRE_ALL ? num_failure == num_enabled : num_failure &gt; 0
+		if success_met and failure_met:
+		    result = FAILURE
+		elif success_met:
+		    result = SUCCESS
+		elif failure_met:
+		    result = FAILURE
+		elif num_success + num_failure == num_enabled:
+		    result = FAILURE
 		else:
-		    success_met = success_policy == REQUIRE_ALL ? num_success == num_enabled : num_success &gt; 0
-		    failure_met = failure_policy == REQUIRE_ALL ? num_failure == num_enabled : num_failure &gt; 0
-		    if success_met and failure_met:
-		        result = FAILURE
-		    elif success_met:
-		        result = SUCCESS
-		    elif failure_met:
-		        result = FAILURE
-		    else:
-		        result = FAILURE
+		    result = RUNNING
 		[/codeblock]
-		The precedence is therefore [code]RUNNING[/code], then the both-met [code]FAILURE[/code] tie (which matches the historical failure-before-success behaviour), then [code]SUCCESS[/code], then [code]FAILURE[/code]. The final [code]FAILURE[/code] is the documented fallback for mixed outcomes under [constant SUCCESS_REQUIRE_ALL] and [constant FAILURE_REQUIRE_ALL], where neither policy is satisfied.
+		[code]num_enabled[/code] is the number of enabled children and [code]num_success[/code] and [code]num_failure[/code] only count children with a terminal result, so children that are still running do not yet satisfy a "require all" policy. The precedence is therefore the both-met [code]FAILURE[/code] tie (which matches the historical failure-before-success behaviour), then [code]SUCCESS[/code], then [code]FAILURE[/code], then [code]RUNNING[/code] while some children have no terminal result yet. The final [code]FAILURE[/code] is the documented fallback for mixed outcomes under [constant SUCCESS_REQUIRE_ALL] and [constant FAILURE_REQUIRE_ALL], where every child is terminal but neither policy is satisfied.
 
-		The defaults ([constant SUCCESS_REQUIRE_ALL] and [constant FAILURE_REQUIRE_ONE]) reproduce the original matrix: any [code]RUNNING[/code] child returns [code]RUNNING[/code], otherwise any [code]FAILURE[/code] child returns [code]FAILURE[/code], otherwise the node returns [code]SUCCESS[/code].
+		As soon as the result is [code]SUCCESS[/code] or [code]FAILURE[/code] the node returns it immediately and interrupts the children that are still running. Children that have already finished are not interrupted again. The per-run memory is cleared when a new run starts, on reset, and on interrupt. A child added during a run participates from the next tick, and a removed child is no longer considered.
+
+		The defaults ([constant SUCCESS_REQUIRE_ALL] and [constant FAILURE_REQUIRE_ONE]) fail immediately when any child fails and otherwise return [code]SUCCESS[/code] only once every enabled child has succeeded. Until then they return [code]RUNNING[/code].
 
 		An empty parallel, or one whose children are all disabled, has no enabled children. "Require all" is then trivially true and "require one" is false, so the node returns [code]SUCCESS[/code] only with [constant SUCCESS_REQUIRE_ALL] and [constant FAILURE_REQUIRE_ONE]; every other policy combination returns [code]FAILURE[/code].
 	</description>

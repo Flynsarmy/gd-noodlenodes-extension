@@ -199,20 +199,22 @@ func test_never_reset_holds_failure_after_child_fails() -> void:
 	var root: NNBTRoot = tree[0]
 	var repeater: NNBTRepeater = tree[2]
 
-	assert_eq(root.tick(BLACKBOARD, 0.1), NNBTNodes.RUNNING, "The running sibling must keep the tree running.")
+	# The default failure policy fails the parallel as soon as the repeater
+	# fails, before the running sibling is ticked.
+	assert_eq(root.tick(BLACKBOARD, 0.1), NNBTNodes.FAILURE, "A failure must decide the parallel immediately.")
 	assert_eq(repeater.tick_result, NNBTNodes.FAILURE)
 	assert_eq(repeater.get_times_repeated(), 0)
 	assert_eq(leaf.tick_count, 1)
 	assert_eq(repeater.internal_status, INTERNAL_STATUS_COMPLETED)
 
-	assert_eq(root.tick(BLACKBOARD, 0.1), NNBTNodes.RUNNING)
+	assert_eq(root.tick(BLACKBOARD, 0.1), NNBTNodes.FAILURE)
 	assert_eq(repeater.tick_result, NNBTNodes.FAILURE, "A failed Never repeater must keep its terminal failure.")
 	assert_eq(repeater.get_times_repeated(), 0)
 	assert_eq(leaf.tick_count, 1, "A failed completed Never repeater must not tick its child again.")
 
 	# A completed failed run must not resume just because the child would now succeed.
 	leaf.result = NNBTNodes.SUCCESS
-	assert_eq(root.tick(BLACKBOARD, 0.1), NNBTNodes.RUNNING)
+	assert_eq(root.tick(BLACKBOARD, 0.1), NNBTNodes.FAILURE)
 	assert_eq(repeater.tick_result, NNBTNodes.FAILURE, "A failed Never repeater must not resume without a reset.")
 	assert_eq(repeater.get_times_repeated(), 0)
 	assert_eq(leaf.tick_count, 1)
@@ -225,6 +227,7 @@ func test_explicit_reset_starts_fresh_run_after_never_success() -> void:
 	leaf.result = NNBTNodes.SUCCESS
 	var tree: Array = _build_parallel_tree(2, RESET_RULE_NEVER, leaf)
 	var root: NNBTRoot = tree[0]
+	var parallel: NNBTParallel = tree[1]
 	var repeater: NNBTRepeater = tree[2]
 
 	assert_eq(root.tick(BLACKBOARD, 0.1), NNBTNodes.RUNNING)
@@ -232,7 +235,10 @@ func test_explicit_reset_starts_fresh_run_after_never_success() -> void:
 	assert_eq(repeater.get_times_repeated(), 2)
 	assert_eq(leaf.tick_count, 2)
 
+	# The parallel remembers the completed repeater for the rest of its run, so
+	# a new run is needed before the explicit reset can be observed.
 	repeater.internal_status = INTERNAL_STATUS_UNTICKED
+	parallel.interrupt()
 	assert_eq(root.tick(BLACKBOARD, 0.1), NNBTNodes.RUNNING, "An explicit reset must start a fresh run.")
 	assert_eq(repeater.tick_result, NNBTNodes.RUNNING)
 	assert_eq(repeater.get_times_repeated(), 1, "A fresh run must count from one.")
@@ -248,7 +254,7 @@ func test_explicit_reset_starts_fresh_run_after_never_failure() -> void:
 	var root: NNBTRoot = tree[0]
 	var repeater: NNBTRepeater = tree[2]
 
-	assert_eq(root.tick(BLACKBOARD, 0.1), NNBTNodes.RUNNING)
+	assert_eq(root.tick(BLACKBOARD, 0.1), NNBTNodes.FAILURE, "A failure must decide the parallel immediately.")
 	assert_eq(repeater.tick_result, NNBTNodes.FAILURE)
 	assert_eq(leaf.tick_count, 1)
 
@@ -267,6 +273,7 @@ func test_changing_reset_rule_from_never_starts_fresh_run() -> void:
 	leaf.result = NNBTNodes.SUCCESS
 	var tree: Array = _build_parallel_tree(2, RESET_RULE_NEVER, leaf)
 	var root: NNBTRoot = tree[0]
+	var parallel: NNBTParallel = tree[1]
 	var repeater: NNBTRepeater = tree[2]
 
 	assert_eq(root.tick(BLACKBOARD, 0.1), NNBTNodes.RUNNING)
@@ -274,7 +281,9 @@ func test_changing_reset_rule_from_never_starts_fresh_run() -> void:
 	assert_eq(repeater.get_times_repeated(), 2)
 	assert_eq(leaf.tick_count, 2)
 
+	# The parallel does not revisit the completed repeater until a new run.
 	repeater.reset_rule = RESET_RULE_WHEN_TICKED_AFTER_BEING_COMPLETED
+	parallel.interrupt()
 	assert_eq(root.tick(BLACKBOARD, 0.1), NNBTNodes.RUNNING, "Changing the reset rule must start a fresh run.")
 	assert_eq(repeater.tick_result, NNBTNodes.RUNNING)
 	assert_eq(repeater.get_times_repeated(), 1, "A fresh run must count from one.")

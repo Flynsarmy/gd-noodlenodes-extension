@@ -50,8 +50,9 @@ func _tick_case(test_case: Dictionary, success_policy: int, failure_policy: int)
 	return { "root": root, "parallel": parallel, "leaves": leaves, "result": result }
 
 
-# Expected results are ordered by _policy_combinations(): the default (ALL, ONE)
-# first, then (ALL, ALL), (ONE, ONE) and (ONE, ALL).
+# Expected results and per-child tick counts are ordered by
+# _policy_combinations(): the default (ALL, ONE) first, then (ALL, ALL),
+# (ONE, ONE) and (ONE, ALL). A decided policy stops ticking later children.
 func _policy_cases() -> Array:
 	return [
 		{
@@ -59,66 +60,77 @@ func _policy_cases() -> Array:
 			"results": [NNBTNodes.SUCCESS, NNBTNodes.SUCCESS],
 			"enabled": [true, true],
 			"expected": [NNBTNodes.SUCCESS, NNBTNodes.SUCCESS, NNBTNodes.SUCCESS, NNBTNodes.SUCCESS],
+			"ticks": [[1, 1], [1, 1], [1, 0], [1, 0]],
 		},
 		{
 			"name": "success_failure",
 			"results": [NNBTNodes.SUCCESS, NNBTNodes.FAILURE],
 			"enabled": [true, true],
-			"expected": [NNBTNodes.FAILURE, NNBTNodes.FAILURE, NNBTNodes.FAILURE, NNBTNodes.SUCCESS],
+			"expected": [NNBTNodes.FAILURE, NNBTNodes.FAILURE, NNBTNodes.SUCCESS, NNBTNodes.SUCCESS],
+			"ticks": [[1, 1], [1, 1], [1, 0], [1, 0]],
 		},
 		{
 			"name": "failure_failure",
 			"results": [NNBTNodes.FAILURE, NNBTNodes.FAILURE],
 			"enabled": [true, true],
 			"expected": [NNBTNodes.FAILURE, NNBTNodes.FAILURE, NNBTNodes.FAILURE, NNBTNodes.FAILURE],
+			"ticks": [[1, 0], [1, 1], [1, 0], [1, 1]],
 		},
 		{
 			"name": "running_success",
 			"results": [NNBTNodes.RUNNING, NNBTNodes.SUCCESS],
 			"enabled": [true, true],
-			"expected": [NNBTNodes.RUNNING, NNBTNodes.RUNNING, NNBTNodes.RUNNING, NNBTNodes.RUNNING],
+			"expected": [NNBTNodes.RUNNING, NNBTNodes.RUNNING, NNBTNodes.SUCCESS, NNBTNodes.SUCCESS],
+			"ticks": [[1, 1], [1, 1], [1, 1], [1, 1]],
 		},
 		{
 			"name": "running_failure",
 			"results": [NNBTNodes.RUNNING, NNBTNodes.FAILURE],
 			"enabled": [true, true],
-			"expected": [NNBTNodes.RUNNING, NNBTNodes.RUNNING, NNBTNodes.RUNNING, NNBTNodes.RUNNING],
+			"expected": [NNBTNodes.FAILURE, NNBTNodes.RUNNING, NNBTNodes.FAILURE, NNBTNodes.RUNNING],
+			"ticks": [[1, 1], [1, 1], [1, 1], [1, 1]],
 		},
 		{
 			"name": "success_failure_running",
 			"results": [NNBTNodes.SUCCESS, NNBTNodes.FAILURE, NNBTNodes.RUNNING],
 			"enabled": [true, true, true],
-			"expected": [NNBTNodes.RUNNING, NNBTNodes.RUNNING, NNBTNodes.RUNNING, NNBTNodes.RUNNING],
+			"expected": [NNBTNodes.FAILURE, NNBTNodes.RUNNING, NNBTNodes.SUCCESS, NNBTNodes.SUCCESS],
+			"ticks": [[1, 1, 0], [1, 1, 1], [1, 0, 0], [1, 0, 0]],
 		},
 		{
 			"name": "empty",
 			"results": [],
 			"enabled": [],
 			"expected": [NNBTNodes.SUCCESS, NNBTNodes.FAILURE, NNBTNodes.FAILURE, NNBTNodes.FAILURE],
+			"ticks": [[], [], [], []],
 		},
 		{
 			"name": "all_disabled",
 			"results": [NNBTNodes.FAILURE, NNBTNodes.RUNNING],
 			"enabled": [false, false],
 			"expected": [NNBTNodes.SUCCESS, NNBTNodes.FAILURE, NNBTNodes.FAILURE, NNBTNodes.FAILURE],
+			"ticks": [[0, 0], [0, 0], [0, 0], [0, 0]],
 		},
 		{
 			"name": "disabled_and_enabled_mix",
 			"results": [NNBTNodes.FAILURE, NNBTNodes.SUCCESS, NNBTNodes.RUNNING],
 			"enabled": [false, true, false],
 			"expected": [NNBTNodes.SUCCESS, NNBTNodes.SUCCESS, NNBTNodes.SUCCESS, NNBTNodes.SUCCESS],
+			"ticks": [[0, 1, 0], [0, 1, 0], [0, 1, 0], [0, 1, 0]],
 		},
 		{
 			"name": "skip_only",
 			"results": [NNBTNodes.SKIP],
 			"enabled": [true],
 			"expected": [NNBTNodes.SUCCESS, NNBTNodes.SUCCESS, NNBTNodes.SUCCESS, NNBTNodes.SUCCESS],
+			"ticks": [[1], [1], [1], [1]],
 		},
 		{
 			"name": "skip_and_success",
 			"results": [NNBTNodes.SKIP, NNBTNodes.SUCCESS],
 			"enabled": [true, true],
 			"expected": [NNBTNodes.SUCCESS, NNBTNodes.SUCCESS, NNBTNodes.SUCCESS, NNBTNodes.SUCCESS],
+			"ticks": [[1, 1], [1, 1], [1, 0], [1, 0]],
 		},
 	]
 
@@ -154,6 +166,7 @@ func test_policy_truth_table() -> void:
 			var parallel: NNBTParallel = tree["parallel"]
 			var leaves: Array = tree["leaves"]
 			var expected: int = test_case["expected"][index]
+			var expected_ticks: Array = test_case["ticks"][index]
 			var label: String = "%s with success_policy %d / failure_policy %d" % [test_case["name"], combination[0], combination[1]]
 
 			assert_eq(tree["result"], expected, label)
@@ -164,19 +177,18 @@ func test_policy_truth_table() -> void:
 				assert_eq(parallel.internal_status, INTERNAL_STATUS_COMPLETED, label)
 
 			for leaf_index in leaves.size():
-				var expected_tick_count: int = 1 if test_case["enabled"][leaf_index] else 0
-				assert_eq(leaves[leaf_index].tick_count, expected_tick_count, label + ": child %d tick count" % leaf_index)
+				assert_eq(leaves[leaf_index].tick_count, expected_ticks[leaf_index], label + ": child %d tick count" % leaf_index)
 
 			tree["root"].free()
 
 
 func test_default_policies_reproduce_the_existing_matrix() -> void:
 	var expectations: Array = [
-		{ "results": [NNBTNodes.SUCCESS, NNBTNodes.SUCCESS], "expected": NNBTNodes.SUCCESS },
-		{ "results": [NNBTNodes.SUCCESS, NNBTNodes.FAILURE], "expected": NNBTNodes.FAILURE },
-		{ "results": [NNBTNodes.FAILURE, NNBTNodes.FAILURE], "expected": NNBTNodes.FAILURE },
-		{ "results": [NNBTNodes.RUNNING, NNBTNodes.SUCCESS], "expected": NNBTNodes.RUNNING },
-		{ "results": [NNBTNodes.RUNNING, NNBTNodes.FAILURE], "expected": NNBTNodes.RUNNING },
+		{ "results": [NNBTNodes.SUCCESS, NNBTNodes.SUCCESS], "expected": NNBTNodes.SUCCESS, "ticks": [1, 1] },
+		{ "results": [NNBTNodes.SUCCESS, NNBTNodes.FAILURE], "expected": NNBTNodes.FAILURE, "ticks": [1, 1] },
+		{ "results": [NNBTNodes.FAILURE, NNBTNodes.FAILURE], "expected": NNBTNodes.FAILURE, "ticks": [1, 0] },
+		{ "results": [NNBTNodes.RUNNING, NNBTNodes.SUCCESS], "expected": NNBTNodes.RUNNING, "ticks": [1, 1] },
+		{ "results": [NNBTNodes.RUNNING, NNBTNodes.FAILURE], "expected": NNBTNodes.FAILURE, "ticks": [1, 1] },
 	]
 
 	for expectation in expectations:
@@ -194,8 +206,8 @@ func test_default_policies_reproduce_the_existing_matrix() -> void:
 		assert_eq(parallel.failure_policy, NNBTParallel.FAILURE_REQUIRE_ONE)
 		assert_eq(root.tick(BLACKBOARD, 0.1), expectation["expected"])
 		assert_eq(parallel.tick_result, expectation["expected"])
-		for leaf in leaves:
-			assert_eq(leaf.tick_count, 1)
+		for leaf_index in leaves.size():
+			assert_eq(leaves[leaf_index].tick_count, expectation["ticks"][leaf_index])
 
 		root.free()
 
