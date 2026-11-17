@@ -48,6 +48,13 @@ void NNBTTimeLimiter::reset_bt_node() {
 	_time_spent = 0.0f;
 }
 
+void NNBTTimeLimiter::_on_interrupt(Variant blackboard, float delta) {
+	// An interrupt ends the run without resetting the node; clear the
+	// accumulated _time_spent so the next run cannot time out early.
+	reset_bt_node();
+	NNBTDecoratorNodes::_on_interrupt(blackboard, delta);
+}
+
 /**
  * Fails the run when the first enabled child has been RUNNING for longer than
  * time_limit seconds of accumulated delta.

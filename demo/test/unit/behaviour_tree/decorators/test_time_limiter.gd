@@ -197,6 +197,86 @@ func test_root_disable_restarts_time_limit() -> void:
 	root.free()
 
 
+class HookTimeLimiter extends NNBTTimeLimiter:
+	var interrupt_count: int = 0
+
+	func on_interrupt(_blackboard: Variant, _delta: float) -> void:
+		interrupt_count += 1
+
+
+func test_root_interrupt_clears_time_limit() -> void:
+	var leaf: CountingLeaf = CountingLeaf.new()
+	leaf.result = NNBTNodes.RUNNING
+	var tree: Array = _build_tree(1.0, leaf)
+	var root: NNBTRoot = tree[0]
+	var time_limiter: NNBTTimeLimiter = tree[1]
+
+	assert_eq(root.tick(BLACKBOARD, 0.8), NNBTNodes.RUNNING)
+	assert_almost_eq(time_limiter.get_time_spent(), 0.8, 0.0001)
+
+	root.interrupt()
+	assert_almost_eq(time_limiter.get_time_spent(), 0.0, 0.0001, "An interrupt must clear the accumulated time.")
+
+	assert_eq(root.tick(BLACKBOARD, 0.3), NNBTNodes.RUNNING, "The next run must accumulate from its first tick.")
+	assert_almost_eq(time_limiter.get_time_spent(), 0.3, 0.0001)
+	assert_eq(root.tick(BLACKBOARD, 0.7), NNBTNodes.RUNNING, "The limit is exceeded only strictly after the full limit.")
+	assert_almost_eq(time_limiter.get_time_spent(), 1.0, 0.0001)
+	assert_eq(root.tick(BLACKBOARD, 0.1), NNBTNodes.FAILURE, "The next run must time out after the full limit.")
+	assert_almost_eq(time_limiter.get_time_spent(), 0.0, 0.0001)
+	assert_eq(leaf.internal_status, INTERNAL_STATUS_UNTICKED, "A timeout must still reset the child subtree.")
+
+	root.free()
+
+
+func test_parent_interrupt_clears_time_limit() -> void:
+	var leaf: CountingLeaf = CountingLeaf.new()
+	leaf.result = NNBTNodes.RUNNING
+	var root: NNBTRoot = NNBTRoot.new()
+	var selector: NNBTSelector = NNBTSelector.new()
+	var time_limiter: NNBTTimeLimiter = NNBTTimeLimiter.new()
+	time_limiter.time_limit = 1.0
+	time_limiter.add_child(leaf)
+	selector.add_child(time_limiter)
+	root.add_child(selector)
+
+	assert_eq(root.tick(BLACKBOARD, 0.8), NNBTNodes.RUNNING)
+	assert_almost_eq(time_limiter.get_time_spent(), 0.8, 0.0001)
+
+	# The running selector cascades the interrupt to its active child, exactly
+	# as an ancestor branch switch does.
+	selector.interrupt()
+	assert_almost_eq(time_limiter.get_time_spent(), 0.0, 0.0001, "A parent interrupt must clear the accumulated time.")
+
+	assert_eq(root.tick(BLACKBOARD, 0.3), NNBTNodes.RUNNING, "The next run must accumulate from its first tick.")
+	assert_almost_eq(time_limiter.get_time_spent(), 0.3, 0.0001)
+	assert_eq(root.tick(BLACKBOARD, 0.7), NNBTNodes.RUNNING, "The limit is exceeded only strictly after the full limit.")
+	assert_eq(root.tick(BLACKBOARD, 0.1), NNBTNodes.FAILURE, "The next run must time out after the full limit.")
+
+	root.free()
+
+
+func test_on_interrupt_hook_clears_time_limit() -> void:
+	var leaf: CountingLeaf = CountingLeaf.new()
+	leaf.result = NNBTNodes.RUNNING
+	var root: NNBTRoot = NNBTRoot.new()
+	var time_limiter: HookTimeLimiter = HookTimeLimiter.new()
+	time_limiter.time_limit = 1.0
+	time_limiter.add_child(leaf)
+	root.add_child(time_limiter)
+
+	assert_eq(root.tick(BLACKBOARD, 0.5), NNBTNodes.RUNNING)
+	assert_eq(time_limiter.interrupt_count, 0)
+
+	root.interrupt()
+	assert_eq(time_limiter.interrupt_count, 1, "The inherited script on_interrupt hook must still run.")
+	assert_almost_eq(time_limiter.get_time_spent(), 0.0, 0.0001, "An interrupt must clear the accumulated time.")
+
+	assert_eq(root.tick(BLACKBOARD, 0.3), NNBTNodes.RUNNING)
+	assert_almost_eq(time_limiter.get_time_spent(), 0.3, 0.0001)
+
+	root.free()
+
+
 func test_parent_reset_restarts_time_limit() -> void:
 	var leaf: CountingLeaf = CountingLeaf.new()
 	leaf.result = NNBTNodes.RUNNING

@@ -232,6 +232,90 @@ func test_root_disable_restarts_delay() -> void:
 	root.free()
 
 
+class HookDelayer extends NNBTDelayer:
+	var interrupt_count: int = 0
+
+	func on_interrupt(_blackboard: Variant, _delta: float) -> void:
+		interrupt_count += 1
+
+
+func test_root_interrupt_restarts_delay() -> void:
+	var leaf: CountingLeaf = CountingLeaf.new()
+	leaf.result = NNBTNodes.SUCCESS
+	var tree: Array = _build_tree(1.0, leaf)
+	var root: NNBTRoot = tree[0]
+	var delayer: NNBTDelayer = tree[1]
+
+	assert_eq(root.tick(BLACKBOARD, 0.8), NNBTNodes.RUNNING, "The delay must hold the child on the first tick.")
+	assert_almost_eq(delayer.get_time_waited(), 0.8, 0.0001)
+	assert_eq(leaf.tick_count, 0)
+
+	root.interrupt()
+	assert_almost_eq(delayer.get_time_waited(), 0.0, 0.0001, "An interrupt must clear the partial wait.")
+	assert_eq(leaf.tick_count, 0, "An interrupt must not tick the child.")
+
+	assert_eq(root.tick(BLACKBOARD, 0.3), NNBTNodes.RUNNING, "The restarted delay must still need the full wait.")
+	assert_eq(leaf.tick_count, 0, "The child must not be ticked early after an interrupt.")
+	assert_almost_eq(delayer.get_time_waited(), 0.3, 0.0001)
+
+	assert_eq(root.tick(BLACKBOARD, 1.0), NNBTNodes.SUCCESS, "The restarted delay must elapse after the full wait.")
+	assert_eq(leaf.tick_count, 1)
+
+	root.free()
+
+
+func test_parent_interrupt_restarts_delay() -> void:
+	var leaf: CountingLeaf = CountingLeaf.new()
+	leaf.result = NNBTNodes.SUCCESS
+	var root: NNBTRoot = NNBTRoot.new()
+	var sequence: NNBTSequence = NNBTSequence.new()
+	var delayer: NNBTDelayer = NNBTDelayer.new()
+	delayer.wait_time = 1.0
+	delayer.add_child(leaf)
+	sequence.add_child(delayer)
+	root.add_child(sequence)
+
+	assert_eq(root.tick(BLACKBOARD, 0.8), NNBTNodes.RUNNING, "The delay must hold the child on the first tick.")
+	assert_almost_eq(delayer.get_time_waited(), 0.8, 0.0001)
+
+	# The running sequence cascades the interrupt to its active child, exactly
+	# as an ancestor branch switch does.
+	sequence.interrupt()
+	assert_almost_eq(delayer.get_time_waited(), 0.0, 0.0001, "A parent interrupt must clear the partial wait.")
+
+	assert_eq(root.tick(BLACKBOARD, 0.3), NNBTNodes.RUNNING, "The restarted delay must still need the full wait.")
+	assert_eq(leaf.tick_count, 0, "The child must not be ticked early after a parent interrupt.")
+	assert_almost_eq(delayer.get_time_waited(), 0.3, 0.0001)
+
+	assert_eq(root.tick(BLACKBOARD, 1.0), NNBTNodes.SUCCESS, "The restarted delay must elapse after the full wait.")
+	assert_eq(leaf.tick_count, 1)
+
+	root.free()
+
+
+func test_on_interrupt_hook_restarts_delay() -> void:
+	var leaf: CountingLeaf = CountingLeaf.new()
+	leaf.result = NNBTNodes.SUCCESS
+	var root: NNBTRoot = NNBTRoot.new()
+	var delayer: HookDelayer = HookDelayer.new()
+	delayer.wait_time = 1.0
+	delayer.add_child(leaf)
+	root.add_child(delayer)
+
+	assert_eq(root.tick(BLACKBOARD, 0.5), NNBTNodes.RUNNING)
+	assert_eq(delayer.interrupt_count, 0)
+
+	root.interrupt()
+	assert_eq(delayer.interrupt_count, 1, "The inherited script on_interrupt hook must still run.")
+	assert_almost_eq(delayer.get_time_waited(), 0.0, 0.0001, "An interrupt must clear the partial wait.")
+	assert_eq(leaf.tick_count, 0, "An interrupt must not tick the child.")
+
+	assert_eq(root.tick(BLACKBOARD, 0.3), NNBTNodes.RUNNING)
+	assert_eq(leaf.tick_count, 0)
+
+	root.free()
+
+
 func test_parent_reset_restarts_delay() -> void:
 	var leaf: CountingLeaf = CountingLeaf.new()
 	leaf.result = NNBTNodes.SUCCESS

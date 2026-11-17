@@ -48,6 +48,13 @@ void NNBTDelayer::reset_bt_node() {
 	_is_delay_elapsed = false;
 }
 
+void NNBTDelayer::_on_interrupt(Variant blackboard, float delta) {
+	// An interrupt ends the run without resetting the node; restart the
+	// delay so the next run cannot inherit a stale partial wait.
+	reset_bt_node();
+	NNBTDecoratorNodes::_on_interrupt(blackboard, delta);
+}
+
 /**
  * Waits for wait_time seconds of accumulated delta before ticking the first
  * enabled child node.
