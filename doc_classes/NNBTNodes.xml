@@ -7,6 +7,7 @@
 		Behaviour Trees are a commonly used structure that can be used to create artificial intelligence in games for the non-playable characters. A behaviour tree has a root node and under it a tree structure, where the branches of the tree define the behaviour for the AI.
 		The utility enabled Behaviour Trees in Noodle Nodes GDExtension extend the traditional Behaviour Tree with utility functions. The Behaviour Tree nodes can be used as a regular behaviour tree, but the extended utility features allow you to add utility-based branch selection and execution of the Node Query System queries within your trees.
 		The Behaviour Tree in Noodle Nodes GDExtension allows you to tick the tree by giving blackboard as input. This blackboard can be a dictionary that you want to use as the blackboard or the AI actor node itself. Or any other type of Variant. Or just null.
+		Each node tracks a run lifecycle. A run starts with the [code]on_before_run[/code] hook the first time the node is ticked while no run is active, and it ends with either the [code]on_after_run[/code] hook (when the node returns [code]SUCCESS[/code] or [code]FAILURE[/code]) or the [code]on_interrupt[/code] hook (when the active run is abandoned). Every [code]on_before_run[/code] is matched by exactly one [code]on_after_run[/code] or [code]on_interrupt[/code] for the same run, and a node that never started a run receives no lifecycle callback. The [code]on_before_run[/code], [code]on_after_run[/code] and [code]on_interrupt[/code] script hooks are provided by [NNBTTaskNodes]; composite nodes participate in the run lifecycle internally only. The [code]SKIP[/code] result is not terminal: the run stays active until it completes or is interrupted. [method interrupt] is idempotent and does nothing when the node has no active run. Disabling a node interrupts and resets its subtree, so re-enabling the node starts a fresh run on the next tick.
 	</description>
 	<tutorials>
 	</tutorials>
@@ -15,6 +16,12 @@
 			<return type="NodePath" />
 			<description>
 				Returns a relative node path to the furthest direct [NNBTNodes] ancestor.
+			</description>
+		</method>
+		<method name="interrupt">
+			<return type="void" />
+			<description>
+				Force-stops the node's active run. Task nodes run their [code]on_interrupt[/code] script hook and every still-active behaviour tree child is interrupted as well. Calling it on a node without an active run is a safe no-op, so it is idempotent.
 			</description>
 		</method>
 	</methods>

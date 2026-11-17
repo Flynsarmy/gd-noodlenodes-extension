@@ -12,6 +12,23 @@ NNBTTaskNodes::~NNBTTaskNodes() {
 
 void NNBTTaskNodes::_bind_methods() {
 	GDVIRTUAL_BIND(on_tick, "blackboard", "delta");
+	GDVIRTUAL_BIND(on_before_run, "blackboard", "delta");
+	GDVIRTUAL_BIND(on_after_run, "blackboard", "delta");
+	GDVIRTUAL_BIND(on_interrupt, "blackboard", "delta");
+}
+
+// Lifecycle hooks.
+
+void NNBTTaskNodes::_on_before_run(Variant blackboard, float delta) {
+	GDVIRTUAL_CALL(on_before_run, blackboard, delta);
+}
+
+void NNBTTaskNodes::_on_after_run(Variant blackboard, float delta) {
+	GDVIRTUAL_CALL(on_after_run, blackboard, delta);
+}
+
+void NNBTTaskNodes::_on_interrupt(Variant blackboard, float delta) {
+	GDVIRTUAL_CALL(on_interrupt, blackboard, delta);
 }
 
 bool NNBTTaskNodes::_call_on_tick(Variant blackboard, float delta, Variant &r_result) const {

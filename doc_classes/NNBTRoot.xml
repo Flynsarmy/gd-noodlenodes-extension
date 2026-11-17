@@ -8,6 +8,7 @@
 		The root must have exactly one enabled behaviour tree child. It ticks the first enabled child and returns that child's result. Any further enabled behaviour tree children are ignored; the first time the root is ticked with more than one enabled behaviour tree child it reports a one-time error. The editor shows a configuration warning for the same configuration.
 		[NNSensors] child nodes are allowed in addition to the single behaviour tree child. Sensors do not count as behaviour tree children.
 		If no behaviour tree child is enabled, or the root has no children at all, [method tick] returns [code]FAILURE[/code].
+		Disabling the root interrupts its active run and resets the whole tree, so re-enabling it starts a fresh run on the next tick. Every reset of the root (including the reset triggered by a child order change) interrupts the active subtree as well.
 	</description>
 	<tutorials>
 	</tutorials>

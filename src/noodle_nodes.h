@@ -13,6 +13,10 @@ private:
 protected:
 	static void _bind_methods();
 
+	// Called after get_is_enabled() changes. Subclasses override this to react
+	// to being disabled or re-enabled.
+	virtual void _on_is_enabled_changed(bool p_is_enabled);
+
 public:
 	NoodleNodes();
 	~NoodleNodes();

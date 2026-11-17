@@ -43,7 +43,7 @@ int  NNBTLeaf::get_tick_result() const {
 
 // Handling methods.
 
-NNBTNodes::Status NNBTLeaf::tick(Variant blackboard, float delta) {
+NNBTNodes::Status NNBTLeaf::_tick(Variant blackboard, float delta) {
 	set_internal_status(BT_INTERNAL_STATUS_TICKED);
 	//if( _is_first_tick ) {
 	//    _is_first_tick = false;

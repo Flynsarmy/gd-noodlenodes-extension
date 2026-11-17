@@ -70,7 +70,7 @@ void NNBTScoreBasedPicker::reset_bt_node() {
 	} //endfor children
 }
 
-NNBTNodes::Status NNBTScoreBasedPicker::tick(Variant blackboard, float delta) {
+NNBTNodes::Status NNBTScoreBasedPicker::_tick(Variant blackboard, float delta) {
 	if (get_internal_status() == BT_INTERNAL_STATUS_UNTICKED) {
 		reset_bt_node();
 	}
@@ -98,6 +98,8 @@ NNBTNodes::Status NNBTScoreBasedPicker::tick(Variant blackboard, float delta) {
 			_current_child_index = -1;
 			set_internal_status(BT_INTERNAL_STATUS_COMPLETED);
 			//emit_signal("btnode_exited", blackboard, delta);
+		} else if (return_value == Status::RUNNING) {
+			_interrupt_other_active_children(btnode);
 		}
 		return return_value;
 	} //endif node was of correct type

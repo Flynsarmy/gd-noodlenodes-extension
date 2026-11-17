@@ -75,7 +75,7 @@ void NNBTRepeater::reset_bt_node() {
  * and does not re-tick its child until it is explicitly reset or its reset
  * rule changes.
  */
-NNBTNodes::Status NNBTRepeater::tick(Variant blackboard, float delta) {
+NNBTNodes::Status NNBTRepeater::_tick(Variant blackboard, float delta) {
 	if (!get_is_enabled() || _child_btnodes.size() == 0)
 		return Status::FAILURE;
 	if (Engine::get_singleton()->is_editor_hint())
