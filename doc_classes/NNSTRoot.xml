@@ -5,9 +5,27 @@
 	</brief_description>
 	<description>
 		This is the root node for a State Tree. To update the tree, you call the [method tick] method of its root node. This will tick all the child nodes.
+		The root also owns the change pipeline used by automatic transitions. Pending state changes, property changes and events are processed in that order, under a reentrancy lock, so a transition caused by a change is fully applied before the next change is handled.
 	</description>
 	<tutorials>
 	</tutorials>
+	<constants>
+		<constant name="NONE" value="0">
+			No trigger type. Used as a default value.
+		</constant>
+		<constant name="EVENT" value="1">
+			The transition is triggered by an event sent with [method send_event].
+		</constant>
+		<constant name="STATE_ENTER" value="2">
+			The transition is automatic and is triggered when its state is entered. Supported by every automatic transition.
+		</constant>
+		<constant name="PROPERTY_CHANGE" value="4">
+			The transition is automatic and is triggered by a change to an expression property. Reported by [NNSTExpressionGuard].
+		</constant>
+		<constant name="STATE_CHANGE" value="8">
+			The transition is automatic and is triggered by a change of which states are active. Reported by [NNSTStateIsActiveGuard].
+		</constant>
+	</constants>
 	<methods>
 		<method name="get_child_sensors">
 			<return type="NNSensors[]" />
@@ -22,10 +40,36 @@
 				The [method tick] method is used to update the State Tree state. You can provide any Godot variant type as a parameter (usually a node used as an actor or a dictionary used as a blackboard), along with a delta-time. [code]blackboard[/code] and [code]delta[/code] are passed to the [method NNSTNodes.on_enter_state], [method NNSTNodes.on_exit_state], [method NNSTNodes.on_tick] and [method NNSTNodes.on_enter_condition] methods of the child nodes.
 			</description>
 		</method>
+		<method name="send_event">
+			<return type="void" />
+			<param index="0" name="name" type="String" />
+			<description>
+				Queues an event for the active states. The event triggers transitions whose [member NNSTTransition.event_name] matches, propagating from parent states to their active children until one handles it.
+			</description>
+		</method>
+		<method name="set_expression_property">
+			<return type="void" />
+			<param index="0" name="name" type="StringName" />
+			<param index="1" name="value" type="Variant" />
+			<description>
+				Sets a property that expression guards can reference by name (for example [code]flag[/code] can be used as [code]flag == true[/code] in an expression). The value is stored in [member blackboard]. Setting the property marks a property change pending and re-evaluates automatic transitions that support [constant PROPERTY_CHANGE].
+			</description>
+		</method>
+		<method name="get_expression_property">
+			<return type="Variant" />
+			<param index="0" name="name" type="StringName" />
+			<param index="1" name="default" type="Variant" default="null" />
+			<description>
+				Returns the value of a previously set expression property, or [param default] when it has not been set.
+			</description>
+		</method>
 	</methods>
 	<members>
 		<member name="blackboard" type="Dictionary[String, Variant]" setter="set_blackboard" getter="get_blackboard" default="{}">
-			A dictionary to use for optional state data.
+			A dictionary to use for optional state data. Expression properties are stored here as well.
+		</member>
+		<member name="initial_expression_properties" type="Dictionary[String, Variant]" setter="set_initial_expression_properties" getter="get_initial_expression_properties" default="{}">
+			Initial values for expression properties. They are applied when the root first transitions in, before any state is entered, so expressions are always valid on the first evaluation.
 		</member>
 		<member name="total_tick_usec" type="int" setter="set_total_tick_usec" getter="get_total_tick_usec" default="0">
 			The time to complete a tick in usec.

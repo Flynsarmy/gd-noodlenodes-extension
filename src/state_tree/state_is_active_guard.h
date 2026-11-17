@@ -17,6 +17,7 @@ public:
 	void set_state(const NodePath &p_state);
 
 	virtual bool is_satisfied(NNSTTransition *p_transition, NNSTTickedNodes *p_state) override;
+	virtual int get_supported_trigger_types() const override;
 };
 
 } //namespace godot

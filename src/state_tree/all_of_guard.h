@@ -13,6 +13,7 @@ protected:
 
 public:
 	virtual bool is_satisfied(NNSTTransition *p_transition, NNSTTickedNodes *p_state) override;
+	virtual int get_supported_trigger_types() const override;
 	TypedArray<NNSTGuard> get_guards() const;
 	void set_guards(const TypedArray<NNSTGuard> &p_guards);
 };

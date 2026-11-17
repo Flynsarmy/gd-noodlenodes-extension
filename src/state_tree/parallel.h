@@ -18,6 +18,8 @@ public:
 	~NNSTParallel();
 
 	// Handling functions.
+	// Parallel regions all receive a trigger even after a sibling consumes it.
+	virtual bool is_parallel() const override;
 	virtual void _transition_in() override;
 	virtual void _evaluate_child_activations(std::vector<ObjectID> &nodes) override;
 };

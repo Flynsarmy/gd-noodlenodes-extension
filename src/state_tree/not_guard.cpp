@@ -28,3 +28,10 @@ bool NNSTNotGuard::is_satisfied(NNSTTransition *p_transition, NNSTTickedNodes *p
 
 	return !_guard->is_satisfied(p_transition, p_state);
 }
+
+int NNSTNotGuard::get_supported_trigger_types() const {
+	if (_guard.is_null()) {
+		return NNSTRoot::TriggerType::NONE;
+	}
+	return _guard->get_supported_trigger_types();
+}

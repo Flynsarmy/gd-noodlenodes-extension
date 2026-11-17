@@ -9,6 +9,7 @@ using namespace godot;
 
 void NNSTGuard::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("is_satisfied", "p_transition", "p_state"), &NNSTGuard::is_satisfied);
+	ClassDB::bind_method(D_METHOD("get_supported_trigger_types"), &NNSTGuard::get_supported_trigger_types);
 	// ClassDB::bind_method(D_METHOD("evaluate_expression", "context", "state_chart", "expression", "default_value"), &NNSTGuard::evaluate_expression);
 	// ClassDB::bind_method(D_METHOD("path_of", "node"), &NNSTGuard::path_of);
 }
@@ -16,6 +17,11 @@ void NNSTGuard::_bind_methods() {
 bool NNSTGuard::is_satisfied(NNSTTransition *p_transition, NNSTTickedNodes *p_state) {
 	print_error("Guard.is_satisfied() is not implemented. Did you forget to override it?");
 	return false;
+}
+
+int NNSTGuard::get_supported_trigger_types() const {
+	print_error("Guard.get_supported_trigger_types() is not implemented. Did you forget to override it?");
+	return NNSTRoot::TriggerType::NONE;
 }
 
 Variant NNSTGuard::evaluate_expression(String context, NNSTRoot *state_chart, String expression, Variant default_value) const {

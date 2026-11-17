@@ -4,6 +4,7 @@
 		Base class for all State Tree guard resources.
 	</brief_description>
 	<description>
+		Guards decide whether a transition may be taken. Repeated evaluation of automatic transitions is driven by the trigger types a guard reports through [method get_supported_trigger_types].
 	</description>
 	<tutorials>
 	</tutorials>
@@ -15,6 +16,13 @@
 			<description>
 				Returns [code]true[/code] if the guard is satisfied, [code]false[/code] otherwise.
 				Guards are used to determine if a transition can be taken or not. If the guard is satisfied, the transition can be taken.
+			</description>
+		</method>
+		<method name="get_supported_trigger_types">
+			<return type="int" />
+			<description>
+				Returns a bit mask of [enum NNSTRoot.TriggerType] values describing which changes can affect this guard's result. Automatic transitions use this to decide when they need to be re-evaluated.
+				The base implementation reports [constant NNSTRoot.NONE] and prints an error. Custom GDScript guards that do not override this method therefore default to [constant NNSTRoot.NONE]; their transitions are only checked on [constant NNSTRoot.STATE_ENTER] unless the transition's guard composition reports additional trigger types.
 			</description>
 		</method>
 	</methods>

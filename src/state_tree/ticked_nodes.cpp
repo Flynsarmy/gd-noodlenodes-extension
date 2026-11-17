@@ -20,6 +20,29 @@ static bool _has_active_child_state(NNSTBranchNodes *branch, NNSTTickedNodes *ch
 	return false;
 }
 
+// Opens a root scope for the lifetime of the guard and closes it on every exit
+// path, so a deferred change request from a callback is always drained against
+// the settled hierarchy exactly once.
+namespace {
+class ChangeScopeGuard {
+public:
+	explicit ChangeScopeGuard(NNSTRoot *p_root) :
+			_root(p_root) {
+		if (_root != nullptr) {
+			_root->_begin_scope();
+		}
+	}
+	~ChangeScopeGuard() {
+		if (_root != nullptr) {
+			_root->_end_scope();
+		}
+	}
+
+private:
+	NNSTRoot *_root;
+};
+} // namespace
+
 // Method binds.
 
 void NNSTTickedNodes::_bind_methods() {
@@ -39,6 +62,7 @@ void NNSTTickedNodes::_bind_methods() {
 
 	ClassDB::bind_method(D_METHOD("set_on_entered_condition", "is_entered"), &NNSTTickedNodes::set_is_on_entered_condition_true);
 	ClassDB::bind_method(D_METHOD("get_on_entered_condition"), &NNSTTickedNodes::get_is_on_entered_condition_true);
+	ClassDB::bind_method(D_METHOD("get_activation_generation"), &NNSTTickedNodes::get_activation_generation);
 	//ADD_PROPERTY(PropertyInfo(Variant::INT, "child_state_selection_rule", PROPERTY_HINT_ENUM, "OnEnterConditionMethod:0,UtilityScoring:1" ), "set_child_state_selection_rule","get_child_state_selection_rule");
 
 	ClassDB::bind_method(D_METHOD("transition_to", "new_state_nodepath"), &NNSTTickedNodes::transition_to);
@@ -63,6 +87,7 @@ NNSTTickedNodes::NNSTTickedNodes() {
 	_invert_score = false;
 	_is_exiting = false;
 	_root = nullptr;
+	_activation_generation = 0;
 }
 
 NNSTTickedNodes::~NNSTTickedNodes() {
@@ -86,6 +111,20 @@ void NNSTTickedNodes::set_root(NNSTRoot *p_root) {
 
 NNSTRoot *NNSTTickedNodes::get_root() const {
 	return _root;
+}
+
+NNSTRoot *NNSTTickedNodes::_get_tree_root() const {
+	if (_root != nullptr) {
+		return _root;
+	}
+	// The root node itself has no root pointer; walk ancestors so its children
+	// can still open change scopes during entry.
+	for (Node *ancestor = get_parent(); ancestor != nullptr; ancestor = ancestor->get_parent()) {
+		if (NNSTRoot *chart_root = godot::Object::cast_to<NNSTRoot>(ancestor)) {
+			return chart_root;
+		}
+	}
+	return nullptr;
 }
 
 bool NNSTTickedNodes::set_blackboard(const String &p_key, const Variant &p_value) {
@@ -124,32 +163,85 @@ bool NNSTTickedNodes::get_is_on_entered_condition_true() const {
 	return _is_on_entered_condition_true;
 }
 
+uint64_t NNSTTickedNodes::get_activation_generation() const {
+	return _activation_generation;
+}
+
 // Handling methods.
 
 void NNSTTickedNodes::send_event(String name) {
-	// Try every transition with this event name in child order. A transition
-	// that matches by name can still decline (failed guard, stale target), in
-	// which case the remaining transitions, and then the active children,
-	// still get a chance to handle the event.
+	_process_transitions(NNSTRoot::TriggerType::EVENT, name);
+}
+
+bool NNSTTickedNodes::is_parallel() const {
+	return false;
+}
+
+bool NNSTTickedNodes::_process_transitions(int trigger_type, const String &event_name) {
+	if (!get_is_active()) {
+		return false;
+	}
+
+	// Try every transition in child order. A matching transition can still
+	// decline (failed guard, stale target), in which case the remaining
+	// transitions, and then the active children, get a chance to handle the
+	// trigger. This keeps the existing parent-to-leaf priority ordering.
 	for (unsigned int i = 0; i < _num_child_transitions; i++) {
-		if (_child_transitions[i]->get_event_name() != name) {
+		NNSTTransition *transition = _child_transitions[i];
+		if (transition == nullptr || transition->get_to().is_empty() ||
+				!transition->is_triggered_by(trigger_type)) {
 			continue;
 		}
-		if (!_child_transitions[i]->_can_transition()) {
+		if (trigger_type == NNSTRoot::TriggerType::EVENT && transition->get_event_name() != event_name) {
 			continue;
 		}
-		if (transition_to(_child_transitions[i]->get_to().slice(1))) {
-			return;
+		if (!transition->_can_transition()) {
+			continue;
+		}
+		if (transition_to(transition->get_to().slice(1))) {
+			return true;
 		}
 	}
 
+	// STATE_ENTER is dispatched only to the state whose activation generated
+	// the queued request. We must not broadcast it to active descendants here:
+	// entering a compound state also enters its children, and every child
+	// queues its own entry request. A recursive broadcast would therefore
+	// evaluate a child's STATE_ENTER transitions twice for a single real entry
+	// (once from this ancestor and once from its own queued request), which can
+	// burn through guarded transitions that count evaluations. Parallel
+	// children still get STATE_ENTER coverage because each activation queues
+	// its own request. Other triggers keep the recursive fan-out below.
+	if (trigger_type == NNSTRoot::TriggerType::STATE_ENTER) {
+		return false;
+	}
+
+	// Not handled here: give the active children the same chance. A parallel
+	// node is a fan-out point: every still-active region must be visited even
+	// after another region handled the trigger, so sibling regions can react
+	// to the same event. Compound/normal states stop at the first match.
+	bool any_child_handled = false;
 	const std::vector<ObjectID> active_state_ids = _active_states;
 	for (unsigned int i = 0; i < active_state_ids.size(); i++) {
 		NNSTTickedNodes *state = _get_active_state(active_state_ids[i]);
-		if (state != nullptr) {
-			state->send_event(name);
+		if (state == nullptr || !state->_process_transitions(trigger_type, event_name)) {
+			continue;
 		}
+		if (!is_parallel()) {
+			return true;
+		}
+		any_child_handled = true;
 	}
+	return any_child_handled;
+}
+
+bool NNSTTickedNodes::_finish_transition(NNSTRoot *p_root) {
+	// A finished transition is a state change. Mark it on the root so automatic
+	// transitions relying on StateIsActiveGuard can be re-evaluated.
+	if (p_root != nullptr) {
+		p_root->mark_state_change_pending();
+	}
+	return true;
 }
 
 float NNSTTickedNodes::evaluate() {
@@ -235,6 +327,19 @@ float NNSTTickedNodes::evaluate() {
 }
 
 bool NNSTTickedNodes::transition_to(NodePath path_to_node) {
+	// Hold a change scope across the whole transition. Every success/failure
+	// return path leaves this wrapper, so callbacks that set expression
+	// properties, send events or mark state changes only queue work until the
+	// transition has finished and the hierarchy is settled.
+	NNSTRoot *scope_root = _get_tree_root();
+	if (scope_root == nullptr) {
+		return _transition_to_impl(path_to_node);
+	}
+	ChangeScopeGuard scope(scope_root);
+	return _transition_to_impl(path_to_node);
+}
+
+bool NNSTTickedNodes::_transition_to_impl(NodePath path_to_node) {
 	// NNSTBranchNodes *parent = godot::Object::cast_to<NNSTBranchNodes>(get_parent());
 	// if (!parent) {
 	// 	return false;
@@ -243,6 +348,10 @@ bool NNSTTickedNodes::transition_to(NodePath path_to_node) {
 	if (to_state == nullptr) {
 		return false;
 	}
+
+	// Remember the owning chart so a successful transition can flag a state
+	// change even if the exit callbacks free or reparent this state.
+	NNSTRoot *chart_root = _get_tree_root();
 
 	// Re-entering any part of an exiting lineage would be undone by the
 	// outer exit, potentially leaving active descendants of an inactive state.
@@ -318,11 +427,11 @@ bool NNSTTickedNodes::transition_to(NodePath path_to_node) {
 	// may also have freed it.
 	common_ancestor = godot::Object::cast_to<NNSTBranchNodes>(ObjectDB::get_instance(common_ancestor_id));
 	if (common_ancestor == nullptr) {
-		return true;
+		return _finish_transition(chart_root);
 	}
 	if (common_ancestor->get_internal_status() != ST_INTERNAL_STATUS_ACTIVE ||
 			!common_ancestor->_get_active_child_states().empty()) {
-		return true;
+		return _finish_transition(chart_root);
 	}
 
 	// Exit callbacks can reparent the target or one of its ancestors. IDs
@@ -331,7 +440,7 @@ bool NNSTTickedNodes::transition_to(NodePath path_to_node) {
 		NNSTBranchNodes *branch = godot::Object::cast_to<NNSTBranchNodes>(ObjectDB::get_instance(lineage[i]));
 		NNSTTickedNodes *state = godot::Object::cast_to<NNSTTickedNodes>(ObjectDB::get_instance(lineage[i - 1]));
 		if (branch == nullptr || state == nullptr || state->get_parent() != branch) {
-			return true;
+			return _finish_transition(chart_root);
 		}
 	}
 
@@ -344,7 +453,7 @@ bool NNSTTickedNodes::transition_to(NodePath path_to_node) {
 	// from a branch that had never been entered and was discarded.
 	NNSTTickedNodes *lineage_first_child = godot::Object::cast_to<NNSTTickedNodes>(ObjectDB::get_instance(lineage[lineage.size() - 2]));
 	if (lineage_first_child == nullptr) {
-		return true;
+		return _finish_transition(chart_root);
 	}
 	common_ancestor->_add_active_child_state(lineage_first_child);
 
@@ -359,7 +468,7 @@ bool NNSTTickedNodes::transition_to(NodePath path_to_node) {
 		NNSTBranchNodes *lineage_branch = godot::Object::cast_to<NNSTBranchNodes>(ObjectDB::get_instance(lineage[i]));
 		NNSTTickedNodes *lineage_child = godot::Object::cast_to<NNSTTickedNodes>(ObjectDB::get_instance(lineage[i - 1]));
 		if (lineage_branch == nullptr || lineage_child == nullptr) {
-			return true;
+			return _finish_transition(chart_root);
 		}
 
 		// A transition requested from an on_enter_state() callback (in this
@@ -369,7 +478,7 @@ bool NNSTTickedNodes::transition_to(NodePath path_to_node) {
 		// event, so report success.
 		if (lineage_branch->get_internal_status() != ST_INTERNAL_STATUS_ACTIVE ||
 				!_has_active_child_state(lineage_branch, lineage_child)) {
-			return true;
+			return _finish_transition(chart_root);
 		}
 
 		// Register the branch's own child before entering it, so its
@@ -391,7 +500,7 @@ bool NNSTTickedNodes::transition_to(NodePath path_to_node) {
 		}
 	}
 
-	return true;
+	return _finish_transition(chart_root);
 }
 
 void NNSTTickedNodes::_transition_in() {
@@ -439,8 +548,30 @@ bool NNSTTickedNodes::on_enter_condition() {
 }
 
 void NNSTTickedNodes::on_enter_state() {
+	// Stamp this activation before any user callback runs. A callback can
+	// transition away and re-enter this state; the new activation gets a new
+	// generation, which makes the entry request we queue below stale if it is
+	// still pending when the new activation's request is drained.
+	const uint64_t generation = ++_activation_generation;
+
+	// Hold an entry scope across the user callback and the automatic-transition
+	// request. A guard or on_enter_state() that queues changes must not run the
+	// pipeline while the state's entry is still in progress.
+	NNSTRoot *root = _get_tree_root();
+	if (root == nullptr || Engine::get_singleton()->is_editor_hint()) {
+		call("on_enter_state");
+		emit_signal("state_entered");
+		return;
+	}
+
+	ChangeScopeGuard scope(root);
 	call("on_enter_state");
 	emit_signal("state_entered");
+
+	// Automatic transitions are evaluated when the state is entered. Route
+	// through the root so the change pipeline's reentrancy lock is honoured,
+	// carrying the identity of this activation.
+	root->process_state_enter(this, generation);
 }
 
 void NNSTTickedNodes::on_exit_state() {

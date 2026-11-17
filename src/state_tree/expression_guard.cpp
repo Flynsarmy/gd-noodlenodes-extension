@@ -45,3 +45,7 @@ bool NNSTExpressionGuard::is_satisfied(NNSTTransition *p_transition, NNSTTickedN
 
 	return result;
 }
+
+int NNSTExpressionGuard::get_supported_trigger_types() const {
+	return NNSTRoot::TriggerType::PROPERTY_CHANGE;
+}

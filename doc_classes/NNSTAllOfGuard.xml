@@ -17,6 +17,12 @@
 				Returns [code]true[/code] if all of the [member guards] are satisfied, [code]false[/code] otherwise.
 			</description>
 		</method>
+		<method name="get_supported_trigger_types">
+			<return type="int" />
+			<description>
+				Returns the bitwise OR of the trigger types reported by all of [member guards].
+			</description>
+		</method>
 	</methods>
 	<members>
 		<member name="guards" type="NNSTGuard[]" setter="set_guards" getter="get_guards" default="[]">

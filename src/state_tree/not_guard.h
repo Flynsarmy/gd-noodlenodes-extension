@@ -15,6 +15,7 @@ public:
 	void set_guard(const Ref<NNSTGuard> &p_guard); // Setter
 	Ref<NNSTGuard> get_guard() const { return _guard; } // Getter
 	virtual bool is_satisfied(NNSTTransition *p_transition, NNSTTickedNodes *p_state) override;
+	virtual int get_supported_trigger_types() const override;
 };
 
 } //namespace godot

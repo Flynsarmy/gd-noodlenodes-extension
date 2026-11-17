@@ -31,3 +31,7 @@ bool NNSTStateIsActiveGuard::is_satisfied(NNSTTransition *p_transition, NNSTTick
 
 	return guard_state->get_is_active();
 }
+
+int NNSTStateIsActiveGuard::get_supported_trigger_types() const {
+	return NNSTRoot::TriggerType::STATE_CHANGE;
+}

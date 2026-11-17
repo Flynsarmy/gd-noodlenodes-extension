@@ -1,6 +1,7 @@
 #pragma once
 
 #include "branch_nodes.h"
+#include <cstdint>
 
 namespace godot {
 
@@ -19,6 +20,20 @@ private:
 	// transition that ends up calling _transition_out() on this same state
 	// again; the flag stops that nested call from recursing.
 	bool _is_exiting;
+
+	// Monotonically increasing token, bumped at the start of every activation
+	// (on_enter_state()). A queued STATE_ENTER request carries the generation of
+	// the activation that produced it, so a request that survived a transition
+	// out and a later re-entry can be discarded as stale when it is drained.
+	uint64_t _activation_generation;
+
+	bool _finish_transition(NNSTRoot *p_root);
+	// transition_to() is a thin scope wrapper around this impl so every
+	// success/failure return path leaves the transition scope.
+	bool _transition_to_impl(NodePath path_to_node);
+	// Resolves the owning chart root (including through ancestors for the root's
+	// own children). Returns nullptr when no NNSTRoot owns this state.
+	NNSTRoot *_get_tree_root() const;
 
 protected:
 	static void _bind_methods();
@@ -54,10 +69,27 @@ public:
 	void set_is_on_entered_condition_true(bool is_on_entered_condition_true);
 	bool get_is_on_entered_condition_true() const;
 
+	// Identity of the current (or most recent) activation. Incremented every
+	// time this state is entered, before any user callback runs.
+	uint64_t get_activation_generation() const;
+
 	// Handling functions.
 
 	virtual float evaluate();
 	virtual void send_event(String name) override;
+
+	// True for parallel regions, which must visit all active children after one
+	// handles a trigger (compound/normal states stop at the first match).
+	virtual bool is_parallel() const;
+
+	// Walks this state's transitions and then (except for STATE_ENTER) the
+	// active child states, looking for the first one that handles the given
+	// trigger. Returns true when a transition was applied so propagation stops
+	// at that state (or, for a parallel node, after every active region was
+	// visited). STATE_ENTER is dispatched only to the state whose activation
+	// generated the queued request; descendants enter (and queue) themselves.
+	virtual bool _process_transitions(int trigger_type, const String &event_name = String());
+
 	// Returns true if the transition was applied.
 	virtual bool transition_to(NodePath path_to_node);
 

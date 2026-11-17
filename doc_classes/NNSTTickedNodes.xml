@@ -8,6 +8,12 @@
 	<tutorials>
 	</tutorials>
 	<methods>
+		<method name="get_activation_generation" qualifiers="const">
+			<return type="int" />
+			<description>
+				Returns a monotonically increasing token identifying the current (or most recent) activation of this state. It is incremented every time the state is entered, before any user callback runs. Queued automatic [constant NNSTRoot.STATE_ENTER] transitions carry this token so a request from an earlier activation can be discarded after a re-entry.
+			</description>
+		</method>
 		<method name="get_blackboard" qualifiers="const">
 			<return type="Variant" />
 			<param index="0" name="key" type="String" />

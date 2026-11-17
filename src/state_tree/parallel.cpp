@@ -20,6 +20,10 @@ NNSTParallel::~NNSTParallel() {
 
 // Handling functions.
 
+bool NNSTParallel::is_parallel() const {
+	return true;
+}
+
 void NNSTParallel::_transition_in() {
 	_needs_reselection = false;
 	// This method is called when the child list changes. If we were already

@@ -39,3 +39,15 @@ bool NNSTAllOfGuard::is_satisfied(NNSTTransition *p_transition, NNSTTickedNodes 
 
 	return true;
 }
+
+int NNSTAllOfGuard::get_supported_trigger_types() const {
+	int trigger_types = NNSTRoot::TriggerType::NONE;
+	for (int i = 0; i < guards.size(); i++) {
+		Ref<NNSTGuard> guard = guards[i];
+		if (guard.is_null()) {
+			continue;
+		}
+		trigger_types |= guard->get_supported_trigger_types();
+	}
+	return trigger_types;
+}
