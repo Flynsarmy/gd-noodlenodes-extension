@@ -1,14 +1,35 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <class name="NNSTTransition" inherits="NNSTNodes" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
 	<brief_description>
-		Transition between active states through [method NNSTBranchNodes.send_event].
+		Transition between active states through [method NNSTBranchNodes.send_event] or [method take].
 	</brief_description>
 	<description>
-		Provides [member event_name] and [member to] [NodePath] export variables to be consumed by [method NNSTBranchNodes.send_event]. The transition is performed on the parent of this node.
+		Provides [member event_name], [member to] and [member delay_in_seconds] export variables to be consumed by [method NNSTBranchNodes.send_event]. The transition is performed on the parent of this node.
 	</description>
 	<tutorials>
 	</tutorials>
+	<methods>
+		<method name="evaluate_delay" qualifiers="const">
+			<return type="float" />
+			<description>
+				Evaluates [member delay_in_seconds] to a non-negative number of seconds. Plain numeric strings are returned directly, otherwise the string is evaluated as an expression against the [NNSTRoot] blackboard. Empty, invalid, non-numeric and negative results return [code]0.0[/code].
+			</description>
+		</method>
+		<method name="take">
+			<return type="bool" />
+			<param index="0" name="immediately" type="bool" default="true" />
+			<description>
+				Triggers this transition from code. The parent state must be active, otherwise an error is pushed and nothing happens. When [param immediately] is [code]true[/code] the delay is skipped; when it is [code]false[/code] the delay is honored and the transition is taken once it elapses. Returns [code]true[/code] if the transition was taken or queued, and [code]false[/code] if it cannot currently be applied, for example because the [member to] target is invalid, the target is the parent state itself, or the transition is rejected because of a parallel common ancestor or an exiting lineage. The guard is not evaluated by this method.
+			</description>
+		</method>
+	</methods>
 	<members>
+		<member name="delay_in_seconds" type="String" setter="set_delay_in_seconds" getter="get_delay_in_seconds" default="&quot;0.0&quot;">
+			An expression for the delay in seconds before this transition is taken. A plain number is used directly. The expression can use the blackboard keys of the [NNSTRoot] as input names. Invalid or negative results fall back to [code]0.0[/code], which takes the transition immediately. While a delay is pending, [signal NNSTTickedNodes.transition_pending] is emitted on the parent state every tick, and the pending transition is cancelled when the state exits.
+		</member>
+		<member name="delay_seconds" type="float" setter="set_delay_seconds" getter="get_delay_seconds" default="0.0">
+			Deprecated float alias for [member delay_in_seconds]. Prefer [member delay_in_seconds].
+		</member>
 		<member name="event_name" type="String" setter="set_event_name" getter="get_event_name" default="&quot;&quot;">
 			Case sensitive event name that will trigger this [NNSTTransition].
 		</member>
@@ -18,4 +39,11 @@
 			[NodePath] to target node. The target can also be an [NNSTHistory] child of the state this transition belongs to, for example [code]../History[/code]. In that case the state the history remembers (or its default state) is entered instead.
 		</member>
 	</members>
+	<signals>
+		<signal name="taken">
+			<description>
+				Emitted when this transition is actually executed, either immediately or when its pending delay elapses. Emitted before any state exit callback. Not emitted when the transition is only queued, and not emitted for transitions that are rejected (for example an invalid target, a self-transition, or a parallel or exiting-lineage rejection).
+			</description>
+		</signal>
+	</signals>
 </class>

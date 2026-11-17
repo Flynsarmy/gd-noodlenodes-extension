@@ -73,6 +73,7 @@
 			<param index="0" name="new_state_nodepath" type="NodePath" />
 			<description>
 				Transitions between states in the Stae Tree. Requires a [NodePath] (relative to the node calling this method) for the target state. During a transition, all active children of the *from* state will be exited and any children of the *to* state will be evaluated for entering. Returns [code]true[/code] if the transition was applied, or [code]false[/code] if it could not be (for example an invalid target, an inapplicable guard, or a branch that has not been entered yet).
+				The transition runs synchronously, including the [method on_exit_state] and [method on_enter_state] callbacks of the states it leaves and enters. Events sent from those callbacks with [method NNSTBranchNodes.send_event] are queued on the [NNSTRoot] and only processed after this transition and every nested transition it caused have finished.
 			</description>
 		</method>
 	</methods>
@@ -86,6 +87,12 @@
 		</member>
 	</members>
 	<signals>
+		<signal name="event_received">
+			<param index="0" name="name" type="String" />
+			<description>
+				Emitted when this state receives an event sent with [method NNSTBranchNodes.send_event]. The event is delivered to the innermost active state first and bubbles up until a state consumes it, so a state only receives an event that reached it through its active child chain.
+			</description>
+		</signal>
 		<signal name="state_check_enter_condition">
 			<description>
 				Emitted when the the [method on_enter_condition] check needs to be done. The signal must call the [method set_on_entered_condition] method with either [code]true[/code] or [code]false[/code] as the parameter to indicate if the state should be entered or not.
@@ -105,6 +112,13 @@
 			<param index="0" name="delta" type="float" />
 			<description>
 				Emitted when the state is ticked. Add state update logic to this signal handler.
+			</description>
+		</signal>
+		<signal name="transition_pending">
+			<param index="0" name="initial_delay" type="float" />
+			<param index="1" name="remaining_delay" type="float" />
+			<description>
+				Emitted every tick while a delayed transition is pending for this state. [param initial_delay] is the delay that was requested and [param remaining_delay] is the time left, clamped at [code]0.0[/code] on the tick that takes the transition. Use [method NNSTTransition.take] with [code]immediately[/code] set to [code]false[/code], or give the transition a [member NNSTTransition.delay_in_seconds] value, to queue a transition.
 			</description>
 		</signal>
 	</signals>

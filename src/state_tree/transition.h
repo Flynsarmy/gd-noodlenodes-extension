@@ -6,6 +6,7 @@
 namespace godot {
 
 class NNSTGuard; // Forward declaration
+class NNSTTickedNodes; // Forward declaration
 
 class NNSTTransition : public NNSTNodes {
 	GDCLASS(NNSTTransition, NNSTNodes)
@@ -13,6 +14,7 @@ class NNSTTransition : public NNSTNodes {
 private:
 	String _event_name;
 	NodePath _to;
+	String _delay_in_seconds;
 
 protected:
 	static void _bind_methods();
@@ -32,8 +34,25 @@ public:
 	Ref<NNSTGuard> get_guard() const;
 	void set_guard(const Ref<NNSTGuard> &p_guard);
 
+	String get_delay_in_seconds() const;
+	void set_delay_in_seconds(const String &p_delay_in_seconds);
+
+	// Deprecated float alias kept for compatibility with the reference addon.
+	float get_delay_seconds() const;
+	void set_delay_seconds(float p_delay_seconds);
+
 	// Handling functions.
+	// Evaluates the guard using this transition's parent as the state context.
 	virtual bool _can_transition();
+	// Evaluates the guard with an explicit state context. Root-level
+	// transitions are not children of a state, so the root passes one of its
+	// active children instead.
+	virtual bool _can_transition(NNSTTickedNodes *p_state);
+	// Evaluates the delay expression to a non-negative number of seconds.
+	float evaluate_delay() const;
+	// Triggers this transition from code. Requires the owning state to be
+	// active. With `immediately` the delay is skipped, otherwise it is honored.
+	bool take(bool immediately = true);
 };
 
 } //namespace godot

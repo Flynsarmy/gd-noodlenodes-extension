@@ -13,9 +13,6 @@ protected:
 
 public:
 	virtual bool is_satisfied(NNSTTransition *p_transition, NNSTTickedNodes *p_state);
-
-	Variant evaluate_expression(String context, NNSTRoot *state_chart, String expression, Variant default_value) const;
-	String path_of(Node *node) const;
 };
 
 } //namespace godot

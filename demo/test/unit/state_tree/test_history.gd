@@ -1487,3 +1487,94 @@ func test_exit_callback_redirect_from_deeper_state_keeps_snapshot() -> void:
 	assert_true(_compound.get_is_active())
 	assert_true(_b.get_is_active())
 	assert_false(_a.get_is_active())
+
+## A delayed transition whose target is a history node restores the remembered
+## deep configuration once the delay elapses. This is the path used by
+## NNSTTransition::take(false) and must resolve the history target like any
+## other target.
+func test_delayed_transition_to_history_restores_deep_configuration() -> void:
+	var _nodes: Dictionary = _build_nested_history_tree(true)
+	var _root: NNSTRoot = _nodes["root"]
+	var _outside: NNSTNode = _nodes["outside"]
+	var _a: NNSTNode = _nodes["a"]
+	var _a1: NNSTNode = _nodes["a1"]
+	var _a2: NNSTNode = _nodes["a2"]
+	var _history: NNSTHistory = _nodes["history"]
+	add_child_autofree(_root)
+
+	assert_true(_a1.transition_to(_a1.get_path_to(_a2)))
+	assert_true(_a2.transition_to(_a2.get_path_to(_outside)))
+	assert_true(_history.get_has_history())
+
+	var _transition: NNSTTransition = NNSTTransition.new()
+	_outside.add_child(_transition)
+	_transition.to = _transition.get_path_to(_history)
+	_transition.delay_in_seconds = "0.5"
+
+	assert_true(_transition.take(false))
+	_root.tick(0.4)
+	assert_true(_outside.get_is_active())
+	assert_false(_a2.get_is_active())
+
+	_root.tick(0.1)
+	assert_false(_outside.get_is_active())
+	assert_true(_a.get_is_active())
+	assert_true(_a2.get_is_active())
+	assert_false(_a1.get_is_active())
+
+## The delayed path also restores every remembered parallel region.
+func test_delayed_transition_to_history_restores_parallel_regions() -> void:
+	var _nodes: Dictionary = _build_parallel_history_tree()
+	var _root: NNSTRoot = _nodes["root"]
+	var _outside: NNSTNode = _nodes["outside"]
+	var _r1a: CounterNode = _nodes["r1a"]
+	var _r1b: CounterNode = _nodes["r1b"]
+	var _r2a: CounterNode = _nodes["r2a"]
+	var _r2b: CounterNode = _nodes["r2b"]
+	var _history: NNSTHistory = _nodes["history"]
+	add_child_autofree(_root)
+
+	_move_parallel_regions_to_b(_nodes)
+	_leave_parallel_compound(_nodes)
+
+	var _transition: NNSTTransition = NNSTTransition.new()
+	_outside.add_child(_transition)
+	_transition.to = _transition.get_path_to(_history)
+	_transition.delay_in_seconds = "0.25"
+
+	assert_true(_transition.take(false))
+	_root.tick(0.25)
+
+	assert_false(_outside.get_is_active())
+	assert_true(_r1b.get_is_active())
+	assert_true(_r2b.get_is_active())
+	assert_false(_r1a.get_is_active())
+	assert_false(_r2a.get_is_active())
+
+## An event transition whose `to` is a history node restores the remembered
+## configuration through the queued event path.
+func test_event_transition_to_history_restores_configuration() -> void:
+	var _nodes: Dictionary = _build_nested_history_tree(true)
+	var _root: NNSTRoot = _nodes["root"]
+	var _outside: NNSTNode = _nodes["outside"]
+	var _a: NNSTNode = _nodes["a"]
+	var _a1: NNSTNode = _nodes["a1"]
+	var _a2: NNSTNode = _nodes["a2"]
+	var _history: NNSTHistory = _nodes["history"]
+	add_child_autofree(_root)
+
+	assert_true(_a1.transition_to(_a1.get_path_to(_a2)))
+	assert_true(_a2.transition_to(_a2.get_path_to(_outside)))
+	assert_true(_history.get_has_history())
+
+	var _transition: NNSTTransition = NNSTTransition.new()
+	_outside.add_child(_transition)
+	_transition.event_name = "resume"
+	_transition.to = _transition.get_path_to(_history)
+
+	_root.send_event("resume")
+
+	assert_false(_outside.get_is_active())
+	assert_true(_a.get_is_active())
+	assert_true(_a2.get_is_active())
+	assert_false(_a1.get_is_active())
