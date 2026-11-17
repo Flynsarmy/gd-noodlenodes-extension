@@ -51,28 +51,27 @@ int NNBTRepeater::get_times_repeated() const {
 	return _times_repeated;
 }
 
-/**
-void NNBTRepeater::set_tick_result( int tick_result ) {
-	_tick_result = tick_result;
-	if( _tick_result > 1 ) {
-		_tick_result = 1;
-	} else if (_tick_result < -1 ) {
-		_tick_result = -1;
-	}
-}
-
-
-int  NNBTRepeater::get_tick_result() const {
-	return _tick_result;
-}
-/**/
-
 // Handling functions.
 
 void NNBTRepeater::reset_bt_node() {
 	_times_repeated = 0;
 }
 
+/**
+ * Repeats the first enabled child node _repeat_times times.
+ *
+ * Every successful child tick counts as one completed repetition. The node
+ * returns RUNNING while repetitions remain and SUCCESS after the final one.
+ * A RUNNING child does not count as a repetition, so the node returns RUNNING
+ * without changing the counter. A FAILURE child ends the run immediately with
+ * FAILURE and does not count as a repetition.
+ *
+ * repeat_times == -1 repeats forever and never completes on its own.
+ * repeat_times == 0 succeeds immediately without ticking the child.
+ *
+ * Terminal results set BT_INTERNAL_STATUS_COMPLETED so the reset rule in
+ * NNBTNodes::set_internal_status() starts a fresh run on the next tick.
+ */
 NNBTNodes::Status NNBTRepeater::tick(Variant blackboard, float delta) {
 	if (!get_is_enabled() || _child_btnodes.size() == 0)
 		return Status::FAILURE;
@@ -81,59 +80,57 @@ NNBTNodes::Status NNBTRepeater::tick(Variant blackboard, float delta) {
 
 	if (get_internal_status() == BT_INTERNAL_STATUS_UNTICKED) {
 		reset_bt_node();
-		set_internal_status(BT_INTERNAL_STATUS_TICKED);
-	} else if (get_internal_status() == BT_INTERNAL_STATUS_COMPLETED) {
-		set_internal_status(BT_INTERNAL_STATUS_UNTICKED);
-		set_tick_result(Status::SUCCESS);
-		return Status::SUCCESS;
 	}
-
+	set_internal_status(BT_INTERNAL_STATUS_TICKED);
 	//if( _is_first_tick ) {
 	//    _is_first_tick = false;
 	//    emit_signal("btnode_entered", blackboard, delta);
 	//}
 
-	// if (_times_repeated == 0) {
-	// 	set_internal_status(BT_INTERNAL_STATUS_COMPLETED);
-	// 	set_tick_result(Status::SUCCESS);
-	// 	return Status::SUCCESS;
-	// }
-
-	Status result = Status::FAILURE;
+	if (_repeat_times == 0) {
+		set_internal_status(BT_INTERNAL_STATUS_COMPLETED);
+		set_tick_result(Status::SUCCESS);
+		//emit_signal("btnode_exited", blackboard, delta);
+		return Status::SUCCESS;
+	}
 
 	//emit_signal("btnode_ticked",blackboard, delta);
-	//for( int i = 0; i < get_child_count(); i++ ) {
-	//    if( NNBTNodes* btnode = godot::Object::cast_to<NNBTNodes>(get_child(i)) ) {
 	for (unsigned int i = 0; i < _num_child_btnodes; i++) {
 		NNBTNodes *btnode = _child_btnodes[i];
 		if (!btnode->get_is_enabled()) {
 			continue;
 		}
 
-		result = btnode->tick(blackboard, delta);
+		Status result = btnode->tick(blackboard, delta);
 
-		break;
+		if (result == Status::RUNNING) {
+			set_tick_result(result);
+			return result;
+		}
+
+		if (result == Status::FAILURE) {
+			set_internal_status(BT_INTERNAL_STATUS_COMPLETED);
+			set_tick_result(result);
+			//emit_signal("btnode_exited", blackboard, delta);
+			return result;
+		}
+
+		// The child succeeded, which counts as one completed repetition.
+		_times_repeated++;
+
+		if (_repeat_times < 0 || _times_repeated < _repeat_times) {
+			set_tick_result(Status::RUNNING);
+			return Status::RUNNING;
+		}
+
+		set_internal_status(BT_INTERNAL_STATUS_COMPLETED);
+		set_tick_result(Status::SUCCESS);
+		//emit_signal("btnode_exited", blackboard, delta);
+		return Status::SUCCESS;
 	}
 
-	if (result == Status::RUNNING) {
-		set_tick_result(result);
-		return result;
-	}
-
-	if (result == Status::FAILURE) {
-		set_internal_status(BT_INTERNAL_STATUS_UNTICKED);
-		set_tick_result(result);
-		return result;
-	}
-
-	_times_repeated++;
-
-	if (_repeat_times == -1 || _times_repeated < _repeat_times) {
-		set_tick_result(Status::RUNNING);
-		return Status::RUNNING;
-	}
-
-	set_internal_status(BT_INTERNAL_STATUS_UNTICKED);
+	// There were no enabled child nodes to repeat.
+	set_internal_status(BT_INTERNAL_STATUS_COMPLETED);
 	set_tick_result(Status::FAILURE);
 	//emit_signal("btnode_exited", blackboard, delta);
 	return Status::FAILURE;
