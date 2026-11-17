@@ -16,6 +16,10 @@ using namespace godot;
 // Method binds.
 
 void NNBTRoot::_bind_methods() {
+	BIND_ENUM_CONSTANT(IDLE);
+	BIND_ENUM_CONSTANT(PHYSICS);
+	BIND_ENUM_CONSTANT(MANUAL);
+
 	ClassDB::bind_method(D_METHOD("set_blackboard_resource", "blackboard"), &NNBTRoot::set_blackboard_resource);
 	ClassDB::bind_method(D_METHOD("get_assigned_blackboard"), &NNBTRoot::get_assigned_blackboard);
 	ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "blackboard", PROPERTY_HINT_RESOURCE_TYPE, "NNBlackboard"), "set_blackboard_resource", "get_assigned_blackboard");
@@ -28,6 +32,27 @@ void NNBTRoot::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_actor_node_path"), &NNBTRoot::get_actor_node_path);
 	ADD_PROPERTY(PropertyInfo(Variant::NODE_PATH, "actor_node_path"), "set_actor_node_path", "get_actor_node_path");
 
+	ClassDB::bind_method(D_METHOD("set_auto_tick", "auto_tick"), &NNBTRoot::set_auto_tick);
+	ClassDB::bind_method(D_METHOD("get_auto_tick"), &NNBTRoot::get_auto_tick);
+	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "auto_tick"), "set_auto_tick", "get_auto_tick");
+
+	ClassDB::bind_method(D_METHOD("set_tick_rate", "tick_rate"), &NNBTRoot::set_tick_rate);
+	ClassDB::bind_method(D_METHOD("get_tick_rate"), &NNBTRoot::get_tick_rate);
+	ADD_PROPERTY(PropertyInfo(Variant::INT, "tick_rate", PROPERTY_HINT_RANGE, "1,1000,1,or_greater"), "set_tick_rate", "get_tick_rate");
+
+	ClassDB::bind_method(D_METHOD("set_process_thread", "process_thread"), &NNBTRoot::set_process_thread);
+	ClassDB::bind_method(D_METHOD("get_process_thread"), &NNBTRoot::get_process_thread);
+	ADD_PROPERTY(PropertyInfo(Variant::INT, "process_thread", PROPERTY_HINT_ENUM, "Idle:0,Physics:1,Manual:2"), "set_process_thread", "get_process_thread");
+
+	ClassDB::bind_method(D_METHOD("set_tick_argument", "tick_argument"), &NNBTRoot::set_tick_argument);
+	ClassDB::bind_method(D_METHOD("get_tick_argument"), &NNBTRoot::get_tick_argument);
+	ADD_PROPERTY(PropertyInfo(Variant::NIL, "tick_argument", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_DEFAULT | PROPERTY_USAGE_NIL_IS_VARIANT), "set_tick_argument", "get_tick_argument");
+
+	// Signals.
+
+	ADD_SIGNAL(MethodInfo("tree_enabled"));
+	ADD_SIGNAL(MethodInfo("tree_disabled"));
+
 #ifdef DEBUG_ENABLED
 	ADD_SUBGROUP("Debugging", "");
 
@@ -35,6 +60,9 @@ void NNBTRoot::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_total_tick_usec"), &NNBTRoot::get_total_tick_usec);
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "total_tick_usec", PROPERTY_HINT_NONE), "set_total_tick_usec", "get_total_tick_usec");
 #endif
+
+	ClassDB::bind_method(D_METHOD("auto_tick_step", "process_thread", "delta"), &NNBTRoot::auto_tick_step);
+	ClassDB::bind_method(D_METHOD("get_running_action"), &NNBTRoot::get_running_action);
 
 	ClassDB::bind_method(D_METHOD("tick", "blackboard", "delta"), &NNBTRoot::tick);
 }
@@ -46,6 +74,16 @@ NNBTRoot::NNBTRoot() {
 	// that is used until a board is assigned.
 	_local_blackboard.instantiate();
 	_actor_id = ObjectID();
+	// Auto-ticking is opt-in, so a default root behaves exactly as before and
+	// only ticks when a script calls tick(). The selected process callback is
+	// enabled even outside the tree; set_process works there.
+	_auto_tick = false;
+	_tick_rate = 1;
+	_process_thread = ProcessThread::PHYSICS;
+	_tick_argument = Variant();
+	_auto_tick_frame = 0;
+	_running_action_id = ObjectID();
+	_apply_process_mode();
 #ifdef DEBUG_ENABLED
 	_total_tick_usec = 0;
 #endif
@@ -116,10 +154,176 @@ NodePath NNBTRoot::get_actor_node_path() const {
 	return _actor_node_path;
 }
 
+void NNBTRoot::set_auto_tick(bool p_auto_tick) {
+	_auto_tick = p_auto_tick;
+	// Re-arm the schedule so the next eligible callback is due.
+	_auto_tick_frame = 0;
+}
+
+bool NNBTRoot::get_auto_tick() const {
+	return _auto_tick;
+}
+
+void NNBTRoot::set_tick_rate(int p_tick_rate) {
+	// A rate below one would never be due, so it is clamped to every frame.
+	_tick_rate = p_tick_rate < 1 ? 1 : p_tick_rate;
+	// Re-arm the schedule so the next eligible callback is due.
+	_auto_tick_frame = 0;
+}
+
+int NNBTRoot::get_tick_rate() const {
+	return _tick_rate;
+}
+
+void NNBTRoot::set_process_thread(int p_process_thread) {
+	if (p_process_thread < ProcessThread::IDLE || p_process_thread > ProcessThread::MANUAL) {
+		_process_thread = ProcessThread::PHYSICS;
+	} else {
+		_process_thread = p_process_thread;
+	}
+	// Re-arm the schedule so the next eligible callback is due.
+	_auto_tick_frame = 0;
+	_apply_process_mode();
+}
+
+int NNBTRoot::get_process_thread() const {
+	return _process_thread;
+}
+
+void NNBTRoot::set_tick_argument(const Variant &p_tick_argument) {
+	_tick_argument = p_tick_argument;
+}
+
+Variant NNBTRoot::get_tick_argument() const {
+	return _tick_argument;
+}
+
 // Handling functions.
 
 NNBTNodes::Status NNBTRoot::tick(Variant blackboard, float delta) {
-	return NNBTNodes::tick(blackboard, delta);
+	Status result = NNBTNodes::tick(blackboard, delta);
+	// Track the active path once the tree has settled. This never changes the
+	// result the caller sees.
+	_update_running_action(result);
+	return result;
+}
+
+bool NNBTRoot::auto_tick_step(int p_process_thread, double p_delta) {
+	// A call from any other callback is ignored, so having both callbacks
+	// enabled at once can never double-tick the tree.
+	if (p_process_thread != _process_thread) {
+		return false;
+	}
+	if (_process_thread == ProcessThread::MANUAL) {
+		return false;
+	}
+	if (!_auto_tick || !get_is_enabled()) {
+		return false;
+	}
+	if (Engine::get_singleton()->is_editor_hint()) {
+		return false;
+	}
+	if (!_is_auto_tick_due()) {
+		return false;
+	}
+
+	tick(_tick_argument, (float)p_delta);
+	return true;
+}
+
+bool NNBTRoot::_is_auto_tick_due() {
+	// The counter advances once per eligible invocation, so no wall-clock time
+	// is involved and the schedule is fully deterministic.
+	const uint64_t frame = _auto_tick_frame++;
+	if (_tick_rate <= 1) {
+		return true;
+	}
+	return (frame % (uint64_t)_tick_rate) == 0;
+}
+
+void NNBTRoot::_apply_process_mode() {
+	// Only the selected callback is enabled on the root node.
+	set_process(_process_thread == ProcessThread::IDLE);
+	set_physics_process(_process_thread == ProcessThread::PHYSICS);
+}
+
+void NNBTRoot::reset() {
+	NNBTNodes::reset();
+	// A reset is a fresh run, so the auto-tick schedule and the active path
+	// start over.
+	_auto_tick_frame = 0;
+	_running_action_id = ObjectID();
+}
+
+void NNBTRoot::_on_is_enabled_changed(bool p_is_enabled) {
+	// The base class resets the tree when it is disabled.
+	NNBTNodes::_on_is_enabled_changed(p_is_enabled);
+
+	_auto_tick_frame = 0;
+	_running_action_id = ObjectID();
+	_apply_process_mode();
+
+	// Everything is settled before the signal is emitted, so a handler may
+	// free this root or its children. No member is touched after this point.
+	emit_signal(p_is_enabled ? "tree_enabled" : "tree_disabled");
+}
+
+NNBTNodes *NNBTRoot::get_running_action() const {
+	if (_running_action_id.is_null()) {
+		return nullptr;
+	}
+
+	NNBTNodes *action = Object::cast_to<NNBTNodes>(ObjectDB::get_instance(_running_action_id));
+	if (action == nullptr) {
+		return nullptr;
+	}
+	if (action == this) {
+		return nullptr;
+	}
+	if (!is_ancestor_of(action)) {
+		return nullptr;
+	}
+	if (action->get_internal_status() != BT_INTERNAL_STATUS_TICKED || action->get_tick_result() != Status::RUNNING) {
+		return nullptr;
+	}
+	return action;
+}
+
+void NNBTRoot::_update_running_action(Status p_result) {
+	if (!get_is_enabled() || p_result != Status::RUNNING || get_internal_status() != BT_INTERNAL_STATUS_TICKED) {
+		_running_action_id = ObjectID();
+		return;
+	}
+	_running_action_id = _find_active_descendant_id(this);
+}
+
+ObjectID NNBTRoot::_find_active_descendant_id(NNBTNodes *p_node) const {
+	if (p_node == nullptr) {
+		return ObjectID();
+	}
+
+	// Walk only the active path. The first active child in child order wins,
+	// which is deterministic for parallel trees that have several.
+	for (int i = 0; i < p_node->get_child_count(); i++) {
+		NNBTNodes *child = Object::cast_to<NNBTNodes>(p_node->get_child(i));
+		if (child == nullptr) {
+			continue;
+		}
+		if (!child->get_is_enabled()) {
+			continue;
+		}
+		if (child->get_internal_status() != BT_INTERNAL_STATUS_TICKED || child->get_tick_result() != Status::RUNNING) {
+			continue;
+		}
+
+		ObjectID deeper_id = _find_active_descendant_id(child);
+		if (!deeper_id.is_null()) {
+			return deeper_id;
+		}
+		return ObjectID(child->get_instance_id());
+	}
+
+	return ObjectID();
 }
 
 NNBTNodes::Status NNBTRoot::_tick(Variant blackboard, float delta) {
@@ -226,6 +430,14 @@ NNBTNodes::Status NNBTRoot::_tick(Variant blackboard, float delta) {
 
 // Godot virtuals.
 
+void NNBTRoot::_process(double delta) {
+	auto_tick_step(ProcessThread::IDLE, delta);
+}
+
+void NNBTRoot::_physics_process(double delta) {
+	auto_tick_step(ProcessThread::PHYSICS, delta);
+}
+
 PackedStringArray NNBTRoot::_get_configuration_warnings() const {
 	PackedStringArray warnings;
 	if (_count_enabled_child_btnodes() != 1) {
@@ -251,6 +463,22 @@ void NNBTRoot::_notification(int p_what) {
 		}
 	}
 #endif
+
+	if (p_what == NOTIFICATION_ENTER_TREE) {
+		// Re-arm the schedule and enable only the selected process callback.
+		_auto_tick_frame = 0;
+		_apply_process_mode();
+	} else if (p_what == NOTIFICATION_EXIT_TREE) {
+		// Leaving the tree stops auto-ticking without emitting a signal.
+		set_process(false);
+		set_physics_process(false);
+		_auto_tick_frame = 0;
+		_running_action_id = ObjectID();
+	} else if (p_what == NOTIFICATION_READY) {
+		// The engine enables every callback it sees as overridden when the
+		// node becomes ready, so re-apply the selected mode afterwards.
+		_apply_process_mode();
+	}
 
 	if (p_what == NOTIFICATION_READY || p_what == NOTIFICATION_CHILD_ORDER_CHANGED) {
 #ifdef DEBUG_ENABLED
