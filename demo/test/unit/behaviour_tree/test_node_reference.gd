@@ -107,17 +107,13 @@ func test_reparent_introduced_cycle_does_not_hang_reset_or_tick() -> void:
 	assert_eq(reference.get_node_reference(), composite)
 
 	# Reparenting the reference below its own reference target creates a cycle
-	# that bypasses set_node_reference(). The scene-tree notification on the
-	# root then triggers reset().
+	# that bypasses set_node_reference(). Disabling the root resets the tree,
+	# which must walk the cycle and return promptly.
 	composite.add_child(reference)
-	# The extra child only exists to trigger the child-order notification. It is
-	# disabled so the root keeps exactly one enabled behaviour-tree child.
-	var reset_trigger: CountingLeaf = _make_leaf()
-	reset_trigger.is_enabled = false
-	bt_root.add_child(reset_trigger)
+	bt_root.is_enabled = false
+	bt_root.is_enabled = true
 
-	# Reset must have returned promptly. Ticking the cycle must return FAILURE
-	# instead of recursing forever.
+	# Ticking the cycle must return FAILURE instead of recursing forever.
 	assert_eq(bt_root.tick(BLACKBOARD, 0.1), NNBTNodes.FAILURE)
 	assert_eq(reference.internal_status, INTERNAL_STATUS_COMPLETED)
 	assert_eq(composite.internal_status, INTERNAL_STATUS_COMPLETED)
@@ -152,13 +148,10 @@ func test_valid_reference_chain_resets_and_ticks() -> void:
 	assert_eq(b.tick_result, NNBTNodes.SUCCESS)
 	assert_eq(a.tick_result, NNBTNodes.SUCCESS)
 
-	# Adding a child triggers the root's reset(), which must follow the whole
+	# Disabling the root resets the tree, which must follow the whole
 	# A -> B -> composite -> leaf chain without errors.
-	# The extra child is disabled so the root keeps exactly one enabled
-	# behaviour-tree child.
-	var reset_trigger: CountingLeaf = _make_leaf()
-	reset_trigger.is_enabled = false
-	bt_root.add_child(reset_trigger)
+	bt_root.is_enabled = false
+	bt_root.is_enabled = true
 	assert_eq(leaf.internal_status, INTERNAL_STATUS_UNTICKED)
 	assert_eq(leaf.tick_count, 1)
 
@@ -210,12 +203,9 @@ func test_freed_reference_target_is_safe_on_reset_and_tick() -> void:
 	assert_eq(reference.get_node_reference(), null, "the getter must not expose the freed target")
 
 	# The root reset walking the stale reference must not crash, and the stale
-	# pointer/cache must be cleared. The extra child only triggers the
-	# child-order notification and is disabled so the root keeps exactly one
-	# enabled behaviour-tree child.
-	var reset_trigger: CountingLeaf = _make_leaf()
-	reset_trigger.is_enabled = false
-	bt_root.add_child(reset_trigger)
+	# pointer/cache must be cleared. Disabling the root resets the tree.
+	bt_root.is_enabled = false
+	bt_root.is_enabled = true
 	assert_eq(reference.get_node_reference(), null, "stale reference is cleared")
 
 	# Ticking after the target was freed fails safely.

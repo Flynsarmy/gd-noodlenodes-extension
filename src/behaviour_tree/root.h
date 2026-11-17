@@ -36,6 +36,9 @@ private:
 	// The deepest node on the active path after the last tick. It is stored as
 	// an ObjectID so a freed node is detected instead of dereferenced.
 	ObjectID _running_action_id;
+	// The enabled behaviour-tree child driven by the active run, if any. It is
+	// stored as an ObjectID so a freed child is detected instead of dereferenced.
+	ObjectID _ticked_child_id;
 	// The SceneTree whose frame signals are currently connected, if any. It is
 	// stored as an ObjectID because get_tree() is not reliable on tree exit.
 	ObjectID _process_tree_id;
@@ -48,6 +51,10 @@ private:
 	void _on_scene_tree_physics_frame();
 	void _update_running_action(Status p_result);
 	ObjectID _find_active_descendant_id(NNBTNodes *p_node) const;
+
+	// Child structure helpers.
+	void _refresh_child_sensors();
+	void _reconcile_active_child();
 
 #ifdef DEBUG_ENABLED
 	uint64_t _total_tick_usec;

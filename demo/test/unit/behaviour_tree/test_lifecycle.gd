@@ -401,13 +401,13 @@ func test_root_reset_interrupts_the_active_leaf() -> void:
 	assert_eq(root.tick(BLACKBOARD, 0.1), NNBTNodes.RUNNING)
 	assert_eq(leaf.before_run_count, 1)
 
-	# Adding a child triggers NOTIFICATION_CHILD_ORDER_CHANGED, which resets the
-	# root. The sentinel is disabled so the root keeps one enabled child.
-	var sentinel: LifecycleLeaf = _make_leaf(NNBTNodes.SUCCESS)
-	sentinel.is_enabled = false
-	root.add_child(sentinel)
+	# Disabling the root resets the whole tree, which interrupts the active
+	# leaf. Re-enabling starts a fresh run on the next tick.
+	root.is_enabled = false
 	assert_eq(leaf.interrupt_count, 1, "the root reset interrupts the active leaf")
+	assert_eq(leaf.after_run_count, 0)
 
+	root.is_enabled = true
 	leaf.result = NNBTNodes.SUCCESS
 	assert_eq(root.tick(BLACKBOARD, 0.1), NNBTNodes.SUCCESS)
 	assert_eq(leaf.before_run_count, 2)

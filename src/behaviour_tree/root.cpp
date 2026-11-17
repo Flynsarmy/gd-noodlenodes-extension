@@ -90,6 +90,7 @@ NNBTRoot::NNBTRoot() {
 	_tick_argument = Variant();
 	_auto_tick_frame = 0;
 	_running_action_id = ObjectID();
+	_ticked_child_id = ObjectID();
 	_process_tree_id = ObjectID();
 #ifdef DEBUG_ENABLED
 	_total_tick_usec = 0;
@@ -327,6 +328,7 @@ void NNBTRoot::reset() {
 	// start over.
 	_auto_tick_frame = 0;
 	_running_action_id = ObjectID();
+	_ticked_child_id = ObjectID();
 }
 
 void NNBTRoot::_on_is_enabled_changed(bool p_is_enabled) {
@@ -449,6 +451,9 @@ NNBTNodes::Status NNBTRoot::_tick(Variant blackboard, float delta) {
 		if (!btnode->get_is_enabled()) {
 			continue;
 		}
+		// Remember which child this run drives so a later child order change can
+		// tell whether the run's child is still the one this root ticks.
+		_ticked_child_id = btnode->get_instance_id();
 		Status result = btnode->tick(blackboard, delta);
 		set_tick_result(result);
 		if (result != Status::RUNNING && btnode->get_internal_status() == BT_INTERNAL_STATUS_COMPLETED) {
@@ -512,6 +517,49 @@ PackedStringArray NNBTRoot::_get_configuration_warnings() const {
 	return warnings;
 }
 
+void NNBTRoot::_refresh_child_sensors() {
+	_child_sensors.clear();
+	for (int i = 0; i < get_child_count(); i++) {
+		if (NNSensors *sensor = godot::Object::cast_to<NNSensors>(get_child(i))) {
+			_child_sensors.push_back(sensor);
+		}
+	}
+	_num_child_sensors = (unsigned int)_child_sensors.size();
+}
+
+void NNBTRoot::_reconcile_active_child() {
+	// A child order change must not disturb an active run by itself: adding a
+	// sensor, a plain node or an extra behaviour-tree child after the ticked one
+	// keeps the same tick target, so the run continues untouched. Only when the
+	// first enabled behaviour-tree child is no longer the child this run drives
+	// does the change affect the run: that child would never be ticked again, so
+	// its run is closed like any other interrupted run and the tree is reset.
+	if (!get_is_running()) {
+		return;
+	}
+
+	ObjectID first_enabled_child_id;
+	for (unsigned int i = 0; i < _num_child_btnodes; i++) {
+		if (_child_btnodes[i]->get_is_enabled()) {
+			first_enabled_child_id = _child_btnodes[i]->get_instance_id();
+			break;
+		}
+	}
+
+	if (first_enabled_child_id == _ticked_child_id) {
+		return;
+	}
+
+	// The previous child is no longer reachable through this root's child list,
+	// so reset() alone would not close its run.
+	if (!_ticked_child_id.is_null()) {
+		if (NNBTNodes *previous_child = godot::Object::cast_to<NNBTNodes>(ObjectDB::get_instance(_ticked_child_id))) {
+			previous_child->interrupt();
+		}
+	}
+	reset();
+}
+
 void NNBTRoot::_notification(int p_what) {
 	NNBTNodes::_notification(p_what);
 
@@ -540,20 +588,22 @@ void NNBTRoot::_notification(int p_what) {
 		_disconnect_frame_connections();
 		_auto_tick_frame = 0;
 		_running_action_id = ObjectID();
+		_ticked_child_id = ObjectID();
 	}
 
 	if (p_what == NOTIFICATION_READY || p_what == NOTIFICATION_CHILD_ORDER_CHANGED) {
 #ifdef DEBUG_ENABLED
+		// The editor never ticks a tree, so the runtime caches stay untouched.
 		if (Engine::get_singleton()->is_editor_hint())
 			return;
 #endif
-		_child_sensors.clear();
-		for (int i = 0; i < get_child_count(); i++) {
-			if (NNSensors *sensor = godot::Object::cast_to<NNSensors>(get_child(i))) {
-				_child_sensors.push_back(sensor);
-			}
+		// NOTIFICATION_READY only seeds the cache for the children that already
+		// exist. Children are freshly instantiated at that point, so there is no
+		// run to reset. The base class has already rebuilt the behaviour-tree
+		// child cache before this point on a child order change.
+		_refresh_child_sensors();
+		if (p_what == NOTIFICATION_CHILD_ORDER_CHANGED) {
+			_reconcile_active_child();
 		}
-		_num_child_sensors = (unsigned int)_child_sensors.size();
-		reset();
 	}
 }
