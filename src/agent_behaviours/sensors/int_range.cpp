@@ -36,19 +36,6 @@ NNIntRangeSensor::~NNIntRangeSensor() {
 // Handling functions.
 
 float NNIntRangeSensor::evaluate_sensor_value() {
-	/**
-	if( get_use_absolute_value() ) {
-		// Absolute value, so make sure that it is within the interval.
-		int range_result = _range_value;
-		if( range_result < _range_min_value ) {
-			range_result = _range_min_value;
-		}else if( range_result > _range_max_value ) {
-			range_result = _range_max_value;
-		}
-		set_sensor_value((float)range_result);
-		return get_sensor_value();
-	}
-	/**/
 	// Relative value, so calculate the position within the interval.
 	if (_range_length <= 0) {
 		// Degenerate range (equal or reversed bounds).

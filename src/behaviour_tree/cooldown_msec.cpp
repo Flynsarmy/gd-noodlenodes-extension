@@ -68,10 +68,6 @@ NNBTNodes::Status NNBTCooldownMsec::_tick(Variant blackboard, float delta) {
 	_report_extra_enabled_child_btnodes();
 
 	set_internal_status(BT_INTERNAL_STATUS_TICKED);
-	//if( _is_first_tick ) {
-	//    _is_first_tick = false;
-	//    emit_signal("btnode_entered", blackboard, delta);
-	//}
 	if (_is_in_cooldown) {
 		uint64_t wait_time = godot::Time::get_singleton()->get_ticks_msec() - _cooldown_start_timestamp;
 		if (wait_time < _cooldown_msec) {
@@ -94,18 +90,15 @@ NNBTNodes::Status NNBTCooldownMsec::_tick(Variant blackboard, float delta) {
 
 				set_internal_status(BT_INTERNAL_STATUS_COMPLETED);
 				set_tick_result(result);
-				//emit_signal("btnode_exited", blackboard, delta);
 			} else {
 				set_internal_status(BT_INTERNAL_STATUS_TICKED);
 				set_tick_result(result);
 			}
 
-			//emit_signal("btnode_exited", blackboard, delta);
 			return result;
 		}
 	}
 	set_internal_status(BT_INTERNAL_STATUS_COMPLETED);
 	set_tick_result(Status::FAILURE);
-	//emit_signal("btnode_exited", blackboard, delta);
 	return Status::FAILURE;
 }

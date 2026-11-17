@@ -80,7 +80,6 @@ void NNNQSSearchSpaces::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_total_query_call_count"), &NNNQSSearchSpaces::get_total_query_call_count);
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "total_query_call_count", PROPERTY_HINT_NONE), "set_total_query_call_count", "get_total_query_call_count");
 
-	//PROPERTY_HINT_ARRAY_TYPE, vformat("%s/%s:%s", Variant::FLOAT, PROPERTY_HINT_NONE)
 	ClassDB::bind_method(D_METHOD("initialize_search_space"), &NNNQSSearchSpaces::initialize_search_space);
 	ClassDB::bind_method(D_METHOD("execute_query", "time_budget_usec"), &NNNQSSearchSpaces::execute_query);
 
@@ -88,7 +87,6 @@ void NNNQSSearchSpaces::_bind_methods() {
 }
 
 void NNNQSSearchSpaces::_ready() {
-	//if( !get_is_enabled() ) return;
 	if (Engine::get_singleton()->is_editor_hint())
 		return;
 	initialize_search_space(); // Maybe not really needed? We'll see.
@@ -350,7 +348,6 @@ bool NNNQSSearchSpaces::execute_query(uint64_t time_budget_usec) {
 		uint64_t preprocessing_end_timestamp_usec = godot::Time::get_singleton()->get_ticks_usec();
 		_preprocessing_time_usec += (preprocessing_end_timestamp_usec - preprocessing_start_timestamp_usec);
 		time_budget_remaining_usec -= _preprocessing_time_usec;
-		//if( time_budget_usec > 0 && time_budget_remaining_usec <= 0) {
 		if (time_budget_usec > 0 && preprocessing_end_timestamp_usec >= method_time_limit_timestamp_usec) {
 			// Update the debug counters before exiting.
 			_current_call_runtime_usec = preprocessing_end_timestamp_usec - method_start_time_usec; //godot::Time::get_singleton()->get_ticks_usec();
@@ -364,11 +361,6 @@ bool NNNQSSearchSpaces::execute_query(uint64_t time_budget_usec) {
 	// Handle the criteria.
 	if (!_is_criteria_handled) {
 		while (_current_criterion_index < (int)_num_filtering_criteria) { // get_child_count() ) {
-			//NNNQSSearchCriteria* criterion = godot::Object::cast_to<NNNQSSearchCriteria>(get_child(_current_criterion_index));
-			//if( criterion == nullptr ){
-			//    ++_current_criterion_index;
-			//    continue;
-			//}
 			NNNQSSearchCriteria *criterion = _filtering_criteria[_current_criterion_index];
 			if (!criterion->get_is_enabled()) {
 				++_current_criterion_index;
@@ -388,7 +380,6 @@ bool NNNQSSearchSpaces::execute_query(uint64_t time_budget_usec) {
 		_current_query_result_scores.clear();
 	} //endif is criteria handled
 	uint64_t copy_start_time_usec = godot::Time::get_singleton()->get_ticks_usec();
-	//time_budget_remaining_usec = time_budget_usec - (copy_start_time_usec - method_start_time_usec);
 	uint64_t copy_end_time_usec = copy_start_time_usec + time_budget_usec - (copy_start_time_usec - method_start_time_usec);
 
 	// Put all the remaining scores to the search results in order.
@@ -440,7 +431,6 @@ bool NNNQSSearchSpaces::apply_criterion_with_time_budget(NNNQSSearchCriteria *cr
 		uint64_t start_time_usec,
 		uint64_t time_budget_usec) {
 	uint64_t end_time_usec = start_time_usec + time_budget_usec;
-	//uint64_t current_time_usec = 0;
 	while (_current_node_index < _num_search_space_nodes) {
 		uint64_t current_time_usec = godot::Time::get_singleton()->get_ticks_usec();
 		if (time_budget_usec > 0) {
@@ -495,34 +485,6 @@ bool NNNQSSearchSpaces::apply_criterion_with_time_budget(NNNQSSearchCriteria *cr
 	return true;
 }
 
-/*
-void NNNQSSearchSpaces::apply_criterion( NNNQSSearchCriteria* criterion, TypedArray<Node> search_space, PackedFloat64Array scores, TypedArray<Node>& result_space, PackedFloat64Array& result_scores ) {
-	TypedArray<Node> result_space_after_application;
-	PackedFloat64Array result_scores_after_application;
-
-	bool filter_out = false;
-	float score = 0.0;
-	_current_node_index = 0;
-	for( int i = 0; i < search_space.size(); i++ ) {
-		Node* node = godot::Object::cast_to<Node>(search_space[i]);
-		if( node == nullptr ) continue;
-		float previous_score = 1.0;
-		if( i < scores.size() ) {
-			previous_score = scores[i];
-		}
-
-		criterion->apply_criterion(node, filter_out, score );
-		if( filter_out ) continue;
-
-		result_space_after_application.push_back(node);
-		result_scores_after_application.push_back(previous_score * score);
-	}//endfor search space nodes
-
-	result_space = result_space_after_application;
-	result_scores = result_scores_after_application;
-}
-*/
-
 void NNNQSSearchSpaces::place_to_query_results_based_on_score(Node *node, float score) {
 	int num_entries = _current_query_result_scores.size();
 	if (num_entries == 0) {
@@ -543,9 +505,7 @@ void NNNQSSearchSpaces::place_to_query_results_based_on_score(Node *node, float 
 		_current_query_results.insert(i, node);
 		_current_query_result_scores.insert(i, score);
 		if (num_entries + 1 > _top_n_to_find) {
-			//_current_query_result_scores =
 			_current_query_result_scores.remove_at(_top_n_to_find); //.slice(0, _top_n_to_find-1);//.remove_at(_top_n_to_find);
-			//_current_query_results =
 			_current_query_results.remove_at(_top_n_to_find); //(0, _top_n_to_find-1); //.remove_at(_top_n_to_find);
 		}
 		return;

@@ -45,10 +45,6 @@ void NNArea2DVisibilitySensor::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_occlusion_test_exclusion_list"), &NNArea2DVisibilitySensor::get_occlusion_test_exclusion_list);
 	ADD_PROPERTY(PropertyInfo(Variant::ARRAY, "occlusion_test_exclusion_list", PROPERTY_HINT_ARRAY_TYPE, vformat("%s/%s:%s", Variant::OBJECT, PROPERTY_HINT_RESOURCE_TYPE, "RID")), "set_occlusion_test_exclusion_list", "get_occlusion_test_exclusion_list");
 
-	//ClassDB::bind_method(D_METHOD("set_entity_mask", "entity_mask"), &NNArea2DVisibilitySensor::set_entity_mask);
-	//ClassDB::bind_method(D_METHOD("get_entity_mask"), &NNArea2DVisibilitySensor::get_entity_mask);
-	//ADD_PROPERTY(PropertyInfo(Variant::INT, "entity_mask", PROPERTY_HINT_LAYERS_3D_PHYSICS), "set_entity_mask","get_entity_mask");
-
 	ClassDB::bind_method(D_METHOD("on_area_entered", "area"), &NNArea2DVisibilitySensor::on_area_entered);
 	ClassDB::bind_method(D_METHOD("on_area_exited", "area"), &NNArea2DVisibilitySensor::on_area_exited);
 	ClassDB::bind_method(D_METHOD("on_body_entered", "body"), &NNArea2DVisibilitySensor::on_body_entered);
@@ -140,33 +136,9 @@ NNArea2DVisibilitySensor::NNArea2DVisibilitySensor() {
 }
 
 NNArea2DVisibilitySensor::~NNArea2DVisibilitySensor() {
-	/*if( _visibility_volume_node != nullptr )
-	{
-		// Disconnect to the area entered and exited signals.
-		_visibility_volume_node->disconnect("area_entered", Callable(this, "on_area_entered"));
-		_visibility_volume_node->disconnect("area_exited", Callable(this, "on_area_exited"));
-		_visibility_volume_node = nullptr;
-	}*/
 }
 
 // Godot virtuals.
-
-/*void NNArea2DVisibilitySensor::_ready() {
-	initialize_sensor();
-}
-/**
-
-void NNArea2DVisibilitySensor::_notification(int p_what) {
-	switch (p_what) {
-		case NOTIFICATION_EXIT_TREE: {
-			// Remove the signal connections.
-			_visibility_volume_node->disconnect("area_entered", Callable(this, "on_area_entered"));
-			_visibility_volume_node->disconnect("area_exited", Callable(this, "on_area_exited"));
-
-		} break;
-	}
-}
-/**/
 
 // Handling functions.
 
@@ -213,18 +185,10 @@ float NNArea2DVisibilitySensor::evaluate_sensor_value() {
 		return get_sensor_value();
 	}
 
-	//if( _cache.is_null() || !_cache.is_valid() ) {
-	//    _visibility_volume = nullptr; // Cache shows that the node reference has become invalid.
-	//    return get_sensor_value();
-	//}
-
-	//Ref<World3D> w3d = _visibility_volume_node->get_world_3d();
-	//ERR_FAIL_COND_V(w3d.is_null(), get_sensor_value());
 	PhysicsDirectSpaceState2D *dss = nullptr;
 
 	if (_do_occlusion_test) {
 		dss = PhysicsServer2D::get_singleton()->space_get_direct_state(PhysicsServer2D::get_singleton()->area_get_space(_visibility_volume->get_rid()));
-		//PhysicsDirectSpaceState3D *dss = PhysicsServer3D::get_singleton()->space_get_direct_state(w3d->get_space());
 		ERR_FAIL_NULL_V(dss, get_sensor_value());
 	}
 
@@ -232,9 +196,6 @@ float NNArea2DVisibilitySensor::evaluate_sensor_value() {
 		Node2D *owner2d = godot::Object::cast_to<Node2D>(get_owner());
 		if (owner2d != nullptr) {
 			_from_vector = owner2d->get_global_position();
-			//Transform2D owner_global_transform = owner2d->get_global_transform();
-			//real_t rotation = owner_global_transform.get_rotation();
-			// = Vector2(1.0,0.0).rotated(rotation);
 		} //endif owner is derived from node2d
 	} //endif use owner global position
 
@@ -286,10 +247,8 @@ float NNArea2DVisibilitySensor::evaluate_sensor_value() {
 					to,
 					_collision_mask,
 					_occlusion_test_exclusion_list);
-			//(const Vector2 &from, const Vector2 &to, uint32_t collision_mask = 4294967295, const TypedArray<RID> &exclude = {})
 			params->set_collide_with_bodies(true);
 			params->set_collide_with_areas(true);
-			//params->set_block_signals(true);
 			Dictionary results = dss->intersect_ray(params);
 			if (results.is_empty() || results.get("collider", nullptr) == _intersecting_areas[i]) {
 				_unoccluded_areas.push_back(area);
@@ -336,10 +295,7 @@ float NNArea2DVisibilitySensor::evaluate_sensor_value() {
 					to,
 					_collision_mask,
 					_occlusion_test_exclusion_list);
-			//(const Vector2 &from, const Vector2 &to, uint32_t collision_mask = 4294967295, const TypedArray<RID> &exclude = {})
 			params->set_collide_with_bodies(true);
-			// params->set_collide_with_areas(true);
-			//params->set_block_signals(true);
 			Dictionary results = dss->intersect_ray(params);
 			if (results.is_empty() || results.get("collider", nullptr) == _intersecting_bodies[i]) {
 				_unoccluded_areas.push_back(body);
@@ -358,19 +314,12 @@ float NNArea2DVisibilitySensor::evaluate_sensor_value() {
 			++_num_entities_found;
 		}
 	} //endfor entered bodies.
-	/**
-	if( get_use_absolute_value() ) {
-		set_sensor_value(((float)_num_entities_found));
-	} else {
-	/**/
 	set_sensor_value(((float)_num_entities_found) * _one_over_max_expected_entities_found);
-	/*}*/
 
 	return get_sensor_value();
 }
 
 void NNArea2DVisibilitySensor::on_area_entered(Area2D *area) {
-	//WARN_PRINT("Area entered!");
 	if (area == nullptr) {
 		return;
 	}
@@ -382,7 +331,6 @@ void NNArea2DVisibilitySensor::on_area_entered(Area2D *area) {
 }
 
 void NNArea2DVisibilitySensor::on_area_exited(Area2D *area) {
-	//WARN_PRINT("Area exited");
 	if (area == nullptr) {
 		return;
 	}
@@ -398,7 +346,6 @@ void NNArea2DVisibilitySensor::on_area_exited(Area2D *area) {
 }
 
 void NNArea2DVisibilitySensor::on_body_entered(Node2D *body) {
-	//WARN_PRINT("Body entered!");
 	if (body == nullptr) {
 		return;
 	}
@@ -410,7 +357,6 @@ void NNArea2DVisibilitySensor::on_body_entered(Node2D *body) {
 }
 
 void NNArea2DVisibilitySensor::on_body_exited(Node2D *body) {
-	//WARN_PRINT("Body exited");
 	if (body == nullptr) {
 		return;
 	}
@@ -483,16 +429,6 @@ void NNArea2DVisibilitySensor::set_collision_mask(uint32_t collision_mask) {
 uint32_t NNArea2DVisibilitySensor::get_collision_mask() const {
 	return _collision_mask;
 }
-
-/**
-void NNArea2DVisibilitySensor::set_entity_mask( uint32_t entity_mask) {
-	_entity_mask = entity_mask;
-}
-
-uint32_t NNArea2DVisibilitySensor::get_entity_mask() const {
-	return _entity_mask;
-}
-/**/
 
 void NNArea2DVisibilitySensor::set_max_expected_entities_found(int max_expected_entities_found) {
 	if (max_expected_entities_found <= 0) {

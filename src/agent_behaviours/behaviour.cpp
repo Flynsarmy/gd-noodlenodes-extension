@@ -33,10 +33,6 @@ void NNBehaviour::_bind_methods() {
 
 	ADD_SUBGROUP("Debugging", "");
 
-	//ClassDB::bind_method(D_METHOD("set_score", "score"), &NNBehaviour::set_score);
-	//ClassDB::bind_method(D_METHOD("get_score"), &NNBehaviour::get_score);
-	//ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "score", PROPERTY_HINT_RANGE,"-100.0,100.0"), "set_score","get_score");
-
 	ClassDB::bind_method(D_METHOD("set_current_action_index", "current_action_index"), &NNBehaviour::set_current_action_index);
 	ClassDB::bind_method(D_METHOD("get_current_action_index"), &NNBehaviour::get_current_action_index);
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "current_action_index", PROPERTY_HINT_RANGE, "0,256"), "set_current_action_index", "get_current_action_index");
@@ -51,7 +47,6 @@ void NNBehaviour::_bind_methods() {
 // Constructor and destructor.
 
 NNBehaviour::NNBehaviour() {
-	//_current_action_node = nullptr;
 	_score = 0.0f;
 	_cooldown_seconds = 0.0f;
 	_current_cooldown_seconds = 0.0f;
@@ -86,15 +81,6 @@ bool NNBehaviour::get_can_be_interrupted() const {
 	return _can_be_interrupted;
 }
 
-/*
-void NNBehaviour::set_score( float score ) {
-	_score = score;
-}
-
-float NNBehaviour::get_score() const {
-	return _score;
-}
-*/
 void NNBehaviour::set_cooldown_seconds(float cooldown_seconds) {
 	_cooldown_seconds = cooldown_seconds;
 }
@@ -120,31 +106,6 @@ int NNBehaviour::get_current_action_index() const {
 }
 
 // Godot virtuals.
-/**
-void NNBehaviour::_notification(int p_what) {
-
-	if( p_what == NOTIFICATION_CHILD_ORDER_CHANGED ) {
-		_child_considerations.clear();
-		int num_children = get_child_count();
-		for( int i = 0; i < num_children; i++ ) {
-			if( NNConsiderations* cons = godot::Object::cast_to<NNConsiderations>(get_child(i))) {
-				_child_considerations.push_back(cons);
-			}
-		}//endfor child nodes
-		_num_child_considerations = (unsigned int)_child_considerations.size();
-	}
-	/**
-	switch (p_what) {
-		case NOTIFICATION_ENTER_TREE: {
-			// Entered the tree.
-		} break;
-		case NOTIFICATION_EXIT_TREE: {
-
-		} break;
-	}
-
-}
-/**/
 
 void NNBehaviour::_ready() {
 	if (!get_is_enabled())
@@ -185,14 +146,10 @@ float NNBehaviour::evaluate() {
 	_score = 0.0f;
 
 	// Evaluate the child nodes.
-	//int num_children = get_child_count();
-	//for( int i = 0; i < num_children; i++ ) {
-	//NNConsiderations* considerationNode = godot::Object::cast_to<NNConsiderations>(get_child(i));
 	float child_score = 0.0f;
 	unsigned int num_evaluated = 0;
 	for (unsigned int i = 0; i < _num_child_considerations; i++) {
 		NNConsiderations *considerationNode = _child_considerations[i];
-		//if( considerationNode == nullptr ) continue;
 		if (!considerationNode->get_is_enabled())
 			continue;
 		child_score = considerationNode->evaluate();
@@ -248,8 +205,6 @@ NNAction *NNBehaviour::start_behaviour() {
 	_current_cooldown_turns = _cooldown_turns;
 	// No action selected yet; start the search at child index 0.
 	_current_action_index = -1;
-	//_current_action_node = nullptr;
-	//_current_action_node = update_behaviour();
 	emit_signal("behaviour_entered");
 	// Return the started action so the agent can track it. The entered signal
 	// runs user code first, so the caller must re-resolve by ID before use.
@@ -262,12 +217,10 @@ void NNBehaviour::end_behaviour() {
 }
 
 NNAction *NNBehaviour::update_behaviour() {
-	//WARN_PRINT("AIBehaviour::update_behaviour(): stepping actions. " + get_name());
 	return godot::Object::cast_to<NNAction>(step_actions());
 }
 
 Node *NNBehaviour::step_actions() {
-	//WARN_PRINT("NNBehaviour::step_actions() " + get_name());
 	Node *current_node = nullptr;
 	if (_current_action_index >= 0) {
 		if (_current_action_index >= get_child_count())
@@ -286,52 +239,35 @@ Node *NNBehaviour::step_actions() {
 			}
 			current_action->end_action();
 		} else {
-			//WARN_PRINT("NNBehaviour::step_actions(): Checking if the current index is an action group.");
 			// Check if the current index has an action group and if that group has a follow-up action.
 			if (NNActionGroup *current_action_group = godot::Object::cast_to<NNActionGroup>(current_node)) {
-				//WARN_PRINT("NNBehaviour::step_actions(): Yes, current action is an action group. Stepping...");
 				current_action = godot::Object::cast_to<NNAction>(current_action_group->step_actions());
-				//if( _current_action_node == nullptr ) WARN_PRINT("NNBehaviour::step_actions(): group sent back a NULL action pointer.");
 				if (current_action != nullptr)
 					return current_action;
-				//WARN_PRINT("NNBehaviour::step_actions(): Action has completed, ending action for the action group.");
 				// If the group fails, clean up and end stepping.
 				if (current_action_group->get_has_failed()) {
 					current_action_group->end_action();
 					return nullptr;
 				}
 				current_action_group->end_action();
-				//WARN_PRINT("NNBehaviour::step_actions(): Action group action ended.");
 			} //endif current node index is action group
 		} //endif current node index is an action
 	} //endif an action has been selected
-	//WARN_PRINT("NNBehaviour::step_actions(): Finding a new action...");
 
 	++_current_action_index;
 	while (_current_action_index < get_child_count()) {
 		current_node = get_child(_current_action_index);
 		if (current_node != nullptr) {
 			if (NNAction *action_node = godot::Object::cast_to<NNAction>(current_node)) {
-				//WARN_PRINT("NNBehaviour::step_actions(): Found an action, starting the action...");
 				if (action_node->get_is_enabled()) {
-					//_current_action_node = action_node;
 					bool action_start_result = action_node->start_action();
-					//if( !action_start_result ) return nullptr;
-					//WARN_PRINT("NNBehaviour::step_actions(): Done, returning action node.");
 					return action_node;
 				} //endif action is active
 			} else if (NNActionGroup *action_group = godot::Object::cast_to<NNActionGroup>(current_node)) {
 				if (action_group->get_is_enabled()) {
-					//WARN_PRINT("NNBehaviour::step_actions(): Found an action group, starting the action group." + get_name());
 					bool action_group_start_result = action_group->start_action();
-					//if( !action_group_start_result ) return nullptr;
-					//WARN_PRINT("NNBehaviour::step_actions(): Stepping it to find the sub action...");
 					action_node = godot::Object::cast_to<NNAction>(action_group->step_actions());
-					//if( _current_action_node == nullptr ) {
-					//WARN_PRINT("NNBehaviour::step_actions(): Stepping function returned NULL action pointer.");
-					//}
 					if (action_node != nullptr) {
-						//WARN_PRINT("NNBehaviour::step_actions(): Stepping function returned a valid action pointer." + _current_action_node->get_name());
 						// The action group already started the action it returned.
 						return action_node;
 					}
@@ -341,6 +277,5 @@ Node *NNBehaviour::step_actions() {
 		++_current_action_index;
 	} //endwhile action index in bounds
 
-	//WARN_PRINT("NNBehaviour::step_actions(): NO ACTION FOUND! " + get_name());
 	return nullptr;
 }

@@ -1,6 +1,5 @@
 #pragma once
 
-//#include <godot_cpp/classes/node.hpp>
 #include "noodle_nodes.h"
 
 namespace godot {

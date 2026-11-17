@@ -50,23 +50,6 @@ float NNBooleanConsideration::get_false_score_value() const {
 }
 
 // Godot virtuals.
-/**
-void NNBooleanConsideration::_ready() {
-	initialize_consideration();
-}
-
-/**
-void NNBooleanConsideration::_notification(int p_what) {
-	switch (p_what) {
-		case NOTIFICATION_ENTER_TREE: {
-			// Entered the tree.
-		} break;
-		case NOTIFICATION_EXIT_TREE: {
-			//_clear_monitoring();
-		} break;
-	}
-}
-/**/
 
 // Handling functions.
 

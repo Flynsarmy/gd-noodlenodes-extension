@@ -32,7 +32,6 @@ public:
 		Mean = 3,
 		Multiply = 4,
 		FirstNonZero = 5,
-		//OneMinusScore=6
 	};
 
 	void set_invert_score(bool invert_score);

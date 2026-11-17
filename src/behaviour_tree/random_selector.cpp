@@ -43,35 +43,20 @@ NNBTNodes::Status NNBTRandomSelector::_tick(Variant blackboard, float delta) {
 	}
 
 	set_internal_status(BT_INTERNAL_STATUS_TICKED);
-	//if( _is_first_tick ) {
-	//    _is_first_tick = false;
-	//    emit_signal("btnode_entered", blackboard, delta);
-	//}
-	//emit_signal("btnode_ticked", blackboard, delta);
 	while (_current_child_index < _child_node_order.size()) {
-		//NNBTNodes* btnode = godot::Object::cast_to<NNBTNodes>(get_child(_child_node_order[_current_child_index]));
 		NNBTNodes *btnode = _child_btnodes[(int)_child_node_order[_current_child_index]];
-		//if( btnode != nullptr ) {
-		//if( !btnode->get_is_enabled() ) {
-		//    continue;
-		//}
 		Status result = btnode->tick(blackboard, delta);
 		set_tick_result(result);
 		if (result == Status::SUCCESS) {
-			//_current_child_index = -1;
 			set_internal_status(BT_INTERNAL_STATUS_COMPLETED);
-			//emit_signal("btnode_exited", blackboard, delta);
 			return Status::SUCCESS;
 		} else if (result == Status::RUNNING) {
 			_interrupt_other_active_children(btnode);
 			return Status::RUNNING;
 		}
-		//}//endif node was of correct type
 		++_current_child_index;
 	} //endwhile children to tick
-	//_current_child_index = -1;
 	set_internal_status(BT_INTERNAL_STATUS_COMPLETED);
 	set_tick_result(Status::FAILURE);
-	//emit_signal("btnode_exited", blackboard, delta);
 	return Status::FAILURE;
 }

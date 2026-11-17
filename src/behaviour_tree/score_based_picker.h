@@ -9,7 +9,6 @@ class NNBTScoreBasedPicker : public NNBTCompositeNodes {
 	GDCLASS(NNBTScoreBasedPicker, NNBTCompositeNodes)
 
 private:
-	//bool _is_reactive;
 	int _current_child_index;
 
 protected:
@@ -20,8 +19,6 @@ public:
 	~NNBTScoreBasedPicker();
 
 	// Getters and setters for attributes.
-	//void set_is_reactive( bool is_reactive );
-	//bool get_is_reactive() const;
 
 	// Handling functions.
 

@@ -9,7 +9,6 @@ class NNBTInverter : public NNBTDecoratorNodes {
 	GDCLASS(NNBTInverter, NNBTDecoratorNodes)
 
 private:
-	//int _tick_result;
 
 protected:
 	static void _bind_methods();
@@ -19,9 +18,6 @@ public:
 	~NNBTInverter();
 
 	// Getters and setters for attributes.
-
-	//void set_tick_result( int tick_result );
-	//int  get_tick_result() const;
 
 	// Handling functions.
 

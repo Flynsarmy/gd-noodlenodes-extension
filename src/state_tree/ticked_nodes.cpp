@@ -67,7 +67,6 @@ static void _discard_history_registrations(const ObjectID &history_id, const NNS
 // Method binds.
 
 void NNSTTickedNodes::_bind_methods() {
-	// ClassDB::bind_method(D_METHOD("set_root", "total_tick_usec"), &NNSTTickedNodes::set_root);
 	ClassDB::bind_method(D_METHOD("get_root"), &NNSTTickedNodes::get_root);
 
 	ClassDB::bind_method(D_METHOD("get_blackboard", "key", "default"), &NNSTTickedNodes::get_blackboard, Variant());
@@ -84,7 +83,6 @@ void NNSTTickedNodes::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("set_on_entered_condition", "is_entered"), &NNSTTickedNodes::set_is_on_entered_condition_true);
 	ClassDB::bind_method(D_METHOD("get_on_entered_condition"), &NNSTTickedNodes::get_is_on_entered_condition_true);
 	ClassDB::bind_method(D_METHOD("get_activation_generation"), &NNSTTickedNodes::get_activation_generation);
-	//ADD_PROPERTY(PropertyInfo(Variant::INT, "child_state_selection_rule", PROPERTY_HINT_ENUM, "OnEnterConditionMethod:0,UtilityScoring:1" ), "set_child_state_selection_rule","get_child_state_selection_rule");
 
 	ClassDB::bind_method(D_METHOD("transition_to", "new_state_nodepath"), &NNSTTickedNodes::transition_to);
 
@@ -738,10 +736,6 @@ bool NNSTTickedNodes::transition_to(NodePath path_to_node) {
 }
 
 bool NNSTTickedNodes::_transition_to_impl(NodePath path_to_node) {
-	// NNSTBranchNodes *parent = godot::Object::cast_to<NNSTBranchNodes>(get_parent());
-	// if (!parent) {
-	// 	return false;
-	// }
 	ObjectID history_id;
 	NNSTHistoryStateSnapshot history_entry;
 	NNSTTickedNodes *to_state = _resolve_target_node(get_node_or_null(path_to_node), history_id, history_entry);

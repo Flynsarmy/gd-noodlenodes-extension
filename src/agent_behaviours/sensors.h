@@ -10,7 +10,6 @@ class NNSensors : public NoodleNodes {
 
 private:
 	float _sensor_value;
-	//bool   _use_absolute_value; // Place holder for when in Godot the Curve X-value can be adjusted to any range other than 0..1.
 
 protected:
 	static void _bind_methods();
@@ -27,7 +26,6 @@ public:
 	// Godot virtuals.
 
 	void _ready() override;
-	//void _enter_tree() override;
 	void _exit_tree() override;
 
 	// Handling methods.
@@ -46,9 +44,6 @@ public:
 
 	void set_sensor_value(float sensor_value);
 	float get_sensor_value() const;
-
-	//void set_use_absolute_value( bool use_absolute_value );
-	//bool get_use_absolute_value() const;
 
 	virtual float evaluate_sensor_value();
 };

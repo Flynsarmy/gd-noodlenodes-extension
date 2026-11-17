@@ -1,6 +1,5 @@
 #include "limiter.h"
 #include "nodes.h"
-//#include "../sensors.h"
 
 #include <godot_cpp/classes/engine.hpp>
 #include <godot_cpp/classes/time.hpp>
@@ -15,9 +14,6 @@ void NNBTLimiter::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_max_repeat_times"), &NNBTLimiter::get_max_repeat_times);
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "max_repeat_times", PROPERTY_HINT_RANGE, "0,100,or_greater"), "set_max_repeat_times", "get_max_repeat_times");
 
-	//ClassDB::bind_method(D_METHOD("set_reset_rule", "reset_rule"), &NNBTLimiter::set_reset_rule);
-	//ClassDB::bind_method(D_METHOD("get_reset_rule"), &NNBTLimiter::get_reset_rule);
-	//ADD_PROPERTY(PropertyInfo(Variant::INT, "reset_rule", PROPERTY_HINT_ENUM, "WhenTicked:0,WhenCompleted:1,WhenTickedAfterBeingCompleted:2,Never:3" ), "set_reset_rule","get_reset_rule");
 }
 
 // Constructor and destructor.
@@ -40,23 +36,6 @@ int NNBTLimiter::get_max_repeat_times() const {
 	return _max_repeat_times;
 }
 
-/**
-void NNBTLimiter::set_tick_result( int tick_result ) {
-	_tick_result = tick_result;
-	if( _tick_result > 1 ) {
-		_tick_result = 1;
-	} else if (_tick_result < -1 ) {
-		_tick_result = -1;
-	}
-}
-
-
-int  NNBTLimiter::get_tick_result() const {
-	return _tick_result;
-}
-
-/**/
-
 // Handling functions.
 
 void NNBTLimiter::reset_bt_node() {
@@ -64,7 +43,6 @@ void NNBTLimiter::reset_bt_node() {
 }
 
 NNBTNodes::Status NNBTLimiter::_tick(Variant blackboard, float delta) {
-	//if( !get_is_enabled() ) return Status::SKIP;
 	if (Engine::get_singleton()->is_editor_hint())
 		return Status::FAILURE;
 
@@ -74,14 +52,9 @@ NNBTNodes::Status NNBTLimiter::_tick(Variant blackboard, float delta) {
 		reset_bt_node();
 	}
 	set_internal_status(BT_INTERNAL_STATUS_TICKED);
-	//if( _is_first_tick ) {
-	//    _is_first_tick = false;
-	//    emit_signal("btnode_entered", blackboard, delta);
-	//}
 	if (_current_repeat_times == 0) {
 		set_internal_status(BT_INTERNAL_STATUS_COMPLETED);
 		set_tick_result(Status::FAILURE);
-		//emit_signal("btnode_exited", blackboard, delta);
 		return Status::FAILURE;
 	}
 
@@ -96,15 +69,12 @@ NNBTNodes::Status NNBTLimiter::_tick(Variant blackboard, float delta) {
 		Status result = btnode->tick(blackboard, delta);
 		set_tick_result(result);
 		if (result != Status::RUNNING) {
-			//emit_signal("btnode_exited", blackboard, delta);
 			return result;
 		}
 		break;
 	}
-	//emit_signal("btnode_ticked", blackboard, delta);
 	// If we get here, there are no child nodes set.
 	set_internal_status(BT_INTERNAL_STATUS_COMPLETED);
 	set_tick_result(Status::FAILURE);
-	//emit_signal("btnode_exited", blackboard, delta);
 	return Status::FAILURE;
 }

@@ -41,12 +41,3 @@ TypedArray<Node> NNNodeChildrenSearchSpace::get_searchspace_nodes() const {
 	}
 	return _parent_node->get_children();
 }
-
-/**
-void NNNodeChildrenSearchSpace::_ready() {
-	//if( !get_is_enabled() ) return;
-	if( Engine::get_singleton()->is_editor_hint() ) return;
-
-	//_parent_node = get_node_or_null(_parent_node_path);
-}
-/**/

@@ -39,13 +39,11 @@ public:
 
 	// Godot virtuals.
 	void _ready() override;
-	//void _notification( int p_what );
 
 	// Handling functions.
 	void initialize_consideration();
 	virtual float evaluate() override;
 	virtual float sample_activation_curve(float input_value) const;
-	//virtual float sample_activation_curve( float input_value ) const;
 };
 
 } //namespace godot

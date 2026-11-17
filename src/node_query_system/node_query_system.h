@@ -1,7 +1,6 @@
 #ifndef NNNodeQuerySystem_H_INCLUDED
 #define NNNodeQuerySystem_H_INCLUDED
 
-//#include "node_query_system.h"
 #include "../noodle_nodes.h"
 #include "search_criteria/nqs.h"
 #include "search_spaces/nqs.h"
@@ -85,8 +84,6 @@ public:
 	void clear_queries();
 
 	// Godot virtuals.
-	//void _ready();
-	//void _exit_tree();
 };
 
 } //namespace godot

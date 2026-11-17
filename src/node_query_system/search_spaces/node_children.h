@@ -28,7 +28,6 @@ public:
 	virtual TypedArray<Node> get_searchspace_nodes() const override;
 
 	// Godot virtuals.
-	//void _ready();
 };
 
 } //namespace godot

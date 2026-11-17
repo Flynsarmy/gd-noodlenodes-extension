@@ -83,7 +83,6 @@
 
 // STATE TREE
 
-//#include "state_tree/leaf.h"
 #include "state_tree/all_of_guard.h"
 #include "state_tree/any_of_guard.h"
 #include "state_tree/branch_nodes.h"
@@ -139,9 +138,6 @@
 
 // EDITOR PLUGIN CLASSES.
 #ifdef DEBUG_ENABLED
-
-//#include "editor/editor_plugin.h"
-//#include "debugger/debugger_plugin.h"
 
 #include "debugger/debugger_overlay.h"
 
@@ -301,19 +297,11 @@ void register_scene_classes() {
 
 void register_editor_classes() {
 #ifdef DEBUG_ENABLED
-	//GDREGISTER_CLASS(NNEditorPlugin);
-	//ClassDB::register_class<NNEditorPlugin>();
-	//EditorPlugins::add_by_type<NNEditorPlugin>();
 
-	//ClassDB::register_class<NNDebuggerPlugin>();
-	//EditorPlugins::add_by_type<NNDebuggerPlugin>();
 #endif
 }
 
 void initialize_noodle_nodes_module(ModuleInitializationLevel p_level) {
-	//if (p_level != MODULE_INITIALIZATION_LEVEL_SCENE) {
-	//    return;
-	//}
 
 	// Add the classes here.
 	switch (p_level) {
@@ -321,7 +309,6 @@ void initialize_noodle_nodes_module(ModuleInitializationLevel p_level) {
 			register_scene_classes();
 		} break;
 		case MODULE_INITIALIZATION_LEVEL_EDITOR: {
-			//register_editor_classes();
 		} break;
 
 		default: {

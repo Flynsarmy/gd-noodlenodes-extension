@@ -66,10 +66,7 @@ public:
 
 	// Godot virtuals.
 
-	//void _notification( int p_what ) override;
-	//void _physics_process(double delta ) override;
 	void tree_add_child_nodes(Tree *tree, TreeItem *parent_node, Node *parent_ai_node);
-	//void  tree_update_child_nodes( Tree* tree, TreeItem* parent_node, Node* parent_ai_node );
 
 	// Handling methods.
 	int register_behaviour_tree(uint64_t instance_id);

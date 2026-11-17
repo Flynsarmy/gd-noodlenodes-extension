@@ -66,8 +66,6 @@ private:
 #ifdef DEBUG_ENABLED
 	uint64_t _total_tick_usec;
 #endif
-	// TypedArray<NNSTNodes> _active_states;
-	// std::vector<NNSTNodes *> _active_states_vector;
 	TypedArray<NNSensors> _child_sensors;
 	unsigned int _num_child_sensors;
 

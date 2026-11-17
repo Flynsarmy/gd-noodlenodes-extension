@@ -33,14 +33,12 @@ NNActions::~NNActions() {
 bool NNActions::start_action() {
 	_is_finished = false;
 	_has_failed = false;
-	//_has_previous_step_failed = false;
 	return true;
 }
 
 bool NNActions::end_action() {
 	_is_finished = false;
 	_has_failed = false;
-	//_has_previous_step_failed = false;
 	return true;
 }
 
@@ -65,13 +63,3 @@ void NNActions::set_has_failed(bool has_failed) {
 bool NNActions::get_has_failed() const {
 	return _has_failed;
 }
-
-/**
-void NNActions::set_has_previous_step_failed( bool has_previous_step_failed ) {
-	_has_previous_step_failed = has_previous_step_failed;
-}
-
-bool NNActions::get_has_previous_step_failed() const {
-	return _has_previous_step_failed;
-}
-/**/

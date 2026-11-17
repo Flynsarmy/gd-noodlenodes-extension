@@ -2,7 +2,6 @@
 
 #include "ticked_nodes.h"
 #include <vector>
-//#include <godot_cpp/classes/node.hpp>
 
 namespace godot {
 

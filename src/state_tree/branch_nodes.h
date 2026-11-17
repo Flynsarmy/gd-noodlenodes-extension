@@ -92,12 +92,8 @@ public:
 	void set_child_state_selection_rule(int child_state_selection_rule);
 	int get_child_state_selection_rule() const;
 
-	//Dictionary get_child_nodes_as_dictionary(NNSTBranchNodes* tree_root_node );
-
 	void set_internal_status(int internal_status);
 	int get_internal_status() const;
-
-	//inline virtual bool get_is_leaf() const { return false; };
 
 	enum NNSTNodeChildStateSelectionRule {
 		ON_ENTER_CONDITION_METHOD = 0,
@@ -139,12 +135,8 @@ public:
 	GDVIRTUAL1(on_unhandled_input, Ref<InputEvent>);
 	GDVIRTUAL1(on_unhandled_key_input, Ref<InputEvent>);
 
-	// virtual NNSTBranchNodes *evaluate_state_activation(Variant blackboard, float delta);
-	// virtual void evaluate_state_activations(TypedArray<NNSTBranchNodes> *nodes, Variant blackboard, float delta);
-
 	// Godot virtuals.
 
-	//void _enter_tree();
 	virtual void _input(const Ref<InputEvent> &p_event) override;
 	virtual void _unhandled_input(const Ref<InputEvent> &p_event) override;
 	virtual void _unhandled_key_input(const Ref<InputEvent> &p_event) override;

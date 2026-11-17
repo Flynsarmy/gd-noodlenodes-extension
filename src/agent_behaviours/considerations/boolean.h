@@ -29,8 +29,6 @@ public:
 	float get_false_score_value() const;
 
 	// Godot virtuals.
-	//void _ready();
-	//void _notification( int p_what );
 
 	// Handling functions.
 

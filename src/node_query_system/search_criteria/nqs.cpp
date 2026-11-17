@@ -15,7 +15,6 @@ NNNQSSearchCriteria::~NNNQSSearchCriteria() {
 }
 
 void NNNQSSearchCriteria::_ready() {
-	//if( !get_is_enabled() ) return;
 	if (Engine::get_singleton()->is_editor_hint())
 		return;
 
@@ -91,7 +90,6 @@ float NNNQSSearchCriteria::get_score() const {
 // Handing methods.
 
 void NNNQSSearchCriteria::apply_criterion(Node *node, bool &filter_out, float &score) {
-	//if( node == nullptr ) return;
 }
 
 float NNNQSSearchCriteria::sample_activation_curve(float input_value) const {

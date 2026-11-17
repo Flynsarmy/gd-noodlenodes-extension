@@ -42,7 +42,6 @@ public:
 		Mean = 3,
 		Multiply = 4,
 		FirstNonZero = 5,
-		//OneMinusScore=6
 	};
 
 	void set_score(float score);
@@ -72,7 +71,6 @@ public:
 	Status tick(Variant blackboard, float delta);
 
 	virtual void reset();
-	//virtual void reset_for_looping();
 	virtual void reset_bt_node() {};
 	virtual void update_child_vectors();
 
@@ -110,11 +108,8 @@ public:
 	virtual void _notification(int p_what);
 
 private:
-	mutable NodePath _cached_tree_root_path;
-	mutable bool _is_tree_root_path_cached;
 	float _score;
 	int _evaluation_method;
-	bool _invert_score;
 	Status _tick_result;
 	int _internal_status;
 	int _reset_rule;
@@ -146,7 +141,6 @@ protected:
 
 	virtual void _on_is_enabled_changed(bool p_is_enabled) override;
 
-	//bool   _is_first_tick;
 	std::vector<NNBTNodes *> _child_btnodes;
 	unsigned int _num_child_btnodes;
 	std::vector<NNConsiderations *> _child_considerations;

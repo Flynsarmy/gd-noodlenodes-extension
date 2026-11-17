@@ -177,3 +177,35 @@ func test_first_non_zero_evaluation_method_uses_the_first_positive_score() -> vo
 	root.tick(BLACKBOARD, 0.1)
 
 	assert_almost_eq(scored.score, 0.6, 0.0001)
+
+
+func test_max_evaluation_method_uses_the_highest_score() -> void:
+	var tree: Dictionary = _make_scored_tree(NNBTNodes.Max, [0.3, 0.7, 0.2])
+	var root: NNBTRoot = tree["root"]
+	var scored: NNBTFixedResult = tree["scored"]
+
+	root.tick(BLACKBOARD, 0.1)
+
+	assert_almost_eq(scored.score, 0.7, 0.0001)
+
+
+# A zero factor makes the product zero no matter what follows, so the
+# evaluation short-circuits to 0.0 instead of evaluating the rest.
+func test_multiply_evaluation_method_short_circuits_on_a_zero_score() -> void:
+	var tree: Dictionary = _make_scored_tree(NNBTNodes.Multiply, [0.5, 0.0, 0.8])
+	var root: NNBTRoot = tree["root"]
+	var scored: NNBTFixedResult = tree["scored"]
+
+	root.tick(BLACKBOARD, 0.1)
+
+	assert_almost_eq(scored.score, 0.0, 0.0001)
+
+
+func test_first_non_zero_evaluation_method_scores_zero_when_all_are_zero() -> void:
+	var tree: Dictionary = _make_scored_tree(NNBTNodes.FirstNonZero, [0.0, 0.0])
+	var root: NNBTRoot = tree["root"]
+	var scored: NNBTFixedResult = tree["scored"]
+
+	root.tick(BLACKBOARD, 0.1)
+
+	assert_almost_eq(scored.score, 0.0, 0.0001)

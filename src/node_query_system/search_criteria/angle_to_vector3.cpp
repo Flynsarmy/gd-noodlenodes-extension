@@ -54,7 +54,6 @@ Vector3 NNAngleToVector3SearchCriterion::get_angle_to_direction_vector() const {
 }
 
 void NNAngleToVector3SearchCriterion::set_min_angle_degrees(float min_angle_degrees) {
-	//if( _min_angle_degrees >= _max_angle_degrees ) return;
 	if (_min_angle_degrees < -180.0f)
 		return;
 
@@ -69,7 +68,6 @@ float NNAngleToVector3SearchCriterion::get_min_angle_degrees() const {
 }
 
 void NNAngleToVector3SearchCriterion::set_max_angle_degrees(float max_angle_degrees) {
-	//if( max_angle_degrees <= _min_angle_degrees ) return;
 	if (max_angle_degrees > 180.0f)
 		return;
 	_max_angle_degrees = max_angle_degrees;

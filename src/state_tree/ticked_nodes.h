@@ -109,7 +109,6 @@ public:
 		Mean = 3,
 		Multiply = 4,
 		FirstNonZero = 5,
-		//OneMinusScore=6
 	};
 
 	// Getters and setters for attributes.

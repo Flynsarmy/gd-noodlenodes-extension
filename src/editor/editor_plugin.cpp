@@ -2,13 +2,11 @@
 
 #include "editor_plugin.h"
 
-//#include "../behaviour_tree/nodes.h"
 #include "../behaviour_tree/root.h"
 
 using namespace godot;
 
 NNEditorPlugin::NNEditorPlugin() {
-	//_editor_scene = nullptr;
 	_editor_interface = nullptr;
 }
 
@@ -20,17 +18,6 @@ void NNEditorPlugin::_bind_methods() {
 }
 
 // Godot virtuals.
-
-/**
-void NNEditorPlugin::_enter_tree() {
-
-}
-
-
-void NNEditorPlugin::_exit_tree() {
-
-}
-/**/
 
 void NNEditorPlugin::_notification(int p_what) {
 	switch (p_what) {
@@ -53,8 +40,6 @@ void NNEditorPlugin::_notification(int p_what) {
 			if (_node_tree != nullptr) {
 				WARN_PRINT("gOT TREE!!!");
 			}
-			//ERR_FAIL_V_MSG( _editor_scene == nullptr, "NNEditorPlugin::_enter_tree() - Failed to create the editor interface.");
-			//godot::EditorInterface::get_editor_main_screen()->add_child(_editor_scene);
 			_editor_interface->get_editor_main_screen()->add_child(_editor_scene);
 
 			// Add the debugger.
@@ -62,7 +47,6 @@ void NNEditorPlugin::_notification(int p_what) {
 			add_debugger_plugin(_debugger);
 
 			// Add the debugger session.
-			//_debugger_session = Ref<EditorDebuggerSession>(_debugger->)
 			_debugger_session = _debugger->get_debugger_session();
 		} break;
 		case NOTIFICATION_EXIT_TREE: {
@@ -76,7 +60,6 @@ void NNEditorPlugin::_notification(int p_what) {
 // Signal handlers.
 
 void NNEditorPlugin::_on_selection_changed() {
-	//WARN_PRINT("SELECTION CHANGED!!!");
 	TypedArray<Node> nodes = _editor_selection->get_selected_nodes();
 	_node_tree->clear();
 	TreeItem *root_item = _node_tree->create_item();
@@ -85,11 +68,6 @@ void NNEditorPlugin::_on_selection_changed() {
 			root_item->set_text(0, btroot->get_name());
 			btree_add_child_nodes(_node_tree, root_item, btroot);
 			// Add all the child nodes of the root.
-			//TreeItem new_item;
-			//new_item.set_text(btnode->get_name());
-			//_node_tree->get_tree_i
-			//TreeItem* new_item = _node_tree->create_item(root_item);
-			//new_item->set_text(0, btroot->get_name());
 			return; // DONE!
 		}
 	}

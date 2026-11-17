@@ -96,16 +96,6 @@ bool NNActionGroup::start_action() {
 				_current_action_index = 1;
 			}
 		} break;
-		/*
-		case NNActionGroupExecutionRule::IfPreviousActionFailedElse: {
-			if( _if_else_boolean_value ) {
-				_current_action_index = 0;
-			} else {
-				_current_action_index = 1;
-			}
-		}
-		break;
-		/**/
 		case NNActionGroupExecutionRule::CustomRule: {
 			_current_action_index = -1;
 			if (has_method("eval")) {
@@ -167,7 +157,6 @@ Node *NNActionGroup::step_actions() {
 			} //endif action is enabled
 		} else {
 			if (NNActionGroup *current_action_group = godot::Object::cast_to<NNActionGroup>(current_node)) {
-				//WARN_PRINT("NNActionGroup::step_actions(): Stepping action group " + get_name() + " and proceeding to step a subgroup " + current_action_group->get_name());
 				if (!current_action_group->get_is_enabled()) {
 					// A disabled group must not run. If it was already running, let it
 					// exit cleanly, then fall through to the execution rule.
@@ -203,7 +192,6 @@ Node *NNActionGroup::step_actions() {
 
 	switch (_action_execution_rule) {
 		case NNActionGroupExecutionRule::PickOneAtRandom:
-		//case NNActionGroupExecutionRule::IfPreviousActionFailedElse:
 		case NNActionGroupExecutionRule::IfElse: {
 			// The picked child is disabled or already done. Do not reroll or run
 			// another branch; this group simply produces no action.

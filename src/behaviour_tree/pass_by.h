@@ -10,7 +10,6 @@ class NNBTPassBy : public NNBTTaskNodes {
 	GDCLASS(NNBTPassBy, NNBTTaskNodes)
 
 private:
-	//int _tick_result;
 	bool _has_on_tick_method;
 
 protected:
@@ -21,9 +20,6 @@ public:
 	~NNBTPassBy();
 
 	// Getters and setters for attributes.
-
-	//void set_tick_result( int tick_result );
-	//int  get_tick_result() const;
 
 	// Handling functions.
 

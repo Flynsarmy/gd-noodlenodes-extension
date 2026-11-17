@@ -46,11 +46,6 @@ public:
 	Ref<EditorDebuggerSession> get_debugger_session() const { return _debugger_session; }
 
 	// Godot virtuals.
-	//void _enter_tree() override;
-	//void _exit_tree() override;
-	//bool _has_main_screen() const override { return true; };
-	//void _make_visible(bool visible ) override {};
-	//String _get_plugin_name() const override { return String("Utility AI Editor");};
 	void _notification(int p_what); // override;
 
 	virtual void _setup_session(int32_t session_id) override;

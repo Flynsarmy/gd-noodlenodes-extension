@@ -12,11 +12,8 @@ class NNBehaviourGroup : public NNBehaviours {
 	GDCLASS(NNBehaviourGroup, NNBehaviours)
 
 private:
-	//float  _score;
 	float _activation_score;
 
-	//std::vector<NNConsiderations*> _child_considerations;
-	//unsigned int _num_child_considerations;
 protected:
 	static void _bind_methods();
 #ifdef DEBUG_ENABLED
@@ -37,16 +34,12 @@ public:
 	void set_activation_score(float score);
 	float get_activation_score() const override;
 
-	//void  set_score( float score );
-	//float get_score() const;
-
 	// Handling functions.
 
 	float evaluate() override;
 	bool is_behaviour_group() const override { return true; };
 
 	// Godot virtuals.
-	//void _notification(int p_what);
 };
 
 } //namespace godot

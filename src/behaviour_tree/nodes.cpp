@@ -49,6 +49,7 @@ void NNBTNodes::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_actor"), &NNBTNodes::get_actor);
 
 	ClassDB::bind_method(D_METHOD("interrupt"), &NNBTNodes::interrupt);
+	ClassDB::bind_method(D_METHOD("get_is_running"), &NNBTNodes::get_is_running);
 
 	ADD_SUBGROUP("Debugging", "");
 
@@ -64,22 +65,14 @@ void NNBTNodes::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_internal_status"), &NNBTNodes::get_internal_status);
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "internal_status", PROPERTY_HINT_ENUM, "Unticked:0,Ticked:1,Completed:2"), "set_internal_status", "get_internal_status");
 
-	// ClassDB::bind_method(D_METHOD("_tick", "blackboard", "delta"), &NNBTNodes::tick);
-
 	// Signals.
-	//ADD_SIGNAL(MethodInfo("btnode_entered", PropertyInfo(Variant::OBJECT, "blackboard"), PropertyInfo(Variant::FLOAT, "delta")));
-	//ADD_SIGNAL(MethodInfo("btnode_ticked", PropertyInfo(Variant::OBJECT, "blackboard"), PropertyInfo(Variant::FLOAT, "delta")));
-	//ADD_SIGNAL(MethodInfo("btnode_exited", PropertyInfo(Variant::OBJECT, "blackboard"), PropertyInfo(Variant::FLOAT, "delta")));
 }
 
 // Constructor and destructor.
 
 NNBTNodes::NNBTNodes() {
-	_cached_tree_root_path = NodePath();
-	_is_tree_root_path_cached = false;
 	_score = 0.0;
 	_evaluation_method = NNBTNodesEvaluationMethod::Multiply;
-	_invert_score = false;
 	_tick_result = Status::SUCCESS;
 	_internal_status = BT_INTERNAL_STATUS_UNTICKED;
 	_reset_rule = NNBTNodesResetRule::WHEN_TICKED_AFTER_BEING_COMPLETED;
@@ -88,7 +81,6 @@ NNBTNodes::NNBTNodes() {
 	_run_owner = ObjectID();
 	_run_blackboard = Variant();
 	_run_delta = 0.0f;
-	//_is_first_tick = true;
 	_num_child_btnodes = 0;
 	_num_child_considerations = 0;
 	_has_reported_extra_enabled_child = false;
@@ -135,20 +127,17 @@ void NNBTNodes::set_internal_status(int internal_status) {
 		case NNBTNodesResetRule::WHEN_COMPLETED: {
 			if (internal_status == BT_INTERNAL_STATUS_COMPLETED) {
 				reset_bt_node();
-				//_is_first_tick = true;
 			}
 		} break;
 		case NNBTNodesResetRule::WHEN_TICKED_AFTER_BEING_COMPLETED: {
 			if (_internal_status == BT_INTERNAL_STATUS_COMPLETED &&
 					internal_status == BT_INTERNAL_STATUS_TICKED) {
 				reset_bt_node();
-				//_is_first_tick = true;
 			}
 		} break;
 		case NNBTNodesResetRule::WHEN_TICKED: {
 			if (internal_status == BT_INTERNAL_STATUS_TICKED && (_internal_status != BT_INTERNAL_STATUS_UNTICKED || _has_reset_rule_changed)) {
 				reset_bt_node();
-				//_is_first_tick = true;
 			}
 		} break;
 		default: {
@@ -185,24 +174,13 @@ void NNBTNodes::set_run_owner(ObjectID p_owner) {
 }
 
 NodePath NNBTNodes::get_tree_root() const {
-	if (_is_tree_root_path_cached) {
-		return _cached_tree_root_path;
+	Node *furthest_node = const_cast<NNBTNodes *>(this);
+	Node *parent_node = furthest_node->get_parent();
+	while (Object::cast_to<NNBTNodes>(parent_node)) {
+		furthest_node = parent_node;
+		parent_node = furthest_node->get_parent();
 	}
-
-	Node *current_node = const_cast<NNBTNodes *>(this);
-	NodePath path;
-
-	while (current_node) {
-		path = this->get_path_to(current_node);
-		current_node = current_node->get_parent();
-		if (!Object::cast_to<NNBTNodes>(current_node)) {
-			break;
-		}
-	}
-
-	_is_tree_root_path_cached = true;
-	_cached_tree_root_path = path;
-	return path;
+	return get_path_to(furthest_node);
 }
 
 // Blackboard and actor helpers.
@@ -269,29 +247,9 @@ void NNBTNodes::reset() {
 	for (int i = 0; i < _num_child_btnodes; i++) {
 		_child_btnodes[i]->reset();
 	}
-	/**
-	for( int i = 0; i < get_child_count(); i++ ) {
-		if( NNBTNodes* btnode = godot::Object::cast_to<NNBTNodes>(get_child(i)) ) {
-			btnode->reset();
-		}
-	}
-	/**/
 }
-
-/**
-void NNBTNodes::reset_for_looping() {
-	_internal_status = BT_INTERNAL_STATUS_UNTICKED;
-	for( int i = 0; i < get_child_count(); i++ ) {
-		if( NNBTNodes* btnode = godot::Object::cast_to<NNBTNodes>(get_child(i)) ) {
-			btnode->reset_for_looping();
-		}
-	}
-}
-/**/
 
 float NNBTNodes::evaluate() {
-//if( !get_is_enabled() ) return 0.0f;
-//if( Engine::get_singleton()->is_editor_hint() ) return 0.0f;
 #ifdef DEBUG_ENABLED
 	_last_evaluated_timestamp = godot::Time::get_singleton()->get_ticks_usec();
 #endif
@@ -302,17 +260,9 @@ float NNBTNodes::evaluate() {
 	if (_num_child_considerations < 1) {
 		return _score;
 	}
-	//int num_children = get_child_count();
-	//if( num_children < 1 ) {
-	//    return _score;
-	//}
 	float child_score = 0.0f;
 	unsigned int num_evaluated = 0;
 	for (unsigned int i = 0; i < _num_child_considerations; i++) {
-		//Node* node = get_child(i);
-		//if( node == nullptr ) continue;
-		//NNConsiderations* considerationNode = godot::Object::cast_to<NNConsiderations>(node);
-		//if( considerationNode == nullptr ) continue;
 		NNConsiderations *considerationNode = _child_considerations[i];
 		if (!considerationNode->get_is_enabled())
 			continue;
@@ -343,21 +293,12 @@ float NNBTNodes::evaluate() {
 				// If after multiplication we are at 0.0, then none of the
 				// other considerations will ever change the result, so bail.
 				if (_score == 0.0f) {
-					if (_invert_score) {
-						_score = 1.0f;
-						return 1.0f;
-					}
-					_score = 0.0f;
 					return 0.0f;
 				}
 			} break;
 			case NNBTNodesEvaluationMethod::FirstNonZero: {
 				if (child_score > 0.0f) {
-					if (_invert_score) {
-						_score = 1.0f - child_score;
-					} else {
-						_score = child_score;
-					}
+					_score = child_score;
 					return _score;
 				}
 			} break;
@@ -370,10 +311,6 @@ float NNBTNodes::evaluate() {
 
 	if (_evaluation_method == NNBTNodesEvaluationMethod::Mean && num_evaluated > 0) {
 		_score = _score / ((float)num_evaluated);
-	}
-
-	if (_invert_score) {
-		_score = 1.0f - _score;
 	}
 
 	return _score;
@@ -477,8 +414,6 @@ void NNBTNodes::_notification(int p_what) {
 		// somehow. This caching of the pointers is done to avoid
 		// the expensive godot::Object::cast_to calls later.
 		update_child_vectors();
-
-		_is_tree_root_path_cached = false;
 	}
 }
 

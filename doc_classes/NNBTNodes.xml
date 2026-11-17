@@ -40,6 +40,12 @@
 				Returns the effective [NNBlackboard] of the nearest [NNBTRoot] ancestor: the board explicitly assigned to that root, or the root's own private board when none is assigned. Returns [code]null[/code] only when there is no [NNBTRoot] ancestor.
 			</description>
 		</method>
+		<method name="get_is_running" qualifiers="const">
+			<return type="bool" />
+			<description>
+				Returns [code]true[/code] while a run is active. A run starts on the first tick while no run is active and ends with a terminal [code]SUCCESS[/code] or [code]FAILURE[/code] result, with [method interrupt], or with a disable, which interrupts and resets the node. A [code]SKIP[/code] result is not terminal, so the run stays active. The value is [code]false[/code] before the first tick and after a reset.
+			</description>
+		</method>
 		<method name="get_tree_root" qualifiers="const">
 			<return type="NodePath" />
 			<description>

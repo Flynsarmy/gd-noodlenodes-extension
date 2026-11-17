@@ -37,19 +37,6 @@ NNFloatRangeSensor::~NNFloatRangeSensor() {
 // Handling functions.
 
 float NNFloatRangeSensor::evaluate_sensor_value() {
-	/**
-	if( get_use_absolute_value() ) {
-		// Absolute value, so make sure that it is within the interval.
-		float range_result = _range_value;
-		if( range_result < _range_min_value ) {
-			range_result = _range_min_value;
-		}else if( range_result > _range_max_value ) {
-			range_result = _range_max_value;
-		}
-		set_sensor_value(range_result);
-		return get_sensor_value();
-	}
-	/**/
 	// Relative value, so calculate the position within the interval.
 	if (!(_range_length > 0.0f) || !Math::is_finite(_range_length) || _one_over_range_length == 0.0f) {
 		// Degenerate range (equal or reversed bounds) or non-finite bounds.

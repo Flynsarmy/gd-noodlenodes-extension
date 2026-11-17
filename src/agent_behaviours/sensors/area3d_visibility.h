@@ -50,8 +50,6 @@ public:
 	~NNArea3DVisibilitySensor();
 
 	// Godot virtuals.
-	//void _ready();
-	//void _notification( int p_what );
 
 	// Handling functions.
 	virtual void initialize_sensor() override;

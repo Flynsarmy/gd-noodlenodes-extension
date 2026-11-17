@@ -1,6 +1,5 @@
 #include "repeater.h"
 #include "nodes.h"
-//#include "../sensors.h"
 
 #include <godot_cpp/classes/engine.hpp>
 #include <godot_cpp/classes/time.hpp>
@@ -15,12 +14,7 @@ void NNBTRepeater::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_repeat_times"), &NNBTRepeater::get_repeat_times);
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "repeat_times", PROPERTY_HINT_RANGE, "-1,100,or_greater"), "set_repeat_times", "get_repeat_times");
 
-	// ClassDB::bind_method(D_METHOD("set_times_repeated", "current_repeat_times"), &NNBTRepeater::set_times_repeated);
 	ClassDB::bind_method(D_METHOD("get_times_repeated"), &NNBTRepeater::get_times_repeated);
-	//ADD_PROPERTY(PropertyInfo(Variant::INT, "current_repeat_times", PROPERTY_HINT_NONE ), "set_times_repeated","get_times_repeated");
-	//ClassDB::bind_method(D_METHOD("set_reset_rule", "reset_rule"), &NNBTRepeater::set_reset_rule);
-	//ClassDB::bind_method(D_METHOD("get_reset_rule"), &NNBTRepeater::get_reset_rule);
-	//ADD_PROPERTY(PropertyInfo(Variant::INT, "reset_rule", PROPERTY_HINT_ENUM, "WhenTicked:0,WhenCompleted:1,WhenTickedAfterBeingCompleted:2,Never:3" ), "set_reset_rule","get_reset_rule");
 }
 
 // Constructor and destructor.
@@ -92,19 +86,13 @@ NNBTNodes::Status NNBTRepeater::_tick(Variant blackboard, float delta) {
 		reset_bt_node();
 	}
 	set_internal_status(BT_INTERNAL_STATUS_TICKED);
-	//if( _is_first_tick ) {
-	//    _is_first_tick = false;
-	//    emit_signal("btnode_entered", blackboard, delta);
-	//}
 
 	if (_repeat_times == 0) {
 		set_internal_status(BT_INTERNAL_STATUS_COMPLETED);
 		set_tick_result(Status::SUCCESS);
-		//emit_signal("btnode_exited", blackboard, delta);
 		return Status::SUCCESS;
 	}
 
-	//emit_signal("btnode_ticked",blackboard, delta);
 	for (unsigned int i = 0; i < _num_child_btnodes; i++) {
 		NNBTNodes *btnode = _child_btnodes[i];
 		if (!btnode->get_is_enabled()) {
@@ -121,7 +109,6 @@ NNBTNodes::Status NNBTRepeater::_tick(Variant blackboard, float delta) {
 		if (result == Status::FAILURE) {
 			set_internal_status(BT_INTERNAL_STATUS_COMPLETED);
 			set_tick_result(result);
-			//emit_signal("btnode_exited", blackboard, delta);
 			return result;
 		}
 
@@ -135,13 +122,11 @@ NNBTNodes::Status NNBTRepeater::_tick(Variant blackboard, float delta) {
 
 		set_internal_status(BT_INTERNAL_STATUS_COMPLETED);
 		set_tick_result(Status::SUCCESS);
-		//emit_signal("btnode_exited", blackboard, delta);
 		return Status::SUCCESS;
 	}
 
 	// There were no enabled child nodes to repeat.
 	set_internal_status(BT_INTERNAL_STATUS_COMPLETED);
 	set_tick_result(Status::FAILURE);
-	//emit_signal("btnode_exited", blackboard, delta);
 	return Status::FAILURE;
 }

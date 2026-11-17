@@ -50,8 +50,6 @@ bool NNConsiderationGroup::get_invert_score() const {
 // Handling functions.
 
 float NNConsiderationGroup::evaluate() {
-//if( !get_is_enabled() ) return 0.0;
-//if( Engine::get_singleton()->is_editor_hint() ) return 0.0;
 #ifdef DEBUG_ENABLED
 	_last_evaluated_timestamp = godot::Time::get_singleton()->get_ticks_usec();
 #endif

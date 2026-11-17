@@ -44,10 +44,6 @@ void NNArea3DVisibilitySensor::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_occlusion_test_exclusion_list"), &NNArea3DVisibilitySensor::get_occlusion_test_exclusion_list);
 	ADD_PROPERTY(PropertyInfo(Variant::ARRAY, "occlusion_test_exclusion_list", PROPERTY_HINT_ARRAY_TYPE, vformat("%s/%s:%s", Variant::OBJECT, PROPERTY_HINT_RESOURCE_TYPE, "RID")), "set_occlusion_test_exclusion_list", "get_occlusion_test_exclusion_list");
 
-	//ClassDB::bind_method(D_METHOD("set_entity_mask", "entity_mask"), &NNArea3DVisibilitySensor::set_entity_mask);
-	//ClassDB::bind_method(D_METHOD("get_entity_mask"), &NNArea3DVisibilitySensor::get_entity_mask);
-	//ADD_PROPERTY(PropertyInfo(Variant::INT, "entity_mask", PROPERTY_HINT_LAYERS_3D_PHYSICS), "set_entity_mask","get_entity_mask");
-
 	ClassDB::bind_method(D_METHOD("on_area_entered", "area"), &NNArea3DVisibilitySensor::on_area_entered);
 	ClassDB::bind_method(D_METHOD("on_area_exited", "area"), &NNArea3DVisibilitySensor::on_area_exited);
 	ClassDB::bind_method(D_METHOD("on_body_entered", "body"), &NNArea3DVisibilitySensor::on_body_entered);
@@ -144,23 +140,6 @@ NNArea3DVisibilitySensor::~NNArea3DVisibilitySensor() {
 
 // Godot virtuals.
 
-/*void NNArea3DVisibilitySensor::_ready() {
-	initialize_sensor();
-}
-/**/
-/**
-void NNArea3DVisibilitySensor::_notification(int p_what) {
-	switch (p_what) {
-		case NOTIFICATION_EXIT_TREE: {
-			// Remove the signal connections.
-			_visibility_volume_node->disconnect("area_entered", Callable(this, "on_area_entered"));
-			_visibility_volume_node->disconnect("area_exited", Callable(this, "on_area_exited"));
-
-		} break;
-	}
-}
-/**/
-
 // Handling functions.
 
 void NNArea3DVisibilitySensor::_update_cache() {
@@ -171,7 +150,6 @@ void NNArea3DVisibilitySensor::_update_cache() {
 }
 
 void NNArea3DVisibilitySensor::initialize_sensor() {
-	//if( !get_is_enabled() ) return;
 	if (Engine::get_singleton()->is_editor_hint())
 		return;
 
@@ -204,18 +182,11 @@ float NNArea3DVisibilitySensor::evaluate_sensor_value() {
 		_visibility_volume = nullptr;
 		return get_sensor_value();
 	}
-	//if( _cache.is_null() || !_cache.is_valid() ) {
-	//    _visibility_volume = nullptr; // Cache shows that the node reference has become invalid.
-	//    return get_sensor_value();
-	//}
 
-	//Ref<World3D> w3d = _visibility_volume_node->get_world_3d();
-	//ERR_FAIL_COND_V(w3d.is_null(), get_sensor_value());
 	PhysicsDirectSpaceState3D *dss = nullptr;
 
 	if (_do_occlusion_test) {
 		dss = PhysicsServer3D::get_singleton()->space_get_direct_state(PhysicsServer3D::get_singleton()->area_get_space(_visibility_volume->get_rid()));
-		//PhysicsDirectSpaceState3D *dss = PhysicsServer3D::get_singleton()->space_get_direct_state(w3d->get_space());
 		ERR_FAIL_NULL_V(dss, get_sensor_value());
 	}
 
@@ -274,10 +245,8 @@ float NNArea3DVisibilitySensor::evaluate_sensor_value() {
 					to,
 					_collision_mask,
 					_occlusion_test_exclusion_list);
-			//(const Vector3 &from, const Vector3 &to, uint32_t collision_mask = 4294967295, const TypedArray<RID> &exclude = {})
 			params->set_collide_with_bodies(true);
 			params->set_collide_with_areas(true);
-			//params->set_block_signals(true);
 			Dictionary results = dss->intersect_ray(params);
 			if (results.is_empty() || results.get("collider", nullptr) == _intersecting_areas[i]) {
 				_unoccluded_areas.push_back(area);
@@ -325,10 +294,8 @@ float NNArea3DVisibilitySensor::evaluate_sensor_value() {
 					to,
 					_collision_mask,
 					_occlusion_test_exclusion_list);
-			//(const Vector3 &from, const Vector3 &to, uint32_t collision_mask = 4294967295, const TypedArray<RID> &exclude = {})
 			params->set_collide_with_bodies(true);
 			params->set_collide_with_areas(false);
-			//params->set_block_signals(true);
 			Dictionary results = dss->intersect_ray(params);
 			if (results.is_empty() || results.get("collider", nullptr) == _intersecting_bodies[i]) {
 				_unoccluded_bodies.push_back(body);
@@ -348,18 +315,11 @@ float NNArea3DVisibilitySensor::evaluate_sensor_value() {
 		}
 	} //endfor entered bodies.
 
-	/**
-	if( get_use_absolute_value() ) {
-		set_sensor_value(((float)_num_entities_found));
-	} else {
-	/**/
 	set_sensor_value(((float)_num_entities_found) * _one_over_max_expected_entities_found);
-	/*}*/
 	return get_sensor_value();
 }
 
 void NNArea3DVisibilitySensor::on_area_entered(Area3D *area) {
-	//WARN_PRINT("Area entered!");
 	if (area == nullptr) {
 		return;
 	}
@@ -371,7 +331,6 @@ void NNArea3DVisibilitySensor::on_area_entered(Area3D *area) {
 }
 
 void NNArea3DVisibilitySensor::on_body_entered(Node3D *body) {
-	//WARN_PRINT("Body entered!");
 	if (body == nullptr) {
 		return;
 	}
@@ -383,7 +342,6 @@ void NNArea3DVisibilitySensor::on_body_entered(Node3D *body) {
 }
 
 void NNArea3DVisibilitySensor::on_area_exited(Area3D *area) {
-	//WARN_PRINT("Area exited");
 	if (area == nullptr) {
 		return;
 	}
@@ -399,7 +357,6 @@ void NNArea3DVisibilitySensor::on_area_exited(Area3D *area) {
 }
 
 void NNArea3DVisibilitySensor::on_body_exited(Node3D *body) {
-	//WARN_PRINT("body exited");
 	if (body == nullptr) {
 		return;
 	}
@@ -472,16 +429,6 @@ void NNArea3DVisibilitySensor::set_collision_mask(uint32_t collision_mask) {
 uint32_t NNArea3DVisibilitySensor::get_collision_mask() const {
 	return _collision_mask;
 }
-
-/**
-void NNArea3DVisibilitySensor::set_entity_mask( uint32_t entity_mask) {
-	_entity_mask = entity_mask;
-}
-
-uint32_t NNArea3DVisibilitySensor::get_entity_mask() const {
-	return _entity_mask;
-}
-/**/
 
 void NNArea3DVisibilitySensor::set_max_expected_entities_found(int max_expected_entities_found) {
 	if (max_expected_entities_found <= 0) {

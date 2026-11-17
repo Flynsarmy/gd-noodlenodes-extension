@@ -1,6 +1,5 @@
 #pragma once
 
-//#include "node_query_system.h"
 #include "../noodle_nodes.h"
 #include "../search_criteria/nqs.h"
 #include <godot_cpp/classes/node.hpp>
@@ -27,8 +26,6 @@ private:
 	PackedFloat64Array _current_query_result_scores;
 	TypedArray<Node> _query_results;
 	PackedFloat64Array _query_result_scores;
-	//float              _query_time_budget_per_frame_sec;
-	//uint64_t            _query_time_budget_per_frame_usec;
 	uint64_t _total_query_runtime_usec;
 	uint64_t _current_query_runtime_usec;
 	uint64_t _current_call_runtime_usec;
@@ -40,7 +37,6 @@ private:
 	unsigned int _current_query_call_count;
 	unsigned int _total_query_node_visits;
 	unsigned int _total_query_call_count;
-	//float              _total_query_runtime_sec;
 	TypedArray<Node> _search_space;
 	PackedFloat64Array _scores;
 	unsigned int _num_search_space_nodes;
@@ -53,7 +49,6 @@ private:
 	PackedFloat64Array *_ptr_current_scores;
 	PackedFloat64Array *_ptr_current_work_in_progress_scores;
 
-	//TypedArray<NNNQSSearchCriteria> _filtering_criteria;
 	std::vector<NNNQSSearchCriteria *> _filtering_criteria;
 	unsigned int _num_filtering_criteria;
 
@@ -69,11 +64,6 @@ protected:
 	virtual void _initialize_search_space() {}
 	virtual void _uninitialize_search_space() {}
 
-	/*void apply_criterion(   NNNQSSearchCriteria* criterion,
-							TypedArray<Node> search_space,
-							PackedFloat64Array scores,
-							TypedArray<Node>& result_space,
-							PackedFloat64Array& result_scores );*/
 	bool apply_criterion_with_time_budget(NNNQSSearchCriteria *criterion,
 			uint64_t start_time_usec,
 			uint64_t time_budget_usec);
@@ -146,8 +136,6 @@ public:
 
 	virtual void start_query();
 	virtual bool execute_query(uint64_t time_budget_usec = 0);
-
-	//void apply_criterion( NNSearchCriteria* criteria, TypedArray<Node> search_space, TypedArray<float> current_scores, TypedArray<Node>& result_space, TypedArray<float>& result_scores );
 
 	// Godot virtuals.
 	void _ready() override;

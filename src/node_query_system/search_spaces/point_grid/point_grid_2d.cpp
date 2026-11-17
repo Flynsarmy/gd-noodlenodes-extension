@@ -61,7 +61,6 @@ void NNPointGrid2DSearchSpace::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("set_point_grid_type", "point_grid_type"), &NNPointGrid2DSearchSpace::set_point_grid_type);
 	ClassDB::bind_method(D_METHOD("get_point_grid_type"), &NNPointGrid2DSearchSpace::get_point_grid_type);
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "point_grid_type", PROPERTY_HINT_ENUM, "Rectangle:0"), "set_point_grid_type", "get_point_grid_type");
-	// ,Circle:1
 
 	ClassDB::bind_method(D_METHOD("set_grid_size", "grid_size"), &NNPointGrid2DSearchSpace::set_grid_size);
 	ClassDB::bind_method(D_METHOD("get_grid_size"), &NNPointGrid2DSearchSpace::get_grid_size);
@@ -262,7 +261,6 @@ void NNPointGrid2DSearchSpace::create_point_grid_nodes(Node2D *template_node) {
 			ERR_FAIL_MSG("NNPointGrid2DSearchSpace::create_point_grid_nodes(): Error, could not duplicate template node. Out of memory?");
 			return;
 		} //endif nullptr
-		//new_node->set_script(template_node->get_script());
 		_point_grid_parent_node->add_child(new_node); //, false, godot::Node::InternalMode::INTERNAL_MODE_BACK );
 		new_node->set_position(_point_grid_default_positions[i] + _offset_vector);
 		_point_grid.push_back(new_node);
@@ -313,8 +311,6 @@ bool NNPointGrid2DSearchSpace::preprocess_search_space(uint64_t time_limit_times
 		Node2D *node = godot::Object::cast_to<Node2D>(_point_grid[_current_preprocessing_node_index]);
 		if (node != nullptr) {
 			node->set_global_position(nav_srv->map_get_closest_point(_navigation_map_rid, _point_grid_parent_node->get_global_transform().xform(_point_grid_default_positions[_current_preprocessing_node_index])) + _offset_vector);
-			//node->set_global_position(nav_srv->map_get_closest_point(_navigation_map_rid,
-			//                                                         _point_grid_parent_node->get_global_transform().xform(_point_grid_default_positions[_current_preprocessing_node_index])) + _offset_vector );
 		}
 		++_current_preprocessing_node_index;
 		if (godot::Time::get_singleton()->get_ticks_usec() >= time_limit_timestamp_usec) {

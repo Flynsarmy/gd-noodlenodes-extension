@@ -67,36 +67,18 @@ float NNConsideration::get_activation_input_value() const {
 	return _activation_input_value;
 }
 
-/**
-void NNConsideration::_notification(int p_what) {
-	switch (p_what) {
-		case NOTIFICATION_ENTER_TREE: {
-			// Entered the tree.
-		} break;
-		case NOTIFICATION_EXIT_TREE: {
-			//_clear_monitoring();
-		} break;
-	}
-}
-/**/
-
 // Handling methods.
 
 float NNConsideration::evaluate() {
 #ifdef DEBUG_ENABLED
 	_last_evaluated_timestamp = godot::Time::get_singleton()->get_ticks_usec();
 #endif
-	//if( !get_is_enabled() ) return 0.0;
-	//if( Engine::get_singleton()->is_editor_hint() ) return 0.0;
 	if (get_has_vetoed())
 		return 0.0f;
 
 	if (_input_sensor != nullptr) {
 		// If there's no change to the sensor input value, just return the
 		// earlier result.
-		//if( !_input_sensor->get_has_sensor_value_changed() ) {
-		//    return _score;
-		//}
 		float input_value = _input_sensor->get_sensor_value();
 		if (input_value != _activation_input_value || _score == 0.0f) {
 			_activation_input_value = input_value;
@@ -107,7 +89,6 @@ float NNConsideration::evaluate() {
 	if (!_has_activation_input_changed) {
 		return _score;
 	}
-	//_score = 0.0f;
 	_evaluate_consideration();
 	_has_activation_input_changed = false;
 	return _score;

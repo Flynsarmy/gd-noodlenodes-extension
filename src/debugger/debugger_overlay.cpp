@@ -60,10 +60,6 @@ void NNDebuggerOverlay::_bind_methods() {
 
 // Godot virtuals.
 
-//void NNDebuggerOverlay::_physics_process(double delta ){
-
-//}
-
 // Handling methods.
 
 int NNDebuggerOverlay::_register_object(std::vector<ObjectID> &registry, uint64_t instance_id) {
@@ -548,19 +544,6 @@ void NNDebuggerOverlay::tree_add_child_nodes(Tree *tree, TreeItem *parent_node, 
 		TreeItem *child_tree_item = tree->create_item(parent_node);
 		if (!child_tree_item)
 			return;
-		/**
-		if( NNConsideration* cons = godot::Object::cast_to<NNConsideration>(next_node)) {
-			HSlider* new_slider = memnew(HSlider);
-			if( new_slider == nullptr ) continue;
-			new_slider->set_min(0.0f);
-			new_slider->set_max(1.0f);
-			new_slider->set_value(cons->get_score());
-			child_item->set_cell_mode(1, TreeItem::TreeCellMode::CELL_MODE_CUSTOM);
-			child_item->set_custom_draw(1, new_slider, "");
-
-		   child_item->set_text(1, "C");
-		}
-		/**/
 		child_tree_item->set_custom_font_size(0, 10);
 		child_tree_item->set_custom_font_size(1, 10);
 		child_tree_item->set_custom_font_size(2, 10);
@@ -600,7 +583,6 @@ void NNDebuggerOverlay::tree_add_child_nodes(Tree *tree, TreeItem *parent_node, 
 		child_tree_item->set_text(0, next_ai_node->get_name());
 		child_tree_item->set_text(2, String::num((double)score, 2));
 		score = 0.7f * score;
-		//child_tree_item->set_custom_bg_color(0, Color(score, score, score));
 
 		uint64_t tick_time_diff = current_timestamp - tick_timestamp;
 		if (tick_time_diff > 1000000) {
@@ -616,48 +598,9 @@ void NNDebuggerOverlay::tree_add_child_nodes(Tree *tree, TreeItem *parent_node, 
 		child_tree_item->set_custom_color(0, Color(tick_color, tick_color, tick_color));
 		child_tree_item->set_custom_color(2, Color(eval_color * 0.8f, eval_color * 0.8f, eval_color));
 
-		//child_tree_item->set_text(2, "n/a");
 		tree_add_child_nodes(tree, child_tree_item, next_ai_node);
 
 	} //endfor child nodes.
 }
-
-/**
-void  NNDebuggerOverlay::tree_update_child_nodes( Tree* tree, TreeItem* parent_node, Node* parent_ai_node ) {
-	if( parent_ai_node == nullptr || parent_node == nullptr ) {
-		return;
-	}
-
-	for( int i = 0; i < parent_ai_node->get_child_count(); i++ ) {
-		Node* next_ai_node = parent_ai_node->get_child(i);
-		TreeItem* next_tree_item = parent_node->get_child(i);
-		if( !next_ai_node || !next_tree_item ) break;
-
-
-		float score = 0.0f;
-		if( NNConsideration* cons = godot::Object::cast_to<NNConsideration>(next_ai_node)) {
-			score = cons->get_score();
-		}else if( NNConsiderationGroup* consg = godot::Object::cast_to<NNConsiderationGroup>(next_ai_node)) {
-			score = consg->get_score();
-		}else if( NNBehaviour* beh = godot::Object::cast_to<NNBehaviour>(next_ai_node)) {
-			score = beh->get_score();
-		}else if( NNBehaviourGroup* behg = godot::Object::cast_to<NNBehaviourGroup>(next_ai_node)) {
-			score = behg->get_score();
-		}else if( NNBTNodes* btnode = godot::Object::cast_to<NNBTNodes>(next_ai_node) ) {
-			//if( btnode->get_internal_status() == )
-			next_tree_item->set_custom_bg_color(0, Color(0.0f, 0.5f, 0.0f), false);
-
-			score = btnode->get_score();
-		}else if( NNSTTaskNodes* stnode = godot::Object::cast_to<NNSTTaskNodes>(next_ai_node) ) {
-
-			next_tree_item->set_custom_bg_color(0, Color(0.0f, 0.5f, 0.0f), false);
-
-			score = stnode->get_score();
-		}
-		next_tree_item->set_text(2, String::num(score,2) );
-
-	}//endfor child nodes.
-}
-/**/
 
 #endif

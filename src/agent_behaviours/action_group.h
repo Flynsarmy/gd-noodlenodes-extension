@@ -35,7 +35,6 @@ public:
 		PickOneAtRandom = 1,
 		IfElse = 2,
 		CustomRule = 3,
-		//IfPreviousActionFailedElse = 4,
 	};
 
 	void set_error_handling_rule(int error_handling_rule);

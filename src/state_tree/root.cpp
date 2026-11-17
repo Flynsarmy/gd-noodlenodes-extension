@@ -60,8 +60,6 @@ void NNSTRoot::_bind_methods() {
 
 	ClassDB::bind_method(D_METHOD("tick", "delta"), &NNSTRoot::tick);
 
-	// ClassDB::bind_method(D_METHOD("get_active_states"), &NNSTRoot::get_active_states);
-
 	ClassDB::bind_method(D_METHOD("get_child_sensors"), &NNSTRoot::get_child_sensors);
 
 	ADD_SIGNAL(MethodInfo("event_received", PropertyInfo(Variant::STRING, "name")));
@@ -182,7 +180,6 @@ void NNSTRoot::tick(float delta) {
 	// Update the sensors.
 	for (unsigned int i = 0; i < _num_child_sensors; i++) {
 		NNSensors *sensor = godot::Object::cast_to<NNSensors>(_child_sensors[i]);
-		// NNSensors *sensor = _child_sensors[i];
 		if (!sensor->get_is_enabled()) {
 			continue;
 		}
@@ -713,7 +710,6 @@ bool NNSTRoot::_process_transitions(int trigger_type, const String &event_name) 
  * Only activates up to 1 child for each node (CompoundState).
  */
 void NNSTRoot::_evaluate_child_activations(std::vector<ObjectID> &nodes) {
-	// std::vector<NNSTNode *> nodes;
 
 	// Snapshot child IDs because on_enter_condition() / evaluate() callbacks can
 	// remove, reparent or free siblings while this is running.
@@ -761,7 +757,6 @@ void NNSTRoot::_evaluate_child_activations(std::vector<ObjectID> &nodes) {
 		}
 	}
 
-	// return nodes;
 }
 
 void NNSTRoot::_transition_in() {

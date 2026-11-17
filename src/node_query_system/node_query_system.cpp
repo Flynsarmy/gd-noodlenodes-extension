@@ -42,10 +42,6 @@ void NNNodeQuerySystem::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_run_queries_time_budget_per_frame"), &NNNodeQuerySystem::get_run_queries_time_budget_per_frame);
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "run_queries_time_budget_per_frame_usec", PROPERTY_HINT_RANGE, "1,10000,or_greater"), "set_run_queries_time_budget_per_frame", "get_run_queries_time_budget_per_frame");
 
-	//ClassDB::bind_method(D_METHOD("set_post_query_time_budget_per_frame", "post_query_time_budget_per_frame"), &NNNodeQuerySystem::set_post_query_time_budget_per_frame);
-	//ClassDB::bind_method(D_METHOD("get_post_query_time_budget_per_frame"), &NNNodeQuerySystem::get_post_query_time_budget_per_frame);
-	//ADD_PROPERTY(PropertyInfo(Variant::INT, "post_query_time_budget_per_frame", PROPERTY_HINT_RANGE, "1,10000,or_greater"), "set_post_query_time_budget_per_frame","get_post_query_time_budget_per_frame");
-
 	ClassDB::bind_method(D_METHOD("set_high_priority_query_per_frame_execute_query_time_budget_usec", "high_priority_query_per_frame_execute_query_time_budget_usec"), &NNNodeQuerySystem::set_high_priority_query_per_frame_execute_query_time_budget_usec);
 	ClassDB::bind_method(D_METHOD("get_high_priority_query_per_frame_execute_query_time_budget_usec"), &NNNodeQuerySystem::get_high_priority_query_per_frame_execute_query_time_budget_usec);
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "high_priority_query_per_frame_execute_query_time_budget_usec", PROPERTY_HINT_RANGE, "1,100,or_greater"), "set_high_priority_query_per_frame_execute_query_time_budget_usec", "get_high_priority_query_per_frame_execute_query_time_budget_usec");
@@ -167,7 +163,6 @@ void NNNodeQuerySystem::run_queries() {
 		return;
 	}
 
-	//std::vector<int> queries_to_delete;
 	if (_num_active_high_priority_queries > 0 && _high_priority_queries.size() > 0) {
 		while (true) {
 			if (_current_high_priority_query_index >= _high_priority_queries.size()) {
@@ -177,13 +172,11 @@ void NNNodeQuerySystem::run_queries() {
 			// "query_completed" callback may stop and/or re-post the query, so
 			// the completion must not release whatever is registered later.
 			const int high_priority_query_index = _current_high_priority_query_index;
-			//if( !UtilityFunctions::is_instance_valid(_nqs_search_space) )
 			NNNQSSearchSpaces *current_query = godot::Object::cast_to<NNNQSSearchSpaces>(_high_priority_queries[_current_high_priority_query_index]);
 			if (current_query != nullptr) {
 				const uint64_t query_registration = current_query->get_nqs_query_registration();
 				bool is_completed = current_query->execute_query(_high_priority_query_per_frame_execute_query_time_budget_usec);
 				if (is_completed) {
-					//queries_to_delete.push_back(_current_high_priority_query_index);
 					// Only release the exact registration that executed. The
 					// registration token is the source of truth; a callback may
 					// have changed the index without changing the running flag.
@@ -223,7 +216,6 @@ void NNNodeQuerySystem::run_queries() {
 				const uint64_t query_registration = current_query->get_nqs_query_registration();
 				bool is_completed = current_query->execute_query(_regular_query_per_frame_execute_query_time_budget_usec);
 				if (is_completed) {
-					//queries_to_delete.push_back(_current_regular_query_index);
 					_release_query_slot(current_query, false, regular_query_index, query_registration);
 				}
 			}

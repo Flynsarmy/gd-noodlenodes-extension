@@ -22,7 +22,6 @@ void NNBTCooldownTicks::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_current_cooldown_ticks"), &NNBTCooldownTicks::get_current_cooldown_ticks);
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "current_cooldown_ticks", PROPERTY_HINT_RANGE, "0,1000,or_greater"), "set_current_cooldown_ticks", "get_current_cooldown_ticks");
 
-	//ClassDB::bind_method(D_METHOD("_tick", "blackboard", "delta"), &NNBTCooldownTicks::tick);
 }
 
 // Constructor and destructor.
@@ -68,16 +67,11 @@ NNBTNodes::Status NNBTCooldownTicks::_tick(Variant blackboard, float delta) {
 	_report_extra_enabled_child_btnodes();
 
 	set_internal_status(BT_INTERNAL_STATUS_TICKED);
-	//if( _is_first_tick ) {
-	//    _is_first_tick = false;
-	//    emit_signal("btnode_entered", blackboard, delta);
-	//}
 
 	if (_current_cooldown_ticks > 0) {
 		_current_cooldown_ticks--;
 		return _cooldown_return_value;
 	}
-	//emit_signal("btnode_ticked", blackboard, delta);
 	for (unsigned int i = 0; i < _num_child_btnodes; i++) {
 		NNBTNodes *btnode = _child_btnodes[i];
 		if (!btnode->get_is_enabled()) {
@@ -90,7 +84,6 @@ NNBTNodes::Status NNBTCooldownTicks::_tick(Variant blackboard, float delta) {
 
 			set_internal_status(BT_INTERNAL_STATUS_COMPLETED);
 			set_tick_result(result);
-			//emit_signal("btnode_exited", blackboard, delta);
 			return result;
 		} else {
 			set_internal_status(BT_INTERNAL_STATUS_TICKED);
@@ -103,6 +96,5 @@ NNBTNodes::Status NNBTCooldownTicks::_tick(Variant blackboard, float delta) {
 	_current_cooldown_ticks = _cooldown_ticks;
 	set_internal_status(BT_INTERNAL_STATUS_COMPLETED);
 	set_tick_result(Status::FAILURE);
-	//emit_signal("btnode_exited", blackboard, delta);
 	return Status::FAILURE;
 }

@@ -1,8 +1,6 @@
 #pragma once
 
 #include "../noodle_nodes.h"
-//#include "node_query_system.h"
-//#include <godot_cpp/classes/node.hpp>
 #include <godot_cpp/classes/curve.hpp>
 
 namespace godot {

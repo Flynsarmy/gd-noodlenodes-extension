@@ -17,8 +17,6 @@ private:
 	float _max_angle_radian;
 	float _max_angle_degrees;
 	float _one_over_2_pi;
-	//float  _one_over_min_angle_radian;
-	//float  _one_over_max_angle_radian;
 protected:
 	static void _bind_methods();
 

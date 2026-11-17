@@ -10,8 +10,6 @@ class NNBTLeaf : public NNBTTaskNodes {
 	GDCLASS(NNBTLeaf, NNBTTaskNodes)
 
 private:
-	//Callable _tick_method;
-	//int _tick_result;
 	bool _has_missing_on_tick_reported;
 
 protected:
@@ -22,9 +20,6 @@ public:
 	~NNBTLeaf();
 
 	// Getters and setters for attributes.
-
-	//void set_tick_result( int tick_result );
-	//int  get_tick_result() const;
 
 	// Handling functions.
 

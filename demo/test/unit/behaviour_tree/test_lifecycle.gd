@@ -415,6 +415,91 @@ func test_root_reset_interrupts_the_active_leaf() -> void:
 	assert_engine_error_count(0)
 
 
+# get_is_running() exposes the run lifecycle state to scripts. It stays
+# read-only: no setter and no property are bound.
+func test_is_running_is_bound_and_false_before_the_first_tick() -> void:
+	assert_true(ClassDB.class_has_method("NNBTNodes", "get_is_running"), "ClassDB exposes get_is_running")
+
+	var leaf: LifecycleLeaf = _make_leaf(NNBTNodes.RUNNING)
+	var root: NNBTRoot = _make_root_with(leaf)
+
+	assert_false(leaf.get_is_running(), "a node that never ticked has no active run")
+	assert_false(root.get_is_running())
+
+	assert_engine_error_count(0)
+
+
+func test_is_running_is_true_during_a_running_run() -> void:
+	var leaf: LifecycleLeaf = _make_leaf(NNBTNodes.RUNNING)
+	var root: NNBTRoot = _make_root_with(leaf)
+
+	assert_eq(root.tick(BLACKBOARD, 0.1), NNBTNodes.RUNNING)
+	assert_true(leaf.get_is_running(), "a RUNNING result keeps the run active")
+	assert_true(root.get_is_running())
+
+	assert_engine_error_count(0)
+
+
+func test_is_running_is_false_after_a_terminal_result() -> void:
+	var leaf: LifecycleLeaf = _make_leaf(NNBTNodes.RUNNING)
+	var root: NNBTRoot = _make_root_with(leaf)
+
+	assert_eq(root.tick(BLACKBOARD, 0.1), NNBTNodes.RUNNING)
+	leaf.result = NNBTNodes.SUCCESS
+	assert_eq(root.tick(BLACKBOARD, 0.1), NNBTNodes.SUCCESS)
+	assert_false(leaf.get_is_running(), "a terminal result ends the run")
+	assert_false(root.get_is_running())
+
+	assert_engine_error_count(0)
+
+
+func test_is_running_is_false_after_interrupt() -> void:
+	var leaf: LifecycleLeaf = _make_leaf(NNBTNodes.RUNNING)
+	var root: NNBTRoot = _make_root_with(leaf)
+
+	assert_eq(root.tick(BLACKBOARD, 0.1), NNBTNodes.RUNNING)
+	assert_true(leaf.get_is_running())
+
+	leaf.interrupt()
+	assert_false(leaf.get_is_running(), "interrupt ends the run")
+
+	assert_engine_error_count(0)
+
+
+func test_is_running_is_false_after_a_disable() -> void:
+	var leaf: LifecycleLeaf = _make_leaf(NNBTNodes.RUNNING)
+	var root: NNBTRoot = _make_root_with(leaf)
+
+	assert_eq(root.tick(BLACKBOARD, 0.1), NNBTNodes.RUNNING)
+	assert_true(leaf.get_is_running())
+
+	leaf.is_enabled = false
+	assert_false(leaf.get_is_running(), "disabling interrupts and resets the run")
+
+	assert_engine_error_count(0)
+
+
+func test_is_running_is_false_after_a_reset() -> void:
+	var leaf: LifecycleLeaf = _make_leaf(NNBTNodes.RUNNING)
+	var root: NNBTRoot = _make_root_with(leaf)
+
+	assert_eq(root.tick(BLACKBOARD, 0.1), NNBTNodes.RUNNING)
+	assert_true(root.get_is_running(), "a RUNNING result keeps the tree's run active")
+	assert_true(leaf.get_is_running())
+
+	# Removing the root's active behaviour-tree child mid-run resets the tree,
+	# which ends the root's own run. Deliberately do not assert on the removed
+	# leaf: the current root and the root-child-change rework differ on whether
+	# the detached child is also interrupted.
+	root.remove_child(leaf)
+	assert_false(root.get_is_running(), "the root reset ends the tree's run")
+
+	# The detached leaf is no longer owned by the autofreed root.
+	leaf.free()
+
+	assert_engine_error_count(0)
+
+
 func test_node_reference_forwards_run_lifecycle() -> void:
 	var target: LifecycleLeaf = _make_leaf(NNBTNodes.SUCCESS)
 	var reference: LifecycleReference = LifecycleReference.new()

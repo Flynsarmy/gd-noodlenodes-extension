@@ -80,19 +80,6 @@ void NNCustomPropertyConsideration::_ready() {
 	initialize_consideration();
 }
 
-/**
-void NNCustomPropertyConsideration::_notification(int p_what) {
-	switch (p_what) {
-		case NOTIFICATION_ENTER_TREE: {
-			// Entered the tree.
-		} break;
-		case NOTIFICATION_EXIT_TREE: {
-			//_clear_monitoring();
-		} break;
-	}
-}
-/**/
-
 void NNCustomPropertyConsideration::initialize_consideration() {
 	if (Engine::get_singleton()->is_editor_hint())
 		return;
@@ -102,12 +89,6 @@ void NNCustomPropertyConsideration::initialize_consideration() {
 }
 
 // Handling functions.
-
-/**
-void NNCustomPropertyConsideration::_evaluate_consideration() {
-	//_score = sample_activation_curve(get_activation_input_value());
-}
-/**/
 
 float NNCustomPropertyConsideration::evaluate() {
 	if (Engine::get_singleton()->is_editor_hint())
@@ -120,7 +101,6 @@ float NNCustomPropertyConsideration::evaluate() {
 		return 0.0;
 
 	_property_variant_value = _node_with_property->get(_property_name);
-	//.can_convert(_property_variant_value.get_type(), godot::Variant::FLOAT)
 	_score = (float)_property_variant_value * _one_over_property_max_value;
 
 	if (_activation_curve.is_valid()) {
