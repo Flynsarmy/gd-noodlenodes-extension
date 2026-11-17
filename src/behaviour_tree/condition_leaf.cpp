@@ -27,7 +27,7 @@ NNBTNodes::Status NNBTConditionLeaf::tick(Variant blackboard, float delta) {
 	if (result == Status::RUNNING && !_has_reported_running) {
 		_has_reported_running = true;
 		String node_location = is_inside_tree() ? String(get_path()) : get_name() + String(" (not in tree)");
-		ERR_PRINT(vformat("NNBTConditionLeaf node '%s' (%s) is a condition leaf and should return SUCCESS or FAILURE; it returned RUNNING. The RUNNING result is returned unchanged.", node_location, get_class()));
+		ERR_PRINT(vformat("%s node '%s' (%s) is a condition leaf and should return SUCCESS or FAILURE; it returned RUNNING. The RUNNING result is returned unchanged.", get_class(), get_name(), node_location));
 	}
 
 	return result;

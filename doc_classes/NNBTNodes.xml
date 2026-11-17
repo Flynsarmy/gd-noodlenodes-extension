@@ -12,7 +12,7 @@
 	<tutorials>
 	</tutorials>
 	<methods>
-		<method name="erase_blackboard" qualifiers="const">
+		<method name="erase_blackboard">
 			<return type="bool" />
 			<param index="0" name="key" type="String" />
 			<description>
@@ -36,7 +36,7 @@
 		<method name="get_blackboard_resource" qualifiers="const">
 			<return type="NNBlackboard" />
 			<description>
-				Returns the [NNBlackboard] resource of the nearest [NNBTRoot] ancestor, or [code]null[/code] when there is no root.
+				Returns the effective [NNBlackboard] of the nearest [NNBTRoot] ancestor: the board explicitly assigned to that root, or the root's own private board when none is assigned. Returns [code]null[/code] only when there is no [NNBTRoot] ancestor.
 			</description>
 		</method>
 		<method name="get_tree_root" qualifiers="const">

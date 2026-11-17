@@ -82,6 +82,10 @@ Variant NNBTBlackboardCompare::get_value() const {
 }
 
 void NNBTBlackboardCompare::set_operator(int p_operator) {
+	if (p_operator < Operator::EQUAL || p_operator > Operator::LESS_EQUAL) {
+		ERR_PRINT(vformat("NNBTBlackboardCompare::set_operator(): received %d; the valid range is %d to %d. Keeping the previous operator.", p_operator, (int)Operator::EQUAL, (int)Operator::LESS_EQUAL));
+		return;
+	}
 	_operator = p_operator;
 }
 

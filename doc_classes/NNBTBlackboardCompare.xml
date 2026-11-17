@@ -16,6 +16,7 @@
 		</member>
 		<member name="operator" type="int" setter="set_operator" getter="get_operator" enum="Operator" default="0">
 			The comparison to perform between the stored value and [member value].
+			Values outside the [enum Operator] range are rejected with a single engine error that names [code]set_operator[/code], the received value and the valid range; the previous operator is kept.
 		</member>
 		<member name="value" type="Variant" setter="set_value" getter="get_value" default="null">
 			The value to compare the stored blackboard value against.

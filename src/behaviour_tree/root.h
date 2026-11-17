@@ -14,9 +14,12 @@ class NNBTRoot : public NNBTNodes {
 	GDCLASS(NNBTRoot, NNBTNodes)
 
 private:
-	// The resource-backed blackboard is authoritative for the new blackboard
-	// helpers. It always holds a valid NNBlackboard instance.
+	// The explicitly assigned blackboard. Null means no board was assigned, in
+	// which case the private per-root fallback below is used.
 	Ref<NNBlackboard> _blackboard;
+	// Private per-root fallback board. It is never exposed as a property, so it
+	// is never serialised and every instantiated root gets its own.
+	Ref<NNBlackboard> _local_blackboard;
 
 	// The explicit actor is stored as an ObjectID so a freed actor is detected
 	// instead of being dereferenced.
@@ -39,9 +42,11 @@ public:
 	// Getters and setters for attributes.
 
 	void set_blackboard_resource(const Ref<NNBlackboard> &p_blackboard);
+	Ref<NNBlackboard> get_assigned_blackboard() const;
 	NNBlackboard *get_blackboard_resource() const override;
 
 	void set_actor(Node *p_actor);
+	Node *get_assigned_actor() const;
 	Node *get_actor() const override;
 	void set_actor_node_path(const NodePath &p_actor_node_path);
 	NodePath get_actor_node_path() const;

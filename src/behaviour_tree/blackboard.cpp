@@ -89,6 +89,10 @@ void NNBlackboard::_bind_methods() {
 // Constructor and destructor.
 
 NNBlackboard::NNBlackboard() {
+	// A board assigned in the inspector is embedded in the scene and duplicated
+	// per scene instance unless the user deliberately unticks this to share one
+	// board between instances.
+	set_local_to_scene(true);
 	_values = Dictionary();
 	// Typed as Dictionary<String, Variant>. A NIL value type accepts any value.
 	_values.set_typed(Variant::STRING, StringName(), Variant(), Variant::NIL, StringName(), Variant());

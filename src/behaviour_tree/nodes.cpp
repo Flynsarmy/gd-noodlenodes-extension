@@ -212,7 +212,7 @@ bool NNBTNodes::has_blackboard(const String &key) const {
 	return board->has_value(key);
 }
 
-bool NNBTNodes::erase_blackboard(const String &key) const {
+bool NNBTNodes::erase_blackboard(const String &key) {
 	NNBlackboard *board = get_blackboard_resource();
 	if (board == nullptr) {
 		return false;

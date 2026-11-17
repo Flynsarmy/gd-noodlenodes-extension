@@ -90,7 +90,7 @@ public:
 	Variant get_blackboard(const String &key, const Variant &default_value = Variant()) const;
 	bool set_blackboard(const String &key, const Variant &value);
 	bool has_blackboard(const String &key) const;
-	bool erase_blackboard(const String &key) const;
+	bool erase_blackboard(const String &key);
 	virtual Node *get_actor() const;
 
 	// Godot virtuals.

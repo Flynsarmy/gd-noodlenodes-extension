@@ -92,6 +92,34 @@ func test_compare_all_operators() -> void:
 	bt_root.free()
 
 
+func test_invalid_operator_is_rejected() -> void:
+	var bt_root := NNBTRoot.new()
+	var leaf := NNBTBlackboardCompare.new()
+	leaf.name = "Compare"
+	leaf.key = "key"
+	bt_root.add_child(leaf)
+
+	leaf.set_value(5)
+	leaf.set_operator(NNBTBlackboardCompare.GREATER)
+	bt_root.set_blackboard("key", 6)
+
+	leaf.operator = 99
+
+	var errors: Array = get_errors()
+	assert_eq(errors.size(), 1, "an out-of-range operator reports exactly one engine error")
+	assert_string_contains(str(errors[0].code), "set_operator")
+	assert_string_contains(str(errors[0].code), "99")
+	assert_string_contains(str(errors[0].code), "0 to 5")
+	errors[0].handled = true
+
+	assert_eq(leaf.operator, NNBTBlackboardCompare.GREATER, "the previous operator is kept")
+	assert_eq(bt_root.tick({}, 0.1), NNBTNodes.SUCCESS, "the kept GREATER operator still evaluates")
+	assert_eq(get_errors().size(), 1, "ticking adds no error")
+	assert_true(errors[0].handled, "the operator error has been consumed")
+
+	bt_root.free()
+
+
 func test_compare_incompatible_and_missing_fail_without_errors() -> void:
 	var bt_root := NNBTRoot.new()
 	var leaf := NNBTBlackboardCompare.new()
@@ -104,7 +132,7 @@ func test_compare_incompatible_and_missing_fail_without_errors() -> void:
 	bt_root.set_blackboard("key", "not a number")
 	assert_eq(bt_root.tick({}, 0.1), NNBTNodes.FAILURE, "incompatible types fail")
 
-	bt_root.blackboard.clear()
+	bt_root.get_blackboard_resource().clear()
 	assert_eq(bt_root.tick({}, 0.1), NNBTNodes.FAILURE, "a missing key fails")
 
 	bt_root.set_blackboard("key", null)
@@ -132,8 +160,8 @@ func test_erase_then_has_fails() -> void:
 	bt_root.set_blackboard("key", 1)
 
 	assert_eq(bt_root.tick({}, 0.1), NNBTNodes.FAILURE)
-	assert_false(bt_root.blackboard.has_value("key"))
-	assert_false(bt_root.blackboard.keys().has("key"), "the key is erased entirely")
+	assert_false(bt_root.get_blackboard_resource().has_value("key"))
+	assert_false(bt_root.get_blackboard_resource().keys().has("key"), "the key is erased entirely")
 
 	assert_engine_error_count(0)
 	bt_root.free()
@@ -159,10 +187,10 @@ func test_erase_null_valued_key_succeeds() -> void:
 	bt_root.add_child(leaf)
 
 	bt_root.set_blackboard("key", null)
-	assert_true(bt_root.blackboard.keys().has("key"))
+	assert_true(bt_root.get_blackboard_resource().keys().has("key"))
 
 	assert_eq(bt_root.tick({}, 0.1), NNBTNodes.SUCCESS)
-	assert_false(bt_root.blackboard.keys().has("key"))
+	assert_false(bt_root.get_blackboard_resource().keys().has("key"))
 
 	assert_engine_error_count(0)
 	bt_root.free()
@@ -186,8 +214,8 @@ func test_set_null_then_has_fails() -> void:
 	sequence.add_child(has_leaf)
 
 	assert_eq(bt_root.tick({}, 0.1), NNBTNodes.FAILURE, "a null value counts as absent")
-	assert_false(bt_root.blackboard.has_value("key"))
-	assert_true(bt_root.blackboard.keys().has("key"), "the null-valued key still exists")
+	assert_false(bt_root.get_blackboard_resource().has_value("key"))
+	assert_true(bt_root.get_blackboard_resource().keys().has("key"), "the null-valued key still exists")
 
 	assert_engine_error_count(0)
 	bt_root.free()
