@@ -366,8 +366,11 @@ float NNBTNodes::evaluate() {
 }
 
 NNBTNodes::Status NNBTNodes::tick(Variant blackboard, float delta) {
-	// Disabled nodes never start a run.
+	// Disabled nodes never start a run. A reference may have stamped an owner
+	// onto this node just before calling tick(), so clear it here to keep the
+	// invariant that a node with no active run has no run owner.
 	if (!get_is_enabled()) {
+		_run_owner = ObjectID();
 		return Status::FAILURE;
 	}
 

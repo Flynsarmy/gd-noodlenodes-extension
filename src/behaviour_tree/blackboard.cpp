@@ -21,9 +21,16 @@ Variant _sanitize_for_debug(const Variant &p_value, int p_depth = 0) {
 
 	switch (p_value.get_type()) {
 		case Variant::OBJECT: {
-			Object *object = p_value;
-			if (object == nullptr) {
+			// Read the instance id stored in the Variant rather than
+			// dereferencing the pointer: the object may have been freed since
+			// it was written, leaving a dangling Object* in the value.
+			const ObjectID id = p_value.operator ObjectID();
+			if (id.is_null()) {
 				return String("<null>");
+			}
+			Object *object = ObjectDB::get_instance(id);
+			if (object == nullptr) {
+				return String("<freed object>");
 			}
 			return String(object->get_class());
 		} break;
