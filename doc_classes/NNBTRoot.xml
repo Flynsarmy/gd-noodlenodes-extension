@@ -13,12 +13,6 @@
 	<tutorials>
 	</tutorials>
 	<methods>
-		<method name="interrupt">
-			<return type="void" />
-			<description>
-				Force-stops the whole tree. The root's task descendants run their [code]on_interrupt[/code] script hooks (the root itself has no script hook) and every still-active node is interrupted. Calling it when the tree is idle is a safe no-op.
-			</description>
-		</method>
 		<method name="tick">
 			<return type="int" enum="NNBTNodes.Status" />
 			<param index="0" name="blackboard" type="Variant" />

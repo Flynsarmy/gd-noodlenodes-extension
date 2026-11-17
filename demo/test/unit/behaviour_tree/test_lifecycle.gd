@@ -46,6 +46,25 @@ class PlainLeaf extends NNBTLeaf:
 		return result
 
 
+# Records every lifecycle hook so a test can assert the exact order of events.
+class TraceLeaf extends NNBTLeaf:
+	var events: Array = []
+	var result: int = NNBTNodes.RUNNING
+
+	func on_before_run(_blackboard: Variant, _delta: float) -> void:
+		events.append("before")
+
+	func on_tick(_blackboard: Variant, _delta: float) -> Status:
+		events.append("tick")
+		return result
+
+	func on_after_run(_blackboard: Variant, _delta: float) -> void:
+		events.append("after")
+
+	func on_interrupt(_blackboard: Variant, _delta: float) -> void:
+		events.append("interrupt")
+
+
 # Composites derive from NNBTNodes, which does not expose the lifecycle script
 # hooks, so a lifecycle-aware descendant uses a decorator. This node forwards a
 # running child unchanged, exactly like the sequence used below.
@@ -420,6 +439,132 @@ func test_node_reference_forwards_run_lifecycle() -> void:
 
 	assert_engine_error_count(0)
 	target.free()
+
+
+# The previous owner's interrupt must not reach a shared target that a new
+# reference is already driving.
+func test_shared_reference_target_is_not_interrupted_by_the_previous_owner() -> void:
+	var shared: TraceLeaf = TraceLeaf.new()
+	shared.result = NNBTNodes.RUNNING
+
+	var reference_a: NNBTNodeReference = NNBTNodeReference.new()
+	reference_a.node_reference = shared
+	var reference_b: NNBTNodeReference = NNBTNodeReference.new()
+	reference_b.node_reference = shared
+
+	var condition: LifecycleLeaf = _make_leaf(NNBTNodes.FAILURE)
+	var sequence: NNBTSequence = _make_sequence()
+	sequence.add_child(condition)
+	sequence.add_child(reference_b)
+	var selector: NNBTSelector = _make_selector()
+	selector.add_child(sequence)
+	selector.add_child(reference_a)
+	var root: NNBTRoot = _make_root_with(selector)
+
+	assert_eq(root.tick(BLACKBOARD, 0.1), NNBTNodes.RUNNING)
+	assert_eq(shared.events, ["before", "tick"], "the first reference starts the shared run")
+
+	condition.result = NNBTNodes.SUCCESS
+	assert_eq(root.tick(BLACKBOARD, 0.1), NNBTNodes.RUNNING)
+	assert_eq(
+		shared.events,
+		["before", "tick", "interrupt", "before", "tick"],
+		"the new owner interrupts the old run and starts a fresh one"
+	)
+
+	assert_eq(root.tick(BLACKBOARD, 0.1), NNBTNodes.RUNNING)
+	assert_eq(
+		shared.events,
+		["before", "tick", "interrupt", "before", "tick", "tick"],
+		"the old owner's interrupt must not cancel the new owner's run"
+	)
+
+	assert_engine_error_count(0)
+	shared.free()
+
+
+# Disabling a reference that no longer owns the shared run must neither reset
+# nor interrupt the run the other reference is driving.
+func test_shared_reference_target_survives_disabling_the_non_owner() -> void:
+	var shared: TraceLeaf = TraceLeaf.new()
+	shared.result = NNBTNodes.RUNNING
+
+	var reference_a: NNBTNodeReference = NNBTNodeReference.new()
+	reference_a.node_reference = shared
+	var reference_b: NNBTNodeReference = NNBTNodeReference.new()
+	reference_b.node_reference = shared
+
+	var condition: LifecycleLeaf = _make_leaf(NNBTNodes.FAILURE)
+	var sequence: NNBTSequence = _make_sequence()
+	sequence.add_child(condition)
+	sequence.add_child(reference_b)
+	var selector: NNBTSelector = _make_selector()
+	selector.add_child(sequence)
+	selector.add_child(reference_a)
+	var root: NNBTRoot = _make_root_with(selector)
+
+	assert_eq(root.tick(BLACKBOARD, 0.1), NNBTNodes.RUNNING)
+	condition.result = NNBTNodes.SUCCESS
+	assert_eq(root.tick(BLACKBOARD, 0.1), NNBTNodes.RUNNING)
+	assert_eq(
+		shared.events,
+		["before", "tick", "interrupt", "before", "tick"],
+		"the new owner interrupts the old run and starts a fresh one"
+	)
+
+	# RefA no longer drives the shared target, so its reset must not cancel
+	# RefB's active run.
+	reference_a.is_enabled = false
+	assert_eq(
+		shared.events,
+		["before", "tick", "interrupt", "before", "tick"],
+		"disabling the non-owner must not reset or interrupt the shared run"
+	)
+
+	assert_eq(root.tick(BLACKBOARD, 0.1), NNBTNodes.RUNNING)
+	assert_eq(
+		shared.events,
+		["before", "tick", "interrupt", "before", "tick", "tick"],
+		"the owner continues its run after the non-owner is disabled"
+	)
+
+	reference_a.is_enabled = true
+	assert_engine_error_count(0)
+	shared.free()
+
+
+# Sharing a target without a second active reference must not restart or
+# interrupt the single owner's run.
+func test_shared_reference_target_with_one_active_reference_keeps_its_run() -> void:
+	var shared: TraceLeaf = TraceLeaf.new()
+	shared.result = NNBTNodes.RUNNING
+
+	var active: NNBTNodeReference = NNBTNodeReference.new()
+	active.node_reference = shared
+	var orphan: NNBTNodeReference = NNBTNodeReference.new()
+	orphan.node_reference = shared
+
+	var root: NNBTRoot = _make_root_with(active)
+
+	assert_eq(root.tick(BLACKBOARD, 0.1), NNBTNodes.RUNNING)
+	assert_eq(root.tick(BLACKBOARD, 0.1), NNBTNodes.RUNNING)
+	assert_eq(
+		shared.events,
+		["before", "tick", "tick"],
+		"sharing the target must not restart or interrupt the run"
+	)
+
+	active.interrupt()
+	active.interrupt()
+	assert_eq(
+		shared.events,
+		["before", "tick", "tick", "interrupt"],
+		"the owner forwards the interrupt exactly once"
+	)
+
+	assert_engine_error_count(0)
+	shared.free()
+	orphan.free()
 
 
 func test_interrupt_without_an_active_run_is_a_no_op() -> void:

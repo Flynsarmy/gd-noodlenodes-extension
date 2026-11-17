@@ -77,6 +77,14 @@ public:
 	// Safe to call on a node that is not running.
 	void interrupt();
 
+	// True while a run is active.
+	bool get_is_running() const;
+	// The reference that is currently driving the run, or a null ID when no run
+	// is active or the node is not driven through a node reference.
+	ObjectID get_run_owner() const;
+	// Marks the driver of the next or active run.
+	void set_run_owner(ObjectID p_owner);
+
 	inline virtual bool has_completed() { return (_internal_status == BT_INTERNAL_STATUS_COMPLETED); };
 
 	NodePath get_tree_root() const;
@@ -97,6 +105,7 @@ private:
 	// Run lifecycle state. A run starts on the first tick after the node has no
 	// active run and ends on a terminal result or an interrupt.
 	bool _is_running;
+	ObjectID _run_owner;
 	Variant _run_blackboard;
 	float _run_delta;
 

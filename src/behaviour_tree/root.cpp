@@ -24,7 +24,6 @@ void NNBTRoot::_bind_methods() {
 #endif
 
 	ClassDB::bind_method(D_METHOD("tick", "blackboard", "delta"), &NNBTRoot::tick);
-	ClassDB::bind_method(D_METHOD("interrupt"), &NNBTRoot::interrupt);
 }
 
 // Constructor and destructor.
@@ -55,10 +54,6 @@ uint64_t NNBTRoot::get_total_tick_usec() const {
 
 NNBTNodes::Status NNBTRoot::tick(Variant blackboard, float delta) {
 	return NNBTNodes::tick(blackboard, delta);
-}
-
-void NNBTRoot::interrupt() {
-	NNBTNodes::interrupt();
 }
 
 NNBTNodes::Status NNBTRoot::_tick(Variant blackboard, float delta) {

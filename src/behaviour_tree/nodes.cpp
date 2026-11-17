@@ -62,6 +62,7 @@ NNBTNodes::NNBTNodes() {
 	_reset_rule = NNBTNodesResetRule::WHEN_TICKED_AFTER_BEING_COMPLETED;
 	_has_reset_rule_changed = false;
 	_is_running = false;
+	_run_owner = ObjectID();
 	_run_blackboard = Variant();
 	_run_delta = 0.0f;
 	//_is_first_tick = true;
@@ -146,6 +147,18 @@ void NNBTNodes::set_reset_rule(int reset_rule) {
 
 int NNBTNodes::get_reset_rule() const {
 	return _reset_rule;
+}
+
+bool NNBTNodes::get_is_running() const {
+	return _is_running;
+}
+
+ObjectID NNBTNodes::get_run_owner() const {
+	return _run_owner;
+}
+
+void NNBTNodes::set_run_owner(ObjectID p_owner) {
+	_run_owner = p_owner;
 }
 
 NodePath NNBTNodes::get_tree_root() const {
@@ -309,6 +322,7 @@ NNBTNodes::Status NNBTNodes::tick(Variant blackboard, float delta) {
 		Variant run_blackboard = _run_blackboard;
 		float run_delta = _run_delta;
 		_is_running = false;
+		_run_owner = ObjectID();
 		_run_blackboard = Variant();
 		_run_delta = 0.0f;
 		_interrupt_active_children();
@@ -331,6 +345,7 @@ void NNBTNodes::interrupt() {
 	Variant run_blackboard = _run_blackboard;
 	float run_delta = _run_delta;
 	_is_running = false;
+	_run_owner = ObjectID();
 	_run_blackboard = Variant();
 	_run_delta = 0.0f;
 	_interrupt_active_children();
