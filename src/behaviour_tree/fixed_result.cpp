@@ -53,7 +53,9 @@ NNBTNodes::Status NNBTFixedResult::tick(Variant blackboard, float delta) {
 		//emit_signal("btnode_ticked", blackboard, delta);
 		break;
 	}
-	set_internal_status(BT_INTERNAL_STATUS_COMPLETED);
+	if (_fixed_result != Status::RUNNING) {
+		set_internal_status(BT_INTERNAL_STATUS_COMPLETED);
+	}
 	//emit_signal("btnode_exited", blackboard, delta);
 	return _fixed_result;
 }

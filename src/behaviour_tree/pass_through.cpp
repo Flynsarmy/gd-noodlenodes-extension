@@ -81,7 +81,9 @@ NNBTNodes::Status NNBTPassThrough::tick(Variant blackboard, float delta) {
 	} //endfor child ndoes
 
 	//}
-	set_internal_status(BT_INTERNAL_STATUS_COMPLETED);
+	if (return_value != Status::RUNNING) {
+		set_internal_status(BT_INTERNAL_STATUS_COMPLETED);
+	}
 	//emit_signal("btnode_exited", blackboard, delta);
 	// return _tick_result;
 	return return_value;
