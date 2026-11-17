@@ -21,7 +21,7 @@ NNBTPassThrough::~NNBTPassThrough() {
 
 // Handling methods.
 
-NNBTNodes::Status NNBTPassThrough::tick(Variant blackboard, float delta) {
+NNBTNodes::Status NNBTPassThrough::_tick(Variant blackboard, float delta) {
 	_report_extra_enabled_child_btnodes();
 
 	// The passthrough node calls its on_tick method, if it has one, and then

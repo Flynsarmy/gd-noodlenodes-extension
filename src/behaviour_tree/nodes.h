@@ -65,12 +65,17 @@ public:
 
 	virtual float evaluate();
 
-	virtual Status tick(Variant blackboard, float delta);
+	// Wrapper that manages the node's run lifecycle around _tick().
+	Status tick(Variant blackboard, float delta);
 
 	virtual void reset();
 	//virtual void reset_for_looping();
 	virtual void reset_bt_node() {};
 	virtual void update_child_vectors();
+
+	// Force-stops the current run, interrupting the node's active subtree.
+	// Safe to call on a node that is not running.
+	void interrupt();
 
 	inline virtual bool has_completed() { return (_internal_status == BT_INTERNAL_STATUS_COMPLETED); };
 
@@ -89,9 +94,31 @@ private:
 	int _internal_status;
 	int _reset_rule;
 	bool _has_reset_rule_changed;
+	// Run lifecycle state. A run starts on the first tick after the node has no
+	// active run and ends on a terminal result or an interrupt.
+	bool _is_running;
+	Variant _run_blackboard;
+	float _run_delta;
 
 protected:
 	static void _bind_methods();
+
+	// Node-specific tick implementation. Returns the tick result the wrapper
+	// exposes through tick().
+	virtual Status _tick(Variant blackboard, float delta);
+
+	// Lifecycle hooks. Every before_run is matched by exactly one after_run or
+	// interrupt for the same run.
+	virtual void _on_before_run(Variant blackboard, float delta);
+	virtual void _on_after_run(Variant blackboard, float delta);
+	virtual void _on_interrupt(Variant blackboard, float delta);
+
+	// Interrupts every behaviour-tree child that still has an active run.
+	void _interrupt_active_children();
+	// Interrupts every behaviour-tree child with an active run except p_keep.
+	void _interrupt_other_active_children(const NNBTNodes *p_keep);
+
+	virtual void _on_is_enabled_changed(bool p_is_enabled) override;
 
 	//bool   _is_first_tick;
 	std::vector<NNBTNodes *> _child_btnodes;

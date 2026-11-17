@@ -63,7 +63,7 @@ void NNBTLimiter::reset_bt_node() {
 	_current_repeat_times = _max_repeat_times;
 }
 
-NNBTNodes::Status NNBTLimiter::tick(Variant blackboard, float delta) {
+NNBTNodes::Status NNBTLimiter::_tick(Variant blackboard, float delta) {
 	//if( !get_is_enabled() ) return Status::SKIP;
 	if (Engine::get_singleton()->is_editor_hint())
 		return Status::FAILURE;

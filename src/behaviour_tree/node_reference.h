@@ -13,11 +13,14 @@ private:
 	ObjectID _cache;
 	bool _is_resetting = false;
 	bool _is_ticking = false;
+	bool _is_interrupting = false;
 
 	static bool _can_reach(NNBTNodes *p_from, NNBTNodes *p_target, std::vector<ObjectID> &r_visited);
 
 protected:
 	static void _bind_methods();
+
+	virtual void _on_interrupt(Variant blackboard, float delta) override;
 
 public:
 	NNBTNodeReference();
@@ -29,7 +32,7 @@ public:
 	NNBTNodes *get_node_reference() const;
 	// Handling functions.
 	virtual void reset() override;
-	virtual Status tick(Variant blackboard, float delta) override;
+	virtual Status _tick(Variant blackboard, float delta) override;
 };
 
 } //namespace godot

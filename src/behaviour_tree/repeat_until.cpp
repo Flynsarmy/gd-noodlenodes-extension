@@ -75,7 +75,7 @@ void NNBTRepeatUntil::reset_bt_node() {
 	_is_expected_tick_result_reached = false;
 }
 
-NNBTNodes::Status NNBTRepeatUntil::tick(Variant blackboard, float delta) {
+NNBTNodes::Status NNBTRepeatUntil::_tick(Variant blackboard, float delta) {
 	//if( !get_is_enabled() ) return Status::FAILURE;
 	if (Engine::get_singleton()->is_editor_hint())
 		return Status::FAILURE;

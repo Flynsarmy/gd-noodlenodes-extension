@@ -24,6 +24,7 @@ void NNBTRoot::_bind_methods() {
 #endif
 
 	ClassDB::bind_method(D_METHOD("tick", "blackboard", "delta"), &NNBTRoot::tick);
+	ClassDB::bind_method(D_METHOD("interrupt"), &NNBTRoot::interrupt);
 }
 
 // Constructor and destructor.
@@ -53,6 +54,14 @@ uint64_t NNBTRoot::get_total_tick_usec() const {
 // Handling functions.
 
 NNBTNodes::Status NNBTRoot::tick(Variant blackboard, float delta) {
+	return NNBTNodes::tick(blackboard, delta);
+}
+
+void NNBTRoot::interrupt() {
+	NNBTNodes::interrupt();
+}
+
+NNBTNodes::Status NNBTRoot::_tick(Variant blackboard, float delta) {
 #ifdef DEBUG_ENABLED
 	uint64_t method_start_time_usec = godot::Time::get_singleton()->get_ticks_usec();
 #endif
@@ -111,6 +120,10 @@ NNBTNodes::Status NNBTRoot::tick(Variant blackboard, float delta) {
 		_total_tick_usec = godot::Time::get_singleton()->get_ticks_usec() - method_start_time_usec;
 		NNPerformanceMonitorSingleton::get_singleton()->increment_total_time_elapsed_behaviour_trees_usec(_total_tick_usec);
 #endif
+		if (result == Status::RUNNING) {
+			// Keep the running child, interrupt any other previously active child.
+			_interrupt_other_active_children(btnode);
+		}
 		return result;
 	} //endfor btnodes
 	/**

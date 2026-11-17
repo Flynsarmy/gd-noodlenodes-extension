@@ -112,6 +112,7 @@ void NNBTNodeReference::reset() {
 
 	// Reparenting can introduce cycles after the setter's graph validation.
 	_is_resetting = true;
+	NNBTNodes::reset();
 	NNBTNodes *target = get_node_reference();
 	if (target != nullptr) {
 		target->reset();
@@ -119,9 +120,24 @@ void NNBTNodeReference::reset() {
 	_is_resetting = false;
 }
 
-NNBTNodes::Status NNBTNodeReference::tick(Variant blackboard, float delta) {
+void NNBTNodeReference::_on_interrupt(Variant blackboard, float delta) {
+	if (_is_interrupting) {
+		ERR_PRINT("NNBTNodeReference::_on_interrupt(): Detected a cycle in node_reference links; aborting traversal.");
+		return;
+	}
+
+	_is_interrupting = true;
+	NNBTTaskNodes::_on_interrupt(blackboard, delta);
+	NNBTNodes *target = get_node_reference();
+	if (target != nullptr) {
+		target->interrupt();
+	}
+	_is_interrupting = false;
+}
+
+NNBTNodes::Status NNBTNodeReference::_tick(Variant blackboard, float delta) {
 	if (_is_ticking) {
-		ERR_PRINT("NNBTNodeReference::tick(): Detected a cycle in node_reference links; returning FAILURE.");
+		ERR_PRINT("NNBTNodeReference::_tick(): Detected a cycle in node_reference links; returning FAILURE.");
 		set_internal_status(BT_INTERNAL_STATUS_COMPLETED);
 		set_tick_result(Status::FAILURE);
 		return Status::FAILURE;

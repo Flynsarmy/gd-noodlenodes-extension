@@ -44,7 +44,7 @@ bool NNBTParallel::get_is_reactive() const {
 }
 /**/
 
-NNBTNodes::Status NNBTParallel::tick(Variant blackboard, float delta) {
+NNBTNodes::Status NNBTParallel::_tick(Variant blackboard, float delta) {
 	set_internal_status(BT_INTERNAL_STATUS_TICKED);
 	//if( _is_first_tick ) {
 	//    _is_first_tick = false;

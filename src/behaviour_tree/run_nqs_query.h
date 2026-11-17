@@ -35,6 +35,8 @@ private:
 protected:
 	static void _bind_methods();
 
+	virtual void _on_interrupt(Variant blackboard, float delta) override;
+
 public:
 	NNBTRunNQSQuery();
 	~NNBTRunNQSQuery();
@@ -55,7 +57,7 @@ public:
 
 	// Handling functions.
 	virtual void reset_bt_node() override;
-	virtual Status tick(Variant blackboard, float delta) override;
+	virtual Status _tick(Variant blackboard, float delta) override;
 
 	// Godot virtuals.
 

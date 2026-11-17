@@ -23,7 +23,7 @@ NNBTInverter::~NNBTInverter() {
 
 // Handling methods.
 
-NNBTNodes::Status NNBTInverter::tick(Variant blackboard, float delta) {
+NNBTNodes::Status NNBTInverter::_tick(Variant blackboard, float delta) {
 	_report_extra_enabled_child_btnodes();
 
 	set_internal_status(BT_INTERNAL_STATUS_TICKED);

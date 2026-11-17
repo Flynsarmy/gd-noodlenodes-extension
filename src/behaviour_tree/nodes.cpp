@@ -25,6 +25,8 @@ void NNBTNodes::_bind_methods() {
 
 	ClassDB::bind_method(D_METHOD("get_tree_root"), &NNBTNodes::get_tree_root);
 
+	ClassDB::bind_method(D_METHOD("interrupt"), &NNBTNodes::interrupt);
+
 	ADD_SUBGROUP("Debugging", "");
 
 	ClassDB::bind_method(D_METHOD("set_score", "score"), &NNBTNodes::set_score);
@@ -59,6 +61,9 @@ NNBTNodes::NNBTNodes() {
 	_internal_status = BT_INTERNAL_STATUS_UNTICKED;
 	_reset_rule = NNBTNodesResetRule::WHEN_TICKED_AFTER_BEING_COMPLETED;
 	_has_reset_rule_changed = false;
+	_is_running = false;
+	_run_blackboard = Variant();
+	_run_delta = 0.0f;
 	//_is_first_tick = true;
 	_num_child_btnodes = 0;
 	_num_child_considerations = 0;
@@ -167,6 +172,7 @@ NodePath NNBTNodes::get_tree_root() const {
 // Handling methods.
 
 void NNBTNodes::reset() {
+	interrupt();
 	_internal_status = BT_INTERNAL_STATUS_UNTICKED;
 	for (int i = 0; i < _num_child_btnodes; i++) {
 		_child_btnodes[i]->reset();
@@ -282,7 +288,88 @@ float NNBTNodes::evaluate() {
 }
 
 NNBTNodes::Status NNBTNodes::tick(Variant blackboard, float delta) {
+	// Disabled nodes never start a run.
+	if (!get_is_enabled()) {
+		return Status::FAILURE;
+	}
+
+	if (!_is_running) {
+		_is_running = true;
+		_run_blackboard = blackboard;
+		_run_delta = delta;
+		_on_before_run(blackboard, delta);
+		if (!_is_running) {
+			// The before_run hook interrupted the run it had just started.
+			return Status::FAILURE;
+		}
+	}
+
+	Status result = _tick(blackboard, delta);
+	if (_is_running && (result == Status::SUCCESS || result == Status::FAILURE)) {
+		Variant run_blackboard = _run_blackboard;
+		float run_delta = _run_delta;
+		_is_running = false;
+		_run_blackboard = Variant();
+		_run_delta = 0.0f;
+		_interrupt_active_children();
+		_on_after_run(run_blackboard, run_delta);
+	}
+	// SKIP is not terminal, so the run stays active for a later interrupt or
+	// terminal result.
+	return result;
+}
+
+NNBTNodes::Status NNBTNodes::_tick(Variant blackboard, float delta) {
 	return Status::RUNNING;
+}
+
+void NNBTNodes::interrupt() {
+	if (!_is_running) {
+		return;
+	}
+
+	Variant run_blackboard = _run_blackboard;
+	float run_delta = _run_delta;
+	_is_running = false;
+	_run_blackboard = Variant();
+	_run_delta = 0.0f;
+	_interrupt_active_children();
+	_on_interrupt(run_blackboard, run_delta);
+}
+
+// Lifecycle hooks.
+
+void NNBTNodes::_on_before_run(Variant blackboard, float delta) {
+}
+
+void NNBTNodes::_on_after_run(Variant blackboard, float delta) {
+}
+
+void NNBTNodes::_on_interrupt(Variant blackboard, float delta) {
+}
+
+void NNBTNodes::_interrupt_active_children() {
+	for (unsigned int i = 0; i < _num_child_btnodes; i++) {
+		_child_btnodes[i]->interrupt();
+	}
+}
+
+void NNBTNodes::_interrupt_other_active_children(const NNBTNodes *p_keep) {
+	for (unsigned int i = 0; i < _num_child_btnodes; i++) {
+		if (_child_btnodes[i] == p_keep) {
+			continue;
+		}
+		_child_btnodes[i]->interrupt();
+	}
+}
+
+void NNBTNodes::_on_is_enabled_changed(bool p_is_enabled) {
+	if (p_is_enabled) {
+		// Re-enabling is a no-op; the next tick starts a fresh run.
+		return;
+	}
+	// Disabling interrupts the active run and resets the subtree exactly once.
+	reset();
 }
 
 // Godot virtuals.

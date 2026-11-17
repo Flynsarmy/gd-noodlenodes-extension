@@ -33,7 +33,14 @@ public:
 
 	// Handling functions.
 
-	virtual Status tick(Variant blackboard, float delta) override;
+	// Public tick entry point. Forwards to the lifecycle wrapper on NNBTNodes
+	// so the GDScript tick signature stays unchanged.
+	Status tick(Variant blackboard, float delta);
+
+	// Force-stops the whole tree. Safe to call when the tree is idle.
+	void interrupt();
+
+	virtual Status _tick(Variant blackboard, float delta) override;
 
 	// Godot virtuals.
 	virtual void _notification(int p_what);

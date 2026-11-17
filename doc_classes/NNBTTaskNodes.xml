@@ -5,10 +5,35 @@
 	</brief_description>
 	<description>
 		Provides a [method on_tick] method for task nodes to implement to run their custom logic. Implementations must override [method on_tick]; the default returns [code]Status.FAILURE[/code].
+		Scripts may also implement the optional lifecycle hooks [method on_before_run], [method on_after_run] and [method on_interrupt]. They receive the arguments of the run they belong to. A script may omit any of them; the hooks are simply not called when they are not defined.
 	</description>
 	<tutorials>
 	</tutorials>
 	<methods>
+		<method name="on_before_run" qualifiers="virtual">
+			<return type="void" />
+			<param index="0" name="blackboard" type="Variant" />
+			<param index="1" name="delta" type="float" />
+			<description>
+				Optional hook called exactly once when a run starts, before the first [method on_tick] of that run. May be omitted by scripts.
+			</description>
+		</method>
+		<method name="on_after_run" qualifiers="virtual">
+			<return type="void" />
+			<param index="0" name="blackboard" type="Variant" />
+			<param index="1" name="delta" type="float" />
+			<description>
+				Optional hook called exactly once when a run ends with [code]SUCCESS[/code] or [code]FAILURE[/code]. It is not called for an interrupted run. May be omitted by scripts.
+			</description>
+		</method>
+		<method name="on_interrupt" qualifiers="virtual">
+			<return type="void" />
+			<param index="0" name="blackboard" type="Variant" />
+			<param index="1" name="delta" type="float" />
+			<description>
+				Optional hook called exactly once when an active run is abandoned, for example because the node was disabled, reset or explicitly interrupted. The arguments are those of the interrupted run. May be omitted by scripts.
+			</description>
+		</method>
 		<method name="on_tick" qualifiers="virtual">
 			<return type="int" enum="NNBTNodes.Status" />
 			<param index="0" name="blackboard" type="Variant" />
