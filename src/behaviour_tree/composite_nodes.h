@@ -15,6 +15,9 @@ protected:
 public:
 	NNBTCompositeNodes();
 	~NNBTCompositeNodes();
+
+	// Godot virtuals.
+	virtual PackedStringArray _get_configuration_warnings() const override;
 };
 
 } //namespace godot

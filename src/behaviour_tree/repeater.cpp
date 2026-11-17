@@ -81,6 +81,8 @@ NNBTNodes::Status NNBTRepeater::tick(Variant blackboard, float delta) {
 	if (Engine::get_singleton()->is_editor_hint())
 		return Status::FAILURE;
 
+	_report_extra_enabled_child_btnodes();
+
 	if (get_internal_status() == BT_INTERNAL_STATUS_COMPLETED &&
 			get_reset_rule() == NNBTNodesResetRule::NEVER) {
 		return get_tick_result();

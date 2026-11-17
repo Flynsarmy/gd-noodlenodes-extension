@@ -65,6 +65,8 @@ NNBTNodes::Status NNBTCooldownTicks::get_cooldown_return_value() const {
 // Handling methods.
 
 NNBTNodes::Status NNBTCooldownTicks::tick(Variant blackboard, float delta) {
+	_report_extra_enabled_child_btnodes();
+
 	set_internal_status(BT_INTERNAL_STATUS_TICKED);
 	//if( _is_first_tick ) {
 	//    _is_first_tick = false;
