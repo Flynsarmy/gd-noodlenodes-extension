@@ -69,6 +69,13 @@ void NNBTDelayer::reset_bt_node() {
 NNBTNodes::Status NNBTDelayer::_tick(Variant blackboard, float delta) {
 	_report_extra_enabled_child_btnodes();
 
+	// NNBTNodes::reset() only interrupts and marks the node unticked; it does
+	// not call reset_bt_node(). Restart the delay explicitly so a tree reset
+	// (root disable, parent reset) cannot leave a stale partial wait.
+	if (get_internal_status() == BT_INTERNAL_STATUS_UNTICKED) {
+		reset_bt_node();
+	}
+
 	// Set the status before accumulating delta so the reset rule, which may
 	// restart the delay here, does not discard the delta of this tick.
 	set_internal_status(BT_INTERNAL_STATUS_TICKED);

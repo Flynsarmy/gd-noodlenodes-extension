@@ -6,6 +6,7 @@ extends GutTest
 const BLACKBOARD: Dictionary = {}
 
 # NNBTNodes does not expose its internal status constants to GDScript.
+const INTERNAL_STATUS_UNTICKED := 0
 const INTERNAL_STATUS_COMPLETED := 2
 
 
@@ -195,5 +196,73 @@ func test_delay_is_not_reapplied_while_child_is_running() -> void:
 	assert_eq(root.tick(BLACKBOARD, 0.001), NNBTNodes.RUNNING, "Once elapsed the delay must go straight to the child.")
 	assert_eq(leaf.tick_count, 2, "The delay must not be reapplied while the child keeps returning RUNNING.")
 	assert_almost_eq(delayer.get_time_waited(), 1.2, 0.0001, "The elapsed time must not restart while the child runs.")
+
+	root.free()
+
+
+func test_root_disable_restarts_delay() -> void:
+	var leaf: CountingLeaf = CountingLeaf.new()
+	leaf.result = NNBTNodes.SUCCESS
+	var tree: Array = _build_tree(1.0, leaf)
+	var root: NNBTRoot = tree[0]
+	var delayer: NNBTDelayer = tree[1]
+
+	assert_eq(root.tick(BLACKBOARD, 0.5), NNBTNodes.RUNNING, "The delay must hold the child on the first tick.")
+	assert_eq(leaf.tick_count, 0)
+	assert_almost_eq(delayer.get_time_waited(), 0.5, 0.0001)
+
+	root.set_is_enabled(false)
+	assert_eq(delayer.internal_status, INTERNAL_STATUS_UNTICKED, "Disabling the root must mark the delayer unticked.")
+	root.set_is_enabled(true)
+	assert_eq(delayer.internal_status, INTERNAL_STATUS_UNTICKED, "Re-enabling the root must leave the delayer unticked.")
+
+	# A zero-delta tick runs the reset guard without advancing the timer, so the
+	# cleared partial wait can be observed before the new run accumulates.
+	assert_eq(root.tick(BLACKBOARD, 0.0), NNBTNodes.RUNNING)
+	assert_almost_eq(delayer.get_time_waited(), 0.0, 0.0001, "Disabling the root must clear the partial wait.")
+	assert_eq(leaf.tick_count, 0)
+
+	assert_eq(root.tick(BLACKBOARD, 0.5), NNBTNodes.RUNNING, "The new run must still need the full wait.")
+	assert_eq(leaf.tick_count, 0, "The child must not be ticked during the restarted delay.")
+	assert_almost_eq(delayer.get_time_waited(), 0.5, 0.0001)
+
+	assert_eq(root.tick(BLACKBOARD, 0.5), NNBTNodes.SUCCESS, "The restarted delay must elapse after the full wait.")
+	assert_eq(leaf.tick_count, 1)
+
+	root.free()
+
+
+func test_parent_reset_restarts_delay() -> void:
+	var leaf: CountingLeaf = CountingLeaf.new()
+	leaf.result = NNBTNodes.SUCCESS
+	var root: NNBTRoot = NNBTRoot.new()
+	var sequence: NNBTSequence = NNBTSequence.new()
+	var delayer: NNBTDelayer = NNBTDelayer.new()
+	delayer.wait_time = 1.0
+	delayer.add_child(leaf)
+	sequence.add_child(delayer)
+	root.add_child(sequence)
+
+	assert_eq(root.tick(BLACKBOARD, 0.5), NNBTNodes.RUNNING, "The delay must hold the child on the first tick.")
+	assert_eq(leaf.tick_count, 0)
+	assert_almost_eq(delayer.get_time_waited(), 0.5, 0.0001)
+
+	# NNBTNodes::reset() is not exposed to GDScript, so trigger the parent
+	# sequence's reset() through its enabled lifecycle, which cascades exactly
+	# like an explicit reset of the parent.
+	sequence.set_is_enabled(false)
+	assert_eq(delayer.internal_status, INTERNAL_STATUS_UNTICKED, "A parent reset must mark the delayer unticked.")
+	sequence.set_is_enabled(true)
+
+	# A zero-delta tick runs the reset guard without advancing the timer.
+	assert_eq(root.tick(BLACKBOARD, 0.0), NNBTNodes.RUNNING)
+	assert_almost_eq(delayer.get_time_waited(), 0.0, 0.0001, "A parent reset must clear the partial wait.")
+
+	assert_eq(root.tick(BLACKBOARD, 0.5), NNBTNodes.RUNNING, "The new run must still need the full wait.")
+	assert_eq(leaf.tick_count, 0, "The child must not be ticked during the restarted delay.")
+	assert_almost_eq(delayer.get_time_waited(), 0.5, 0.0001)
+
+	assert_eq(root.tick(BLACKBOARD, 0.5), NNBTNodes.SUCCESS, "The restarted delay must elapse after the full wait.")
+	assert_eq(leaf.tick_count, 1)
 
 	root.free()

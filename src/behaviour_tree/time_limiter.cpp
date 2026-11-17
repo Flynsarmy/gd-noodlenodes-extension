@@ -67,6 +67,14 @@ void NNBTTimeLimiter::reset_bt_node() {
 NNBTNodes::Status NNBTTimeLimiter::_tick(Variant blackboard, float delta) {
 	_report_extra_enabled_child_btnodes();
 
+	// NNBTNodes::reset() only interrupts and marks the node unticked; it does
+	// not call reset_bt_node(). Clear the accumulated time explicitly so a
+	// tree reset (root disable, parent reset) cannot leave a stale _time_spent
+	// that would make the next run time out early.
+	if (get_internal_status() == BT_INTERNAL_STATUS_UNTICKED) {
+		reset_bt_node();
+	}
+
 	// Set the status before ticking the child so a reset rule that starts a
 	// new run cannot discard the delta accumulated by this tick.
 	set_internal_status(BT_INTERNAL_STATUS_TICKED);
