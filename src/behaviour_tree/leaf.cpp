@@ -2,7 +2,7 @@
 
 #include <godot_cpp/classes/engine.hpp>
 #include <godot_cpp/core/class_db.hpp>
-#include <godot_cpp/variant/utility_functions.hpp>
+#include <godot_cpp/core/error_macros.hpp>
 
 using namespace godot;
 
@@ -49,16 +49,17 @@ NNBTNodes::Status NNBTLeaf::tick(Variant blackboard, float delta) {
 	//    _is_first_tick = false;
 	//    emit_signal("btnode_entered", blackboard, delta);
 	//}
-	// GDVIRTUAL dispatches script overrides only; without one the default
-	// status stays FAILURE and the leaf is completed below.
+	// Call the script override directly so the raw Variant is validated before
+	// any Status coercion. A missing override fails every tick and is reported
+	// once per leaf instance.
 	Status return_value = Status::FAILURE;
-	if (!GDVIRTUAL_CALL(on_tick, blackboard, delta, return_value)) {
-		if (!_has_missing_on_tick_reported) {
-			_has_missing_on_tick_reported = true;
-			String node_location = is_inside_tree() ? String(get_path()) : get_name() + String(" (not in tree)");
-			ERR_PRINT(vformat("NNBTLeaf node '%s' (%s) has no on_tick(blackboard: Variant, delta: float) -> Status override. Add on_tick to the node's script; returning FAILURE.", node_location, get_class()));
-		}
-		return_value = Status::FAILURE;
+	Variant result;
+	if (_call_on_tick(blackboard, delta, result)) {
+		return_value = _validate_on_tick_result(result);
+	} else if (!_has_missing_on_tick_reported) {
+		_has_missing_on_tick_reported = true;
+		String node_location = is_inside_tree() ? String(get_path()) : get_name() + String(" (not in tree)");
+		ERR_PRINT(vformat("NNBTLeaf node '%s' (%s) has no on_tick(blackboard: Variant, delta: float) -> Status override. Add on_tick to the node's script; returning FAILURE.", node_location, get_class()));
 	}
 
 	set_tick_result(return_value);
