@@ -70,13 +70,21 @@ void NNBTRepeater::reset_bt_node() {
  * repeat_times == 0 succeeds immediately without ticking the child.
  *
  * Terminal results set BT_INTERNAL_STATUS_COMPLETED so the reset rule in
- * NNBTNodes::set_internal_status() starts a fresh run on the next tick.
+ * NNBTNodes::set_internal_status() starts a fresh run on the next tick. Under
+ * reset_rule Never a completed repeater instead returns its terminal result
+ * and does not re-tick its child until it is explicitly reset or its reset
+ * rule changes.
  */
 NNBTNodes::Status NNBTRepeater::tick(Variant blackboard, float delta) {
 	if (!get_is_enabled() || _child_btnodes.size() == 0)
 		return Status::FAILURE;
 	if (Engine::get_singleton()->is_editor_hint())
 		return Status::FAILURE;
+
+	if (get_internal_status() == BT_INTERNAL_STATUS_COMPLETED &&
+			get_reset_rule() == NNBTNodesResetRule::NEVER) {
+		return get_tick_result();
+	}
 
 	if (get_internal_status() == BT_INTERNAL_STATUS_UNTICKED) {
 		reset_bt_node();
