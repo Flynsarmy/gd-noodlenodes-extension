@@ -48,6 +48,7 @@ NNBTNodes::Status NNBTPassThrough::tick(Variant blackboard, float delta) {
 		}
 
 		Status child_result = btnode->tick(blackboard, delta);
+		set_tick_result(child_result);
 		if (child_result != Status::RUNNING) {
 			set_internal_status(BT_INTERNAL_STATUS_COMPLETED);
 			//emit_signal("btnode_exited", blackboard, delta);
@@ -56,9 +57,12 @@ NNBTNodes::Status NNBTPassThrough::tick(Variant blackboard, float delta) {
 	} //endfor child ndoes
 
 	//}
-	set_internal_status(BT_INTERNAL_STATUS_COMPLETED);
+	Status fallback_result = get_tick_result();
+	if (fallback_result != Status::RUNNING) {
+		set_internal_status(BT_INTERNAL_STATUS_COMPLETED);
+	}
 	//emit_signal("btnode_exited", blackboard, delta);
-	return get_tick_result();
+	return fallback_result;
 }
 
 void NNBTPassThrough::_notification(int p_what) {
