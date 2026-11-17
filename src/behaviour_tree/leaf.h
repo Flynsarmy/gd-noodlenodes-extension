@@ -12,6 +12,7 @@ class NNBTLeaf : public NNBTTaskNodes {
 private:
 	//Callable _tick_method;
 	//int _tick_result;
+	bool _has_missing_on_tick_reported;
 
 protected:
 	static void _bind_methods();
