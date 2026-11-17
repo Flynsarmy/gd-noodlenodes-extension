@@ -5,6 +5,7 @@
 namespace godot {
 
 class NNSTRoot; // Forward declaration
+class NNSTTransition; // Forward declaration
 
 class NNSTTickedNodes : public NNSTBranchNodes {
 	GDCLASS(NNSTTickedNodes, NNSTBranchNodes)
@@ -19,6 +20,33 @@ private:
 	// transition that ends up calling _transition_out() on this same state
 	// again; the flag stops that nested call from recursing.
 	bool _is_exiting;
+	// A state has at most one pending (delayed) transition. It is stored by
+	// instance ID because user code can free the transition while it is
+	// pending, and resolved through ObjectDB before every use.
+	ObjectID _pending_transition_id;
+	float _pending_initial_delay;
+	float _pending_remaining_delay;
+
+	// The result of validating a transition before it is executed. All
+	// pointers are only valid until the next user callback; they are never
+	// dereferenced across one. The lineage is stored by instance ID because the
+	// exit callbacks can free or reparent those nodes.
+	struct TransitionPlan {
+		NNSTTickedNodes *to_state = nullptr;
+		NNSTBranchNodes *common_ancestor = nullptr;
+		NNSTTickedNodes *active_child = nullptr;
+		std::vector<ObjectID> lineage;
+	};
+
+	// Validates a transition without mutating the tree or emitting signals.
+	// The accepted plan is written to r_plan only on success.
+	bool _preflight_transition(NNSTTickedNodes *to_state, TransitionPlan &r_plan);
+	// The single accepted execution path. When transition_to_take is given,
+	// `taken` is emitted as soon as the transition is accepted, before any exit
+	// callback. Rejected transitions emit nothing.
+	bool _transition_to_state(NNSTTickedNodes *to_state, NNSTTransition *transition_to_take);
+	// Performs the exit/enter sequence described by an accepted plan.
+	bool _perform_transition(TransitionPlan &plan);
 
 protected:
 	static void _bind_methods();
@@ -103,6 +131,15 @@ public:
 	virtual void on_enter_state();
 	virtual void on_exit_state();
 	virtual void on_tick(float delta);
+
+	// Delayed transition handling. All of these are internal helpers; the
+	// public entry points are NNSTTransition::take() and send_event().
+	bool _request_transition(NNSTTransition *transition, bool immediately = false);
+	bool _execute_transition(NNSTTransition *transition);
+	void _clear_pending_transition();
+	NNSTTransition *_resolve_pending_transition() const;
+	NNSTTickedNodes *_resolve_transition_target(NNSTTransition *transition) const;
+	void _process_pending_transition(float delta);
 
 	GDVIRTUAL0R(bool, on_enter_condition);
 	GDVIRTUAL0(on_enter_state);

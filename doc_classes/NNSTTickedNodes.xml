@@ -114,5 +114,12 @@
 				Emitted when the state is ticked. Add state update logic to this signal handler.
 			</description>
 		</signal>
+		<signal name="transition_pending">
+			<param index="0" name="initial_delay" type="float" />
+			<param index="1" name="remaining_delay" type="float" />
+			<description>
+				Emitted every tick while a delayed transition is pending for this state. [param initial_delay] is the delay that was requested and [param remaining_delay] is the time left, clamped at [code]0.0[/code] on the tick that takes the transition. Use [method NNSTTransition.take] with [code]immediately[/code] set to [code]false[/code], or give the transition a [member NNSTTransition.delay_in_seconds] value, to queue a transition.
+			</description>
+		</signal>
 	</signals>
 </class>
