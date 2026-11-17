@@ -1,5 +1,6 @@
 #include "ticked_nodes.h"
 #include "expression_util.h"
+#include "history.h"
 #include "parallel.h"
 #include "transition.h"
 #include <state_tree/root.h>
@@ -45,6 +46,23 @@ private:
 	NNSTRoot *_root;
 };
 } // namespace
+
+/**
+ * Drops the Phase A registrations of a history restore that was aborted by an
+ * exiting or entering callback, so the abandoned remembered subtree cannot be
+ * inherited by a later entry. The history is resolved by ID because callbacks
+ * may have freed or moved it.
+ */
+static void _discard_history_registrations(const ObjectID &history_id, const NNSTHistoryStateSnapshot &history_entry) {
+	if (history_id.is_null()) {
+		return;
+	}
+
+	NNSTHistory *history = godot::Object::cast_to<NNSTHistory>(ObjectDB::get_instance(history_id));
+	if (history != nullptr) {
+		history->_discard_registrations(history_entry);
+	}
+}
 
 // Method binds.
 
@@ -521,7 +539,9 @@ bool NNSTTickedNodes::_execute_transition(NNSTTransition *transition) {
 		return false;
 	}
 
-	NNSTTickedNodes *target_state = _resolve_transition_target(transition);
+	ObjectID history_id;
+	NNSTHistoryStateSnapshot history_entry;
+	NNSTTickedNodes *target_state = _resolve_transition_target(transition, history_id, history_entry);
 	if (target_state == nullptr) {
 		ERR_PRINT(vformat("Transition '%s' has an invalid target '%s'.", NNSTExpressionUtil::path_of(transition), transition->get_to()));
 		return false;
@@ -530,15 +550,48 @@ bool NNSTTickedNodes::_execute_transition(NNSTTransition *transition) {
 	// The target existing does not mean the transition can be applied;
 	// _transition_to_state runs the full preflight and only emits `taken` for
 	// an accepted transition.
-	return _transition_to_state(target_state, transition);
+	return _transition_to_state(target_state, transition, history_id, history_entry);
 }
 
-NNSTTickedNodes *NNSTTickedNodes::_resolve_transition_target(NNSTTransition *transition) const {
-	if (transition == nullptr) {
+NNSTTickedNodes *NNSTTickedNodes::_resolve_target_node(Node *target_node, ObjectID &r_history_id, NNSTHistoryStateSnapshot &r_history_entry) const {
+	r_history_id = ObjectID();
+	r_history_entry = NNSTHistoryStateSnapshot();
+
+	NNSTTickedNodes *to_state = Object::cast_to<NNSTTickedNodes>(target_node);
+	if (to_state != nullptr) {
+		return to_state;
+	}
+
+	// A history is a pseudo-state, so it never becomes the target itself. The
+	// first state of its restore snapshot is the entry state; the history
+	// identity and snapshot entry are carried into the plan so the two restore
+	// phases can run inside _perform_transition. A history without a usable
+	// snapshot or default state resolves to null, which leaves the tree
+	// untouched and keeps the normal invalid-target reporting for real
+	// non-state targets.
+	NNSTHistory *history = Object::cast_to<NNSTHistory>(target_node);
+	if (history == nullptr) {
 		return nullptr;
 	}
 
-	return Object::cast_to<NNSTTickedNodes>(transition->get_node_or_null(transition->get_to()));
+	const std::vector<NNSTHistoryStateSnapshot> snapshot = history->_get_restore_snapshot();
+	if (snapshot.empty()) {
+		return nullptr;
+	}
+
+	r_history_id = ObjectID(history->get_instance_id());
+	r_history_entry = snapshot[0];
+	return Object::cast_to<NNSTTickedNodes>(ObjectDB::get_instance(r_history_entry.state_id));
+}
+
+NNSTTickedNodes *NNSTTickedNodes::_resolve_transition_target(NNSTTransition *transition, ObjectID &r_history_id, NNSTHistoryStateSnapshot &r_history_entry) const {
+	if (transition == nullptr) {
+		r_history_id = ObjectID();
+		r_history_entry = NNSTHistoryStateSnapshot();
+		return nullptr;
+	}
+
+	return _resolve_target_node(transition->get_node_or_null(transition->get_to()), r_history_id, r_history_entry);
 }
 
 void NNSTTickedNodes::_process_pending_transition(float delta) {
@@ -689,7 +742,9 @@ bool NNSTTickedNodes::_transition_to_impl(NodePath path_to_node) {
 	// if (!parent) {
 	// 	return false;
 	// }
-	NNSTTickedNodes *to_state = get_node<NNSTTickedNodes>(path_to_node);
+	ObjectID history_id;
+	NNSTHistoryStateSnapshot history_entry;
+	NNSTTickedNodes *to_state = _resolve_target_node(get_node_or_null(path_to_node), history_id, history_entry);
 	if (to_state == nullptr) {
 		return false;
 	}
@@ -698,7 +753,7 @@ bool NNSTTickedNodes::_transition_to_impl(NodePath path_to_node) {
 	// Route through the shared execution path so event-driven, delayed and
 	// automatic transitions all share the same preflight, transition budget,
 	// transaction and `taken` semantics.
-	return _transition_to_state(to_state, nullptr);
+	return _transition_to_state(to_state, nullptr, history_id, history_entry);
 }
 
 bool NNSTTickedNodes::_preflight_transition(NNSTTickedNodes *to_state, TransitionPlan &r_plan) {
@@ -769,7 +824,7 @@ bool NNSTTickedNodes::_preflight_transition(NNSTTickedNodes *to_state, Transitio
 	return true;
 }
 
-bool NNSTTickedNodes::_transition_to_state(NNSTTickedNodes *to_state, NNSTTransition *transition_to_take) {
+bool NNSTTickedNodes::_transition_to_state(NNSTTickedNodes *to_state, NNSTTransition *transition_to_take, const ObjectID &history_id, const NNSTHistoryStateSnapshot &history_entry) {
 	// Callbacks in this transition can send events. Keep them queued until this
 	// transition and every nested transition it causes have finished, even when
 	// it was started directly from GDScript or on_tick() instead of by an
@@ -780,6 +835,8 @@ bool NNSTTickedNodes::_transition_to_state(NNSTTickedNodes *to_state, NNSTTransi
 	if (!_preflight_transition(to_state, plan)) {
 		return false;
 	}
+	plan.history_id = history_id;
+	plan.history_entry = history_entry;
 
 	// Count applied transitions for the root's infinite-loop guard. This runs
 	// after all validation, so rejected transitions are never counted and
@@ -812,6 +869,11 @@ bool NNSTTickedNodes::_transition_to_state(NNSTTickedNodes *to_state, NNSTTransi
 		if (!_preflight_transition(to_state, plan)) {
 			return false;
 		}
+		// The `taken` handler may have replaced the target, but the history
+		// restore identity still belongs to this accepted transition. The
+		// snapshot is re-resolved through its IDs in _perform_transition.
+		plan.history_id = history_id;
+		plan.history_entry = history_entry;
 	}
 
 	return _perform_transition(plan);
@@ -866,6 +928,23 @@ bool NNSTTickedNodes::_perform_transition(TransitionPlan &plan) {
 		}
 	}
 
+	// Phase A (history targets only): pre-register the remembered children on
+	// compound branches, bottom-up and without running user callbacks. The
+	// lineage below then enters the entry state, whose _transition_in() sees a
+	// registered child and short-circuits instead of selecting its own initial
+	// child. The history and every remembered state are resolved again because
+	// the exit callbacks may have freed or moved them. Only the entry state's
+	// subtree is pre-registered; the other top-level entries are not part of
+	// this transition.
+	if (plan.history_id.is_valid()) {
+		NNSTHistory *restored_history = godot::Object::cast_to<NNSTHistory>(ObjectDB::get_instance(plan.history_id));
+		if (restored_history != nullptr) {
+			std::vector<NNSTHistoryStateSnapshot> entry_entries;
+			entry_entries.push_back(plan.history_entry);
+			restored_history->_pre_register(entry_entries);
+		}
+	}
+
 	// Transition in the to_states lineage from the common ancestor down. Each
 	// branch is given its new active child before that child is entered, so a
 	// state's on_enter_state() always sees a consistent tree: its ancestors are
@@ -875,6 +954,7 @@ bool NNSTTickedNodes::_perform_transition(TransitionPlan &plan) {
 	// from a branch that had never been entered and was discarded.
 	NNSTTickedNodes *lineage_first_child = godot::Object::cast_to<NNSTTickedNodes>(ObjectDB::get_instance(lineage[lineage.size() - 2]));
 	if (lineage_first_child == nullptr) {
+		_discard_history_registrations(plan.history_id, plan.history_entry);
 		return _finish_transition(tree_root);
 	}
 	common_ancestor->_add_active_child_state(lineage_first_child);
@@ -883,6 +963,7 @@ bool NNSTTickedNodes::_perform_transition(TransitionPlan &plan) {
 		NNSTBranchNodes *lineage_branch = godot::Object::cast_to<NNSTBranchNodes>(ObjectDB::get_instance(lineage[i]));
 		NNSTTickedNodes *lineage_child = godot::Object::cast_to<NNSTTickedNodes>(ObjectDB::get_instance(lineage[i - 1]));
 		if (lineage_branch == nullptr || lineage_child == nullptr) {
+			_discard_history_registrations(plan.history_id, plan.history_entry);
 			return _finish_transition(tree_root);
 		}
 
@@ -893,6 +974,7 @@ bool NNSTTickedNodes::_perform_transition(TransitionPlan &plan) {
 		// event, so report success.
 		if (lineage_branch->get_internal_status() != ST_INTERNAL_STATUS_ACTIVE ||
 				!_has_active_child_state(lineage_branch, lineage_child)) {
+			_discard_history_registrations(plan.history_id, plan.history_entry);
 			return _finish_transition(tree_root);
 		}
 
@@ -912,6 +994,27 @@ bool NNSTTickedNodes::_perform_transition(TransitionPlan &plan) {
 				lineage_child->set_root(tree_root);
 			}
 			lineage_child->_transition_in();
+		}
+	}
+
+	// Phase B (history targets only): the lineage loop entered the entry state
+	// itself, and its Phase A registration made it short-circuit. Enter the
+	// remembered descendants now, including the inner state of every parallel
+	// region the entry state selected. Everything is resolved again because the
+	// callbacks may have freed or moved nodes.
+	if (plan.history_id.is_valid()) {
+		NNSTHistory *restored_history = godot::Object::cast_to<NNSTHistory>(ObjectDB::get_instance(plan.history_id));
+		NNSTBranchNodes *restored_compound = restored_history != nullptr ? godot::Object::cast_to<NNSTBranchNodes>(restored_history->get_parent()) : nullptr;
+		NNSTTickedNodes *entry_state = godot::Object::cast_to<NNSTTickedNodes>(ObjectDB::get_instance(plan.history_entry.state_id));
+		NNSTBranchNodes *entry_branch = godot::Object::cast_to<NNSTBranchNodes>(entry_state);
+		if (restored_compound != nullptr && entry_branch != nullptr &&
+				restored_compound->get_internal_status() == ST_INTERNAL_STATUS_ACTIVE &&
+				restored_compound->_is_active_child_state(entry_state)) {
+			restored_history->_enter(entry_branch, plan.history_entry.children, tree_root);
+		} else {
+			// The entry state was replaced or the compound exited while it was
+			// being entered. Nothing will consume the pre-registered subtree.
+			_discard_history_registrations(plan.history_id, plan.history_entry);
 		}
 	}
 
@@ -937,6 +1040,13 @@ void NNSTTickedNodes::_transition_out() {
 	// still in progress. The flag makes the nested call a no-op so each state
 	// exits exactly once and on_exit_state() cannot recurse into itself.
 	_is_exiting = true;
+
+	// Only a real exit reaches this point, so derived classes capture state
+	// that the exit is about to destroy exactly once here. A nested exit
+	// requested by an exit callback returns on the guard above and does not
+	// call this hook again.
+	_on_transition_out_begin();
+
 	const std::vector<ObjectID> active_state_ids = _active_states;
 	for (int i = (int)active_state_ids.size() - 1; i >= 0; i--) {
 		// A callback from an earlier child may have already removed this state

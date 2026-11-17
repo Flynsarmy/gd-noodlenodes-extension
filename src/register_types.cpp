@@ -76,6 +76,7 @@
 #include "state_tree/branch_nodes.h"
 #include "state_tree/expression_guard.h"
 #include "state_tree/guard.h"
+#include "state_tree/history.h"
 #include "state_tree/node.h"
 #include "state_tree/nodes.h"
 #include "state_tree/not_guard.h"
@@ -220,6 +221,7 @@ void register_scene_classes() {
 	GDREGISTER_VIRTUAL_CLASS(NNSTTickedNodes);
 	GDREGISTER_CLASS(NNSTRoot);
 	GDREGISTER_CLASS(NNSTNode);
+	GDREGISTER_CLASS(NNSTHistory);
 	GDREGISTER_CLASS(NNSTParallel);
 	GDREGISTER_CLASS(NNSTTransition);
 

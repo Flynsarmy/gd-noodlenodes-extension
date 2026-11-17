@@ -96,7 +96,36 @@ After the initial state has been chosen, the state transitions must be explicitl
 The hierarchy of active states is activated starting from the root node to the leaf node (i.e. going *down* the tree). When a set of states is no longer active, they are exited starting from the leaf node and going up towards the root node (i.e. going *up* the tree). When a transition occurs, only the states that are no longer active are deactivated, and only the states that were not previously active, get activated. 
 
 
-### 3.2 The state handling methods of the state tree nodes
+### 3.2 History states
+
+By default a compound state starts at its *initial state* every time it is entered. Add an **NNSTHistory** child to the compound state when a state should instead continue where it left off. A history state is a pseudo-state: it is not selected, entered or ticked, and it cannot have children. When the compound state is exited, it records its active child state(s) in every history child. Entering the compound again through the history state restores the recorded state(s).
+
+The **Deep** property selects how much is remembered:
+
+ * **Shallow** (`deep = false`) remembers only the compound state's direct active child. That child then selects its own initial state when it is entered again.
+ * **Deep** (`deep = true`) remembers the whole active configuration below the compound state, including every active parallel region, so nested states and all selected regions are restored.
+
+A remembered state that no longer exists only drops its own branch: the rest of the configuration, including sibling parallel regions, still restores. The **Default State** property is used only when the compound state's remembered direct child itself can no longer be restored. It must point at a state node inside the same compound state, for example `../Idle`. It may also name a descendant of the compound state, in which case that whole chain is entered regardless of **Deep**.
+
+There are two ways to enter a compound state through its history:
+
+ * Transition to the history node explicitly, e.g. `transition_to("../Combat/History")`.
+ * Set the compound state's **Initial State** to the history node. Every entry into the compound state then goes through the history.
+
+```gdscript
+# Under the "Combat" compound state:
+#   Idle, Attack (state nodes)
+#   History (NNSTHistory, deep = false, default_state = "../Idle")
+
+# Called from another state after leaving Combat earlier.
+func resume_combat() -> void:
+	transition_to("../Combat/History")
+```
+
+With the setup above, leaving `Combat` while `Attack` is active and then transitioning to `Combat/History` enters `Attack` again. With `deep` enabled, the active descendants of `Attack` are restored too, including every active parallel region below it. If the remembered direct child no longer exists, `History` falls back to `Idle`; if there is no usable remembered state and no valid default state, the transition fails and the tree is left unchanged.
+
+
+### 3.3 The state handling methods of the state tree nodes
 
 To handle state transitioning, entering, exiting and updating the states, four state handling methods can be defined for the state nodes: 
 

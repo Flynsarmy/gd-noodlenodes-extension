@@ -31,7 +31,7 @@
 	</tutorials>
 	<members>
 		<member name="initial_state" type="NodePath" setter="set_initial_state" getter="get_initial_state" default="NodePath(&quot;&quot;)">
-			Optional. Must be a direct child. If set, this will be the first child evaluated when looking for a state to enter, followed by all other children in the order they appear in the tree.
+			Optional. Must be a direct child. If set, this will be the first child evaluated when looking for a state to enter, followed by all other children in the order they appear in the tree. It may also point at an [NNSTHistory] child, in which case this state restores the history's remembered or default state(s) instead of running normal child selection.
 		</member>
 	</members>
 </class>

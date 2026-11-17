@@ -113,6 +113,11 @@ public:
 
 	virtual void _transition_in() {};
 	virtual std::vector<NNSTTickedNodes *> _get_active_child_states() const;
+	// ID-based counterparts of the active state helpers below, used by
+	// NNSTHistory so a snapshot never holds a cached pointer. Both re-validate
+	// every child before answering.
+	std::vector<ObjectID> _get_active_state_ids() const;
+	bool _is_active_child_state(NNSTTickedNodes *child_state) const;
 	virtual void _add_active_child_state(NNSTTickedNodes *child_state);
 	virtual void _remove_active_child_state(NNSTTickedNodes *child_state);
 	// Called from a child's NOTIFICATION_PREDELETE so a destroyed node cannot

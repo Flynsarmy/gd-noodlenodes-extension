@@ -1,6 +1,7 @@
 #pragma once
 
 #include "branch_nodes.h"
+#include "history.h"
 #include <cstdint>
 
 namespace godot {
@@ -37,6 +38,14 @@ private:
 		NNSTBranchNodes *common_ancestor = nullptr;
 		NNSTTickedNodes *active_child = nullptr;
 		std::vector<ObjectID> lineage;
+
+		// Set when the transition target was an NNSTHistory. `to_state` is the
+		// first state of its restore snapshot; the history identity and the
+		// snapshot entry are captured before the exit and re-resolved through
+		// their IDs in _perform_transition, because exit callbacks can free or
+		// move the history, the entry state and any remembered descendant.
+		ObjectID history_id;
+		NNSTHistoryStateSnapshot history_entry;
 	};
 
 	// Validates a transition without mutating the tree or emitting signals.
@@ -45,7 +54,7 @@ private:
 	// The single accepted execution path. When transition_to_take is given,
 	// `taken` is emitted as soon as the transition is accepted, before any exit
 	// callback. Rejected transitions emit nothing.
-	bool _transition_to_state(NNSTTickedNodes *to_state, NNSTTransition *transition_to_take);
+	bool _transition_to_state(NNSTTickedNodes *to_state, NNSTTransition *transition_to_take, const ObjectID &history_id, const NNSTHistoryStateSnapshot &history_entry);
 	// Performs the exit/enter sequence described by an accepted plan.
 	bool _perform_transition(TransitionPlan &plan);
 
@@ -158,6 +167,12 @@ public:
 
 	virtual void _transition_in() override;
 	virtual void _transition_out();
+	// Called once when a real exit begins: after the inactive and reentrancy
+	// guards have passed and before the active children are exited. A nested
+	// exit requested by a callback while this state is already exiting does not
+	// call it again, so derived classes can capture state that the exit is
+	// about to destroy exactly once.
+	virtual void _on_transition_out_begin() {};
 
 	virtual bool on_enter_condition();
 	virtual void on_enter_state();
@@ -170,7 +185,12 @@ public:
 	bool _execute_transition(NNSTTransition *transition);
 	void _clear_pending_transition();
 	NNSTTransition *_resolve_pending_transition() const;
-	NNSTTickedNodes *_resolve_transition_target(NNSTTransition *transition) const;
+	// Resolves a node to a state. An NNSTHistory node resolves to the first
+	// state of its restore snapshot and reports the history identity and
+	// snapshot entry through the out parameters. Shared by path transitions
+	// and transition resources so immediate, event and delayed paths agree.
+	NNSTTickedNodes *_resolve_target_node(Node *target_node, ObjectID &r_history_id, NNSTHistoryStateSnapshot &r_history_entry) const;
+	NNSTTickedNodes *_resolve_transition_target(NNSTTransition *transition, ObjectID &r_history_id, NNSTHistoryStateSnapshot &r_history_entry) const;
 	void _process_pending_transition(float delta);
 
 	GDVIRTUAL0R(bool, on_enter_condition);

@@ -62,7 +62,7 @@
 		<member name="guard" type="NNSTGuard" setter="set_guard" getter="get_guard">
 		</member>
 		<member name="to" type="NodePath" setter="set_to" getter="get_to" default="NodePath(&quot;&quot;)">
-			[NodePath] to target node.
+			[NodePath] to target node. The target can also be an [NNSTHistory] child of the state this transition belongs to, for example [code]../History[/code]. In that case the state the history remembers (or its default state) is entered instead.
 		</member>
 	</members>
 	<signals>

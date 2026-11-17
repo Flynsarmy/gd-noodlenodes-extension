@@ -26,6 +26,7 @@ public:
 	// Handling functions.
 	virtual void _evaluate_child_activations(std::vector<ObjectID> &nodes) override;
 	virtual void _transition_in() override;
+	virtual void _on_transition_out_begin() override;
 };
 
 } //namespace godot
