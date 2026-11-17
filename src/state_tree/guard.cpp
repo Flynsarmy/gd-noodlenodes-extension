@@ -1,6 +1,7 @@
 #include "guard.h"
 #include <godot_cpp/classes/expression.hpp>
 #include <godot_cpp/classes/node.hpp>
+#include <godot_cpp/classes/script.hpp>
 #include <godot_cpp/variant/string.hpp>
 
 using namespace godot;
@@ -14,6 +15,15 @@ void NNSTGuard::_bind_methods() {
 }
 
 bool NNSTGuard::is_satisfied(NNSTTransition *p_transition, NNSTTickedNodes *p_state) {
+	// Guards are typically customised from GDScript. A script method cannot
+	// participate in native virtual dispatch, so call the override explicitly
+	// when the resource's script provides one.
+	Object *script_object = get_script();
+	Script *script = godot::Object::cast_to<Script>(script_object);
+	if (script != nullptr && script->has_script_method("is_satisfied")) {
+		return call("is_satisfied", p_transition, p_state);
+	}
+
 	print_error("Guard.is_satisfied() is not implemented. Did you forget to override it?");
 	return false;
 }

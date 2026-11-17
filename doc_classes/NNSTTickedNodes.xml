@@ -73,6 +73,7 @@
 			<param index="0" name="new_state_nodepath" type="NodePath" />
 			<description>
 				Transitions between states in the Stae Tree. Requires a [NodePath] (relative to the node calling this method) for the target state. During a transition, all active children of the *from* state will be exited and any children of the *to* state will be evaluated for entering. Returns [code]true[/code] if the transition was applied, or [code]false[/code] if it could not be (for example an invalid target, an inapplicable guard, or a branch that has not been entered yet).
+				The transition runs synchronously, including the [method on_exit_state] and [method on_enter_state] callbacks of the states it leaves and enters. Events sent from those callbacks with [method NNSTBranchNodes.send_event] are queued on the [NNSTRoot] and only processed after this transition and every nested transition it caused have finished.
 			</description>
 		</method>
 	</methods>
@@ -86,6 +87,12 @@
 		</member>
 	</members>
 	<signals>
+		<signal name="event_received">
+			<param index="0" name="name" type="String" />
+			<description>
+				Emitted when this state receives an event sent with [method NNSTBranchNodes.send_event]. The event is delivered to the innermost active state first and bubbles up until a state consumes it, so a state only receives an event that reached it through its active child chain.
+			</description>
+		</signal>
 		<signal name="state_check_enter_condition">
 			<description>
 				Emitted when the the [method on_enter_condition] check needs to be done. The signal must call the [method set_on_entered_condition] method with either [code]true[/code] or [code]false[/code] as the parameter to indicate if the state should be entered or not.

@@ -33,7 +33,12 @@ public:
 	void set_guard(const Ref<NNSTGuard> &p_guard);
 
 	// Handling functions.
+	// Evaluates the guard using this transition's parent as the state context.
 	virtual bool _can_transition();
+	// Evaluates the guard with an explicit state context. Root-level
+	// transitions are not children of a state, so the root passes one of its
+	// active children instead.
+	virtual bool _can_transition(NNSTTickedNodes *p_state);
 };
 
 } //namespace godot

@@ -1,11 +1,13 @@
 #include "root.h"
 #include "../agent_behaviours/sensors.h"
 #include "nodes.h"
+#include "transition.h"
 
 #include "../performance_monitor_singleton.h"
 #include <godot_cpp/classes/engine.hpp>
 #include <godot_cpp/classes/time.hpp>
 #include <godot_cpp/core/class_db.hpp>
+#include <godot_cpp/core/object.hpp>
 #ifdef DEBUG_ENABLED
 #include "../debugger/debugger_overlay.h"
 #include <vector>
@@ -42,6 +44,8 @@ void NNSTRoot::_bind_methods() {
 	// ClassDB::bind_method(D_METHOD("get_active_states"), &NNSTRoot::get_active_states);
 
 	ClassDB::bind_method(D_METHOD("get_child_sensors"), &NNSTRoot::get_child_sensors);
+
+	ADD_SIGNAL(MethodInfo("event_received", PropertyInfo(Variant::STRING, "name")));
 }
 
 // Constructor and destructor.
@@ -50,6 +54,11 @@ NNSTRoot::NNSTRoot() {
 #ifdef DEBUG_ENABLED
 	_total_tick_usec = 0;
 #endif
+
+	_is_processing_events = false;
+	_event_processing_halted = false;
+	_transitions_this_processing_pass = 0;
+	_transition_transaction_depth = 0;
 
 	_child_sensors.clear();
 	_num_child_sensors = 0;
@@ -92,6 +101,9 @@ void NNSTRoot::tick(float delta) {
 
 	if (_num_active_states == 0) {
 		_needs_reselection = false;
+		// Entering the initial states runs on_enter_state() callbacks. Events
+		// they send must wait until the whole transition in has finished.
+		TransitionTransaction transition_transaction(this);
 		_transition_in();
 	}
 
@@ -125,14 +137,286 @@ void NNSTRoot::tick(float delta) {
 }
 
 void NNSTRoot::send_event(String name) {
-	const std::vector<ObjectID> active_state_ids = _active_states;
-	for (unsigned int i = 0; i < active_state_ids.size(); i++) {
-		NNSTTickedNodes *stnode = _get_active_state(active_state_ids[i]);
-		if (stnode == nullptr) {
+	// The chart is invalid once a processing pass has been aborted.
+	if (_event_processing_halted) {
+		return;
+	}
+
+	_event_queue.push_back(name);
+	_try_drain_event_queue();
+}
+
+void NNSTRoot::_try_drain_event_queue() {
+	// An in-flight event dispatch owns the queue: a send_event() from inside a
+	// callback is queued and processed after the current event, including its
+	// bubbling to ancestors, has finished.
+	if (_is_processing_events) {
+		return;
+	}
+
+	// A transition cascade owns the queue too. Processing an event now would
+	// run callbacks in the middle of the transition that is still on the stack,
+	// so wait for the outermost cascade to end.
+	if (_transition_transaction_depth > 0) {
+		return;
+	}
+
+	if (_event_processing_halted) {
+		_event_queue.clear();
+		return;
+	}
+
+	// One processing pass is the whole drain: the transition budget is only
+	// reset when the queue is empty and the outermost send_event() returns.
+	_is_processing_events = true;
+	_transitions_this_processing_pass = 0;
+
+	while (!_event_queue.empty()) {
+		if (_event_processing_halted) {
+			break;
+		}
+
+		String event_name = _event_queue.front();
+		_event_queue.erase(_event_queue.begin());
+
+		// The chart receives the event before any of its states do.
+		emit_signal("event_received", event_name);
+
+		bool consumed = false;
+		const std::vector<ObjectID> active_state_ids = _active_states;
+		for (unsigned int i = 0; i < active_state_ids.size(); i++) {
+			NNSTTickedNodes *state = _get_active_state(active_state_ids[i]);
+			if (state == nullptr) {
+				continue;
+			}
+
+			if (state->_dispatch_event(event_name)) {
+				consumed = true;
+				break;
+			}
+
+			if (_event_processing_halted) {
+				break;
+			}
+		}
+
+		// The root is the last state to see the event. Its own transitions only
+		// run when no active child consumed it.
+		if (!consumed && !_event_processing_halted) {
+			_try_root_event_transitions(event_name);
+		}
+	}
+
+	if (_event_processing_halted) {
+		// Never process events queued behind a runaway pass.
+		_event_queue.clear();
+	}
+	_is_processing_events = false;
+}
+
+NNSTRoot::TransitionTransaction::TransitionTransaction(NNSTRoot *p_root) :
+		_root_id(p_root != nullptr ? ObjectID(p_root->get_instance_id()) : ObjectID()) {
+	if (p_root != nullptr) {
+		p_root->_transition_transaction_depth++;
+	}
+}
+
+NNSTRoot::TransitionTransaction::~TransitionTransaction() {
+	if (_root_id.is_null()) {
+		return;
+	}
+
+	// A callback may have freed the chart root while the transition was in
+	// flight; never dereference a stale pointer.
+	NNSTRoot *tree_root = godot::Object::cast_to<NNSTRoot>(ObjectDB::get_instance(_root_id));
+	if (tree_root != nullptr) {
+		tree_root->_end_transition_transaction();
+	}
+}
+
+void NNSTRoot::_end_transition_transaction() {
+	if (_transition_transaction_depth > 0) {
+		_transition_transaction_depth--;
+	}
+
+	if (_transition_transaction_depth > 0) {
+		return;
+	}
+
+	// The outermost transition and all of its callbacks have finished, so the
+	// events queued from inside them can be processed now. An event dispatch
+	// still owns the queue and this returns without doing anything.
+	_try_drain_event_queue();
+}
+
+bool NNSTRoot::_register_applied_transition() {
+	if (_event_processing_halted) {
+		return false;
+	}
+
+	// Transitions applied outside an event processing pass (for example from
+	// on_tick()) are not part of a pass and are not counted.
+	if (!_is_processing_events) {
+		return true;
+	}
+
+	_transitions_this_processing_pass++;
+	if (_transitions_this_processing_pass <= MAX_PROCESSING_PASS_TRANSITIONS) {
+		return true;
+	}
+
+	_event_processing_halted = true;
+	_event_queue.clear();
+	ERR_PRINT(vformat("NNSTRoot: infinite loop detected: more than %d transitions in one processing pass. Aborting event processing; the state tree is now invalid.", MAX_PROCESSING_PASS_TRANSITIONS));
+	return false;
+}
+
+bool NNSTRoot::get_is_event_processing_halted() const {
+	return _event_processing_halted;
+}
+
+bool NNSTRoot::_is_active_child_activation_valid(ObjectID p_state_id, uint64_t p_epoch) const {
+	if (p_state_id.is_null()) {
+		// The root had no active child when its guard started. A child that
+		// appeared since then means the guard transitioned the chart.
+		return _get_active_child_states().empty();
+	}
+
+	NNSTTickedNodes *state = _get_active_state(p_state_id);
+	return state != nullptr && state->get_activation_epoch() == p_epoch;
+}
+
+bool NNSTRoot::_try_root_event_transitions(const String &name) {
+	const std::vector<ObjectID> transition_ids = _get_matching_transition_ids(name);
+	for (unsigned int i = 0; i < transition_ids.size(); i++) {
+		ObjectID transition_id = transition_ids[i];
+		NNSTTransition *transition = godot::Object::cast_to<NNSTTransition>(ObjectDB::get_instance(transition_id));
+		if (transition == nullptr || transition->get_parent() != this) {
 			continue;
 		}
-		stnode->send_event(name);
+
+		// A declining transition (failed guard) does not consume the event.
+		// The root is not a state in the tree, so guards that need the chart
+		// root are evaluated with the active child as their state context.
+		NNSTTickedNodes *guard_state = nullptr;
+		const std::vector<ObjectID> active_state_ids = _active_states;
+		for (unsigned int j = 0; j < active_state_ids.size(); j++) {
+			guard_state = _get_active_state(active_state_ids[j]);
+			if (guard_state != nullptr) {
+				break;
+			}
+		}
+
+		// The guard is user code and may transition the chart. Capture the
+		// child it was evaluated against so a stale root transition is not
+		// applied if the chart moved on.
+		const ObjectID guard_state_id = guard_state != nullptr ? ObjectID(guard_state->get_instance_id()) : ObjectID();
+		const uint64_t guard_state_epoch = guard_state != nullptr ? guard_state->get_activation_epoch() : 0;
+
+		if (!transition->_can_transition(guard_state)) {
+			// A replaced activation also abandons the remaining root
+			// transitions: the chart already handled the event itself.
+			if (!_is_active_child_activation_valid(guard_state_id, guard_state_epoch)) {
+				return false;
+			}
+			continue;
+		}
+
+		// The guard may have transitioned the chart even though it returned
+		// true. Never apply the transition for a stale active child.
+		if (!_is_active_child_activation_valid(guard_state_id, guard_state_epoch)) {
+			return false;
+		}
+
+		// Guards run user code which may free or reparent this transition.
+		transition = godot::Object::cast_to<NNSTTransition>(ObjectDB::get_instance(transition_id));
+		if (transition == nullptr || transition->get_parent() != this) {
+			continue;
+		}
+
+		// The transition's target is authored relative to the transition node,
+		// which is a child of this root, so it is one level deep.
+		Node *target_node = get_node_or_null(transition->get_to().slice(1));
+		NNSTTickedNodes *to_state = godot::Object::cast_to<NNSTTickedNodes>(target_node);
+		if (to_state == nullptr) {
+			continue;
+		}
+
+		if (_run_transition_to(to_state)) {
+			return true;
+		}
+
+		if (_event_processing_halted) {
+			return false;
+		}
 	}
+
+	return false;
+}
+
+/**
+ * Collects the active state IDs of a subtree, deepest first. Used by
+ * _run_transition_to() because a root transition has to be started from a
+ * state that is not an ancestor of the target.
+ */
+static void _collect_active_states_deepest_first(NNSTTickedNodes *state, std::vector<ObjectID> &states) {
+	const std::vector<NNSTTickedNodes *> active_children = state->_get_active_child_states();
+	for (unsigned int i = 0; i < active_children.size(); i++) {
+		if (active_children[i] != nullptr) {
+			_collect_active_states_deepest_first(active_children[i], states);
+		}
+	}
+	if (state != nullptr) {
+		states.push_back(ObjectID(state->get_instance_id()));
+	}
+}
+
+bool NNSTRoot::_run_transition_to(NNSTTickedNodes *to_state) {
+	if (to_state == nullptr) {
+		return false;
+	}
+
+	// A candidate transition below runs user callbacks that may free the
+	// target, so keep only its instance ID between attempts.
+	const ObjectID to_state_id = ObjectID(to_state->get_instance_id());
+
+	// Snapshot the active children: transition_to() runs user callbacks that
+	// can free or replace them.
+	const std::vector<ObjectID> active_state_ids = _active_states;
+	for (unsigned int i = 0; i < active_state_ids.size(); i++) {
+		NNSTTickedNodes *active_state = _get_active_state(active_state_ids[i]);
+		if (active_state == nullptr) {
+			continue;
+		}
+
+		std::vector<ObjectID> candidates;
+		_collect_active_states_deepest_first(active_state, candidates);
+
+		for (unsigned int j = 0; j < candidates.size(); j++) {
+			NNSTTickedNodes *from_state = godot::Object::cast_to<NNSTTickedNodes>(ObjectDB::get_instance(candidates[j]));
+			NNSTTickedNodes *target = godot::Object::cast_to<NNSTTickedNodes>(ObjectDB::get_instance(to_state_id));
+			if (from_state == nullptr || target == nullptr || from_state == target) {
+				continue;
+			}
+
+			// The existing transition logic cannot start from an ancestor of
+			// the target (or descend into an ancestor), so try a state that is
+			// unrelated to it. The deepest such state is tried first.
+			if (from_state->is_ancestor_of(target) || target->is_ancestor_of(from_state)) {
+				continue;
+			}
+
+			if (from_state->transition_to(from_state->get_path_to(target))) {
+				return true;
+			}
+
+			if (_event_processing_halted) {
+				return false;
+			}
+		}
+	}
+
+	return false;
 }
 
 /**
@@ -268,6 +552,9 @@ void NNSTRoot::_notification(int p_what) {
 		// transitioned out on purpose, so its owner decides when to re-enter it.
 		if (is_inside_tree() && !_last_notification_had_child_removal && !_needs_reselection &&
 				(p_what == NOTIFICATION_READY || _internal_status == ST_INTERNAL_STATUS_ACTIVE)) {
+			// on_enter_state() callbacks run inside this transition in; events
+			// they send are queued until it has finished.
+			TransitionTransaction transition_transaction(this);
 			_transition_in();
 		}
 

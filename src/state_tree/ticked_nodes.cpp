@@ -1,8 +1,10 @@
 #include "ticked_nodes.h"
 #include "parallel.h"
+#include "transition.h"
 #include <state_tree/root.h>
 #include <godot_cpp/classes/engine.hpp>
 #include <godot_cpp/classes/time.hpp>
+#include <godot_cpp/core/object.hpp>
 
 using namespace godot;
 
@@ -52,6 +54,7 @@ void NNSTTickedNodes::_bind_methods() {
 	ADD_SIGNAL(MethodInfo("state_entered"));
 	ADD_SIGNAL(MethodInfo("state_ticked", PropertyInfo(Variant::FLOAT, "delta")));
 	ADD_SIGNAL(MethodInfo("state_exited"));
+	ADD_SIGNAL(MethodInfo("event_received", PropertyInfo(Variant::STRING, "name")));
 }
 
 // Constructor and destructor.
@@ -126,30 +129,205 @@ bool NNSTTickedNodes::get_is_on_entered_condition_true() const {
 
 // Handling methods.
 
+NNSTRoot *NNSTTickedNodes::_resolve_tree_root() const {
+	// A reparented state can still hold the root of its previous chart until
+	// the new parent's child order notification updates it. Only trust the
+	// cached root while it is actually an ancestor.
+	if (_root != nullptr && _root->is_ancestor_of(const_cast<NNSTTickedNodes *>(this))) {
+		return _root;
+	}
+
+	Node *node = get_parent();
+	while (node != nullptr) {
+		NNSTRoot *root = godot::Object::cast_to<NNSTRoot>(node);
+		if (root != nullptr) {
+			return root;
+		}
+		node = node->get_parent();
+	}
+	return nullptr;
+}
+
+NNSTTickedNodes::ActivationIdentity NNSTTickedNodes::_capture_activation_identity() const {
+	ActivationIdentity identity;
+	identity.epoch = get_activation_epoch();
+
+	const Node *parent = get_parent();
+	identity.parent_id = parent != nullptr ? ObjectID(parent->get_instance_id()) : ObjectID();
+
+	const NNSTRoot *tree_root = _resolve_tree_root();
+	identity.root_id = tree_root != nullptr ? ObjectID(tree_root->get_instance_id()) : ObjectID();
+
+	return identity;
+}
+
+bool NNSTTickedNodes::_is_dispatch_activation_valid(uint64_t p_epoch, ObjectID p_parent_id, ObjectID p_root_id) const {
+	if (get_activation_epoch() != p_epoch) {
+		return false;
+	}
+
+	if (_internal_status != ST_INTERNAL_STATUS_ACTIVE) {
+		return false;
+	}
+
+	// A state reparented out of the chart can stay ACTIVE until the tree
+	// notices, so membership is part of the activation's identity.
+	if (!is_inside_tree()) {
+		return false;
+	}
+
+	const Node *parent = get_parent();
+	if (parent == nullptr || ObjectID(parent->get_instance_id()) != p_parent_id) {
+		return false;
+	}
+
+	const NNSTRoot *tree_root = _resolve_tree_root();
+	const ObjectID root_id = tree_root != nullptr ? ObjectID(tree_root->get_instance_id()) : ObjectID();
+	return root_id == p_root_id;
+}
+
 void NNSTTickedNodes::send_event(String name) {
-	// Try every transition with this event name in child order. A transition
-	// that matches by name can still decline (failed guard, stale target), in
-	// which case the remaining transitions, and then the active children,
-	// still get a chance to handle the event.
-	for (unsigned int i = 0; i < _num_child_transitions; i++) {
-		if (_child_transitions[i]->get_event_name() != name) {
+	// Events belong to the chart. Route them through the root so they are
+	// queued and processed in order, even when a callback sends one while
+	// another event is still being processed.
+	NNSTRoot *tree_root = _resolve_tree_root();
+	if (tree_root != nullptr) {
+		tree_root->send_event(name);
+		return;
+	}
+
+	// Detached subtree: there is no chart to queue the event, so dispatch it
+	// directly to this state.
+	_dispatch_event(name);
+}
+
+bool NNSTTickedNodes::_dispatch_event(const String &name) {
+	NNSTRoot *tree_root = _resolve_tree_root();
+	if (tree_root != nullptr && tree_root->get_is_event_processing_halted()) {
+		return true;
+	}
+
+	// The signal callback is user code: it may transition this state out (and
+	// possibly back in) or reparent it. Capture the activation it started from
+	// so a stale activation cannot keep dispatching.
+	const ActivationIdentity activation = _capture_activation_identity();
+
+	// The state receives the event before it or its children consume it.
+	emit_signal("event_received", name);
+
+	// The callback already consumed/redirected this event. Do not evaluate
+	// this state's transitions, and report it consumed so ancestors stop too.
+	if (!_is_dispatch_activation_valid(activation)) {
+		return true;
+	}
+
+	// Innermost active states get the first chance to handle the event.
+	if (_dispatch_event_to_children(name)) {
+		return true;
+	}
+
+	// A child callback may have exited this state (or replaced its activation).
+	if (!_is_dispatch_activation_valid(activation)) {
+		return true;
+	}
+
+	// Only handle the event here if no active child consumed it.
+	return _handle_event(name);
+}
+
+bool NNSTTickedNodes::_dispatch_event_to_children(const String &name) {
+	// Snapshot the IDs because an event handler may free, remove or reparent
+	// active siblings while the event is being delivered.
+	const std::vector<ObjectID> active_state_ids = _active_states;
+
+	// A child callback can exit, re-enter or reparent this state. Capture the
+	// activation so the loop cannot deliver the event on behalf of a parent
+	// that is no longer the same live activation.
+	const ActivationIdentity activation = _capture_activation_identity();
+
+	for (unsigned int i = 0; i < active_state_ids.size(); i++) {
+		NNSTTickedNodes *state = _get_active_state(active_state_ids[i]);
+		if (state == nullptr) {
 			continue;
 		}
-		if (!_child_transitions[i]->_can_transition()) {
-			continue;
+
+		if (state->_dispatch_event(name)) {
+			return true;
 		}
-		if (transition_to(_child_transitions[i]->get_to().slice(1))) {
-			return;
+
+		// Do not deliver the event to stale sibling states or handle it here
+		// once the child's callbacks have transitioned this activation away.
+		if (!_is_dispatch_activation_valid(activation)) {
+			return true;
+		}
+
+		NNSTRoot *tree_root = _resolve_tree_root();
+		if (tree_root != nullptr && tree_root->get_is_event_processing_halted()) {
+			return true;
 		}
 	}
 
-	const std::vector<ObjectID> active_state_ids = _active_states;
-	for (unsigned int i = 0; i < active_state_ids.size(); i++) {
-		NNSTTickedNodes *state = _get_active_state(active_state_ids[i]);
-		if (state != nullptr) {
-			state->send_event(name);
+	return false;
+}
+
+bool NNSTTickedNodes::_handle_event(const String &name) {
+	const std::vector<ObjectID> transition_ids = _get_matching_transition_ids(name);
+
+	// Every guard and transition below is user code that can exit, re-enter or
+	// reparent this state. Capture the activation first and stop as soon as it
+	// is no longer the same live activation.
+	const ActivationIdentity activation = _capture_activation_identity();
+
+	for (unsigned int i = 0; i < transition_ids.size(); i++) {
+		ObjectID transition_id = transition_ids[i];
+		NNSTTransition *transition = godot::Object::cast_to<NNSTTransition>(ObjectDB::get_instance(transition_id));
+		if (transition == nullptr || transition->get_parent() != this) {
+			continue;
+		}
+
+		// A declining transition (failed guard) does not consume the event, so
+		// the remaining transitions still get a chance. The guard itself is
+		// user code, though, and may have transitioned this state away: a
+		// stale activation stops the event here.
+		if (!transition->_can_transition()) {
+			if (!_is_dispatch_activation_valid(activation)) {
+				return true;
+			}
+			continue;
+		}
+
+		// The guard may have transitioned this state even when it returned
+		// true. Never apply the transition on behalf of a stale activation.
+		if (!_is_dispatch_activation_valid(activation)) {
+			return true;
+		}
+
+		// The guard runs user code which may free or reparent this transition.
+		// Re-resolve it before reading its target.
+		transition = godot::Object::cast_to<NNSTTransition>(ObjectDB::get_instance(transition_id));
+		if (transition == nullptr || transition->get_parent() != this) {
+			continue;
+		}
+
+		// Transitions and guards may have reparented this state; check again
+		// immediately before applying the transition.
+		if (!_is_dispatch_activation_valid(activation)) {
+			return true;
+		}
+
+		if (transition_to(transition->get_to().slice(1))) {
+			return true;
+		}
+
+		// A transition_to() that reports failure may still have run callbacks
+		// that replaced this activation. If so, stop; otherwise the remaining
+		// transitions keep their chance.
+		if (!_is_dispatch_activation_valid(activation)) {
+			return true;
 		}
 	}
+
+	return false;
 }
 
 float NNSTTickedNodes::evaluate() {
@@ -244,6 +422,12 @@ bool NNSTTickedNodes::transition_to(NodePath path_to_node) {
 		return false;
 	}
 
+	// Callbacks in this transition can send events. Keep them queued until this
+	// transition and every nested transition it causes have finished, even when
+	// it was started directly from GDScript or on_tick() instead of by an
+	// event. The outermost scope drains the queue.
+	NNSTRoot::TransitionTransaction transition_transaction(_resolve_tree_root());
+
 	// Re-entering any part of an exiting lineage would be undone by the
 	// outer exit, potentially leaving active descendants of an inactive state.
 	for (Node *ancestor = to_state; ancestor != nullptr; ancestor = ancestor->get_parent()) {
@@ -300,6 +484,17 @@ bool NNSTTickedNodes::transition_to(NodePath path_to_node) {
 
 	const ObjectID common_ancestor_id = ObjectID(common_ancestor->get_instance_id());
 
+	// Count applied transitions for the root's infinite-loop guard. The whole
+	// transition cascade below runs synchronously to completion, so the root
+	// only needs a ledger to notice an event processing pass that never
+	// settles. This runs after all validation, so rejected transitions are
+	// never counted. The root may reject the transition to abort a runaway
+	// pass; in that case the tree has not been mutated yet.
+	NNSTRoot *tree_root = _resolve_tree_root();
+	if (tree_root != nullptr && !tree_root->_register_applied_transition()) {
+		return false;
+	}
+
 	// Transition out the from_states lineage. The child stays registered as the
 	// common ancestor's active child until its exit completes. An on_exit_state()
 	// callback is allowed to request a transition to a sibling; that nested
@@ -348,13 +543,9 @@ bool NNSTTickedNodes::transition_to(NodePath path_to_node) {
 	}
 	common_ancestor->_add_active_child_state(lineage_first_child);
 
-	// The root node itself has no root pointer. Resolve it from the common
-	// ancestor so the entered states still receive the tree root.
-	NNSTRoot *tree_root = get_root();
-	if (tree_root == nullptr) {
-		tree_root = godot::Object::cast_to<NNSTRoot>(common_ancestor);
-	}
-
+	// The root node itself has no root pointer. tree_root above already
+	// resolves the chart root from the parent chain when set_root() has not
+	// run yet, so the entered states still receive the tree root.
 	for (int i = (int)lineage.size() - 1; i >= 1; i--) {
 		NNSTBranchNodes *lineage_branch = godot::Object::cast_to<NNSTBranchNodes>(ObjectDB::get_instance(lineage[i]));
 		NNSTTickedNodes *lineage_child = godot::Object::cast_to<NNSTTickedNodes>(ObjectDB::get_instance(lineage[i - 1]));
@@ -454,6 +645,9 @@ void NNSTTickedNodes::on_tick(float delta) {
 	// normal selection now that the tree is in a safe state.
 	if (_needs_reselection && _internal_status == ST_INTERNAL_STATUS_ACTIVE && _active_states.empty()) {
 		_needs_reselection = false;
+		// Events sent from the on_enter_state() callbacks of the states this
+		// transition in enters wait until it has finished.
+		NNSTRoot::TransitionTransaction transition_transaction(_resolve_tree_root());
 		_transition_in();
 	}
 
@@ -512,6 +706,9 @@ void NNSTTickedNodes::_notification(int p_what) {
 		// states. A node that has already left the tree (for example while its
 		// parent is being freed) must not enter states either.
 		if (_internal_status == ST_INTERNAL_STATUS_ACTIVE && is_inside_tree() && !_last_notification_had_child_removal && !_needs_reselection) {
+			// on_enter_state() callbacks run inside this transition in; events
+			// they send are queued until it has finished.
+			NNSTRoot::TransitionTransaction transition_transaction(_resolve_tree_root());
 			_transition_in();
 		}
 	}

@@ -23,6 +23,29 @@ private:
 protected:
 	static void _bind_methods();
 
+	// Identity of an activation captured immediately before user callbacks run.
+	// The epoch alone is not enough: a state can be exited and synchronously
+	// re-entered (changing the epoch) or reparented out of the chart while
+	// still reporting ACTIVE, so the parent and chart root are captured too.
+	struct ActivationIdentity {
+		uint64_t epoch;
+		ObjectID parent_id;
+		ObjectID root_id;
+	};
+
+	// Captures this state's current activation identity.
+	ActivationIdentity _capture_activation_identity() const;
+	// True while this is still the same live activation: same epoch, ACTIVE,
+	// in the tree, still a child of the same parent, in the same chart.
+	bool _is_dispatch_activation_valid(uint64_t p_epoch, ObjectID p_parent_id, ObjectID p_root_id) const;
+	inline bool _is_dispatch_activation_valid(const ActivationIdentity &p_identity) const {
+		return _is_dispatch_activation_valid(p_identity.epoch, p_identity.parent_id, p_identity.root_id);
+	}
+
+	// Returns the tree root this state belongs to, resolving it from the
+	// parent chain when set_root() has not run yet.
+	NNSTRoot *_resolve_tree_root() const;
+
 public:
 	NNSTTickedNodes();
 	~NNSTTickedNodes();
@@ -60,6 +83,18 @@ public:
 	virtual void send_event(String name) override;
 	// Returns true if the transition was applied.
 	virtual bool transition_to(NodePath path_to_node);
+
+	// Event dispatch. _dispatch_event() delivers the event to this state:
+	// it emits event_received, forwards the event to its active children
+	// (leaf-first) and only tries its own transitions when no child consumed
+	// it. Returns true if this state or one of its descendants consumed it.
+	virtual bool _dispatch_event(const String &name);
+	// Forwards the event to the active children. NNSTParallel overrides this
+	// to visit every active child even when an earlier one consumed the event.
+	virtual bool _dispatch_event_to_children(const String &name);
+	// Tries this state's own transitions for the event name. A transition
+	// whose guard fails does not consume the event.
+	virtual bool _handle_event(const String &name);
 
 	virtual void _transition_in() override;
 	virtual void _transition_out();

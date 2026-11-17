@@ -41,6 +41,7 @@ NNSTBranchNodes::NNSTBranchNodes() {
 	_active_states.clear();
 	_internal_status = ST_INTERNAL_STATUS_INACTIVE;
 	_child_state_selection_rule = NNSTNodeChildStateSelectionRule::ON_ENTER_CONDITION_METHOD;
+	_activation_epoch = 0;
 
 	_num_child_states = 0;
 	_num_child_considerations = 0;
@@ -78,6 +79,13 @@ void NNSTBranchNodes::set_internal_status(int internal_status) {
 #endif
 	if (internal_status != ST_INTERNAL_STATUS_ACTIVE && internal_status != ST_INTERNAL_STATUS_INACTIVE) {
 		internal_status = ST_INTERNAL_STATUS_INACTIVE;
+	}
+
+	// Only a real status change starts a new activation. Setting the current
+	// status again (which several _transition_in() paths do) must not
+	// invalidate dispatch that is already in flight.
+	if (internal_status != _internal_status) {
+		_activation_epoch++;
 	}
 
 	_internal_status = internal_status;
@@ -129,6 +137,18 @@ NNSTTickedNodes *NNSTBranchNodes::_get_child_state(ObjectID state_id) const {
 		return nullptr;
 	}
 	return state;
+}
+
+std::vector<ObjectID> NNSTBranchNodes::_get_matching_transition_ids(const String &event_name) const {
+	std::vector<ObjectID> transition_ids;
+	for (unsigned int i = 0; i < _child_transitions.size(); i++) {
+		NNSTTransition *transition = _child_transitions[i];
+		if (transition == nullptr || transition->get_event_name() != event_name) {
+			continue;
+		}
+		transition_ids.push_back(ObjectID(transition->get_instance_id()));
+	}
+	return transition_ids;
 }
 
 bool NNSTBranchNodes::_has_active_state(ObjectID state_id) const {
