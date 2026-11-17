@@ -101,7 +101,7 @@ NNBTNodes::Status NNBTRoot::tick(Variant blackboard, float delta) {
 		}
 		Status result = btnode->tick(blackboard, delta);
 		set_tick_result(result);
-		if (btnode->get_internal_status() == BT_INTERNAL_STATUS_COMPLETED) {
+		if (result != Status::RUNNING && btnode->get_internal_status() == BT_INTERNAL_STATUS_COMPLETED) {
 			set_internal_status(BT_INTERNAL_STATUS_COMPLETED);
 			//emit_signal("btnode_exited", blackboard, delta);
 		}
