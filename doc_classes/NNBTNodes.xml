@@ -7,15 +7,58 @@
 		Behaviour Trees are a commonly used structure that can be used to create artificial intelligence in games for the non-playable characters. A behaviour tree has a root node and under it a tree structure, where the branches of the tree define the behaviour for the AI.
 		The utility enabled Behaviour Trees in Noodle Nodes GDExtension extend the traditional Behaviour Tree with utility functions. The Behaviour Tree nodes can be used as a regular behaviour tree, but the extended utility features allow you to add utility-based branch selection and execution of the Node Query System queries within your trees.
 		The Behaviour Tree in Noodle Nodes GDExtension allows you to tick the tree by giving blackboard as input. This blackboard can be a dictionary that you want to use as the blackboard or the AI actor node itself. Or any other type of Variant. Or just null.
+		The typed [NNBlackboard] resource on the nearest [NNBTRoot] ancestor is authoritative for [method get_blackboard_resource], [method get_blackboard], [method set_blackboard], [method has_blackboard], [method erase_blackboard] and [method get_actor]. The [Variant] passed to [method NNBTRoot.tick] remains legacy user data / actor and is never consulted by these helpers. With no [NNBTRoot] ancestor the helpers return their default value, [code]false[/code] or [code]null[/code] without reporting errors. [NNBTNodeReference] resolves these helpers from its target's own position in the tree.
 		Each node tracks a run lifecycle. A run starts with the [code]on_before_run[/code] hook the first time the node is ticked while no run is active, and it ends with either the [code]on_after_run[/code] hook (when the node returns [code]SUCCESS[/code] or [code]FAILURE[/code]) or the [code]on_interrupt[/code] hook (when the active run is abandoned). Every [code]on_before_run[/code] is matched by exactly one [code]on_after_run[/code] or [code]on_interrupt[/code] for the same run, and a node that never started a run receives no lifecycle callback. The [code]on_before_run[/code], [code]on_after_run[/code] and [code]on_interrupt[/code] script hooks are provided by [NNBTTaskNodes]; composite nodes participate in the run lifecycle internally only. The [code]SKIP[/code] result is not terminal: the run stays active until it completes or is interrupted. [method interrupt] is idempotent and does nothing when the node has no active run. Disabling a node interrupts and resets its subtree, so re-enabling the node starts a fresh run on the next tick.
 	</description>
 	<tutorials>
 	</tutorials>
 	<methods>
+		<method name="erase_blackboard">
+			<return type="bool" />
+			<param index="0" name="key" type="String" />
+			<description>
+				Erases [param key] from the blackboard of the nearest [NNBTRoot] ancestor. Returns [code]false[/code] when the key is absent or when there is no root.
+			</description>
+		</method>
+		<method name="get_actor" qualifiers="const">
+			<return type="Node" />
+			<description>
+				Returns the actor resolved by the nearest [NNBTRoot] ancestor, or [code]null[/code] when there is no root.
+			</description>
+		</method>
+		<method name="get_blackboard" qualifiers="const">
+			<return type="Variant" />
+			<param index="0" name="key" type="String" />
+			<param index="1" name="default_value" type="Variant" default="null" />
+			<description>
+				Returns the value stored under [param key] in the blackboard of the nearest [NNBTRoot] ancestor. Returns [param default_value] when the key is missing, its value is [code]null[/code], or there is no root.
+			</description>
+		</method>
+		<method name="get_blackboard_resource" qualifiers="const">
+			<return type="NNBlackboard" />
+			<description>
+				Returns the effective [NNBlackboard] of the nearest [NNBTRoot] ancestor: the board explicitly assigned to that root, or the root's own private board when none is assigned. Returns [code]null[/code] only when there is no [NNBTRoot] ancestor.
+			</description>
+		</method>
 		<method name="get_tree_root" qualifiers="const">
 			<return type="NodePath" />
 			<description>
 				Returns a relative node path to the furthest direct [NNBTNodes] ancestor.
+			</description>
+		</method>
+		<method name="has_blackboard" qualifiers="const">
+			<return type="bool" />
+			<param index="0" name="key" type="String" />
+			<description>
+				Returns [code]true[/code] when [param key] exists in the blackboard of the nearest [NNBTRoot] ancestor and its value is not [code]null[/code]; returns [code]false[/code] otherwise, including when there is no root.
+			</description>
+		</method>
+		<method name="set_blackboard">
+			<return type="bool" />
+			<param index="0" name="key" type="String" />
+			<param index="1" name="value" type="Variant" />
+			<description>
+				Stores [param value] under [param key] in the blackboard of the nearest [NNBTRoot] ancestor. Returns [code]false[/code] when the key is empty or there is no root.
 			</description>
 		</method>
 		<method name="interrupt">

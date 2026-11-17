@@ -8,11 +8,25 @@
 		The root must have exactly one enabled behaviour tree child. It ticks the first enabled child and returns that child's result. Any further enabled behaviour tree children are ignored; the first time the root is ticked with more than one enabled behaviour tree child it reports a one-time error. The editor shows a configuration warning for the same configuration.
 		[NNSensors] child nodes are allowed in addition to the single behaviour tree child. Sensors do not count as behaviour tree children.
 		If no behaviour tree child is enabled, or the root has no children at all, [method tick] returns [code]FAILURE[/code].
+		[member blackboard] is the explicitly assigned [NNBlackboard]. When it is null the root uses a private per-instance board, so the blackboard helpers still work without any setup. Assigning [code]null[/code] clears the assignment and falls back to that private board. Blackboards default to [code]resource_local_to_scene = true[/code], so a board assigned in the inspector is duplicated per scene instance unless you deliberately untick that to share one board.
+		[member actor] is the explicitly assigned actor or [code]null[/code]. [member actor] does not store a resolved fallback; read the resolved actor with [method get_actor], which resolves on demand: the live explicit actor wins, then the node at [member actor_node_path], then the root's parent. Because resolution is computed on demand, entering the tree or reparenting re-resolves naturally, and a freed explicit actor falls through to the path or parent.
 		Disabling the root interrupts its active run and resets the whole tree, so re-enabling it starts a fresh run on the next tick. Every reset of the root (including the reset triggered by a child order change) interrupts the active subtree as well.
 	</description>
 	<tutorials>
 	</tutorials>
 	<methods>
+		<method name="get_assigned_actor" qualifiers="const">
+			<return type="Node" />
+			<description>
+				Returns the explicitly assigned actor, or [code]null[/code] when none is assigned or the assigned actor was freed. This is the value of [member actor]. Use [method get_actor] to read the resolved actor.
+			</description>
+		</method>
+		<method name="get_assigned_blackboard" qualifiers="const">
+			<return type="NNBlackboard" />
+			<description>
+				Returns the explicitly assigned blackboard, or [code]null[/code] when none is assigned. This is the value of [member blackboard]. Use [method NNBTNodes.get_blackboard_resource] to read the effective board, which is the assigned board or this root's private board.
+			</description>
+		</method>
 		<method name="tick">
 			<return type="int" enum="NNBTNodes.Status" />
 			<param index="0" name="blackboard" type="Variant" />
@@ -23,6 +37,15 @@
 		</method>
 	</methods>
 	<members>
+		<member name="actor" type="Node" setter="set_actor" getter="get_assigned_actor">
+			The explicitly assigned actor, or [code]null[/code] when none is assigned. No resolved fallback is ever stored here. To read the resolved actor use [method get_actor], which resolves the explicit actor, then [member actor_node_path], then the root's parent on demand.
+		</member>
+		<member name="actor_node_path" type="NodePath" setter="set_actor_node_path" getter="get_actor_node_path">
+			Fallback actor path, used when no live explicit [member actor] is set. The path is resolved relative to this root.
+		</member>
+		<member name="blackboard" type="NNBlackboard" setter="set_blackboard_resource" getter="get_assigned_blackboard">
+			The explicitly assigned typed behaviour tree blackboard resource, or [code]null[/code] when none is assigned. When it is [code]null[/code] the root uses a private per-instance board and the [NNBTNodes] blackboard helpers still work. Assigning [code]null[/code] clears the assignment and falls back to that private board. Blackboards default to [code]resource_local_to_scene = true[/code], so an assigned inspector board is per scene instance unless you deliberately untick it to share one board. This property is the assignment only; [method NNBTNodes.get_blackboard_resource] returns the effective board.
+		</member>
 		<member name="total_tick_usec" type="int" setter="set_total_tick_usec" getter="get_total_tick_usec" default="0">
 			This is the total time in microseconds the call to the [method tick] method used.
 		</member>

@@ -39,6 +39,13 @@
 #include "agent_behaviours/considerations/custom_property.h"
 
 // BEHAVIOUR TREE
+#include "behaviour_tree/action_leaf.h"
+#include "behaviour_tree/blackboard.h"
+#include "behaviour_tree/blackboard_compare.h"
+#include "behaviour_tree/blackboard_erase.h"
+#include "behaviour_tree/blackboard_has.h"
+#include "behaviour_tree/blackboard_set.h"
+#include "behaviour_tree/condition_leaf.h"
 #include "behaviour_tree/nodes.h"
 #include "behaviour_tree/root.h"
 
@@ -183,6 +190,7 @@ void register_scene_classes() {
 
 	// Behaviour tree.
 	GDREGISTER_VIRTUAL_CLASS(NNBTNodes);
+	GDREGISTER_CLASS(NNBlackboard);
 	GDREGISTER_CLASS(NNBTRoot);
 
 	GDREGISTER_VIRTUAL_CLASS(NNBTCompositeNodes);
@@ -195,6 +203,12 @@ void register_scene_classes() {
 
 	GDREGISTER_VIRTUAL_CLASS(NNBTTaskNodes);
 	GDREGISTER_CLASS(NNBTLeaf);
+	GDREGISTER_CLASS(NNBTConditionLeaf);
+	GDREGISTER_CLASS(NNBTActionLeaf);
+	GDREGISTER_CLASS(NNBTBlackboardSet);
+	GDREGISTER_CLASS(NNBTBlackboardErase);
+	GDREGISTER_CLASS(NNBTBlackboardHas);
+	GDREGISTER_CLASS(NNBTBlackboardCompare);
 	GDREGISTER_CLASS(NNBTRunNQSQuery);
 	GDREGISTER_CLASS(NNBTPassBy);
 	GDREGISTER_CLASS(NNBTNodeReference);

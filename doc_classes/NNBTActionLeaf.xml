@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="NNBTActionLeaf" inherits="NNBTLeaf" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
+	<brief_description>
+		Base class for action/task leaves.
+	</brief_description>
+	<description>
+		An action leaf performs work. Unlike [NNBTConditionLeaf], an action leaf may return [code]RUNNING[/code] while the action is still in progress.
+	</description>
+	<tutorials>
+	</tutorials>
+</class>

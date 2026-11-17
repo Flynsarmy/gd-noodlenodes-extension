@@ -4,9 +4,12 @@
 #include "../noodle_nodes.h"
 #include "definitions.h"
 #include <godot_cpp/classes/node.hpp>
+#include <godot_cpp/classes/ref.hpp>
 #include <vector>
 
 namespace godot {
+
+class NNBlackboard;
 
 class NNBTNodes : public NoodleNodes {
 	GDCLASS(NNBTNodes, NoodleNodes)
@@ -88,6 +91,20 @@ public:
 	inline virtual bool has_completed() { return (_internal_status == BT_INTERNAL_STATUS_COMPLETED); };
 
 	NodePath get_tree_root() const;
+
+	// Blackboard and actor helpers. These resolve against the nearest NNBTRoot
+	// ancestor and are documented to return silent safe defaults when no root
+	// exists. The Variant passed to tick() is never consulted by them.
+	virtual NNBlackboard *get_blackboard_resource() const;
+	// Ref-returning wrapper bound under the GDScript name
+	// "get_blackboard_resource". Returning the raw pointer to GDScript would
+	// leave the RefCounted resource unowned by the returned Variant.
+	Ref<NNBlackboard> get_blackboard_resource_ref() const;
+	Variant get_blackboard(const String &key, const Variant &default_value = Variant()) const;
+	bool set_blackboard(const String &key, const Variant &value);
+	bool has_blackboard(const String &key) const;
+	bool erase_blackboard(const String &key);
+	virtual Node *get_actor() const;
 
 	// Godot virtuals.
 	virtual void _notification(int p_what);

@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="NNBTBlackboardCompare" inherits="NNBTConditionLeaf" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
+	<brief_description>
+		Compares a blackboard value against a configured value.
+	</brief_description>
+	<description>
+		Reads [member key] from the [NNBlackboard] of the nearest [NNBTRoot] ancestor and compares the stored value with [member value] using [member operator]. Returns [code]SUCCESS[/code] when the comparison holds and [code]FAILURE[/code] otherwise.
+		A missing key, a null-valued key, or an incompatible pair of types makes the comparison fail ([code]FAILURE[/code]) without an engine error and without crashing. An empty [member key] or a missing [NNBTRoot] ancestor with a blackboard is a configuration error that is reported once per node instance.
+		This leaf is fully data-driven: it is configured entirely by its properties, does not call and is not affected by an [code]on_tick[/code] override in an attached script, and never reads the [Variant] passed to [method NNBTTaskNodes.on_tick].
+	</description>
+	<tutorials>
+	</tutorials>
+	<members>
+		<member name="key" type="String" setter="set_key" getter="get_key" default="&quot;&quot;">
+			The blackboard key to read. Must be non-empty.
+		</member>
+		<member name="operator" type="int" setter="set_operator" getter="get_operator" enum="Operator" default="0">
+			The comparison to perform between the stored value and [member value].
+			Values outside the [enum Operator] range are rejected with a single engine error that names [code]set_operator[/code], the received value and the valid range; the previous operator is kept.
+		</member>
+		<member name="value" type="Variant" setter="set_value" getter="get_value" default="null">
+			The value to compare the stored blackboard value against.
+		</member>
+	</members>
+	<constants>
+		<constant name="EQUAL" value="0" enum="Operator">
+			The stored value equals [member value].
+		</constant>
+		<constant name="NOT_EQUAL" value="1" enum="Operator">
+			The stored value does not equal [member value].
+		</constant>
+		<constant name="GREATER" value="2" enum="Operator">
+			The stored value is greater than [member value].
+		</constant>
+		<constant name="LESS" value="3" enum="Operator">
+			The stored value is less than [member value].
+		</constant>
+		<constant name="GREATER_EQUAL" value="4" enum="Operator">
+			The stored value is greater than or equal to [member value].
+		</constant>
+		<constant name="LESS_EQUAL" value="5" enum="Operator">
+			The stored value is less than or equal to [member value].
+		</constant>
+	</constants>
+</class>

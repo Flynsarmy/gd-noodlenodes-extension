@@ -60,6 +60,32 @@ NNBTNodes *NNBTNodeReference::get_node_reference() const {
 	return godot::Object::cast_to<NNBTNodes>(ObjectDB::get_instance(_cache));
 }
 
+// Blackboard and actor helpers.
+
+NNBlackboard *NNBTNodeReference::get_blackboard_resource() const {
+	if (_is_resolving_helpers) {
+		return nullptr;
+	}
+
+	_is_resolving_helpers = true;
+	NNBTNodes *target = get_node_reference();
+	NNBlackboard *board = target != nullptr ? target->get_blackboard_resource() : nullptr;
+	_is_resolving_helpers = false;
+	return board;
+}
+
+Node *NNBTNodeReference::get_actor() const {
+	if (_is_resolving_helpers) {
+		return nullptr;
+	}
+
+	_is_resolving_helpers = true;
+	NNBTNodes *target = get_node_reference();
+	Node *actor = target != nullptr ? target->get_actor() : nullptr;
+	_is_resolving_helpers = false;
+	return actor;
+}
+
 // Handling methods.
 
 /**
