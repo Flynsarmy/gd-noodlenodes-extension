@@ -9,21 +9,12 @@ namespace godot {
 class NNBTPassThrough : public NNBTDecoratorNodes {
 	GDCLASS(NNBTPassThrough, NNBTDecoratorNodes)
 
-private:
-	Status _tick_result;
-	bool _has_on_tick_method;
-
 protected:
 	static void _bind_methods();
 
 public:
 	NNBTPassThrough();
 	~NNBTPassThrough();
-
-	// Getters and setters for attributes.
-
-	void set_tick_result(Status tick_result);
-	Status get_tick_result() const;
 
 	// Handling functions.
 
