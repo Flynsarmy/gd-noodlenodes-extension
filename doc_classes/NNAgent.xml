@@ -8,6 +8,7 @@
 		There are two methods that are used to update the AI Agent:
 		- [method evaluate_options] is used to choose a behaviour
 		- update_current_behaviour() is used to step actions of a behaviour
+		Frame ticks are driven by the SceneTree's [code]process_frame[/code] and [code]physics_frame[/code] signals rather than by this node's own [code]_process[/code]/[code]_physics_process[/code] overrides. Every [NNAgent] emits both [code]idle_frame_tick[/code] and [code]physics_frame_tick[/code] to its selected behaviour group, behaviour and action, and a script attached to the agent keeps its own [code]_process[/code] and [code]_physics_process[/code] callbacks and cannot shadow those ticks. The signal connections exist only while the agent is in the tree, and no tick happens while the agent cannot process (paused or process mode disabled). Because ticking no longer depends on this node's process callbacks, [code]set_process()[/code] and [code]set_physics_process()[/code] no longer stop agent ticking.
 		Noodle Nodes systems can be susceptile to oscillation, which means that two or more evaluated options get the highest score and the system ends up switching several times between the options. The [member current_behaviour_bias] property in the AI Agent can be used to add some bias towards the currently selected behaviour, which will decrease the chances of oscillation. In a sense the AI Agent is "more determined" to continue with the currently selected behaviour.
 	</description>
 	<tutorials>

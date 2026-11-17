@@ -58,6 +58,16 @@ private:
 	void _end_current_action(bool emit_action_changed);
 	void _tick_selected_nodes(const char *signal_name, double delta);
 
+	// The SceneTree whose frame signals are currently connected, if any. It is
+	// stored as an ObjectID because get_tree() is not reliable on tree exit.
+	ObjectID _process_tree_id;
+
+	// Frame-signal helpers.
+	void _update_frame_connections();
+	void _disconnect_frame_connections();
+	void _on_scene_tree_process_frame();
+	void _on_scene_tree_physics_frame();
+
 	NNBehaviourGroup *_resolve_behaviour_group(const ObjectID &behaviour_group_id) const;
 	NNBehaviour *_resolve_behaviour(const ObjectID &behaviour_id) const;
 	NNAction *_resolve_action(const ObjectID &action_id) const;
@@ -132,8 +142,6 @@ public:
 
 	// Godot virtuals
 	void _notification(int p_what);
-	void _process(double delta) override;
-	void _physics_process(double delta) override;
 };
 
 } //namespace godot

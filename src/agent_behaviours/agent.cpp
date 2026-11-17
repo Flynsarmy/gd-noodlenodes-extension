@@ -3,6 +3,7 @@
 #include "sensors.h"
 
 #include <godot_cpp/classes/engine.hpp>
+#include <godot_cpp/classes/scene_tree.hpp>
 #include <godot_cpp/classes/time.hpp>
 #include <godot_cpp/core/class_db.hpp>
 #include <godot_cpp/core/object.hpp>
@@ -73,6 +74,12 @@ void NNAgent::_bind_methods() {
 
 	ADD_SIGNAL(MethodInfo("action_changed", PropertyInfo(Variant::OBJECT, "action_node")));
 	ADD_SIGNAL(MethodInfo("action_exited", PropertyInfo(Variant::OBJECT, "action_node")));
+
+	// The frame handlers are connected as engine-resolved method callables. A
+	// method-pointer Callable would dereference this instance during teardown if
+	// the agent is freed while the signal is being emitted.
+	ClassDB::bind_method(D_METHOD("_on_scene_tree_process_frame"), &NNAgent::_on_scene_tree_process_frame);
+	ClassDB::bind_method(D_METHOD("_on_scene_tree_physics_frame"), &NNAgent::_on_scene_tree_physics_frame);
 }
 
 // Constructor and destructor.
@@ -93,6 +100,9 @@ NNAgent::NNAgent() {
 
 	_current_action_id = ObjectID();
 	_current_action_change_pending = false;
+
+	// Frame-signal connections are made when the agent enters the tree.
+	_process_tree_id = ObjectID();
 
 	_thinking_delay_in_seconds = 1.0f; // One second delay in thinking of options.
 	_thinking_delay_in_seconds_current_timer = 0.0f;
@@ -816,6 +826,32 @@ uint64_t NNAgent::get_total_update_behaviour_usec() const {
 // Godot virtuals.
 
 void NNAgent::_notification(int p_what) {
+	// Frame-signal connections are maintained in every build. The editor
+	// registers no agent, so the debugger overlay handling stays behind its own
+	// guard and must not gate them.
+	if (p_what == NOTIFICATION_ENTER_TREE) {
+		_update_frame_connections();
+	} else if (p_what == NOTIFICATION_EXIT_TREE) {
+		// get_tree() is unreliable on tree exit, so the stored SceneTree ID is
+		// used to disconnect.
+		_disconnect_frame_connections();
+	}
+
+#ifdef DEBUG_ENABLED
+	if (p_what == NOTIFICATION_ENTER_TREE || p_what == NOTIFICATION_EXIT_TREE) {
+		if (!Engine::get_singleton()->is_editor_hint()) {
+			NNDebuggerOverlay *debugger_overlay = NNDebuggerOverlay::get_singleton();
+			if (debugger_overlay != nullptr) {
+				if (p_what == NOTIFICATION_ENTER_TREE) {
+					debugger_overlay->register_ai_agent(get_instance_id());
+				} else {
+					debugger_overlay->deregister_ai_agent(get_instance_id());
+				}
+			}
+		}
+	}
+#endif
+
 	if (p_what == NOTIFICATION_READY || p_what == NOTIFICATION_CHILD_ORDER_CHANGED) {
 		if (Engine::get_singleton()->is_editor_hint()) {
 			return;
@@ -825,25 +861,6 @@ void NNAgent::_notification(int p_what) {
 		_refresh_child_caches();
 		return;
 	}
-
-#ifdef DEBUG_ENABLED
-	if (p_what == NOTIFICATION_ENTER_TREE || p_what == NOTIFICATION_EXIT_TREE) {
-		if (Engine::get_singleton()->is_editor_hint()) {
-			return;
-		}
-
-		NNDebuggerOverlay *debugger_overlay = NNDebuggerOverlay::get_singleton();
-		if (debugger_overlay == nullptr) {
-			return;
-		}
-
-		if (p_what == NOTIFICATION_ENTER_TREE) {
-			debugger_overlay->register_ai_agent(get_instance_id());
-		} else {
-			debugger_overlay->deregister_ai_agent(get_instance_id());
-		}
-	}
-#endif
 }
 
 void NNAgent::_tick_selected_nodes(const char *signal_name, double delta) {
@@ -896,10 +913,73 @@ void NNAgent::_tick_selected_nodes(const char *signal_name, double delta) {
 	}
 }
 
-void NNAgent::_process(double delta) {
-	_tick_selected_nodes("idle_frame_tick", delta);
+// Frame-signal handlers.
+
+void NNAgent::_update_frame_connections() {
+	// get_tree() reports an error when the node is outside the tree, so the
+	// inside-tree check comes first.
+	if (!is_inside_tree()) {
+		_disconnect_frame_connections();
+		return;
+	}
+	SceneTree *tree = get_tree();
+	if (tree == nullptr) {
+		_disconnect_frame_connections();
+		return;
+	}
+
+	// An agent always drives both ticks while it is in the tree. There is no
+	// enable condition here: evaluate_options() and _reconcile_selected_nodes()
+	// decide what, if anything, receives the tick.
+	const Callable idle_callable = Callable(this, "_on_scene_tree_process_frame");
+	const Callable physics_callable = Callable(this, "_on_scene_tree_physics_frame");
+
+	if (!tree->is_connected("process_frame", idle_callable)) {
+		tree->connect("process_frame", idle_callable);
+	}
+	if (!tree->is_connected("physics_frame", physics_callable)) {
+		tree->connect("physics_frame", physics_callable);
+	}
+
+	_process_tree_id = tree->get_instance_id();
 }
 
-void NNAgent::_physics_process(double delta) {
-	_tick_selected_nodes("physics_frame_tick", delta);
+void NNAgent::_disconnect_frame_connections() {
+	SceneTree *tree = Object::cast_to<SceneTree>(ObjectDB::get_instance(_process_tree_id));
+	_process_tree_id = ObjectID();
+	if (tree == nullptr) {
+		return;
+	}
+
+	const Callable idle_callable = Callable(this, "_on_scene_tree_process_frame");
+	const Callable physics_callable = Callable(this, "_on_scene_tree_physics_frame");
+	if (tree->is_connected("process_frame", idle_callable)) {
+		tree->disconnect("process_frame", idle_callable);
+	}
+	if (tree->is_connected("physics_frame", physics_callable)) {
+		tree->disconnect("physics_frame", physics_callable);
+	}
+}
+
+void NNAgent::_on_scene_tree_process_frame() {
+	// A frame signal can still arrive for a node that just left the tree, and a
+	// paused or process-disabled agent must not tick. The editor stays a no-op,
+	// as the former _process override never ran there.
+	if (!is_inside_tree() || !can_process()) {
+		return;
+	}
+	if (Engine::get_singleton()->is_editor_hint()) {
+		return;
+	}
+	_tick_selected_nodes("idle_frame_tick", get_process_delta_time());
+}
+
+void NNAgent::_on_scene_tree_physics_frame() {
+	if (!is_inside_tree() || !can_process()) {
+		return;
+	}
+	if (Engine::get_singleton()->is_editor_hint()) {
+		return;
+	}
+	_tick_selected_nodes("physics_frame_tick", get_physics_process_delta_time());
 }
