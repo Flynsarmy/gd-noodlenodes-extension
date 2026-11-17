@@ -26,7 +26,7 @@ private:
 	ObjectID _actor_id;
 	NodePath _actor_node_path;
 
-	// Auto-tick state. The frame counter counts eligible callback invocations
+	// Auto-tick state. The frame counter counts eligible frame signal emissions
 	// for tick_rate and is re-armed whenever the schedule changes.
 	bool _auto_tick;
 	int _tick_rate;
@@ -36,10 +36,16 @@ private:
 	// The deepest node on the active path after the last tick. It is stored as
 	// an ObjectID so a freed node is detected instead of dereferenced.
 	ObjectID _running_action_id;
+	// The SceneTree whose frame signals are currently connected, if any. It is
+	// stored as an ObjectID because get_tree() is not reliable on tree exit.
+	ObjectID _process_tree_id;
 
 	// Auto-tick helpers.
 	bool _is_auto_tick_due();
-	void _apply_process_mode();
+	void _update_frame_connections();
+	void _disconnect_frame_connections();
+	void _on_scene_tree_process_frame();
+	void _on_scene_tree_physics_frame();
 	void _update_running_action(Status p_result);
 	ObjectID _find_active_descendant_id(NNBTNodes *p_node) const;
 
@@ -55,8 +61,8 @@ protected:
 	unsigned int _num_child_sensors;
 
 public:
-	// Selects which engine callback drives the optional automatic ticking.
-	// MANUAL disables both callbacks so a custom scheduler can call the tree.
+	// Selects which SceneTree frame signal drives automatic ticking. MANUAL
+	// connects neither signal so a custom scheduler can call the tree.
 	enum ProcessThread {
 		IDLE = 0,
 		PHYSICS = 1,
@@ -88,7 +94,7 @@ public:
 	void set_tick_argument(const Variant &p_tick_argument);
 	Variant get_tick_argument() const;
 
-	// Shared body of the idle and physics callbacks, and the deterministic
+	// Shared body of the SceneTree frame-signal handlers, and the deterministic
 	// driver for tests and custom schedulers. Returns true when this call
 	// actually ticked the tree.
 	bool auto_tick_step(int p_process_thread, double p_delta);
@@ -114,8 +120,6 @@ public:
 
 	// Godot virtuals.
 	virtual void _notification(int p_what);
-	virtual void _process(double delta) override;
-	virtual void _physics_process(double delta) override;
 	virtual PackedStringArray _get_configuration_warnings() const override;
 };
 

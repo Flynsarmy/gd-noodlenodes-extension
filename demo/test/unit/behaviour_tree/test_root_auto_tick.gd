@@ -152,7 +152,7 @@ func test_ineligible_invocation_does_not_advance_the_schedule() -> void:
 
 # Process modes.
 
-func test_process_thread_selects_exactly_one_callback() -> void:
+func test_process_thread_selects_exactly_one_frame_signal() -> void:
 	var bt_root: NNBTRoot = NNBTRoot.new()
 	var leaf: CountingLeaf = _make_leaf(NNBTNodes.RUNNING)
 	bt_root.add_child(leaf)
@@ -160,31 +160,26 @@ func test_process_thread_selects_exactly_one_callback() -> void:
 	bt_root.process_thread = NNBTRoot.PHYSICS
 	add_child_autofree(bt_root)
 
-	assert_true(bt_root.is_physics_processing(), "PHYSICS enables the physics callback")
-	assert_false(bt_root.is_processing(), "PHYSICS leaves the idle callback disabled")
+	var count: int = leaf.tick_count
+	await get_tree().physics_frame
+	assert_eq(leaf.tick_count, count + 1, "one physics frame ticks exactly once in PHYSICS mode")
 
 	bt_root.process_thread = NNBTRoot.IDLE
-	assert_true(bt_root.is_processing(), "IDLE enables the idle callback")
-	assert_false(bt_root.is_physics_processing(), "IDLE leaves the physics callback disabled")
+	count = leaf.tick_count
+	await get_tree().process_frame
+	assert_eq(leaf.tick_count, count + 1, "one process frame ticks exactly once in IDLE mode")
 
 	bt_root.process_thread = NNBTRoot.MANUAL
-	assert_false(bt_root.is_processing(), "MANUAL disables the idle callback")
-	assert_false(bt_root.is_physics_processing(), "MANUAL disables the physics callback")
+	count = leaf.tick_count
+	await get_tree().physics_frame
+	await get_tree().process_frame
+	assert_eq(leaf.tick_count, count, "MANUAL connects neither frame signal")
 
-	assert_false(bt_root.auto_tick_step(NNBTRoot.MANUAL, 0.1), "MANUAL never ticks automatically")
-	assert_eq(leaf.tick_count, 0)
-
-	bt_root.process_thread = NNBTRoot.IDLE
-	assert_false(bt_root.auto_tick_step(NNBTRoot.PHYSICS, 0.1), "the physics callback is not selected")
-	assert_eq(leaf.tick_count, 0, "an invocation for the other callback does not tick")
-	assert_true(bt_root.auto_tick_step(NNBTRoot.IDLE, 0.1))
-	assert_eq(leaf.tick_count, 1)
-
+	bt_root.auto_tick = false
 	bt_root.process_thread = NNBTRoot.PHYSICS
-	assert_false(bt_root.auto_tick_step(NNBTRoot.IDLE, 0.1), "the idle callback is no longer selected")
-	assert_eq(leaf.tick_count, 1, "switching back and forth never produces two ticks for one invocation")
-	assert_true(bt_root.auto_tick_step(NNBTRoot.PHYSICS, 0.1))
-	assert_eq(leaf.tick_count, 2)
+	count = leaf.tick_count
+	await get_tree().physics_frame
+	assert_eq(leaf.tick_count, count, "auto_tick disabled connects no frame signal")
 
 
 # Enable and disable transitions.
@@ -321,7 +316,7 @@ func test_auto_tick_step_is_ignored_in_the_editor() -> void:
 
 # Tree exit.
 
-func test_leaving_the_tree_emits_nothing_and_disables_processing() -> void:
+func test_leaving_the_tree_emits_nothing_and_stops_ticking() -> void:
 	var bt_root: NNBTRoot = NNBTRoot.new()
 	var leaf: CountingLeaf = _make_leaf(NNBTNodes.RUNNING)
 	bt_root.add_child(leaf)
@@ -329,12 +324,14 @@ func test_leaving_the_tree_emits_nothing_and_disables_processing() -> void:
 	bt_root.tree_disabled.connect(_on_tree_disabled)
 	add_child(bt_root)
 
-	assert_true(bt_root.is_physics_processing())
+	var count: int = leaf.tick_count
 	remove_child(bt_root)
 
+	await get_tree().physics_frame
+	await get_tree().process_frame
+
 	assert_eq(_tree_disabled_count, 0, "leaving the tree is not a disable transition")
-	assert_false(bt_root.is_processing(), "idle processing is disabled on tree exit")
-	assert_false(bt_root.is_physics_processing(), "physics processing is disabled on tree exit")
+	assert_eq(leaf.tick_count, count, "a root outside the tree does not auto-tick")
 
 	bt_root.free()
 
@@ -358,7 +355,7 @@ func test_tree_disabled_handler_may_free_a_child() -> void:
 
 # Engine integration.
 
-func test_physics_callback_ticks_the_tree() -> void:
+func test_physics_frame_signal_ticks_the_tree() -> void:
 	var bt_root: NNBTRoot = NNBTRoot.new()
 	var leaf: CountingLeaf = _make_leaf(NNBTNodes.RUNNING)
 	bt_root.add_child(leaf)

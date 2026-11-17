@@ -3,6 +3,7 @@
 
 #include "../performance_monitor_singleton.h"
 #include <godot_cpp/classes/engine.hpp>
+#include <godot_cpp/classes/scene_tree.hpp>
 #include <godot_cpp/classes/time.hpp>
 #include <godot_cpp/core/class_db.hpp>
 #include <godot_cpp/core/object.hpp>
@@ -65,6 +66,12 @@ void NNBTRoot::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_running_action"), &NNBTRoot::get_running_action);
 
 	ClassDB::bind_method(D_METHOD("tick", "blackboard", "delta"), &NNBTRoot::tick);
+
+	// The frame handlers are connected as engine-resolved method callables. A
+	// method-pointer Callable would dereference this instance during teardown if
+	// the root is freed while the signal is being emitted.
+	ClassDB::bind_method(D_METHOD("_on_scene_tree_process_frame"), &NNBTRoot::_on_scene_tree_process_frame);
+	ClassDB::bind_method(D_METHOD("_on_scene_tree_physics_frame"), &NNBTRoot::_on_scene_tree_physics_frame);
 }
 
 // Constructor and destructor.
@@ -75,15 +82,15 @@ NNBTRoot::NNBTRoot() {
 	_local_blackboard.instantiate();
 	_actor_id = ObjectID();
 	// Auto-ticking is opt-in, so a default root behaves exactly as before and
-	// only ticks when a script calls tick(). The selected process callback is
-	// enabled even outside the tree; set_process works there.
+	// only ticks when a script calls tick(). Frame-signal connections are made
+	// when the root enters the tree.
 	_auto_tick = false;
 	_tick_rate = 1;
 	_process_thread = ProcessThread::PHYSICS;
 	_tick_argument = Variant();
 	_auto_tick_frame = 0;
 	_running_action_id = ObjectID();
-	_apply_process_mode();
+	_process_tree_id = ObjectID();
 #ifdef DEBUG_ENABLED
 	_total_tick_usec = 0;
 #endif
@@ -158,6 +165,7 @@ void NNBTRoot::set_auto_tick(bool p_auto_tick) {
 	_auto_tick = p_auto_tick;
 	// Re-arm the schedule so the next eligible callback is due.
 	_auto_tick_frame = 0;
+	_update_frame_connections();
 }
 
 bool NNBTRoot::get_auto_tick() const {
@@ -183,7 +191,7 @@ void NNBTRoot::set_process_thread(int p_process_thread) {
 	}
 	// Re-arm the schedule so the next eligible callback is due.
 	_auto_tick_frame = 0;
-	_apply_process_mode();
+	_update_frame_connections();
 }
 
 int NNBTRoot::get_process_thread() const {
@@ -241,10 +249,76 @@ bool NNBTRoot::_is_auto_tick_due() {
 	return (frame % (uint64_t)_tick_rate) == 0;
 }
 
-void NNBTRoot::_apply_process_mode() {
-	// Only the selected callback is enabled on the root node.
-	set_process(_process_thread == ProcessThread::IDLE);
-	set_physics_process(_process_thread == ProcessThread::PHYSICS);
+void NNBTRoot::_update_frame_connections() {
+	// get_tree() reports an error when the node is outside the tree, so the
+	// inside-tree check comes first.
+	if (!is_inside_tree()) {
+		_disconnect_frame_connections();
+		return;
+	}
+	SceneTree *tree = get_tree();
+	if (tree == nullptr) {
+		_disconnect_frame_connections();
+		return;
+	}
+
+	const bool wants_tick = _auto_tick && get_is_enabled();
+	const bool wants_idle = wants_tick && _process_thread == ProcessThread::IDLE;
+	const bool wants_physics = wants_tick && _process_thread == ProcessThread::PHYSICS;
+
+	const Callable idle_callable = Callable(this, "_on_scene_tree_process_frame");
+	const Callable physics_callable = Callable(this, "_on_scene_tree_physics_frame");
+
+	if (wants_idle) {
+		if (!tree->is_connected("process_frame", idle_callable)) {
+			tree->connect("process_frame", idle_callable);
+		}
+	} else if (tree->is_connected("process_frame", idle_callable)) {
+		tree->disconnect("process_frame", idle_callable);
+	}
+
+	if (wants_physics) {
+		if (!tree->is_connected("physics_frame", physics_callable)) {
+			tree->connect("physics_frame", physics_callable);
+		}
+	} else if (tree->is_connected("physics_frame", physics_callable)) {
+		tree->disconnect("physics_frame", physics_callable);
+	}
+
+	_process_tree_id = tree->get_instance_id();
+}
+
+void NNBTRoot::_disconnect_frame_connections() {
+	SceneTree *tree = Object::cast_to<SceneTree>(ObjectDB::get_instance(_process_tree_id));
+	_process_tree_id = ObjectID();
+	if (tree == nullptr) {
+		return;
+	}
+
+	const Callable idle_callable = Callable(this, "_on_scene_tree_process_frame");
+	const Callable physics_callable = Callable(this, "_on_scene_tree_physics_frame");
+	if (tree->is_connected("process_frame", idle_callable)) {
+		tree->disconnect("process_frame", idle_callable);
+	}
+	if (tree->is_connected("physics_frame", physics_callable)) {
+		tree->disconnect("physics_frame", physics_callable);
+	}
+}
+
+void NNBTRoot::_on_scene_tree_process_frame() {
+	// A frame signal can still arrive for a node that just left the tree, and a
+	// paused or process-disabled root must not tick.
+	if (!is_inside_tree() || !can_process()) {
+		return;
+	}
+	auto_tick_step(ProcessThread::IDLE, get_process_delta_time());
+}
+
+void NNBTRoot::_on_scene_tree_physics_frame() {
+	if (!is_inside_tree() || !can_process()) {
+		return;
+	}
+	auto_tick_step(ProcessThread::PHYSICS, get_physics_process_delta_time());
 }
 
 void NNBTRoot::reset() {
@@ -261,7 +335,7 @@ void NNBTRoot::_on_is_enabled_changed(bool p_is_enabled) {
 
 	_auto_tick_frame = 0;
 	_running_action_id = ObjectID();
-	_apply_process_mode();
+	_update_frame_connections();
 
 	// Everything is settled before the signal is emitted, so a handler may
 	// free this root or its children. No member is touched after this point.
@@ -430,14 +504,6 @@ NNBTNodes::Status NNBTRoot::_tick(Variant blackboard, float delta) {
 
 // Godot virtuals.
 
-void NNBTRoot::_process(double delta) {
-	auto_tick_step(ProcessThread::IDLE, delta);
-}
-
-void NNBTRoot::_physics_process(double delta) {
-	auto_tick_step(ProcessThread::PHYSICS, delta);
-}
-
 PackedStringArray NNBTRoot::_get_configuration_warnings() const {
 	PackedStringArray warnings;
 	if (_count_enabled_child_btnodes() != 1) {
@@ -465,19 +531,15 @@ void NNBTRoot::_notification(int p_what) {
 #endif
 
 	if (p_what == NOTIFICATION_ENTER_TREE) {
-		// Re-arm the schedule and enable only the selected process callback.
+		// Re-arm the schedule and connect the selected frame signal.
 		_auto_tick_frame = 0;
-		_apply_process_mode();
+		_update_frame_connections();
 	} else if (p_what == NOTIFICATION_EXIT_TREE) {
-		// Leaving the tree stops auto-ticking without emitting a signal.
-		set_process(false);
-		set_physics_process(false);
+		// Leaving the tree stops auto-ticking without emitting a signal. The
+		// stored SceneTree ID is used because get_tree() is unreliable here.
+		_disconnect_frame_connections();
 		_auto_tick_frame = 0;
 		_running_action_id = ObjectID();
-	} else if (p_what == NOTIFICATION_READY) {
-		// The engine enables every callback it sees as overridden when the
-		// node becomes ready, so re-apply the selected mode afterwards.
-		_apply_process_mode();
 	}
 
 	if (p_what == NOTIFICATION_READY || p_what == NOTIFICATION_CHILD_ORDER_CHANGED) {
