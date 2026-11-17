@@ -57,6 +57,7 @@
 #include "behaviour_tree/score_based_picker.h"
 #include "behaviour_tree/selector.h"
 #include "behaviour_tree/sequence.h"
+#include "behaviour_tree/sequence_star.h"
 
 // Decorators
 #include "behaviour_tree/cooldown_msec.h"
@@ -195,6 +196,7 @@ void register_scene_classes() {
 
 	GDREGISTER_VIRTUAL_CLASS(NNBTCompositeNodes);
 	GDREGISTER_CLASS(NNBTSequence);
+	GDREGISTER_CLASS(NNBTSequenceStar);
 	GDREGISTER_CLASS(NNBTSelector);
 	GDREGISTER_CLASS(NNBTParallel);
 	GDREGISTER_CLASS(NNBTRandomSequence);

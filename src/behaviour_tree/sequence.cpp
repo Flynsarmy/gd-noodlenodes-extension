@@ -8,15 +8,29 @@ using namespace godot;
 // Method binds.
 
 void NNBTSequence::_bind_methods() {
+	ClassDB::bind_method(D_METHOD("set_reactive", "reactive"), &NNBTSequence::set_reactive);
+	ClassDB::bind_method(D_METHOD("get_reactive"), &NNBTSequence::get_reactive);
+	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "reactive", PROPERTY_HINT_NONE), "set_reactive", "get_reactive");
 }
 
 // Constructor and destructor.
 
 NNBTSequence::NNBTSequence() {
 	_current_child_index = 0;
+	_is_reactive = false;
 }
 
 NNBTSequence::~NNBTSequence() {
+}
+
+// Getters and Setters.
+
+void NNBTSequence::set_reactive(bool p_reactive) {
+	_is_reactive = p_reactive;
+}
+
+bool NNBTSequence::get_reactive() const {
+	return _is_reactive;
 }
 
 // Handling methods.
@@ -31,6 +45,11 @@ NNBTNodes::Status NNBTSequence::_tick(Variant blackboard, float delta) {
 		//emit_signal("btree_node_entered", blackboard, delta, this);
 	}
 	set_internal_status(BT_INTERNAL_STATUS_TICKED);
+	// A reactive sequence re-evaluates from the first child on every tick
+	// instead of resuming from the child that was running previously.
+	if (_is_reactive) {
+		_current_child_index = 0;
+	}
 	//if( _is_first_tick ) {
 	//    _is_first_tick = false;
 	//    emit_signal("btnode_entered", blackboard, delta);

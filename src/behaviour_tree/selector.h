@@ -9,14 +9,21 @@ class NNBTSelector : public NNBTCompositeNodes {
 	GDCLASS(NNBTSelector, NNBTCompositeNodes)
 
 private:
-	int _current_child_index;
+	bool _is_reactive;
 
 protected:
+	int _current_child_index;
+
 	static void _bind_methods();
 
 public:
 	NNBTSelector();
 	~NNBTSelector();
+
+	// Getters and setters for attributes.
+
+	void set_reactive(bool p_reactive);
+	bool get_reactive() const;
 
 	// Handling functions.
 	virtual void reset_bt_node() override;
