@@ -11,10 +11,35 @@
 		[member blackboard] is the explicitly assigned [NNBlackboard]. When it is null the root uses a private per-instance board, so the blackboard helpers still work without any setup. Assigning [code]null[/code] clears the assignment and falls back to that private board. Blackboards default to [code]resource_local_to_scene = true[/code], so a board assigned in the inspector is duplicated per scene instance unless you deliberately untick that to share one board.
 		[member actor] is the explicitly assigned actor or [code]null[/code]. [member actor] does not store a resolved fallback; read the resolved actor with [method get_actor], which resolves on demand: the live explicit actor wins, then the node at [member actor_node_path], then the root's parent. Because resolution is computed on demand, entering the tree or reparenting re-resolves naturally, and a freed explicit actor falls through to the path or parent.
 		Disabling the root interrupts its active run and resets the whole tree, so re-enabling it starts a fresh run on the next tick. Every reset of the root (including the reset triggered by a child order change) interrupts the active subtree as well.
+		Automatic ticking is opt-in: [member auto_tick] defaults to [code]false[/code], which leaves manual ticking exactly as before. While it is enabled, automatic ticking is driven by the SceneTree's [code]process_frame[/code] or [code]physics_frame[/code] signal selected by [member process_thread]; the root does not override or disable this node's own [code]_process[/code]/[code]_physics_process[/code], so a script attached to the root keeps its own callbacks and cannot shadow automatic ticking. Connections exist only while the root is in the tree with [member auto_tick] and [member is_enabled] true, and no tick happens while the root cannot process (paused or process mode disabled). [constant MANUAL] connects neither signal.
+		[member tick_rate] counts eligible frame signal emissions, starting with the first one. A rate of 2 ticks on emissions 1, 3, 5 and so on. No wall-clock time is involved. Re-arming the schedule (changing [member auto_tick], [member tick_rate], [member process_thread] or [member is_enabled], entering the tree or resetting the tree) restarts the count so the next eligible emission is due.
+		Disabling resets the tree, so enabling starts a fresh run. [signal tree_enabled] and [signal tree_disabled] are emitted only on a real transition of [member is_enabled], never when the root merely leaves the tree.
+		[method get_running_action] returns the deepest node on the active path after the last tick, or [code]null[/code] when nothing is active. When parallel nodes have several active children, the first active child in child order wins. The node is stored as an object ID, so if the active node was freed the method returns [code]null[/code] and never returns a freed object.
 	</description>
 	<tutorials>
 	</tutorials>
+	<constants>
+		<constant name="IDLE" value="0" enum="ProcessThread">
+			The root is ticked automatically from the SceneTree's [code]process_frame[/code] signal while [member auto_tick] is enabled.
+		</constant>
+		<constant name="PHYSICS" value="1" enum="ProcessThread">
+			The root is ticked automatically from the SceneTree's [code]physics_frame[/code] signal while [member auto_tick] is enabled. This is the default.
+		</constant>
+		<constant name="MANUAL" value="2" enum="ProcessThread">
+			Neither signal is connected and the root never ticks automatically, so a custom scheduler calls [method tick] or [method auto_tick_step] itself.
+		</constant>
+	</constants>
 	<methods>
+		<method name="auto_tick_step">
+			<return type="bool" />
+			<param index="0" name="process_thread" type="int" enum="NNBTRoot.ProcessThread" />
+			<param index="1" name="delta" type="float" />
+			<description>
+				The shared body of the frame-signal handlers, and the deterministic driver for custom schedulers. Ticks the tree with [member tick_argument] and the supplied [param delta] when the call is due, and returns [code]true[/code] only when it actually ticked.
+				The call is ignored, returning [code]false[/code], when [param process_thread] is not the selected [member process_thread], when the selected thread is [constant MANUAL], when [member auto_tick] is disabled or the root is disabled, in the editor, or when [member tick_rate] makes this invocation not due. An ignored call does not advance the [member tick_rate] schedule.
+				This method also works outside the tree, so tests and custom schedulers can drive the schedule deterministically without frame signals.
+			</description>
+		</method>
 		<method name="get_assigned_actor" qualifiers="const">
 			<return type="Node" />
 			<description>
@@ -27,12 +52,20 @@
 				Returns the explicitly assigned blackboard, or [code]null[/code] when none is assigned. This is the value of [member blackboard]. Use [method NNBTNodes.get_blackboard_resource] to read the effective board, which is the assigned board or this root's private board.
 			</description>
 		</method>
+		<method name="get_running_action" qualifiers="const">
+			<return type="NNBTNodes" />
+			<description>
+				Returns the deepest node on the active path after the last tick, or [code]null[/code] when nothing is active. The active path follows the enabled children that the last tick left running: every node on it is enabled, has an internal status of ticked and has a tick result of [code]RUNNING[/code]. When a parallel node has several active children, the first active child in child order wins.
+				The node is tracked through an object ID, so the method returns [code]null[/code] when the active node was freed and never returns a freed object.
+			</description>
+		</method>
 		<method name="tick">
 			<return type="int" enum="NNBTNodes.Status" />
 			<param index="0" name="blackboard" type="Variant" />
 			<param index="1" name="delta" type="float" />
 			<description>
 				This is the behaviour tree tick-method you should be using to tick the tree. You can provide any [Variant] type as a parameter (usually a node used as an actor or a dictionary used as a blackboard), along with a delta-time. These are passed to all the child nodes of the behaviour tree during ticks.
+				Manual ticking keeps working while [member auto_tick] is enabled, so a script may call this method and also let the automatic callback tick the tree.
 			</description>
 		</method>
 	</methods>
@@ -43,11 +76,35 @@
 		<member name="actor_node_path" type="NodePath" setter="set_actor_node_path" getter="get_actor_node_path">
 			Fallback actor path, used when no live explicit [member actor] is set. The path is resolved relative to this root.
 		</member>
+		<member name="auto_tick" type="bool" setter="set_auto_tick" getter="get_auto_tick" default="false">
+			When [code]true[/code], the SceneTree frame signal selected by [member process_thread] ticks the tree automatically. Defaults to [code]false[/code], which leaves the root exactly as before and ticks only through [method tick]. The signal connection is made or dropped as the root enters or leaves the tree and whenever [member auto_tick], [member is_enabled] or [member process_thread] changes. Setting this property re-arms the [member tick_rate] schedule.
+		</member>
 		<member name="blackboard" type="NNBlackboard" setter="set_blackboard_resource" getter="get_assigned_blackboard">
 			The explicitly assigned typed behaviour tree blackboard resource, or [code]null[/code] when none is assigned. When it is [code]null[/code] the root uses a private per-instance board and the [NNBTNodes] blackboard helpers still work. Assigning [code]null[/code] clears the assignment and falls back to that private board. Blackboards default to [code]resource_local_to_scene = true[/code], so an assigned inspector board is per scene instance unless you deliberately untick it to share one board. This property is the assignment only; [method NNBTNodes.get_blackboard_resource] returns the effective board.
+		</member>
+		<member name="process_thread" type="int" enum="NNBTRoot.ProcessThread" setter="set_process_thread" getter="get_process_thread" default="1">
+			Selects the SceneTree frame signal that drives automatic ticking, not this node's processing flags. Defaults to [constant PHYSICS]. [constant IDLE] uses [code]process_frame[/code], [constant PHYSICS] uses [code]physics_frame[/code] and [constant MANUAL] connects neither so a custom scheduler ticks the tree. Exactly one signal is connected at a time. Out-of-range values fall back to [constant PHYSICS]. Setting this property re-arms the [member tick_rate] schedule.
+		</member>
+		<member name="tick_argument" type="Variant" setter="set_tick_argument" getter="get_tick_argument" default="null">
+			The [Variant] passed as the first argument of every automatic tick. It defaults to [code]null[/code]. Manual calls to [method tick] pass their own argument.
+		</member>
+		<member name="tick_rate" type="int" setter="set_tick_rate" getter="get_tick_rate" default="1">
+			The number of eligible frame signal emissions between automatic ticks. The default of [code]1[/code] ticks every eligible emission, and a rate of 2 ticks on emissions 1, 3, 5 and so on. Values below 1 are clamped to 1. Ineligible emissions, such as those for a signal that is not selected, do not advance the count. Setting this property re-arms the schedule.
 		</member>
 		<member name="total_tick_usec" type="int" setter="set_total_tick_usec" getter="get_total_tick_usec" default="0">
 			This is the total time in microseconds the call to the [method tick] method used.
 		</member>
 	</members>
+	<signals>
+		<signal name="tree_disabled">
+			<description>
+				Emitted when the root is disabled through [member is_enabled], after the tree was reset and the frame-signal connections were updated. Emitted only on a real transition, so disabling an already disabled root does not emit again.
+			</description>
+		</signal>
+		<signal name="tree_enabled">
+			<description>
+				Emitted when the root is re-enabled through [member is_enabled], after the whole tree was reset, so the next tick starts a fresh run. Emitted only on a real transition, so enabling an already enabled root does not emit again.
+			</description>
+		</signal>
+	</signals>
 </class>
