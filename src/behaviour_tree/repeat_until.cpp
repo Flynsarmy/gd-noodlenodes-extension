@@ -92,6 +92,12 @@ NNBTNodes::Status NNBTRepeatUntil::tick(Variant blackboard, float delta) {
 
 	if (_is_expected_tick_result_reached) {
 		set_internal_status(BT_INTERNAL_STATUS_COMPLETED);
+		set_tick_result(Status::SUCCESS);
+		return Status::SUCCESS;
+	}
+
+	if (_current_max_repeat_times == 0) {
+		set_internal_status(BT_INTERNAL_STATUS_COMPLETED);
 		set_tick_result(Status::FAILURE);
 		return Status::FAILURE;
 	}
@@ -119,9 +125,9 @@ NNBTNodes::Status NNBTRepeatUntil::tick(Variant blackboard, float delta) {
 			return Status::RUNNING;
 		} else if (_current_max_repeat_times == 0) {
 			set_internal_status(BT_INTERNAL_STATUS_COMPLETED);
-			set_tick_result(Status::SUCCESS);
+			set_tick_result(Status::FAILURE);
 			//emit_signal("btnode_exited", blackboard, delta);
-			return Status::SUCCESS;
+			return Status::FAILURE;
 		}
 		//}
 	}
