@@ -1,12 +1,16 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <class name="NNBTRepeater" inherits="NNBTDecoratorNodes" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
 	<brief_description>
-		Repeats its child node for [member max_repeat_times] number of times before returning [code]SUCCESS[/code].
+		Repeats its child node [member repeat_times] times and returns [code]SUCCESS[/code] after the final successful repetition.
 	</brief_description>
 	<description>
-		The Repeater node repeats its child node for [member max_repeat_times] number of successes before returning [code]FAILURE[/code] until which point it returns [code]RUNNING[/code]. If the child returns [code]FAILURE[/code] this node immediately returns [code]FAILURE[/code].
+		The repeater node ticks its first enabled child node [member repeat_times] times. It returns [code]RUNNING[/code] while repetitions remain and returns [code]SUCCESS[/code] immediately after the final successful repetition.
 
-		If [member max_repeat_times] is set to [code]-1[/code] the child will be ticked indefinitely.
+		If the child returns [code]FAILURE[/code] the repeater immediately returns [code]FAILURE[/code] without counting that tick as a repetition. If the child returns [code]RUNNING[/code] the repeater returns [code]RUNNING[/code] without counting that tick as a repetition either.
+
+		If [member repeat_times] is set to [code]-1[/code] the child is ticked indefinitely and the repeater never completes on its own. If [member repeat_times] is set to [code]0[/code] the repeater returns [code]SUCCESS[/code] immediately without ticking its child node.
+
+		With the default reset rules, the next tick after completion starts a fresh run. With [code]reset_rule[/code] set to Never the repeater returns its stored terminal result and does not tick its child again until it is explicitly reset or its reset rule is changed.
 	</description>
 	<tutorials>
 	</tutorials>
@@ -14,13 +18,13 @@
 		<method name="get_times_repeated" qualifiers="const">
 			<return type="int" />
 			<description>
-				Returns the number of times this node has repeated.
+				Returns the number of successful repetitions in the current run.
 			</description>
 		</method>
 	</methods>
 	<members>
 		<member name="repeat_times" type="int" setter="set_repeat_times" getter="get_repeat_times" default="-1">
-			The maximum times the limiter node can be ticked. [code]-1[/code] for to repeat indefinitely.
+			The number of times this node repeats its child node. [code]-1[/code] repeats indefinitely, [code]0[/code] succeeds immediately without ticking the child.
 		</member>
 	</members>
 </class>
