@@ -17,6 +17,20 @@ void NNBTNodes::_bind_methods() {
 	BIND_ENUM_CONSTANT(SUCCESS);
 	BIND_ENUM_CONSTANT(SKIP);
 
+	// NNBTNodesResetRule.
+	BIND_ENUM_CONSTANT(WHEN_TICKED);
+	BIND_ENUM_CONSTANT(WHEN_COMPLETED);
+	BIND_ENUM_CONSTANT(WHEN_TICKED_AFTER_BEING_COMPLETED);
+	BIND_ENUM_CONSTANT(NEVER);
+
+	// NNBTNodesEvaluationMethod.
+	BIND_ENUM_CONSTANT(Sum);
+	BIND_ENUM_CONSTANT(Min);
+	BIND_ENUM_CONSTANT(Max);
+	BIND_ENUM_CONSTANT(Mean);
+	BIND_ENUM_CONSTANT(Multiply);
+	BIND_ENUM_CONSTANT(FirstNonZero);
+
 	ClassDB::bind_method(D_METHOD("set_reset_rule", "reset_rule"), &NNBTNodes::set_reset_rule);
 	ClassDB::bind_method(D_METHOD("get_reset_rule"), &NNBTNodes::get_reset_rule);
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "reset_rule", PROPERTY_HINT_ENUM, "WhenTicked:0,WhenCompleted:1,WhenTickedAfterBeingCompleted:2,Never:3"), "set_reset_rule", "get_reset_rule");

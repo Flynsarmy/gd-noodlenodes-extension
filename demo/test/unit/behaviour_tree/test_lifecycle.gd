@@ -4,8 +4,7 @@ extends GutTest
 
 const BLACKBOARD: Dictionary = {}
 
-# NNBTNodes does not expose its reset rule constants to GDScript.
-const RESET_RULE_WHEN_TICKED := 0
+const RESET_RULE_WHEN_TICKED := NNBTNodes.WHEN_TICKED
 
 
 class LifecycleLeaf extends NNBTLeaf:

@@ -165,3 +165,5 @@ protected:
 } //namespace godot
 
 VARIANT_ENUM_CAST(NNBTNodes::Status)
+VARIANT_ENUM_CAST(NNBTNodes::NNBTNodesResetRule)
+VARIANT_ENUM_CAST(NNBTNodes::NNBTNodesEvaluationMethod)

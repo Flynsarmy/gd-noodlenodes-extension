@@ -69,14 +69,14 @@
 		</method>
 	</methods>
 	<members>
-		<member name="evaluation_method" type="int" setter="set_evaluation_method" getter="get_evaluation_method" default="4">
-			Used with Utility-based Behaviour Tree nodes. This defines how the [NNConsideration] nodes (assigned as child nodes of the behaviour tree node) are evaluated to calculate the score for the node.
+		<member name="evaluation_method" type="int" setter="set_evaluation_method" getter="get_evaluation_method" enum="NNBTNodesEvaluationMethod" default="4">
+			Used with Utility-based Behaviour Tree nodes. This defines how the [NNConsideration] nodes (assigned as child nodes of the behaviour tree node) are evaluated to calculate the score for the node. The default is [code]Multiply[/code] (4). In GDScript use the class constants, for example [code]NNBTNodes.Multiply[/code]. The enum-scoped form [code]NNBTNodes.NNBTNodesEvaluationMethod.Multiply[/code] is also accepted; there is no bare global enum name.
 		</member>
 		<member name="internal_status" type="int" setter="set_internal_status" getter="get_internal_status" default="0">
 			The current internal status of the node, useful for debugging and seeing how the execution progresses. The following choices are possible: "Unticked:0,Ticked:1,Completed:2".
 		</member>
-		<member name="reset_rule" type="int" setter="set_reset_rule" getter="get_reset_rule" default="2">
-			Defines how the Behaviour Tree node is reset. The following choices are possible: "WhenTicked:0,WhenCompleted:1,WhenTickedAfterBeingCompleted:2,Never:3".
+		<member name="reset_rule" type="int" setter="set_reset_rule" getter="get_reset_rule" enum="NNBTNodesResetRule" default="2">
+			Defines how the Behaviour Tree node is reset. The default is [code]WHEN_TICKED_AFTER_BEING_COMPLETED[/code] (2). In GDScript use the class constants, for example [code]NNBTNodes.WHEN_TICKED[/code]. The enum-scoped form [code]NNBTNodes.NNBTNodesResetRule.WHEN_TICKED[/code] is also accepted; there is no bare global enum name.
 		</member>
 		<member name="score" type="float" setter="set_score" getter="get_score" default="0.0">
 			The score this node received from the Utility-based evaluation.
@@ -93,6 +93,36 @@
 		<constant name="SUCCESS" value="1" enum="Status">
 		</constant>
 		<constant name="SKIP" value="-2" enum="Status">
+		</constant>
+		<constant name="WHEN_TICKED" value="0" enum="NNBTNodesResetRule">
+			Resets the node at the start of every tick, so it replays from its first child.
+		</constant>
+		<constant name="WHEN_COMPLETED" value="1" enum="NNBTNodesResetRule">
+			Resets the node as soon as it completes, so the next tick starts a fresh run.
+		</constant>
+		<constant name="WHEN_TICKED_AFTER_BEING_COMPLETED" value="2" enum="NNBTNodesResetRule">
+			Resets the node on the first tick after it has completed, which is the default.
+		</constant>
+		<constant name="NEVER" value="3" enum="NNBTNodesResetRule">
+			Never resets the node automatically.
+		</constant>
+		<constant name="Sum" value="0" enum="NNBTNodesEvaluationMethod">
+			Adds the scores of the enabled considerations.
+		</constant>
+		<constant name="Min" value="1" enum="NNBTNodesEvaluationMethod">
+			Uses the lowest score of the enabled considerations.
+		</constant>
+		<constant name="Max" value="2" enum="NNBTNodesEvaluationMethod">
+			Uses the highest score of the enabled considerations.
+		</constant>
+		<constant name="Mean" value="3" enum="NNBTNodesEvaluationMethod">
+			Uses the average score of the enabled considerations.
+		</constant>
+		<constant name="Multiply" value="4" enum="NNBTNodesEvaluationMethod">
+			Multiplies the scores of the enabled considerations, which is the default.
+		</constant>
+		<constant name="FirstNonZero" value="5" enum="NNBTNodesEvaluationMethod">
+			Uses the first score greater than zero, ignoring considerations that score zero.
 		</constant>
 	</constants>
 </class>
