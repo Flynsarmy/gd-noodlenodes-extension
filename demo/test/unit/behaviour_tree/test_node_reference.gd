@@ -110,7 +110,11 @@ func test_reparent_introduced_cycle_does_not_hang_reset_or_tick() -> void:
 	# that bypasses set_node_reference(). The scene-tree notification on the
 	# root then triggers reset().
 	composite.add_child(reference)
-	bt_root.add_child(_make_leaf())
+	# The extra child only exists to trigger the child-order notification. It is
+	# disabled so the root keeps exactly one enabled behaviour-tree child.
+	var reset_trigger: CountingLeaf = _make_leaf()
+	reset_trigger.is_enabled = false
+	bt_root.add_child(reset_trigger)
 
 	# Reset must have returned promptly. Ticking the cycle must return FAILURE
 	# instead of recursing forever.
@@ -150,7 +154,11 @@ func test_valid_reference_chain_resets_and_ticks() -> void:
 
 	# Adding a child triggers the root's reset(), which must follow the whole
 	# A -> B -> composite -> leaf chain without errors.
-	bt_root.add_child(_make_leaf())
+	# The extra child is disabled so the root keeps exactly one enabled
+	# behaviour-tree child.
+	var reset_trigger: CountingLeaf = _make_leaf()
+	reset_trigger.is_enabled = false
+	bt_root.add_child(reset_trigger)
 	assert_eq(leaf.internal_status, INTERNAL_STATUS_UNTICKED)
 	assert_eq(leaf.tick_count, 1)
 
@@ -202,8 +210,12 @@ func test_freed_reference_target_is_safe_on_reset_and_tick() -> void:
 	assert_eq(reference.get_node_reference(), null, "the getter must not expose the freed target")
 
 	# The root reset walking the stale reference must not crash, and the stale
-	# pointer/cache must be cleared.
-	bt_root.add_child(_make_leaf())
+	# pointer/cache must be cleared. The extra child only triggers the
+	# child-order notification and is disabled so the root keeps exactly one
+	# enabled behaviour-tree child.
+	var reset_trigger: CountingLeaf = _make_leaf()
+	reset_trigger.is_enabled = false
+	bt_root.add_child(reset_trigger)
 	assert_eq(reference.get_node_reference(), null, "stale reference is cleared")
 
 	# Ticking after the target was freed fails safely.

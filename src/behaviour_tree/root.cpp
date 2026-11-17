@@ -72,6 +72,8 @@ NNBTNodes::Status NNBTRoot::tick(Variant blackboard, float delta) {
 	}
 #endif
 
+	_report_extra_enabled_child_btnodes();
+
 	if (get_reset_rule() == NNBTNodesResetRule::NEVER) {
 		if (get_internal_status() == BT_INTERNAL_STATUS_COMPLETED) {
 #ifdef DEBUG_ENABLED
@@ -149,6 +151,15 @@ NNBTNodes::Status NNBTRoot::tick(Variant blackboard, float delta) {
 }
 
 // Godot virtuals.
+
+PackedStringArray NNBTRoot::_get_configuration_warnings() const {
+	PackedStringArray warnings;
+	if (_count_enabled_child_btnodes() != 1) {
+		warnings.push_back(String(get_class()) + " must have exactly one enabled behaviour-tree child.");
+	}
+	return warnings;
+}
+
 void NNBTRoot::_notification(int p_what) {
 	NNBTNodes::_notification(p_what);
 

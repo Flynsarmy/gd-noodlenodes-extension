@@ -67,6 +67,9 @@ NNBTNodes::Status NNBTLimiter::tick(Variant blackboard, float delta) {
 	//if( !get_is_enabled() ) return Status::SKIP;
 	if (Engine::get_singleton()->is_editor_hint())
 		return Status::FAILURE;
+
+	_report_extra_enabled_child_btnodes();
+
 	if (get_internal_status() == BT_INTERNAL_STATUS_UNTICKED) {
 		reset_bt_node();
 	}
@@ -82,6 +85,8 @@ NNBTNodes::Status NNBTLimiter::tick(Variant blackboard, float delta) {
 		return Status::FAILURE;
 	}
 
+	// Only the first enabled behaviour tree child is ticked. Any further
+	// enabled children are ignored and reported as a structural error.
 	for (unsigned int i = 0; i < _num_child_btnodes; i++) {
 		NNBTNodes *btnode = _child_btnodes[i];
 		if (!btnode->get_is_enabled()) {
@@ -94,6 +99,7 @@ NNBTNodes::Status NNBTLimiter::tick(Variant blackboard, float delta) {
 			//emit_signal("btnode_exited", blackboard, delta);
 			return result;
 		}
+		break;
 	}
 	//emit_signal("btnode_ticked", blackboard, delta);
 	// If we get here, there are no child nodes set.

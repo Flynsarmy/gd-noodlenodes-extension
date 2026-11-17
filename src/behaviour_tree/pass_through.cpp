@@ -38,6 +38,8 @@ NNBTNodes::Status NNBTPassThrough::get_tick_result() const {
 // Handling methods.
 
 NNBTNodes::Status NNBTPassThrough::tick(Variant blackboard, float delta) {
+	_report_extra_enabled_child_btnodes();
+
 	// The passthrough node just calls its tick and then ticks the first
 	// behaviour tree node child and returns the result of the child.
 	// Otherwise it returns what ever is set as the tick result property.

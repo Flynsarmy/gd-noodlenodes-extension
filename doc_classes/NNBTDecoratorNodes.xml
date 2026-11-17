@@ -1,8 +1,12 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <class name="NNBTDecoratorNodes" inherits="NNBTTaskNodes" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
 	<brief_description>
+		Base class for behaviour tree decorator nodes.
 	</brief_description>
 	<description>
+		A decorator node wraps a single behaviour tree child and changes how or when that child is ticked.
+		A decorator must have exactly one enabled behaviour tree child. It ticks the first enabled child, so any further enabled behaviour tree children are ignored. The first time a decorator is ticked with more than one enabled behaviour tree child it reports a one-time error. The editor shows a configuration warning for the same configuration.
+		If no behaviour tree child is enabled, the decorator keeps its existing fall-through result instead of reporting an error.
 	</description>
 	<tutorials>
 	</tutorials>

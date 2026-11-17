@@ -3,6 +3,7 @@
 #include <godot_cpp/classes/engine.hpp>
 #include <godot_cpp/classes/time.hpp>
 #include <godot_cpp/core/class_db.hpp>
+#include <godot_cpp/core/error_macros.hpp>
 
 using namespace godot;
 
@@ -61,6 +62,7 @@ NNBTNodes::NNBTNodes() {
 	//_is_first_tick = true;
 	_num_child_btnodes = 0;
 	_num_child_considerations = 0;
+	_has_reported_extra_enabled_child = false;
 #ifdef DEBUG_ENABLED
 	_last_visited_timestamp = 0;
 	_last_evaluated_timestamp = 0;
@@ -308,4 +310,40 @@ void NNBTNodes::update_child_vectors() {
 	}
 	_num_child_btnodes = (unsigned int)_child_btnodes.size();
 	_num_child_considerations = (unsigned int)_child_considerations.size();
+	// The child structure changed, so any previous structural report is stale.
+	_has_reported_extra_enabled_child = false;
+}
+
+// Structural helper functions.
+
+int NNBTNodes::_count_enabled_child_btnodes() const {
+	int count = 0;
+	for (unsigned int i = 0; i < _num_child_btnodes; i++) {
+		if (_child_btnodes[i]->get_is_enabled()) {
+			++count;
+		}
+	}
+	return count;
+}
+
+void NNBTNodes::_report_extra_enabled_child_btnodes() {
+	if (_has_reported_extra_enabled_child) {
+		return;
+	}
+
+	bool has_enabled_child = false;
+	for (unsigned int i = 0; i < _num_child_btnodes; i++) {
+		NNBTNodes *btnode = _child_btnodes[i];
+		if (!btnode->get_is_enabled()) {
+			continue;
+		}
+		if (!has_enabled_child) {
+			has_enabled_child = true;
+			continue;
+		}
+
+		_has_reported_extra_enabled_child = true;
+		ERR_PRINT(String(get_class()) + " must have exactly one behaviour-tree child; ignoring extra enabled child " + String(btnode->get_name()) + ".");
+		return;
+	}
 }

@@ -1,8 +1,12 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <class name="NNBTCompositeNodes" inherits="NNBTNodes" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
 	<brief_description>
+		Base class for behaviour tree composite nodes.
 	</brief_description>
 	<description>
+		A composite node groups any number of behaviour tree children and decides which of them to tick.
+		Composites accept any number of children and never report a runtime error for their child structure. When a composite has no enabled behaviour tree children the editor shows a configuration warning, because such a node cannot do any work.
+		The runtime identity results are unchanged: an empty or fully disabled sequence succeeds, while an empty or fully disabled selector fails.
 	</description>
 	<tutorials>
 	</tutorials>

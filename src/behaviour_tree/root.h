@@ -37,6 +37,7 @@ public:
 
 	// Godot virtuals.
 	virtual void _notification(int p_what);
+	virtual PackedStringArray _get_configuration_warnings() const override;
 };
 
 } //namespace godot

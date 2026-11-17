@@ -106,7 +106,7 @@ The return value is predetermined for most of the node types, but you decide wha
 
 ### 3.3 Commonly used nodes
 
-All behaviour trees need the **root** node. The root node is the *main node* for behaviour trees. The root node always has only one behaviour tree child node (in Utility AI GDExtension it may have **Sensor** nodes as well).
+All behaviour trees need the **root** node. The root node is the *main node* for behaviour trees. The root node must have exactly one enabled behaviour tree child node (in Utility AI GDExtension it may have **Sensor** nodes as well). It ticks the first enabled child and returns that child's result; any additional enabled behaviour tree children are ignored and produce a one-time error when the tree ticks. The editor shows a configuration warning if the root does not have exactly one enabled behaviour tree child.
 
 In addition to the root node, **task** or **leaf** nodes are always needed. As the *task* node's name implies, these nodes usually execute actions and other logic.
 
@@ -117,7 +117,7 @@ The most commonly used *composite* nodes are the **selector** (also known as the
 
 Both the selector and sequence return back *running* if a child node they tick returns back running. Handing the *running* state can vary between Behaviour Tree implementations. In Utility AI GDExtension the default is that during the next tick the tree continues ticking from the node that returned running until it either succeeds or fails. This can be changed by editing the `reset_rule` property.
 
-There are also *decorator* nodes, which usually have only one child node. The **inverter** is a very common one, and it changes the return value of its child node to the opposite value (a *success* becomes a *failure* and a *failure* a *success*; *running* stays as *running*). Other common decorator nodes are the **repeat until** node that repeats its child node until it either succeeds or fails, **cooldown** nodes run their child nodes and then allow it only to run after a certain cooldown period.
+There are also *decorator* nodes, which must have exactly one enabled behaviour tree child node. A decorator ticks the first enabled child and ignores any further enabled behaviour tree children, reporting them with a one-time error. The editor shows a configuration warning if a decorator does not have exactly one enabled behaviour tree child. The **inverter** is a very common one, and it changes the return value of its child node to the opposite value (a *success* becomes a *failure* and a *failure* a *success*; *running* stays as *running*). Other common decorator nodes are the **repeat until** node that repeats its child node until it either succeeds or fails, **cooldown** nodes run their child nodes and then allow it only to run after a certain cooldown period.
 
 > [!NOTE]
 > The *AlwaysSucceed* and *AlwaysFail* nodes are replaced by the **FixedResult** decorator node in Utility AI GDExtension, where you can choose what result the node always returns.

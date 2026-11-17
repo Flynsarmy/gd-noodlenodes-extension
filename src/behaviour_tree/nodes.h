@@ -98,6 +98,11 @@ protected:
 	unsigned int _num_child_btnodes;
 	std::vector<NNConsiderations *> _child_considerations;
 	unsigned int _num_child_considerations;
+	bool _has_reported_extra_enabled_child;
+
+	// Structural helper functions.
+	int _count_enabled_child_btnodes() const;
+	void _report_extra_enabled_child_btnodes();
 #ifdef DEBUG_ENABLED
 	uint64_t _last_evaluated_timestamp;
 	uint64_t _last_visited_timestamp;
