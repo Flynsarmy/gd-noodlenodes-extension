@@ -121,7 +121,7 @@ Both the selector and sequence return back *running* if a child node they tick r
 There are also *decorator* nodes, which must have exactly one enabled behaviour tree child node. A decorator ticks the first enabled child and ignores any further enabled behaviour tree children, reporting them with a one-time error. The editor shows a configuration warning if a decorator does not have exactly one enabled behaviour tree child. The **inverter** is a very common one, and it changes the return value of its child node to the opposite value (a *success* becomes a *failure* and a *failure* a *success*; *running* stays as *running*). Other common decorator nodes are the **repeat until** node that repeats its child node until it either succeeds or fails, **cooldown** nodes run their child nodes and then allow it only to run after a certain cooldown period.
 
 > [!NOTE]
-> The *AlwaysSucceed* and *AlwaysFail* nodes are replaced by the **FixedResult** decorator node in Utility AI GDExtension, where you can choose what result the node always returns.
+> The *AlwaysSucceed* and *AlwaysFail* nodes are called **Succeeder** and **Failer** in Utility AI GDExtension. The **FixedResult** decorator node also lets you choose what result the node always returns.
 
 
 ### 3.4 Challenges with behaviour trees
@@ -296,12 +296,12 @@ We are now done with the main scene. Next we will focus on creating the **ai_ent
 ![Add child node to the ai_entity node](images/getting_started_bt_17.png)<br>
 
 
-3. Choose the **UtilityAIBTRoot** node and add it to the scene by clicking the **Create** button. The root-node will be the node we will be *ticking* later in code.
+3. Choose the **NNBTRoot** node and add it to the scene by clicking the **Create** button. The root-node will be the node we will be *ticking* later in code.
 
 ![The Behaviour Tree root node](images/getting_started_bt_18.png)<br>
 
 
-4. We'll use a **Sensor** to track the distance and direction vector to the mouse cursor. Right-click on the **UtilityaiBTRoot** node you created and add a **UtilityAIDistanceVector2Sensor** as its child node.
+4. We'll use a **Sensor** to track the distance and direction vector to the mouse cursor. Right-click on the **NNBTRoot** node you created and add a **NNDistanceVector2Sensor** as its child node.
 
 ![Add the distance sensor](images/getting_started_bt_19.png)<br>
 
@@ -309,11 +309,11 @@ In the **Inspector** make sure to check the boxes for **Is Distance Calculated**
 
 ![Set max distance](images/getting_started_distance_vector_checks_max_distance.png)<br>
 
-5. Add another child node to the UtilityAIBTRoot node, this time a **UtilityAIBTSelector**. The selector will try to tick its child nodes one by one, starting from the top-most one. 
+5. Add another child node to the NNBTRoot node, this time a **NNBTSelector**. The selector will try to tick its child nodes one by one, starting from the top-most one. 
 
 ![Add the selector node](images/getting_started_bt_20.png)<br>
 
-6. Select the **UtilityAIBTSelector** in the **Scene-tab** and then add 3 **UtilityAIBTSequenceNode**s as childs of the selector node. 
+6. Select the **NNBTSelector** in the **Scene-tab** and then add 3 **NNBTSequence**s as childs of the selector node. 
 
 ![Add the sequence nodes](images/getting_started_bt_21.png)<br>
 
@@ -321,7 +321,7 @@ In the **Inspector** make sure to check the boxes for **Is Distance Calculated**
 
 ![Add the sequence nodes](images/getting_started_bt_22.png)<br>
 
-8. In the **Scene-tab** select the **Move closer to the cursor** node and then add two **UtilityAIBTLeaf** nodes as its childs. 
+8. In the **Scene-tab** select the **Move closer to the cursor** node and then add two **NNBTLeaf** nodes as its childs. 
 
 ![Add the sequence nodes](images/getting_started_bt_23.png)<br>
 
@@ -348,7 +348,7 @@ We have now created the structure for the AI's logic. On each tick, the behaviou
 extends AnimatedSprite2D
 
 # This is the distance sensor. 
-@onready var sensor_distance:UtilityAIDistanceVector2Sensor = $UtilityAIBTRoot/UtilityAIDistanceVector2Sensor
+@onready var sensor_distance:NNDistanceVector2Sensor = $NNBTRoot/NNDistanceVector2Sensor
 var movement_speed:float = 0.0
 
 
@@ -374,7 +374,7 @@ func _physics_process(delta):
 ```
 
 What this code does:
- * The row `@onready var sensor_distance:UtilityAIDistanceVector2Sensor = $UtilityAIBTRoot/UtilityAIDistanceVector2Sensor` gets a reference to the Vector2 based distance sensor of the AI entity. This sensor is used to check the distance and to get the direction vector towards the target.
+ * The row `@onready var sensor_distance:NNDistanceVector2Sensor = $NNBTRoot/NNDistanceVector2Sensor` gets a reference to the Vector2 based distance sensor of the AI entity. This sensor is used to check the distance and to get the direction vector towards the target.
  * The row `var movement_speed:float = 0.0` defines a variable that we will use to control the movement speed of the AI entity.
  * In the `_physics_process(delta)` method we first set the distance sensor **from-position** as the global position of the AI entity, and the **to-position** as the location of the mouse cursor from the parent node. The sensor will use these two positions to calculate the distance from the AI entity to the mouse cursor, and also the direction vector that we will use later for movement.
  * The behaviour tree root ticks itself once per physics frame by default, so the script never calls `tick()` itself. Section [9. Next steps](Getting_started_with_Behaviour_Trees.md#9-next-steps) shows how to lower that rate with `tick_rate`, and how to drive the root from your own code by setting `process_thread` to `Manual`. The tree keeps its data in the root node's blackboard, and the task nodes reach the AI entity with `get_actor()`, which resolves the parent of the behaviour tree root node. In this scene that parent is the **ai_entity** node, so the `on_tick()` methods can use all the properties of the AI entity. A root nested below another Noodle Nodes root inherits that root's blackboard and actor instead of using its own, so a tree added under a state tree or an agent shares their context.
@@ -388,7 +388,7 @@ What this code does:
 2. In the **ai_entity** scene, in the **Scene-tab**, attach a script to the **Is too far from the cursor** node. Replace the code with the following code (see explanation for it below):
 
 ```gdscript
-extends UtilityAIBTLeaf
+extends NNBTLeaf
 
 
 func on_tick(_delta):
@@ -400,7 +400,7 @@ func on_tick(_delta):
 
 ```
 
-We define the `on_tick()` method and it receives only the tick's delta time as its parameter. The examples name it `_delta` because they don't use it, and the leading underscore tells Godot the parameter is intentionally unused. The tree gives us no other input: the task nodes read and write the data they need through the blackboard helpers. To reach the AI entity itself we call `get_actor()`, which resolves the parent of the behaviour tree root node, and store it in a local `actor` variable. You can name that variable anything you want. In this case the name "actor" was chosen because in step 7.1 the **ai_entity** node is the parent of the **UtilityAIBTRoot** node.
+We define the `on_tick()` method and it receives only the tick's delta time as its parameter. The examples name it `_delta` because they don't use it, and the leading underscore tells Godot the parameter is intentionally unused. The tree gives us no other input: the task nodes read and write the data they need through the blackboard helpers. To reach the AI entity itself we call `get_actor()`, which resolves the parent of the behaviour tree root node, and store it in a local `actor` variable. You can name that variable anything you want. In this case the name "actor" was chosen because in step 7.1 the **ai_entity** node is the parent of the **NNBTRoot** node.
 
 All the `on_tick()` method does is that it checks what the distance to the mouse cursor is based on the sensor. If it is greater than the expected value 1 is returned. This means that the leaf node succeeded. If not, -1 (failure) is returned. 
 
@@ -410,7 +410,7 @@ What we have defined is called a **conditional** node for the behaviour tree. A 
 3. In the **ai_entity** scene, in the **Scene-tab**, attach a script to the **Move closer** node. Replace the code with the following code (see explanation for it below):
 
 ```gdscript
-extends UtilityAIBTLeaf
+extends NNBTLeaf
 
 
 func on_tick(_delta):
@@ -430,7 +430,7 @@ The behaviour tree is a structure used for **making decisions about what to do**
 4. In the **ai_entity** scene, in the **Scene-tab**, attach a script to the **Is too close to the cursor** node. Replace the code with the following code (see explanation for it below):
 
 ```gdscript
-extends UtilityAIBTLeaf
+extends NNBTLeaf
 
 
 func on_tick(_delta):
@@ -449,7 +449,7 @@ This again is a **conditional** node. This time we are checking if the AI entity
 5. In the **ai_entity** scene, in the **Scene-tab**, attach a script to the **Move away** node. Replace the code with the following code (see explanation for it below):
 
 ```gdscript
-extends UtilityAIBTLeaf
+extends NNBTLeaf
 
 
 func on_tick(_delta):
@@ -467,7 +467,7 @@ This is the almost the same code as we had in step 7.3 but instead of the moveme
 6. In the **ai_entity** scene, in the **Scene-tab**, attach a script to the **Set to idle animation** node. Replace the code with the following code (see explanation for it below):
 
 ```gdscript
-extends UtilityAIBTLeaf
+extends NNBTLeaf
 
 
 func on_tick(_delta):
@@ -529,13 +529,13 @@ To see the difference of ticking the tree less often, test how the code below fo
 extends AnimatedSprite2D
 
 # This is the distance sensor. 
-@onready var sensor_distance:UtilityAIDistanceVector2Sensor = $UtilityAIBTRoot/UtilityAIDistanceVector2Sensor
+@onready var sensor_distance:NNDistanceVector2Sensor = $NNBTRoot/NNDistanceVector2Sensor
 var movement_speed:float = 0.0
 
 
 func _ready():
 	# Tick roughly three times per second at 60 physics frames per second.
-	$UtilityAIBTRoot.tick_rate = 20
+	$NNBTRoot.tick_rate = 20
 
 
 func _physics_process(delta):

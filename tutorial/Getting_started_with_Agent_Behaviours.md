@@ -116,7 +116,7 @@ The thinking happens before the frame tick within a step, so an action that gets
 
 When choosing the behaviour the `evaluate_options()` method will check if the **Can be interrupted** property of the currently active behaviour is set. If it is, the behaviours will be evaluated. If not, the `evaluate_options()` method will exit. When using the *can be interrupted* property for a behaviour you can end a behaviour by setting all its child actions as finished by assigning their **is_finished** property as true. If the behaviour does not have action nodes as its childs, you can end the behaviour by calling the AI Agent's `update_current_behaviour()` method.
 
-As mentioned earlier, the `evaluate_options()` method returns the chosen behaviour, and the `update_current_behaviour()` the current action (if actions are being used). This allows the Agent Behaviours to **decouple** the AI reasoning logic from the code that actually realizes the behaviour.   
+As mentioned earlier, the `evaluate_options()` method reports the chosen behaviour through the **behaviour_changed** signal, and the `update_current_behaviour()` method reports the current action through the **action_changed** signal (if actions are being used). This allows the Agent Behaviours to **decouple** the AI reasoning logic from the code that actually realizes the behaviour.   
 
 
 ### 3.3 Challenges with utility based systems
@@ -334,16 +334,14 @@ We are now done with the main scene. Next we will focus on creating the **ai_ent
 
 
 
-3. Choose the **UtilityAIAgent** node and add it to the scene by clicking the **Create** button. The AI Agent node will be the node we will be updating later in code.
+3. Choose the **NNAgent** node and add it to the scene by clicking the **Create** button. The AI Agent node will be the node we will be updating later in code.
 
 ![The AI Agent node](images/getting_started_ab_1.png)<br>
 
-In the inspector, set the **Thinking Delay in Seconds** property as **0**.
-
-![The AI Agent node](images/getting_started_ab_1b.png)<br>
+In the inspector, leave the **Tick Rate** property at its default of **6**. It controls how often the agent thinks; see the note in section 6.
 
 
-4. We'll use a **Sensor** to track the distance and direction vector to the mouse cursor. Right-click on the **UtilityAIAgent** node you created and add a **UtilityAIDistanceVector2Sensor** as its child node. 
+4. We'll use a **Sensor** to track the distance and direction vector to the mouse cursor. Right-click on the **NNAgent** node you created and add a **NNDistanceVector2Sensor** as its child node. 
 
 ![Add the distance sensor](images/getting_started_ab_2.png)<br>
 
@@ -352,31 +350,31 @@ In the **Inspector** make sure to check the boxes for **Is Distance Calculated**
 ![Set max distance](images/getting_started_distance_vector_checks_max_distance.png)<br>
 
 
-5. Add another child node to the UtilityAIAgent node, this time a **UtilityAIBehaviour**. This will be one of the states the AI entity will have. 
+5. Add another child node to the NNAgent node, this time a **NNBehaviour**. This will be one of the states the AI entity will have. 
 
 ![Add the behaviour](images/getting_started_ab_3.png)<br>
 
 
 
-6. Rename the UtilityAIBehaviour node as **Approach**. 
+6. Rename the NNBehaviour node as **Approach**. 
 
 ![Rename to approach](images/getting_started_ab_4.png)<br>
 
 
 
-7. Add two more UtilityAIBehaviour nodes under the UtilityAIAgent node and name them as **Flee** and **Wait**. 
+7. Add two more NNBehaviour nodes under the NNAgent node and name them as **Flee** and **Wait**. 
 
 ![Add Flee and Wait behaviour nodes](images/getting_started_ab_5.png)<br>
 
 
 Next we will add the **Considerations** that will be used to choose which behaviour becomes active.
 
-8. Add a **UtilityAIConsideration** node under the **Approach** node and name it as **Do I need to go closer?**. 
+8. Add a **NNConsideration** node under the **Approach** node and name it as **Do I need to go closer?**. 
 
 ![Add consideration](images/getting_started_ab_6.png)<br>
 
 
-9. With the **Do I need to go closer?** node selected, go to the **Inspector**. Set the **Sensor** property as the **UtilityAIDistanceVector2Sensor**.
+9. With the **Do I need to go closer?** node selected, go to the **Inspector**. Set the **Input Sensor** property as the **NNDistanceVector2Sensor**.
 
 ![Set the sensor](images/getting_started_ab_7.png)<br>
 
@@ -412,7 +410,7 @@ We have now created the behaviour structure for the AI Agent. What is missing ar
 extends AnimatedSprite2D
 
 # This is the distance sensor. 
-@onready var sensor_distance:UtilityAIDistanceVector2Sensor = $UtilityAIAgent/UtilityAIDistanceVector2Sensor
+@onready var sensor_distance:NNDistanceVector2Sensor = $NNAgent/NNDistanceVector2Sensor
 var movement_speed:float = 0.0
 
 
@@ -438,7 +436,7 @@ func _physics_process(delta):
 		flip_h = !flip_h
 
 
-func _on_utility_ai_agent_behaviour_changed(behaviour_node):
+func _on_nn_agent_behaviour_changed(behaviour_node):
 	if behaviour_node == null:
 		return
 	
@@ -456,13 +454,13 @@ func _on_utility_ai_agent_behaviour_changed(behaviour_node):
 ```
 
 What this code does:
- * The row `@onready var sensor_distance:UtilityAIDistanceVector2Sensor = $UtilityAISTRoot/UtilityAIDistanceVector2Sensor` gets a reference to the Vector2 based distance sensor of the AI entity. This sensor is used to check the distance and to get the direction vector towards the target.
+ * The row `@onready var sensor_distance:NNDistanceVector2Sensor = $NNAgent/NNDistanceVector2Sensor` gets a reference to the Vector2 based distance sensor of the AI entity. This sensor is used to check the distance and to get the direction vector towards the target.
  * The row `var movement_speed:float = 0.0` defines a variable that we will use to control the movement speed of the AI entity.
  * In the `_physics_process(delta)` method we first set the distance sensor **from-position** as the global position of the AI entity, and the **to-position** as the location of the mouse cursor from the parent node. The sensor will use these two positions to calculate the distance from the AI entity to the mouse cursor, and also the direction vector that we will use later for movement.
  * The AI Agent node needs no manual update call: it thinks and ticks its behaviours automatically on the physics frame, and it will **emit the behaviour_changed** signal when a behaviour changes. The thinking rate is set by the **Tick Rate** property, which is the single thinking throttle.
  * After the agent has stepped for the frame, the row `self.global_position += sensor_distance.direction_vector * movement_speed * delta` moves the AI entity based on the direction vector calculated by the distance sensor. Delta time is used to scale the movement amount. The `movement_speed` is set by the selected behaviour.
  * The final rows of the `_physics_process()` method make sure the character sprite is facing the direction it is moving to by flipping the sprite horizontally when needed.
- * At the end of the script, we have the method `_on_utility_ai_agent_behaviour_changed(behaviour_node)`. This is a signal hander for a signal we will shortly create. It checks that the new behaviour is not null, and then uses the behaviour **name** to determine how to set up the **movement_speed** and which animation to play. Alternatively the **Behaviour ID** property could be used to differentiate between the behaviours.
+ * At the end of the script, we have the method `_on_nn_agent_behaviour_changed(behaviour_node)`. This is a signal hander for a signal we will shortly create. It checks that the new behaviour is not null, and then uses the behaviour **name** to determine how to set up the **movement_speed** and which animation to play. Alternatively the **Behaviour ID** property could be used to differentiate between the behaviours.
 
 
 > [!NOTE]
@@ -470,7 +468,7 @@ What this code does:
 
 
 
-2. In the **ai_entity** scene, **select the UtilityAIAgent** node and go to the **Node-tab**. Make sure **Signals** is selected and then double click on the **behaviour_changed(behaviour_node: Object)** signal.
+2. In the **ai_entity** scene, **select the NNAgent** node and go to the **Node-tab**. Make sure **Signals** is selected and then double click on the **behaviour_changed(behaviour_node: Object)** signal.
 
 ![Add the behaviour changed signal](images/getting_started_ab_12.png)<br>
 

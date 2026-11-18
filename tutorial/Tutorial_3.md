@@ -1,7 +1,7 @@
 # Tutorial 3
 
 > [!WARNING]
-> This tutorial is deprecated and remains available for users of versions below 1.5. For the latest tutorial to get started with the Node Query System, please read (Getting Started with the Node Query System)[Getting_started_with_the_Node_Query_System.md] tutorial.
+> This is an older tutorial. For the latest tutorial to get started with the Node Query System, please read the [Getting Started with the Node Query System](Getting_started_with_the_Node_Query_System.md) tutorial.
 
 This tutorial shows how to create a simple query using the Node Query System.
 
@@ -27,18 +27,18 @@ We'll adjust the properties of these nodes to make it more interesting for the s
 Now that we have a... kind of interesting search space, let's make add the Node Query System nodes to make queries about them.
 
 # Adding the Node Query System nodes
-The main node for the Node Query System is always the Search Space node. Add a `UtilityAINodeChildrenSearchSpace` node as the child of the scene root node (mine was called tutorial_scene). 
+The main node for the Node Query System is always the Search Space node. Add a `NNNodeChildrenSearchSpace` node as the child of the scene root node (mine was called tutorial_scene). 
 |The Search Space|
 |--|
 |![The Search Space](images/tutorial_3_pic_4.png)|
 
-The Search Space is used to define the set of nodes which you want to search through. In the case of the NodeChildrenSearchSpace it will be the direct children of some node. Look in the Inspector, and you can see the properties of this search space, and there you will se a node path you can set to a parent node.
+The Search Space is used to define the set of nodes which you want to search through. In the case of the NodeChildrenSearchSpace it will be the direct children of some node. Look in the Inspector, and you can see the properties of this search space, and there you will se a property you can set to a parent node.
 
 |The Search Space properties in the Inspector|
 |--|
 |![The Search Space properties](images/tutorial_3_pic_5.png)|
 
-Set the `myparentnode` as the Parent Node Path. You have now defined what the search space is for the NodeChildrenSearchSpace.
+Set the `myparentnode` as the Parent Node. You have now defined what the search space is for the NodeChildrenSearchSpace.
 
 |The Search Space, defined|
 |--|
@@ -51,12 +51,12 @@ Setting the top N to a larger value allows you to choose a random node amongst t
 
 ## Adding Criteria
 
-The search space uses `Search Criteria` nodes when it is executing the search query. In this case we will use the `UtilityAICustomSearchCriterion` to write a custom search, but there are pre-made choices available as well.
+The search space uses `Search Criteria` nodes when it is executing the search query. In this case we will use the `NNCustomSearchCriterion` to write a custom search, but there are pre-made choices available as well.
 |Add the Search Criterion node|
 |--|
 |![The Search Criterion node](images/tutorial_3_pic_7.png)|
 
-The shared properties for all the search criteria are `Use for Scoring`, `Use for Filtering`, `Score`, `Is Filtered` and the `Activation Curve`. If `Use for Scoring` is checked, the search criterion is used to score the nodes in the search space. If `Use for Filtering` is checked, the criterion will filter out the nodes that do not match the properties of the search criterion. 
+The shared properties for all the search criteria are `Use For Scoring`, `Use For Filtering`, `Score`, `Is Filtered` and the `Activation Curve`. If `Use For Scoring` is checked, the search criterion is used to score the nodes in the search space. If `Use For Filtering` is checked, the criterion will filter out the nodes that do not match the properties of the search criterion. 
 
 The `Activation Curve` can be used to change the outcome of the `Score` after the search criterion has applied its rules to the node. For instance, for a distance search, by default a node will get a low score if it is nearby and a high score if it is far away. With the `Activation Curve` you can change the scoring to something different. For instance, you can set that middle distances get a high score and all others zero.
 
@@ -66,7 +66,7 @@ You can add any number of criteria as the children of a search space node. The t
 ## Adding the code
 The last two things to do is to add the code to run the search space query and the `apply_criterion()` method for the Custom Search Criterion. We'll first add the code for the custom search criterion. Note that you **don't need to add this code for any of the other search criterion node types**, it is specific to the custom search criterion.
 
-Choose the UtilityAICustomSearchCriterion node and attach a script to it by using the Attach Script button or via the right-click menu.
+Choose the NNCustomSearchCriterion node and attach a script to it by using the Attach Script button or via the right-click menu.
 |Adding the script|
 |--|
 |![Adding the script](images/tutorial_3_pic_8.png)|
@@ -74,7 +74,7 @@ Choose the UtilityAICustomSearchCriterion node and attach a script to it by usin
 Then add the following code, which filters out the node if it is visible and sets the score of 0.5 to all the nodes:
 
 ```gdscript
-extends UtilityAICustomSearchCriterion
+extends NNCustomSearchCriterion
 
 
 func apply_criterion(node:Node) -> void:
@@ -91,7 +91,7 @@ extends Node2D
 
 # Called every frame. 'delta' is the elapsed time since the previous frame.
 func _process(delta):
-	$UtilityAINodeChildrenSearchSpace.execute_query(4000)
+	$NNNodeChildrenSearchSpace.execute_query(4000)
 
 ```
 
@@ -112,6 +112,6 @@ In the Inspector, expand the Query Results and the Query Result Scores. You can 
 
 
 # The result
-As a result you now have created a simple query using the Node Query System and seen what it returns. You can experiment by moving the nodes 1-5 to different locations and then adding the `UtilityAIDistanceToVector2SearchCriterion` as a child of the `UtilityAINodeChildrenSearchSpace` and setting the `Distance To Vector` on the criterion to some value.
+As a result you now have created a simple query using the Node Query System and seen what it returns. You can experiment by moving the nodes 1-5 to different locations and then adding the `NNDistanceToVector2SearchCriterion` as a child of the `NNNodeChildrenSearchSpace` and setting the `Distance To Vector` on the criterion to some value.
 
 Congratulations! You have now created your first Node Query System utility query with Utility AI GDExtension!

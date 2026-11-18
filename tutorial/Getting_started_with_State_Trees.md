@@ -84,13 +84,13 @@ The structure of the state tree controls the state selection flow for your AI en
 
 A state tree is updated by **ticking** the tree. When there are no states active, a **transition** is started with the **root** node as the transition target. This causes the states in the tree to be evaluated starting from the root node and descending down the tree until a leaf state node is found that can be activated. When a leaf node is found, all its parent nodes up until the root node will be marked as active nodes. The root node ticks itself: by default it does so on every **Physics** frame signal, so you do not need a manual tick.
 
-After the initial state has been chosen, the state transitions must be explicitly started by calling the `transition_to(new_state_nodepath:NodePath)` method. The transition target can be any of the nodes in the tree, including the root node. The target is defined by the **NodePath relative to the root node of the state tree**. In the image below, if the `transition_to()` was called with the following parameter: `transition_to("/Child state 1/Sub child state 2")`, it would cause the child states of *Sub child state 2* to be evaluated to find a new leaf state.
+After the initial state has been chosen, the state transitions must be explicitly started by calling the `transition_to(new_state_nodepath:NodePath)` method. The transition target can be any of the state nodes in the tree. The target is defined by the **NodePath relative to the state that calls the method**. In the image below, if a state directly under the root called `transition_to("../Child state 1/Sub child state 2")`, it would cause the child states of *Sub child state 2* to be evaluated to find a new leaf state.
 
 ![Behaviour Tree node priority order](images/getting_started_st_gen_1.png)<br>
 *A state tree with some states. The evaluation during transition is done in top-to-down order.*<br>
 
 > [!NOTE]
-> The node path *"."* means the root node, and causes the entire tree to be evaluated in a search for a new set of active states.
+> The node path *"."* means the calling state itself. A state cannot transition to itself, so such a call returns `false` and nothing changes. To re-evaluate a group of states, transition to the state that contains them, as the **Waiting** state does later in this tutorial.
 
 
 The hierarchy of active states is activated starting from the root node to the leaf node (i.e. going *down* the tree). When a set of states is no longer active, they are exited starting from the leaf node and going up towards the root node (i.e. going *up* the tree). When a transition occurs, only the states that are no longer active are deactivated, and only the states that were not previously active, get activated. 
@@ -136,7 +136,7 @@ To handle state transitioning, entering, exiting and updating the states, four s
 
 The state handling methods get no user data passed to them. The state tree keeps its data in the root node's blackboard, so a state stores a value with `set_blackboard("key", value)` and reads it back with `get_blackboard("key", default_value)`. This is also how initial expression properties and expression guards share values with the states.
 
-The `transition_to()` method can be called anywhere in the state's script code. If you want to start a transition from the script of some completely different node, you should use a node reference to call the method, for instance `$MyStateTreeRoot.transition_to(".")`.
+The `transition_to()` method can be called anywhere in the state's script code. If you want to start a transition from the script of some completely different node, you should use a reference to one of the state nodes to call the method, for instance `$MyStateTreeRoot/Waiting.transition_to("../Moving")`. You can also send an event to the root with `$MyStateTreeRoot.send_event("my_event")` and let a transition node handle it.
 
 Any active state that is no longer active after the call to `transition_to()` will call its `on_exit_state()` method. Similarly, any inactive state that gets activated will call its `on_enter_state()` method. 
 
@@ -152,7 +152,7 @@ Removing or reparenting an active child exits it and its active descendants once
 
 You can use the utility enabled State Trees as the sole AI reasoning component, or as a sub-component of the AI Agent Behaviours or Behaviour Trees. Utility-based considerations can be attached to all of the nodes in Utility AI GDExtension, including the State Tree nodes. The considerations can be attached either as child nodes or in the Inspector as a property.
 
-For any of the **UtilityAISTNode** state nodes you can control how they will evaluate their child nodes during a `transition_to()` call. This is done by selecting the **Child State Selection Rule** in the **Inspector**.
+For any of the **NNSTNode** state nodes you can control how they will evaluate their child nodes during a `transition_to()` call. This is done by selecting the **Child State Selection Rule** in the **Inspector**.
 
 ![Choosing the Child State Selection Rule](images/getting_started_st_gen_2.png)<br>
 
@@ -332,13 +332,13 @@ We are now done with the main scene. Next we will focus on creating the **ai_ent
 
 
 
-3. Choose the **UtilityAISTRoot** node and add it to the scene by clicking the **Create** button. The root-node will be the node that runs the state tree; it ticks itself automatically once the AI entity is in the scene.
+3. Choose the **NNSTRoot** node and add it to the scene by clicking the **Create** button. The root-node will be the node that runs the state tree; it ticks itself automatically once the AI entity is in the scene.
 
 ![The State Tree root node](images/getting_started_st_1.png)<br>
 
 
 
-4. We'll use a **Sensor** to track the distance and direction vector to the mouse cursor. Right-click on the **UtilityAISTRoot** node you created and add a **UtilityAIDistanceVector2Sensor** as its child node. 
+4. We'll use a **Sensor** to track the distance and direction vector to the mouse cursor. Right-click on the **NNSTRoot** node you created and add a **NNDistanceVector2Sensor** as its child node. 
 
 ![Add the distance sensor](images/getting_started_st_2.png)<br>
 
@@ -348,25 +348,25 @@ In the **Inspector** make sure to check the boxes for **Is Distance Calculated**
 
 
 
-5. Add another child node to the UtilityAISTRoot node, this time a **UtilityAISTNode**. This will be one of the states the AI entity will have. 
+5. Add another child node to the NNSTRoot node, this time a **NNSTNode**. This will be one of the states the AI entity will have. 
 
 ![Add the selector node](images/getting_started_st_3.png)<br>
 
 
 
-6. Rename the UtilityAISTNode as **Moving**. 
+6. Rename the NNSTNode as **Moving**. 
 
 ![Add the sequence nodes](images/getting_started_st_4.png)<br>
 
 
 
-7. Add two UtilityAISTNodes under the **Moving** node and name them as **Moving away** and **Moving closer**. 
+7. Add two NNSTNode nodes under the **Moving** node and name them as **Moving away** and **Moving closer**. 
 
 ![Add the sequence nodes](images/getting_started_st_5.png)<br>
 
 
 
-8. Add one more UtilityAISTNode under the **UtilityAISTRoot** node and name it as **Waiting**. 
+8. Add one more NNSTNode under the **NNSTRoot** node and name it as **Waiting**. 
 
 ![Add the sequence nodes](images/getting_started_st_6.png)<br>
 
@@ -384,7 +384,7 @@ We have now created a simple state structure for the AI's logic. What is missing
 extends AnimatedSprite2D
 
 # This is the distance sensor. 
-@onready var sensor_distance:UtilityAIDistanceVector2Sensor = $UtilityAISTRoot/UtilityAIDistanceVector2Sensor
+@onready var sensor_distance:NNDistanceVector2Sensor = $NNSTRoot/NNDistanceVector2Sensor
 var movement_speed:float = 0.0
 
 
@@ -413,7 +413,7 @@ func _physics_process(delta):
 ```
 
 What this code does:
- * The row `@onready var sensor_distance:UtilityAIDistanceVector2Sensor = $UtilityAISTRoot/UtilityAIDistanceVector2Sensor` gets a reference to the Vector2 based distance sensor of the AI entity. This sensor is used to check the distance and to get the direction vector towards the target.
+ * The row `@onready var sensor_distance:NNDistanceVector2Sensor = $NNSTRoot/NNDistanceVector2Sensor` gets a reference to the Vector2 based distance sensor of the AI entity. This sensor is used to check the distance and to get the direction vector towards the target.
  * The row `var movement_speed:float = 0.0` defines a variable that we will use to control the movement speed of the AI entity.
  * In the `_physics_process(delta)` method we first set the distance sensor **from-position** as the global position of the AI entity, and the **to-position** as the location of the mouse cursor from the parent node. The sensor will use these two positions to calculate the distance from the AI entity to the mouse cursor, and also the direction vector that we will use later for movement.
  * The state tree needs no manual tick. By default the root ticks itself on the **Physics** frame signal, so once the AI entity is in the scene the active states run their `on_tick()` methods every physics frame. The root's **Tick Rate** property ticks less often (a rate of 2 ticks on every second physics frame). To drive the tree from your own scheduler instead, set the root's **Process Thread** property to **Manual** and call `tick(delta)` yourself. The state handling methods get no user data, so the states read the AI entity with `get_actor()`. The root's actor defaults to its parent, the **ai_entity** node, so `get_actor()` gives the state handling methods access to all its properties. Set the root's **Actor** or **Actor Node Path** property to use a different node.
@@ -425,7 +425,7 @@ What this code does:
 2. In the **ai_entity** scene, in the **Scene-tab**, attach a script to the **Moving closer** node. Replace the code with the following code (see explanation for it below):
 
 ```gdscript
-extends UtilityAISTNode
+extends NNSTNode
 
 
 func on_enter_condition():
@@ -446,11 +446,11 @@ func on_exit_state():
 func on_tick(_delta):
 	var actor = get_actor()
 	if actor.sensor_distance.distance <= 200:
-		transition_to(".")
+		transition_to("../../Waiting")
 
 ```
 
-For all the methods we read the AI entity with `get_actor()` and store it in a local `actor` variable. You can name that variable anything you want. The state handling methods themselves receive no user data: `on_enter_condition()`, `on_enter_state()` and `on_exit_state()` take no parameters, and `on_tick()` receives only the tick's delta time, which these states don't use and therefore name `_delta`. In step 7.1 the **ai_entity** node is the parent of the **UtilityAISTRoot** node, so `get_actor()` is the AI entity.
+For all the methods we read the AI entity with `get_actor()` and store it in a local `actor` variable. You can name that variable anything you want. The state handling methods themselves receive no user data: `on_enter_condition()`, `on_enter_state()` and `on_exit_state()` take no parameters, and `on_tick()` receives only the tick's delta time, which these states don't use and therefore name `_delta`. In step 7.1 the **ai_entity** node is the parent of the **NNSTRoot** node, so `get_actor()` is the AI entity.
 
 The **on_enter_condition()** method is used to determine if the state should be entered. It is executed when the `transition_to()` method is called and the state tree is evaluated. The *Moving closer* state is entered if the distance between the AI entity and the mouse cursor is more than 200 pixels. 
 
@@ -458,14 +458,14 @@ The **on_enter_state()** method is called when this state is entered. For the *M
 
 The **on_exit_state()** method is called when the state is exited. For this tutorial we don't need to do any clean up and the content is left empty. In a real game you would simply not define this method when you do not need it. It is included here to make you aware of it.
 
-The **on_tick()** method is called every time the state tree is ticked. This is where you usually add code to update the AI entity's properties related to state updates and also the conditions for transitioning away from this state using the `transition_to()` method. In this case, if the distance is less or equal to 200 pixels the `transition_to()` method is called with the parameter `new_state_nodepath="."`. The *"."* node path will evaluate the states to transition to starting from the **UtilityAISTRoot** node.
+The **on_tick()** method is called every time the state tree is ticked. This is where you usually add code to update the AI entity's properties related to state updates and also the conditions for transitioning away from this state using the `transition_to()` method. In this case, if the distance is less or equal to 200 pixels the `transition_to()` method is called with the parameter `new_state_nodepath="../../Waiting"`. The path is relative to the *Moving closer* node, so it leads up through **Moving** to the **NNSTRoot** node and then to the **Waiting** state, which decides when to start moving again.
 
 
 
 3. In the **ai_entity** scene, in the **Scene-tab**, attach a script to the **Moving away** node. Replace the code with the following code (see explanation for it below):
 
 ```gdscript
-extends UtilityAISTNode
+extends NNSTNode
 
 
 func on_enter_condition():
@@ -486,7 +486,7 @@ func on_exit_state():
 func on_tick(_delta):
 	var actor = get_actor()
 	if actor.sensor_distance.distance >= 90 :
-		transition_to(".")
+		transition_to("../../Waiting")
 
 
 ```
@@ -498,7 +498,7 @@ Again, we define the state handling methods. This time the **on_enter_condition(
 4. In the **ai_entity** scene, in the **Scene-tab**, attach a script to the **Waiting** node. Replace the code with the following code (see explanation for it below):
 
 ```gdscript
-extends UtilityAISTNode
+extends NNSTNode
 
 
 func on_enter_state():
@@ -514,7 +514,7 @@ func on_exit_state():
 func on_tick(_delta):
 	var actor = get_actor()
 	if actor.sensor_distance.distance > 200 or actor.sensor_distance.distance < 90:
-		transition_to("Moving")
+		transition_to("../Moving")
 
 
 ```
@@ -561,7 +561,7 @@ func _ready():
 	# Tick the state tree on every sixth physics frame. The default is 1, which
 	# ticks on every physics frame. The root must keep its default Process
 	# Thread value (Physics) for this.
-	$UtilityAISTRoot.tick_rate = 6
+	$NNSTRoot.tick_rate = 6
 ```
 
 If you want full control over when the tree updates, set the root's **Process Thread** property to **Manual** and call `tick(delta)` from your own scheduler, for example with your own delay or cooldown logic. Calling `tick(delta)` by hand also re-enters a chart that was transitioned out on purpose, which the automatic ticking never does.

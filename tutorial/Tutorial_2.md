@@ -1,7 +1,7 @@
 # Tutorial 2
 
 > [!WARNING]
-> This tutorial is deprecated and remains available for users of versions below 1.5. For the latest tutorial to get started with the Agent Behaviours, please read (Getting Started with Agent Behaviours)[Getting_started_with_Agent_Behaviours.md] tutorial.
+> This is an older tutorial. For the latest tutorial to get started with the Agent Behaviours, please read the [Getting Started with Agent Behaviours](Getting_started_with_Agent_Behaviours.md) tutorial.
 
 
 This tutorial shows how to create a simple AI Agent with two behaviours.
@@ -17,11 +17,11 @@ The main node for the Utility AI GDExtension is the AI Agent node. It is under t
 |--|
 |![Add the AI Agent node](images/tutorial_pic_1.png)|
 
-We will be making a real-time example, so select the AI Agent node if it is not yet selected and change the "Thinking Delay in Seconds" property to 0.1. This makes the AI Agent do its reasoning more often. Leave the "Num Behaviours to Select" property to 1, which means the AI Agent will always select the best behaviour it can find. If you increase this value the AI Agent will choose randomly one of the top N behaviours, where N is the value you set to the property "Num Behaviours to Select".
+We will be making a real-time example, so select the AI Agent node if it is not yet selected and change the "Process Thread" property to "Idle" so the agent thinks on the process frame. Leave the "Tick Rate" property at its default of 6, which makes the AI Agent do its reasoning about ten times per second at 60 frames per second. Leave the "Num Behaviours To Select" property to 1, which means the AI Agent will always select the best behaviour it can find. If you increase this value the AI Agent will choose randomly one of the top N behaviours, where N is the value you set to the property "Num Behaviours To Select".
 
 ## Adding Sensors
 
-The AI Agent uses `sensors` to observe what happens in the game world. For this tutorial we will create a random item that the AI will go to and pick up, so a thing of interest would be the _distance_ to the item. That will be our sensor. Add a UtilityAISensor node as the child of the UtilityAIAgent and rename it to DistanceToTarget.
+The AI Agent uses `sensors` to observe what happens in the game world. For this tutorial we will create a random item that the AI will go to and pick up, so a thing of interest would be the _distance_ to the item. That will be our sensor. Add a NNSensor node as the child of the NNAgent and rename it to DistanceToTarget.
 |Add the Sensor node|
 |--|
 |![Add the Sensor node](images/tutorial_pic_2.png)|
@@ -29,7 +29,7 @@ The AI Agent uses `sensors` to observe what happens in the game world. For this 
 For the Utility AI GDExtension each sensor should have a floating point input value between 0 and 1. 
 
 ## Adding the Behaviours
-The AI Agents works by evaluating different behaviours that have been defined for it. We will now add two behaviour nodes and use the Consideration and Action nodes to build their logic. Add two UtilityAIBehaviour nodes as the child of the AI Agent node. Name them "Move to Target Behaviour" and "Pickup Item Behaviour". 
+The AI Agents works by evaluating different behaviours that have been defined for it. We will now add two behaviour nodes and use the Consideration and Action nodes to build their logic. Add two NNBehaviour nodes as the child of the AI Agent node. Name them "Move to Target Behaviour" and "Pickup Item Behaviour". 
 |Add the Behaviour nodes|
 |--|
 |![Add the Behaviour nodes](images/tutorial_pic_3.png)|
@@ -37,12 +37,12 @@ The AI Agents works by evaluating different behaviours that have been defined fo
 ## Adding the Considerations
 The AI Agent uses Considerations to decide what it should consider when scoring the behaviours. Each Consideration can use a Sensor as its input. If you don't set a sensor, it uses the "Activation Input Value" property as-is.
 
-Add a UtilityAIConsideration node as the child of the "Move to Target Behaviour" node. Then rename it to "Am I Far Away from Target".
+Add a NNConsideration node as the child of the "Move to Target Behaviour" node. Then rename it to "Am I Far Away from Target".
 |Add the first Consideration node|
 |--|
 |![Add the first Consideration node](images/tutorial_pic_4.png)|
 
-Select the "Am I Far Away from Target" node and in the Inspector, assign the "Input Sensor Node Path" to the DistanceToTarget sensor node. Once set, the sensor will set the "Activation Input Value" automatically when the AI Agent evaluates its options.
+Select the "Am I Far Away from Target" node and in the Inspector, assign the "Input Sensor" to the DistanceToTarget sensor node. Once set, the sensor will set the "Activation Input Value" automatically when the AI Agent evaluates its options.
 |Set the sensor|
 |--|
 |![Set the sensor](images/tutorial_pic_5.png)|
@@ -58,9 +58,9 @@ Now, add a Consideration node as the child of the "Pickup Item Behaviour" and na
 |![Set the activation curve for the other consideration](images/tutorial_pic_7.png)|
 
 ## Adding the Actions
-We're almost done with the node structure! The last thing we need to do for the Behaviours is to add Actions to them. When the AI Agent has chosen a behaviour based on an evaluation of their Considerations, it will execute the Actions you have defined for the Behaviour. You can add as many actions as you like and you can even use the UtilityAIActionGroup node to group your actions and set if the actions should be executed as a sequence or just one of them to be picked randomly.
+We're almost done with the node structure! The last thing we need to do for the Behaviours is to add Actions to them. When the AI Agent has chosen a behaviour based on an evaluation of their Considerations, it will execute the Actions you have defined for the Behaviour. You can add as many actions as you like and you can even use the NNActionGroup node to group your actions and set if the actions should be executed as a sequence or just one of them to be picked randomly.
 
-In our case we will add just one action for each of the behaviours and name them as "Move" and "Pickup". So do just that, add a UtilityAIAction node as the child of both Behaviour nodes, and them rename them as noted.
+In our case we will add just one action for each of the behaviours and name them as "Move" and "Pickup". So do just that, add a NNAction node as the child of both Behaviour nodes, and them rename them as noted.
 |Add the Action nodes|
 |--|
 |![Add the Action nodes](images/tutorial_pic_8.png)|
@@ -78,16 +78,16 @@ In an earlier step we added the script to the Sprite2D node, now it is time to a
 
 ## Getting _ready()
 
-Add variables `ai` of type UtilityAIAgent, `sensor_distance_to_target` of type UtilityAISensor, `current_action` of type UtilityAIAction, `speed` of type float and `target_position` of type Vector2 as global variables for the script. 
+Add variables `ai` of type NNAgent, `sensor_distance_to_target` of type NNSensor, `current_action` of type NNAction, `speed` of type float and `target_position` of type Vector2 as global variables for the script. 
 
 We add one signal, picked_up_item, that is used to notify the main scene that the position of the item should be updated.
 
-In the `_ready()` function, set the `ai` as the UtilityAIAgent node, the `sensor_distance_to_target` as the only sensor we created and then set `current_action` as null and the speed to 0.0, and the target_position as a zero vector. 
+In the `_ready()` function, set the `ai` as the NNAgent node, the `sensor_distance_to_target` as the only sensor we created and then set `current_action` as null and the speed to 0.0, and the target_position as a zero vector. 
 
 ```gdscript
-var ai:UtilityAIAgent
-var sensor_distance_to_target:UtilityAISensor
-var current_action:UtilityAIAction
+var ai:NNAgent
+var sensor_distance_to_target:NNSensor
+var current_action:NNAction
 var speed:float
 var target_position:Vector2
 
@@ -95,8 +95,8 @@ signal picked_up_item
 
 
 func _ready():
-	ai = $UtilityAIAgent
-	sensor_distance_to_target = $UtilityAIAgent/DistanceToTarget
+	ai = $NNAgent
+	sensor_distance_to_target = $NNAgent/DistanceToTarget
 	current_action = null
 	speed = 0.0
 	target_position = Vector2.ZERO
@@ -158,7 +158,7 @@ When a behaviour or action changes, the AI Agent emits a signal. We will use thi
 
 Then add the below code to the handler function. It checks if the new action is different from before. If it is, and the curren action is not the same as the new one, the action that is running is ended using the end_action() function. If the new action wasn't null, it is started using the start_action() function. We will define both of these functions in a moment.
 ```gdscript
-func _on_utility_ai_agent_action_changed(action_node):
+func _on_nn_agent_action_changed(action_node):
 	if action_node == current_action:
 		return
 	if current_action != null:
@@ -196,9 +196,9 @@ The full script for the Sprite2D-node looks like this:
 ```gdscript
 extends Sprite2D
 
-var ai:UtilityAIAgent
-var sensor_distance_to_target:UtilityAISensor
-var current_action:UtilityAIAction
+var ai:NNAgent
+var sensor_distance_to_target:NNSensor
+var current_action:NNAction
 var speed:float
 var target_position:Vector2
 
@@ -206,8 +206,8 @@ signal picked_up_item
 
 
 func _ready():
-	ai = $UtilityAIAgent
-	sensor_distance_to_target = $UtilityAIAgent/DistanceToTarget
+	ai = $NNAgent
+	sensor_distance_to_target = $NNAgent/DistanceToTarget
 	current_action = null
 	speed = 0.0
 	target_position = Vector2.ZERO
@@ -240,7 +240,7 @@ func _process(delta):
 
 
 
-func _on_utility_ai_agent_action_changed(action_node):
+func _on_nn_agent_action_changed(action_node):
 	if action_node == current_action:
 		return
 	if current_action != null:

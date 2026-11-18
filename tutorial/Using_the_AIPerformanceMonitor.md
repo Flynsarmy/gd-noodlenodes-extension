@@ -12,14 +12,17 @@ The AIPerformanceMonitor-singleton has the following measures available:
  * AI Agent update behaviour time usec
  * Behaviour Tree tick time usec
  * State Tree tick time usec
+ * HTN tick time usec
 
 **AI Agent evalute options time usec** is the total time per frame, in microseconds, used for running the AI Agent's `evaluate_options()` method. 
 
-**AI Agent update behaviour time usec** is the total time per frame, in microseconds, used for running the AI Agent's `update_behaviour()` method. 
+**AI Agent update behaviour time usec** is the total time per frame, in microseconds, used for running the AI Agent's `update_current_behaviour()` method. 
 
 **Behaviour Tree tick time usec** is the total time per frame, in microseconds, used for running the `tick()` method of Behaviour Trees. 
 
 **State Tree tick time usec** is the total time per frame, in microseconds, used for running the `tick()` method of State Trees.
+
+**HTN tick time usec** is the total time per frame, in microseconds, used for running the `tick()` method of HTN planners.
 
 
 Note that one millisecond (ms) is 1000 microseconds (usec). If your game is running at 60 frames per second, one frame would have the theoretical time of 16.6 milliseconds, meaning 16,600 microseconds. 
@@ -65,7 +68,7 @@ You can enable the monitors through the Debugger-menu as follows:
 ![Debugger-menu](images/performance_monitor_0.png)
 
 
- 2. Click on the Monitors-tab and scroll down until you see the UtilityAI measures. Check the checkboxes on the ones you want to monitor.
+ 2. Click on the Monitors-tab and scroll down until you see the NN measures. Check the checkboxes on the ones you want to monitor.
 
 ![Monitors-tab](images/performance_monitor_1.png)
 
