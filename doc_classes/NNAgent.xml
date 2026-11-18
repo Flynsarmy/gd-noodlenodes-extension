@@ -8,7 +8,7 @@
 		The agent updates itself automatically. Every eligible step of the frame signal selected with [member process_thread] performs the thinking step with [method evaluate_options] and [method update_current_behaviour], and then emits [code]frame_tick[/code] on the selected behaviour group, behaviour and action. Thinking happens first, so an action chosen on a step receives its frame tick in that same step. [member tick_rate] is the single thinking throttle: a rate of [code]N[/code] thinks on every [code]N[/code]th eligible step, while [code]frame_tick[/code] still fires on every eligible step.
 		Frame steps are driven by the SceneTree's [code]process_frame[/code] and [code]physics_frame[/code] signals rather than by this node's own [code]_process[/code]/[code]_physics_process[/code] overrides, so a script attached to the agent keeps its own callbacks and cannot shadow the automatic steps. The signal connections exist only while the agent is in the tree and enabled, and no step happens while the agent cannot process (paused or process mode disabled). Because stepping no longer depends on this node's process callbacks, [code]set_process()[/code] and [code]set_physics_process()[/code] do not stop the agent.
 		Both thinking primitives stay callable by hand. Set [member process_thread] to [code]Manual[/code] and call [method tick] from a custom scheduler, or call [method auto_tick_step] to reuse the scheduler's guards and rate schedule.
-		Noodle Nodes systems can be susceptile to oscillation, which means that two or more evaluated options get the highest score and the system ends up switching several times between the options. The [member current_behaviour_bias] property in the AI Agent can be used to add some bias towards the currently selected behaviour, which will decrease the chances of oscillation. In a sense the AI Agent is "more determined" to continue with the currently selected behaviour.
+		Noodle Nodes systems can be susceptible to oscillation, which means that two or more evaluated options get the highest score and the system ends up switching several times between the options. The agent only picks a new behaviour when its running behaviour is no longer a valid candidate, so it does not re-roll the selection on every thinking step. The [member current_behaviour_bias] property adds to the running behaviour's score before the candidates are ranked, so a positive bias keeps it among the [member num_behaviours_to_select] candidates for longer and a negative bias makes it drop out sooner. In a sense the AI Agent is "more determined" to continue with the currently selected behaviour.
 	</description>
 	<tutorials>
 	</tutorials>
@@ -43,7 +43,7 @@
 			<return type="void" />
 			<param index="0" name="delta" type="float" />
 			<description>
-				Gathers input from sensors and evaluates all the available behaviours by calculating a score for each of them and then choosing a random behaviour from the top [member num_behaviours_to_select] behaviours. Candidates must still be enabled and belong to this agent after evaluation and exit callbacks run. The automatic step calls this on every step selected by [member tick_rate], passing the time elapsed since the previous thinking step; it remains callable by hand for custom schedulers.
+				Gathers input from sensors and evaluates all the available behaviours by calculating a score for each of them, then keeps the top [member num_behaviours_to_select] behaviours as candidates. The running behaviour keeps running while it is still one of those candidates; otherwise a new candidate is picked with a probability proportional to its score. Candidates must still be enabled and belong to this agent after evaluation and exit callbacks run. The automatic step calls this on every step selected by [member tick_rate], passing the time elapsed since the previous thinking step; it remains callable by hand for custom schedulers.
 			</description>
 		</method>
 		<method name="get_current_action_node" qualifiers="const">
@@ -59,6 +59,12 @@
 		<method name="get_current_behaviour_node" qualifiers="const">
 			<return type="NNBehaviour" />
 			<description>
+			</description>
+		</method>
+		<method name="get_random_seed" qualifiers="const">
+			<return type="int" />
+			<description>
+				Returns the seed of the random number generator that picks between selection candidates. The generator is randomized when the agent is created, so agents do not share a selection stream by default.
 			</description>
 		</method>
 		<method name="set_current_action_node">
@@ -79,6 +85,13 @@
 			<description>
 			</description>
 		</method>
+		<method name="set_random_seed">
+			<return type="void" />
+			<param index="0" name="random_seed" type="int" />
+			<description>
+				Seeds the random number generator used to choose between selection candidates. A given seed produces the same sequence of picks, which makes selection reproducible. The generator is randomized when the agent is created, so agents do not share a selection stream by default.
+			</description>
+		</method>
 		<method name="tick">
 			<return type="void" />
 			<param index="0" name="delta" type="float" />
@@ -95,13 +108,13 @@
 	</methods>
 	<members>
 		<member name="current_behaviour_bias" type="float" setter="set_current_behaviour_bias" getter="get_current_behaviour_bias" default="0.1">
-			This property can be used to set a bias to the current behaviour score. This can be useful to reduce or eliminate oscillation between Behaviours. The bias gets added after the actual consideration-based score has been calculated.
+			This property can be used to set a bias to the current behaviour score. This can be useful to reduce or eliminate oscillation between Behaviours. The bias gets added after the actual consideration-based score has been calculated and before the candidates are ranked, so a positive bias keeps the running behaviour among the top [member num_behaviours_to_select] candidates for longer while a negative bias makes it drop out sooner. It has no effect when there is no running behaviour.
 		</member>
 		<member name="current_behaviour_name" type="String" setter="set_current_behaviour_name" getter="get_current_behaviour_name" default="&quot;&quot;">
 			This property shows what was the selected behaviour after the latest [method evaluate_options] method call.
 		</member>
 		<member name="num_behaviours_to_select" type="int" setter="set_num_behaviours_to_select" getter="get_num_behaviours_to_select" default="1">
-			Pick uniformly from up to this many eligible behaviours with the highest scores. Equal scores retain evaluation order when the list is full. Must be between 1 and 16; invalid assignments report an error and leave the value unchanged.
+			The number of highest scoring behaviours kept as selection candidates. The running behaviour keeps running while it is still one of them, so it is only replaced when it drops out of this list. When a new behaviour has to be chosen, the pick is random with a probability proportional to score, so higher scoring candidates are preferred. Equal scores retain evaluation order when the list is full. A value of [code]1[/code] always follows the single highest scoring candidate, which makes selection deterministic. Must be between 1 and 16; invalid assignments report an error and leave the value unchanged.
 		</member>
 		<member name="process_thread" type="int" enum="NNAgent.ProcessThread" setter="set_process_thread" getter="get_process_thread" default="1">
 			Selects the SceneTree frame signal that drives the automatic steps, not this node's processing flags. Defaults to [constant PHYSICS], so an agent steps automatically once added to a scene. [constant IDLE] uses [code]process_frame[/code], [constant PHYSICS] uses [code]physics_frame[/code] and [constant MANUAL] connects neither so a custom scheduler calls [method tick]. Exactly one signal is connected at a time. Out-of-range values fall back to [constant PHYSICS]. Setting this property re-arms the [member tick_rate] schedule.

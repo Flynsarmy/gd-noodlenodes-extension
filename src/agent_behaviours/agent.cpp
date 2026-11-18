@@ -51,6 +51,9 @@ void NNAgent::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_current_behaviour_bias"), &NNAgent::get_current_behaviour_bias);
 	ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "current_behaviour_bias", PROPERTY_HINT_RANGE, "-1.0,1.0,or_greater"), "set_current_behaviour_bias", "get_current_behaviour_bias");
 
+	ClassDB::bind_method(D_METHOD("set_random_seed", "random_seed"), &NNAgent::set_random_seed);
+	ClassDB::bind_method(D_METHOD("get_random_seed"), &NNAgent::get_random_seed);
+
 	ClassDB::bind_method(D_METHOD("tick", "delta"), &NNAgent::tick);
 	ClassDB::bind_method(D_METHOD("auto_tick_step", "process_thread", "delta"), &NNAgent::auto_tick_step);
 
@@ -469,10 +472,33 @@ void NNAgent::evaluate_options(float delta) {
 		return; // No behaviour chosen.
 	}
 
-	// Select a random behaviour from the valid candidates.
-	int chosen_candidate_position = 0;
-	if (valid_candidate_indices.size() > 1) {
-		chosen_candidate_position = _rng->randi_range(0, (int)valid_candidate_indices.size() - 1);
+	// Keep the running behaviour while it is still a valid candidate: a fresh
+	// pick on every evaluation would interrupt its actions.
+	int chosen_candidate_position = -1;
+	if (!_current_behaviour_id.is_null()) {
+		for (unsigned int i = 0; i < valid_candidate_indices.size(); ++i) {
+			if (_top_scoring_behaviour_ids[valid_candidate_indices[i]] == _current_behaviour_id) {
+				chosen_candidate_position = (int)i;
+				break;
+			}
+		}
+	}
+
+	if (chosen_candidate_position < 0) {
+		// Weighted by score so better candidates are picked more often.
+		float total_score = 0.0f;
+		for (unsigned int i = 0; i < valid_candidate_indices.size(); ++i) {
+			total_score += _top_scoring_behaviours_score[valid_candidate_indices[i]];
+		}
+		float roll = _rng->randf() * total_score;
+		chosen_candidate_position = (int)valid_candidate_indices.size() - 1;
+		for (unsigned int i = 0; i < valid_candidate_indices.size(); ++i) {
+			roll -= _top_scoring_behaviours_score[valid_candidate_indices[i]];
+			if (roll < 0.0f) {
+				chosen_candidate_position = (int)i;
+				break;
+			}
+		}
 	}
 	int chosen_behaviour_index = valid_candidate_indices[chosen_candidate_position];
 	ObjectID chosen_behaviour_id = _top_scoring_behaviour_ids[chosen_behaviour_index];
@@ -820,6 +846,14 @@ void NNAgent::set_current_behaviour_bias(float current_behaviour_bias) {
 
 float NNAgent::get_current_behaviour_bias() const {
 	return _current_behaviour_bias;
+}
+
+void NNAgent::set_random_seed(uint64_t random_seed) {
+	_rng->set_seed(random_seed);
+}
+
+uint64_t NNAgent::get_random_seed() const {
+	return _rng->get_seed();
 }
 
 void NNAgent::set_top_scoring_behaviour_name(godot::String top_scoring_behaviour_name) {

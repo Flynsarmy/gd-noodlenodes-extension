@@ -1,6 +1,7 @@
 extends GutTest
 
-# NNAgent has no seed API, so selection is checked by sampling.
+# Sampling checks which candidates can be picked. Tests that need a fixed
+# selection sequence seed the agent's random number generator.
 
 const SELECTION_SAMPLES := 300
 
@@ -98,6 +99,49 @@ func test_full_list_replaces_front_and_middle_and_keeps_earlier_tie() -> void:
 	assert_eq(counts["later_tie"], 0)
 	assert_eq(counts["high"] + counts["middle"], SELECTION_SAMPLES)
 	assert_eq(agent.get_top_scoring_behaviour_name(), "high")
+
+
+func test_running_behaviour_is_kept_while_it_stays_in_top_n() -> void:
+	var first: NNBehaviour = _make_behaviour("first", 0.6)
+	var second: NNBehaviour = _make_behaviour("second", 0.5)
+	var agent: NNAgent = _make_agent([first, second], 2)
+	agent.set_random_seed(731)
+
+	agent.evaluate_options(100.0)
+	var running := agent.get_current_behaviour_node()
+	assert_not_null(running)
+
+	var switches := 0
+	for _i in SELECTION_SAMPLES:
+		agent.evaluate_options(100.0)
+		if agent.get_current_behaviour_node() != running:
+			switches += 1
+	assert_eq(switches, 0, "the running behaviour should keep running while it stays in the top N")
+
+
+func test_running_behaviour_is_replaced_when_it_drops_out_of_top_n() -> void:
+	var current: NNBehaviour = _make_behaviour("current", 0.9)
+	var challenger: NNBehaviour = _make_behaviour("challenger", 0.1)
+	var agent: NNAgent = _make_agent([current, challenger], 1)
+
+	agent.evaluate_options(100.0)
+	assert_eq(agent.get_current_behaviour_node(), current)
+
+	current.get_child(0).activation_input_value = 0.1
+	challenger.get_child(0).activation_input_value = 0.9
+	agent.evaluate_options(100.0)
+	assert_eq(agent.get_current_behaviour_node(), challenger)
+
+
+func test_fresh_pick_is_weighted_by_score() -> void:
+	var high: NNBehaviour = _make_behaviour("high", 0.9)
+	var low: NNBehaviour = _make_behaviour("low", 0.1)
+	var agent: NNAgent = _make_agent([high, low], 2)
+	agent.set_random_seed(2024)
+
+	var counts := _count_selections(agent, [high, low])
+
+	assert_gt(counts["high"], counts["low"] * 5, "score-proportional picks should favour the higher score: %s" % [counts])
 
 
 func test_maximum_capacity_with_one_candidate_selects_only_filled_slot() -> void:

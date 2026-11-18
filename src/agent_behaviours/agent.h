@@ -123,6 +123,9 @@ public:
 	void set_current_behaviour_bias(float current_behaviour_bias);
 	float get_current_behaviour_bias() const;
 
+	void set_random_seed(uint64_t random_seed);
+	uint64_t get_random_seed() const;
+
 	void set_top_scoring_behaviour_name(godot::String top_scoring_behaviour_name);
 	godot::String get_top_scoring_behaviour_name() const;
 
