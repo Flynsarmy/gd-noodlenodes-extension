@@ -9,7 +9,6 @@ class NNBTInverter : public NNBTDecoratorNodes {
 	GDCLASS(NNBTInverter, NNBTDecoratorNodes)
 
 private:
-
 protected:
 	static void _bind_methods();
 

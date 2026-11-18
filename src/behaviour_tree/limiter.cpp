@@ -13,7 +13,6 @@ void NNBTLimiter::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("set_max_repeat_times", "repeat_times"), &NNBTLimiter::set_max_repeat_times);
 	ClassDB::bind_method(D_METHOD("get_max_repeat_times"), &NNBTLimiter::get_max_repeat_times);
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "max_repeat_times", PROPERTY_HINT_RANGE, "0,100,or_greater"), "set_max_repeat_times", "get_max_repeat_times");
-
 }
 
 // Constructor and destructor.

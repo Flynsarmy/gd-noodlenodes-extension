@@ -8,7 +8,6 @@ using namespace godot;
 // Method binds.
 
 void NNBTPassBy::_bind_methods() {
-
 }
 
 // Constructor and destructor.

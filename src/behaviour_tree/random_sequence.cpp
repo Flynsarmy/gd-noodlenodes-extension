@@ -8,7 +8,6 @@ using namespace godot;
 // Method binds.
 
 void NNBTRandomSequence::_bind_methods() {
-
 }
 
 // Constructor and destructor.

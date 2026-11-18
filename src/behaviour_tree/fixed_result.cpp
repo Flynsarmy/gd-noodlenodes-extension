@@ -11,7 +11,6 @@ void NNBTFixedResult::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("set_fixed_result", "fixed_result"), &NNBTFixedResult::set_fixed_result);
 	ClassDB::bind_method(D_METHOD("get_fixed_result"), &NNBTFixedResult::get_fixed_result);
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "fixed_result", PROPERTY_HINT_ENUM, "Running:0,Success:1,Failure:-1"), "set_fixed_result", "get_fixed_result");
-
 }
 
 // Constructor and destructor.

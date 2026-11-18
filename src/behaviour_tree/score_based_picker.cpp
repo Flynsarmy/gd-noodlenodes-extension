@@ -8,7 +8,6 @@ using namespace godot;
 // Method binds.
 
 void NNBTScoreBasedPicker::_bind_methods() {
-
 }
 
 // Constructor and destructor.

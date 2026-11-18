@@ -772,7 +772,6 @@ bool NNSTRoot::_process_transitions(int trigger_type, const String &event_name) 
  * Only activates up to 1 child for each node (CompoundState).
  */
 void NNSTRoot::_evaluate_child_activations(std::vector<ObjectID> &nodes) {
-
 	// Snapshot child IDs because on_enter_condition() / evaluate() callbacks can
 	// remove, reparent or free siblings while this is running.
 	const std::vector<ObjectID> child_state_ids = _child_states;
@@ -818,7 +817,6 @@ void NNSTRoot::_evaluate_child_activations(std::vector<ObjectID> &nodes) {
 			nodes.push_back(highest_scoring_state_to_activate);
 		}
 	}
-
 }
 
 void NNSTRoot::_transition_in() {

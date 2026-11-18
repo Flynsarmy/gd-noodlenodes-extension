@@ -19,7 +19,6 @@ void NNBTRepeatUntil::_bind_methods() {
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "expected_tick_result", PROPERTY_HINT_ENUM, "Running:0,Success:1,Failure:-1"), "set_expected_tick_result", "get_expected_tick_result");
 
 	ClassDB::bind_method(D_METHOD("get_current_repeat_times"), &NNBTRepeatUntil::get_current_max_repeat_times);
-
 }
 
 // Constructor and destructor.

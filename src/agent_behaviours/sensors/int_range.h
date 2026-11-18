@@ -38,7 +38,6 @@ public:
 
 	void set_range_value(int range_value);
 	int get_range_value() const;
-
 };
 
 } //namespace godot

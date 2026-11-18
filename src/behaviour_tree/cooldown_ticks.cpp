@@ -21,7 +21,6 @@ void NNBTCooldownTicks::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("set_current_cooldown_ticks", "current_cooldown_ticks"), &NNBTCooldownTicks::set_current_cooldown_ticks);
 	ClassDB::bind_method(D_METHOD("get_current_cooldown_ticks"), &NNBTCooldownTicks::get_current_cooldown_ticks);
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "current_cooldown_ticks", PROPERTY_HINT_RANGE, "0,1000,or_greater"), "set_current_cooldown_ticks", "get_current_cooldown_ticks");
-
 }
 
 // Constructor and destructor.

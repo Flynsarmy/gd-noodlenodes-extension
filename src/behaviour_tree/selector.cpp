@@ -11,7 +11,6 @@ void NNBTSelector::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("set_reactive", "reactive"), &NNBTSelector::set_reactive);
 	ClassDB::bind_method(D_METHOD("get_reactive"), &NNBTSelector::get_reactive);
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "reactive", PROPERTY_HINT_NONE), "set_reactive", "get_reactive");
-
 }
 
 // Constructor and destructor.

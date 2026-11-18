@@ -305,7 +305,6 @@ void register_editor_classes() {
 }
 
 void initialize_noodle_nodes_module(ModuleInitializationLevel p_level) {
-
 	// Add the classes here.
 	switch (p_level) {
 		case MODULE_INITIALIZATION_LEVEL_SCENE: {

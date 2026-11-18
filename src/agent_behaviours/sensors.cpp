@@ -8,7 +8,6 @@ using namespace godot;
 // Method binds.
 
 void NNSensors::_bind_methods() {
-
 	ClassDB::bind_method(D_METHOD("set_sensor_value", "sensor_value"), &NNSensors::set_sensor_value);
 	ClassDB::bind_method(D_METHOD("get_sensor_value"), &NNSensors::get_sensor_value);
 	ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "sensor_value", PROPERTY_HINT_RANGE, "0.0,1.0,or_less,or_greater"), "set_sensor_value", "get_sensor_value");
