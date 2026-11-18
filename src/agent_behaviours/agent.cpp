@@ -114,6 +114,8 @@ NNAgent::NNAgent() {
 	_tick_scheduler.configure(this, [this](double p_delta, bool p_due) -> bool {
 		return _auto_tick_step_callback(p_delta, p_due);
 	});
+	// The agent's rate throttles only thinking, so 6 keeps actions smooth; tree roots gate the whole tick and stay at 1.
+	_tick_scheduler.set_tick_rate(6);
 
 	_current_behaviour_bias = 0.1f;
 

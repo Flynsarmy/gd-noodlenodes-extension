@@ -14,7 +14,7 @@ class CountingConsideration extends NNConsideration:
 		return 1.0
 
 
-func _make_fixture(tick_rate := 1) -> Dictionary:
+func _make_fixture() -> Dictionary:
 	var consideration := CountingConsideration.new()
 	consideration.activation_input_value = 1.0
 	var behaviour := NNBehaviour.new()
@@ -23,7 +23,6 @@ func _make_fixture(tick_rate := 1) -> Dictionary:
 	behaviour.add_child(action)
 
 	var agent := NNAgent.new()
-	agent.tick_rate = tick_rate
 	agent.add_child(behaviour)
 
 	return {
@@ -50,7 +49,6 @@ func test_default_agent_thinks_from_the_physics_frame_without_a_manual_call() ->
 	var consideration: CountingConsideration = fixture["consideration"]
 
 	assert_eq(agent.process_thread, NNAgent.PHYSICS, "a default agent auto-ticks from the physics frame")
-	assert_eq(agent.tick_rate, 1)
 
 	var ticks := _collect_ticks(action)
 	add_child_autofree(agent)
@@ -63,11 +61,31 @@ func test_default_agent_thinks_from_the_physics_frame_without_a_manual_call() ->
 	assert_eq(ticks.size(), 1, "the selected action receives the frame tick in the step it was chosen")
 
 
-func test_tick_rate_spaces_thinking_but_frame_ticks_every_eligible_step() -> void:
-	var fixture := _make_fixture(3)
+func test_default_tick_rate_thinks_on_the_first_step_then_every_sixth() -> void:
+	var fixture := _make_fixture()
 	var agent: NNAgent = fixture["agent"]
 	var action: NNAction = fixture["action"]
 	var consideration: CountingConsideration = fixture["consideration"]
+	var ticks := _collect_ticks(action)
+	add_child_autofree(agent)
+
+	var eval_counts: Array = []
+	for index in range(7):
+		# Considerations cache their score until their input changes; only a thinking step re-evaluates them.
+		consideration.activation_input_value = float(index)
+		agent.auto_tick_step(NNAgent.PHYSICS, 0.1)
+		eval_counts.append(consideration.eval_count)
+
+	assert_eq(eval_counts, [1, 1, 1, 1, 1, 1, 2], "the first step thinks, then the next thinking step is six steps later")
+	assert_eq(ticks.size(), 7, "frame_tick still fires on every eligible step")
+
+
+func test_tick_rate_spaces_thinking_but_frame_ticks_every_eligible_step() -> void:
+	var fixture := _make_fixture()
+	var agent: NNAgent = fixture["agent"]
+	var action: NNAction = fixture["action"]
+	var consideration: CountingConsideration = fixture["consideration"]
+	agent.tick_rate = 3
 	var ticks := _collect_ticks(action)
 	# The agent must be inside the tree for its behaviour cache and ready
 	# handling. No frame is awaited, so only auto_tick_step advances the
@@ -115,7 +133,7 @@ func test_manual_mode_ticks_only_when_the_caller_calls_tick() -> void:
 # Enable gating.
 
 func test_disabled_agent_neither_thinks_nor_frame_ticks() -> void:
-	var fixture := _make_fixture(2)
+	var fixture := _make_fixture()
 	var agent: NNAgent = fixture["agent"]
 	var action: NNAction = fixture["action"]
 	var consideration: CountingConsideration = fixture["consideration"]
