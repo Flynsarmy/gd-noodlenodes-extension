@@ -26,7 +26,8 @@ public:
 	void set_max_repeat_times(int repeat_times);
 
 	// Handling functions.
-	virtual void reset_bt_node() override;
+
+	virtual void reset() override;
 
 	virtual Status _tick(Variant blackboard, float delta) override;
 };

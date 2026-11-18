@@ -4,16 +4,6 @@ extends GutTest
 
 const BLACKBOARD: Dictionary = {}
 
-# NNBTNodes does not expose its internal status or reset rule constants to GDScript.
-const INTERNAL_STATUS_UNTICKED := 0
-const INTERNAL_STATUS_TICKED := 1
-const INTERNAL_STATUS_COMPLETED := 2
-
-const RESET_RULE_WHEN_TICKED := 0
-const RESET_RULE_WHEN_COMPLETED := 1
-const RESET_RULE_WHEN_TICKED_AFTER_BEING_COMPLETED := 2
-const RESET_RULE_NEVER := 3
-
 
 class ConstantLeaf extends NNBTLeaf:
 	var result: int = NNBTNodes.SUCCESS
@@ -43,19 +33,10 @@ func _tick_and_assert(root: NNBTRoot, node: NNBTNodes, expected: int) -> void:
 	var result: int = root.tick(BLACKBOARD, 0.1)
 
 	assert_eq(result, expected)
-	assert_eq(node.tick_result, expected)
 	if expected == NNBTNodes.RUNNING:
-		assert_eq(node.internal_status, INTERNAL_STATUS_TICKED)
+		assert_true(node.get_is_running())
 	else:
-		assert_eq(node.internal_status, INTERNAL_STATUS_COMPLETED)
-
-
-func test_default_reset_rule_is_never() -> void:
-	var star: NNBTSequenceStar = NNBTSequenceStar.new()
-
-	assert_eq(star.reset_rule, RESET_RULE_NEVER)
-
-	star.free()
+		assert_false(node.get_is_running())
 
 
 func test_failure_resumes_at_the_failed_child() -> void:
@@ -66,7 +47,7 @@ func test_failure_resumes_at_the_failed_child() -> void:
 	var root: NNBTRoot = _build_root(star, [first, second, third])
 
 	_tick_and_assert(root, star, NNBTNodes.FAILURE)
-	assert_eq(star.internal_status, INTERNAL_STATUS_COMPLETED, "a failure is terminal for the run")
+	assert_false(star.get_is_running(), "a failure is terminal for the run")
 	assert_eq(first.tick_count, 1)
 	assert_eq(second.tick_count, 1)
 	assert_eq(third.tick_count, 1)
@@ -146,27 +127,7 @@ func test_disabled_children_are_skipped_when_resuming() -> void:
 	root.free()
 
 
-func test_other_reset_rules_clear_the_memory() -> void:
-	var reset_rules: Array = [RESET_RULE_WHEN_TICKED, RESET_RULE_WHEN_COMPLETED, RESET_RULE_WHEN_TICKED_AFTER_BEING_COMPLETED]
-	for reset_rule in reset_rules:
-		var first: ConstantLeaf = _make_leaf(NNBTNodes.SUCCESS)
-		var second: ConstantLeaf = _make_leaf(NNBTNodes.FAILURE)
-		var star: NNBTSequenceStar = NNBTSequenceStar.new()
-		star.reset_rule = reset_rule
-		var root: NNBTRoot = _build_root(star, [first, second])
-
-		_tick_and_assert(root, star, NNBTNodes.FAILURE)
-		assert_eq(first.tick_count, 1)
-		assert_eq(second.tick_count, 1)
-
-		_tick_and_assert(root, star, NNBTNodes.FAILURE)
-		assert_eq(first.tick_count, 2, "reset_rule %d clears the memory" % reset_rule)
-		assert_eq(second.tick_count, 2)
-
-		root.free()
-
-
-func test_setting_when_ticked_after_a_failure_restarts_from_child_zero() -> void:
+func test_reset_clears_the_memory() -> void:
 	var first: ConstantLeaf = _make_leaf(NNBTNodes.SUCCESS)
 	var second: ConstantLeaf = _make_leaf(NNBTNodes.FAILURE)
 	var star: NNBTSequenceStar = NNBTSequenceStar.new()
@@ -176,7 +137,9 @@ func test_setting_when_ticked_after_a_failure_restarts_from_child_zero() -> void
 	assert_eq(first.tick_count, 1)
 	assert_eq(second.tick_count, 1)
 
-	star.reset_rule = RESET_RULE_WHEN_TICKED
+	star.reset()
+	assert_false(star.get_is_running(), "a reset leaves no run active")
+
 	_tick_and_assert(root, star, NNBTNodes.FAILURE)
 	assert_eq(first.tick_count, 2, "the reset cleared the memory and restarted at child 0")
 	assert_eq(second.tick_count, 2)
@@ -195,9 +158,11 @@ func test_disabling_and_reenabling_restarts_from_child_zero() -> void:
 	assert_eq(second.tick_count, 1)
 
 	star.is_enabled = false
-	assert_eq(star.internal_status, INTERNAL_STATUS_UNTICKED, "disabling resets the node")
+	assert_false(star.get_is_running(), "disabling ends the active run")
 	star.is_enabled = true
 
+	# Disabling runs the star's reset(), which must clear the remembered child
+	# index just like an explicit reset.
 	_tick_and_assert(root, star, NNBTNodes.FAILURE)
 	assert_eq(first.tick_count, 2, "the reset cleared the memory and restarted at child 0")
 	assert_eq(second.tick_count, 2)

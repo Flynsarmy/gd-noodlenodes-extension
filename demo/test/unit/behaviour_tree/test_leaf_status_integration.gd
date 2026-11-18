@@ -4,9 +4,6 @@ extends GutTest
 
 const BLACKBOARD: Dictionary = {}
 
-# NNBTNodes does not expose its internal status constants to GDScript.
-const INTERNAL_STATUS_TICKED := 1
-const INTERNAL_STATUS_COMPLETED := 2
 
 const CUSTOM_STATUS_SCRIPT := "res://test/unit/behaviour_tree/leaf_custom_status.gd"
 const LEAF_NAME := "StatusLeaf"
@@ -55,8 +52,7 @@ func test_missing_override_fails_without_duplicate_errors() -> void:
 
 	for tick_index in range(3):
 		assert_eq(root.tick(BLACKBOARD, 0.1), NNBTNodes.FAILURE, "missing override tick %d must fail" % tick_index)
-		assert_eq(leaf.tick_result, NNBTNodes.FAILURE)
-		assert_eq(leaf.internal_status, INTERNAL_STATUS_COMPLETED)
+		assert_false(leaf.get_is_running())
 
 	_assert_missing_override_error(LEAF_NAME)
 	root.free()
@@ -74,8 +70,7 @@ func test_raw_invalid_statuses_fail_with_one_error_each() -> void:
 		root.add_child(leaf)
 
 		assert_eq(root.tick(BLACKBOARD, 0.1), NNBTNodes.FAILURE, "%s must be rejected" % var_to_str(payload))
-		assert_eq(leaf.tick_result, NNBTNodes.FAILURE)
-		assert_eq(leaf.internal_status, INTERNAL_STATUS_COMPLETED)
+		assert_false(leaf.get_is_running())
 
 		var errors: Array = get_errors()
 		assert_eq(errors.size(), expected_error_count + 1, "each invalid on_tick result reports one error")
@@ -90,11 +85,13 @@ func test_raw_invalid_statuses_fail_with_one_error_each() -> void:
 
 
 func test_valid_statuses_pass_through_unchanged() -> void:
-	var expected_internal_status := {
-		NNBTNodes.SKIP: INTERNAL_STATUS_TICKED,
-		NNBTNodes.FAILURE: INTERNAL_STATUS_COMPLETED,
-		NNBTNodes.RUNNING: INTERNAL_STATUS_TICKED,
-		NNBTNodes.SUCCESS: INTERNAL_STATUS_COMPLETED,
+	# SKIP and RUNNING are not terminal, so the run stays active. FAILURE and
+	# SUCCESS end the run immediately.
+	var expected_is_running := {
+		NNBTNodes.SKIP: true,
+		NNBTNodes.FAILURE: false,
+		NNBTNodes.RUNNING: true,
+		NNBTNodes.SUCCESS: false,
 	}
 
 	for status: int in [NNBTNodes.SKIP, NNBTNodes.FAILURE, NNBTNodes.RUNNING, NNBTNodes.SUCCESS]:
@@ -104,8 +101,7 @@ func test_valid_statuses_pass_through_unchanged() -> void:
 		root.add_child(leaf)
 
 		assert_eq(root.tick(BLACKBOARD, 0.1), status)
-		assert_eq(leaf.tick_result, status)
-		assert_eq(leaf.internal_status, expected_internal_status[status])
+		assert_eq(leaf.get_is_running(), expected_is_running[status])
 		root.free()
 
 	assert_engine_error_count(0)

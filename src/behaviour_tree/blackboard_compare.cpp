@@ -105,8 +105,6 @@ void NNBTBlackboardCompare::_report_configuration_error(const String &p_reason) 
 }
 
 NNBTNodes::Status NNBTBlackboardCompare::_tick(Variant blackboard, float delta) {
-	set_internal_status(BT_INTERNAL_STATUS_TICKED);
-
 	Status result = Status::FAILURE;
 	NNBlackboard *board = get_blackboard_resource();
 	if (_key.is_empty()) {
@@ -125,7 +123,5 @@ NNBTNodes::Status NNBTBlackboardCompare::_tick(Variant blackboard, float delta) 
 		}
 	}
 
-	set_tick_result(result);
-	set_internal_status(BT_INTERNAL_STATUS_COMPLETED);
 	return result;
 }

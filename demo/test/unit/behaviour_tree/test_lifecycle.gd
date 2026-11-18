@@ -4,8 +4,6 @@ extends GutTest
 
 const BLACKBOARD: Dictionary = {}
 
-const RESET_RULE_WHEN_TICKED := NNBTNodes.WHEN_TICKED
-
 
 class LifecycleLeaf extends NNBTLeaf:
 	var result: int = NNBTNodes.SUCCESS
@@ -128,15 +126,17 @@ func _make_root_with(child: Node) -> NNBTRoot:
 	return root
 
 
+# The branch-switch tests need the composite to re-evaluate from child 0 on
+# every tick, which is what reactive does for a selector and a sequence.
 func _make_selector() -> NNBTSelector:
 	var selector: NNBTSelector = NNBTSelector.new()
-	selector.reset_rule = RESET_RULE_WHEN_TICKED
+	selector.reactive = true
 	return selector
 
 
 func _make_sequence() -> NNBTSequence:
 	var sequence: NNBTSequence = NNBTSequence.new()
-	sequence.reset_rule = RESET_RULE_WHEN_TICKED
+	sequence.reactive = true
 	return sequence
 
 

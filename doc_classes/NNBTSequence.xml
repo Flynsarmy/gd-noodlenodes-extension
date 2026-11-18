@@ -6,13 +6,13 @@
 	<description>
 		This node type is used to create sequences.
 		The [NNBTSequence] node executes its child nodes from top-to-bottom order until either all of the succeed (returning [code]1[/code]) or one of them fails (returning [code]-1[/code]). If a child returns running (0) the sequence will return running to its parent.
-		By default the sequence resumes from the child that was running on the previous tick. When [member reactive] is [code]true[/code] the sequence instead starts evaluating at child 0 on every tick. In both modes disabled children are skipped and a child that returns [code]SKIP[/code] is treated like a child that succeeded (the sequence continues). Reactive evaluation is independent of [code]reset_rule[/code]: it only changes the starting child index.
+		By default the sequence resumes from the child that was running on the previous tick. When [member reactive] is [code]true[/code] the sequence instead starts evaluating at child 0 on every tick. In both modes disabled children are skipped and a child that returns [code]SKIP[/code] is treated like a child that succeeded (the sequence continues).
 	</description>
 	<tutorials>
 	</tutorials>
 	<members>
 		<member name="reactive" type="bool" setter="set_reactive" getter="get_reactive" default="false">
-			When [code]true[/code], every tick starts evaluating at child 0 instead of resuming from the previously running child. Disabled children are skipped and [code]SKIP[/code] is treated like a success (the sequence continues). This is independent of [code]reset_rule[/code].
+			When [code]true[/code], every tick starts evaluating at child 0 instead of resuming from the previously running child. Disabled children are skipped and [code]SKIP[/code] is treated like a success (the sequence continues).
 		</member>
 	</members>
 </class>

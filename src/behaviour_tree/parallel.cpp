@@ -47,10 +47,6 @@ NNBTParallel::~NNBTParallel() {
 
 // Handling functions.
 
-void NNBTParallel::reset_bt_node() {
-	_child_results.clear();
-}
-
 void NNBTParallel::update_child_vectors() {
 	NNBTNodes::update_child_vectors();
 
@@ -147,8 +143,6 @@ NNBTNodes::Status NNBTParallel::_evaluate_policies(int p_num_enabled, int p_num_
 }
 
 NNBTNodes::Status NNBTParallel::_tick(Variant blackboard, float delta) {
-	set_internal_status(BT_INTERNAL_STATUS_TICKED);
-
 	// The enabled count is fixed for this tick so a "require all" policy only
 	// becomes true once every enabled child has a terminal result.
 	int num_enabled = 0;
@@ -190,16 +184,10 @@ NNBTNodes::Status NNBTParallel::_tick(Variant blackboard, float delta) {
 		// The base tick() then interrupts any still-running children.
 		Status outcome = _evaluate_policies(num_enabled, num_success, num_failure);
 		if (outcome != Status::RUNNING) {
-			set_internal_status(BT_INTERNAL_STATUS_COMPLETED);
-			set_tick_result(outcome);
 			return outcome;
 		}
 	}
 
 	Status outcome = _evaluate_policies(num_enabled, num_success, num_failure);
-	if (outcome != Status::RUNNING) {
-		set_internal_status(BT_INTERNAL_STATUS_COMPLETED);
-	}
-	set_tick_result(outcome);
 	return outcome;
 }

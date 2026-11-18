@@ -26,9 +26,9 @@ void NNBTRepeatUntil::_bind_methods() {
 
 NNBTRepeatUntil::NNBTRepeatUntil() {
 	_max_repeat_times = -1;
-	_current_max_repeat_times = -1;
+	_current_max_repeat_times = _max_repeat_times;
+	_is_expected_tick_result_reached = false;
 	_expected_tick_result = Status::SUCCESS;
-	set_reset_rule(NNBTNodesResetRule::NEVER);
 }
 
 NNBTRepeatUntil::~NNBTRepeatUntil() {
@@ -38,6 +38,8 @@ NNBTRepeatUntil::~NNBTRepeatUntil() {
 
 void NNBTRepeatUntil::set_max_repeat_times(int max_repeat_times) {
 	_max_repeat_times = max_repeat_times;
+	// Refill the cross-run budget so a newly configured maximum applies to the next run.
+	_current_max_repeat_times = max_repeat_times;
 }
 
 int NNBTRepeatUntil::get_max_repeat_times() const {
@@ -62,9 +64,10 @@ NNBTNodes::Status NNBTRepeatUntil::get_expected_tick_result() const {
 
 // Handling functions.
 
-void NNBTRepeatUntil::reset_bt_node() {
+void NNBTRepeatUntil::reset() {
 	_current_max_repeat_times = _max_repeat_times;
 	_is_expected_tick_result_reached = false;
+	NNBTDecoratorNodes::reset();
 }
 
 NNBTNodes::Status NNBTRepeatUntil::_tick(Variant blackboard, float delta) {
@@ -73,21 +76,11 @@ NNBTNodes::Status NNBTRepeatUntil::_tick(Variant blackboard, float delta) {
 
 	_report_extra_enabled_child_btnodes();
 
-	if (get_internal_status() == BT_INTERNAL_STATUS_UNTICKED) {
-		reset_bt_node();
-	}
-
-	set_internal_status(BT_INTERNAL_STATUS_TICKED);
-
 	if (_is_expected_tick_result_reached) {
-		set_internal_status(BT_INTERNAL_STATUS_COMPLETED);
-		set_tick_result(Status::SUCCESS);
 		return Status::SUCCESS;
 	}
 
 	if (_current_max_repeat_times == 0) {
-		set_internal_status(BT_INTERNAL_STATUS_COMPLETED);
-		set_tick_result(Status::FAILURE);
 		return Status::FAILURE;
 	}
 	for (unsigned int i = 0; i < _num_child_btnodes; i++) {
@@ -101,20 +94,13 @@ NNBTNodes::Status NNBTRepeatUntil::_tick(Variant blackboard, float delta) {
 		Status result = btnode->tick(blackboard, delta);
 		if (result == _expected_tick_result) {
 			_is_expected_tick_result_reached = true;
-			set_internal_status(BT_INTERNAL_STATUS_COMPLETED);
-			set_tick_result(Status::SUCCESS);
 			return Status::SUCCESS;
 		}
 		if (_current_max_repeat_times > 0 || _current_max_repeat_times < 0) {
-			set_tick_result(Status::RUNNING);
 			return Status::RUNNING;
 		} else if (_current_max_repeat_times == 0) {
-			set_internal_status(BT_INTERNAL_STATUS_COMPLETED);
-			set_tick_result(Status::FAILURE);
 			return Status::FAILURE;
 		}
 	}
-	set_internal_status(BT_INTERNAL_STATUS_COMPLETED);
-	set_tick_result(Status::FAILURE);
 	return Status::FAILURE;
 }

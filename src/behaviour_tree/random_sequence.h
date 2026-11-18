@@ -15,6 +15,8 @@ private:
 protected:
 	static void _bind_methods();
 
+	virtual void _on_before_run(Variant blackboard, float delta) override;
+
 public:
 	NNBTRandomSequence();
 	~NNBTRandomSequence();
@@ -22,8 +24,6 @@ public:
 	// Getters and setters for attributes.
 
 	// Handling functions.
-
-	virtual void reset_bt_node() override;
 
 	virtual Status _tick(Variant blackboard, float delta) override;
 };

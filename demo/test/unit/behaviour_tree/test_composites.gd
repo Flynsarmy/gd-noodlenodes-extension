@@ -4,10 +4,6 @@ extends GutTest
 
 const BLACKBOARD: Dictionary = {}
 
-# NNBTNodes does not expose its internal status constants to GDScript.
-const INTERNAL_STATUS_TICKED := 1
-const INTERNAL_STATUS_COMPLETED := 2
-
 
 class ConstantLeaf extends NNBTLeaf:
 	var result: int = NNBTNodes.SUCCESS
@@ -37,11 +33,10 @@ func _tick_and_assert(root: NNBTRoot, node: NNBTNodes, expected: int) -> void:
 	var result: int = root.tick(BLACKBOARD, 0.1)
 
 	assert_eq(result, expected)
-	assert_eq(node.tick_result, expected)
 	if expected == NNBTNodes.RUNNING:
-		assert_eq(node.internal_status, INTERNAL_STATUS_TICKED)
+		assert_true(node.get_is_running())
 	else:
-		assert_eq(node.internal_status, INTERNAL_STATUS_COMPLETED)
+		assert_false(node.get_is_running())
 
 
 # Random selector.
@@ -109,7 +104,7 @@ func test_random_selector_recovers_after_completed_failure() -> void:
 
 	_tick_and_assert(root, selector, NNBTNodes.FAILURE)
 
-	# Default reset rules should rebuild the random order for the next tick.
+	# A new run rebuilds the random order.
 	leaf.result = NNBTNodes.RUNNING
 	_tick_and_assert(root, selector, NNBTNodes.RUNNING)
 	assert_eq(leaf.tick_count, 2)
@@ -190,7 +185,7 @@ func test_sequence_recovers_after_completed_failure() -> void:
 
 	_tick_and_assert(root, sequence, NNBTNodes.FAILURE)
 
-	# Default reset rules should restart the sequence from the first child.
+	# A new run restarts the sequence from the first child.
 	leaf.result = NNBTNodes.RUNNING
 	_tick_and_assert(root, sequence, NNBTNodes.RUNNING)
 	assert_eq(leaf.tick_count, 2)
@@ -275,7 +270,7 @@ func test_selector_recovers_after_completed_failure() -> void:
 
 	_tick_and_assert(root, selector, NNBTNodes.FAILURE)
 
-	# Default reset rules should restart the selector from the first child.
+	# A new run restarts the selector from the first child.
 	leaf.result = NNBTNodes.RUNNING
 	_tick_and_assert(root, selector, NNBTNodes.RUNNING)
 	assert_eq(leaf.tick_count, 2)

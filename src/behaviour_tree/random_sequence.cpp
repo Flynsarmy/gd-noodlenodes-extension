@@ -24,7 +24,7 @@ NNBTRandomSequence::~NNBTRandomSequence() {
 
 // Getters and Setters.
 
-void NNBTRandomSequence::reset_bt_node() {
+void NNBTRandomSequence::_on_before_run(Variant blackboard, float delta) {
 	_current_child_index = 0;
 	// Create a random order.
 	_child_node_order.clear();
@@ -39,17 +39,10 @@ void NNBTRandomSequence::reset_bt_node() {
 }
 
 NNBTNodes::Status NNBTRandomSequence::_tick(Variant blackboard, float delta) {
-	if (get_internal_status() == BT_INTERNAL_STATUS_UNTICKED) {
-		reset_bt_node();
-	}
-
-	set_internal_status(BT_INTERNAL_STATUS_TICKED);
 	while (_current_child_index < _child_node_order.size()) {
 		NNBTNodes *btnode = _child_btnodes[(int)_child_node_order[_current_child_index]];
 		Status result = btnode->tick(blackboard, delta);
-		set_tick_result(result);
 		if (result == Status::FAILURE) {
-			set_internal_status(BT_INTERNAL_STATUS_COMPLETED);
 			return Status::FAILURE;
 		} else if (result == Status::RUNNING) {
 			_interrupt_other_active_children(btnode);
@@ -57,7 +50,5 @@ NNBTNodes::Status NNBTRandomSequence::_tick(Variant blackboard, float delta) {
 		}
 		++_current_child_index;
 	} //endwhile children to tick
-	set_internal_status(BT_INTERNAL_STATUS_COMPLETED);
-	set_tick_result(Status::SUCCESS);
 	return Status::SUCCESS;
 }

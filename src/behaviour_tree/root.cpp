@@ -359,14 +359,15 @@ NNBTNodes *NNBTRoot::get_running_action() const {
 	if (!is_ancestor_of(action)) {
 		return nullptr;
 	}
-	if (action->get_internal_status() != BT_INTERNAL_STATUS_TICKED || action->get_tick_result() != Status::RUNNING) {
+	if (!action->get_is_running() || action->get_tick_result() != Status::RUNNING) {
 		return nullptr;
 	}
 	return action;
 }
 
 void NNBTRoot::_update_running_action(Status p_result) {
-	if (!get_is_enabled() || p_result != Status::RUNNING || get_internal_status() != BT_INTERNAL_STATUS_TICKED) {
+	// A RUNNING wrapper result means this root's run is still active.
+	if (!get_is_enabled() || p_result != Status::RUNNING) {
 		_running_action_id = ObjectID();
 		return;
 	}
@@ -378,8 +379,7 @@ ObjectID NNBTRoot::_find_active_descendant_id(NNBTNodes *p_node) const {
 		return ObjectID();
 	}
 
-	// Walk only the active path. The first active child in child order wins,
-	// which is deterministic for parallel trees that have several.
+	// The first active child in child order wins, which is deterministic for parallel trees.
 	for (int i = 0; i < p_node->get_child_count(); i++) {
 		NNBTNodes *child = Object::cast_to<NNBTNodes>(p_node->get_child(i));
 		if (child == nullptr) {
@@ -388,7 +388,7 @@ ObjectID NNBTRoot::_find_active_descendant_id(NNBTNodes *p_node) const {
 		if (!child->get_is_enabled()) {
 			continue;
 		}
-		if (child->get_internal_status() != BT_INTERNAL_STATUS_TICKED || child->get_tick_result() != Status::RUNNING) {
+		if (!child->get_is_running() || child->get_tick_result() != Status::RUNNING) {
 			continue;
 		}
 
@@ -424,20 +424,6 @@ NNBTNodes::Status NNBTRoot::_tick(Variant blackboard, float delta) {
 
 	_report_extra_enabled_child_btnodes();
 
-	if (get_reset_rule() == NNBTNodesResetRule::NEVER) {
-		if (get_internal_status() == BT_INTERNAL_STATUS_COMPLETED) {
-#ifdef DEBUG_ENABLED
-			_total_tick_usec = godot::Time::get_singleton()->get_ticks_usec() - method_start_time_usec;
-			NNPerformanceMonitorSingleton::get_singleton()->increment_total_time_elapsed_behaviour_trees_usec(_total_tick_usec);
-#endif
-			return get_tick_result();
-		}
-	}
-	set_internal_status(BT_INTERNAL_STATUS_TICKED);
-	//if( _is_first_tick ) {
-	//    _is_first_tick = false;
-	//    emit_signal("btnode_entered", blackboard, delta);
-	//}
 	for (unsigned int i = 0; i < _num_child_sensors; i++) {
 		NNSensors *sensor = _child_sensors[i];
 		if (!sensor->get_is_enabled()) {
@@ -455,11 +441,6 @@ NNBTNodes::Status NNBTRoot::_tick(Variant blackboard, float delta) {
 		// tell whether the run's child is still the one this root ticks.
 		_ticked_child_id = btnode->get_instance_id();
 		Status result = btnode->tick(blackboard, delta);
-		set_tick_result(result);
-		if (result != Status::RUNNING && btnode->get_internal_status() == BT_INTERNAL_STATUS_COMPLETED) {
-			set_internal_status(BT_INTERNAL_STATUS_COMPLETED);
-			//emit_signal("btnode_exited", blackboard, delta);
-		}
 #ifdef DEBUG_ENABLED
 		_total_tick_usec = godot::Time::get_singleton()->get_ticks_usec() - method_start_time_usec;
 		NNPerformanceMonitorSingleton::get_singleton()->increment_total_time_elapsed_behaviour_trees_usec(_total_tick_usec);
@@ -470,36 +451,6 @@ NNBTNodes::Status NNBTRoot::_tick(Variant blackboard, float delta) {
 		}
 		return result;
 	} //endfor btnodes
-	/**
-	for( int i = 0; i < get_child_count(); i++ ) {
-		Node* node = get_child(i);
-		if( NNSensors* sensor = godot::Object::cast_to<NNSensors>(node) ) {
-			if( !sensor-> get_is_enabled() ) {
-				continue;
-			}
-			sensor->evaluate_sensor_value();
-			continue;
-		}
-		if( NNBTNodes* btnode = godot::Object::cast_to<NNBTNodes>(node) ) {
-			if( !btnode->get_is_enabled() ) {
-				continue;
-			}
-			Status result = btnode->tick(blackboard, delta);
-			set_tick_result(result);
-			if( btnode->get_internal_status() == BT_INTERNAL_STATUS_COMPLETED ) {
-				set_internal_status(BT_INTERNAL_STATUS_COMPLETED);
-				//emit_signal("btnode_exited", blackboard, delta);
-			}
-			#ifdef DEBUG_ENABLED
-			_total_tick_usec = godot::Time::get_singleton()->get_ticks_usec() - method_start_time_usec;
-			NNPerformanceMonitorSingleton::get_singleton()->increment_total_time_elapsed_behaviour_trees_usec(_total_tick_usec);
-			#endif
-			return result;
-		}
-	}
-	*/
-	set_internal_status(BT_INTERNAL_STATUS_COMPLETED);
-//emit_signal("btnode_exited", blackboard, delta);
 #ifdef DEBUG_ENABLED
 	_total_tick_usec = godot::Time::get_singleton()->get_ticks_usec() - method_start_time_usec;
 	NNPerformanceMonitorSingleton::get_singleton()->increment_total_time_elapsed_behaviour_trees_usec(_total_tick_usec);

@@ -73,22 +73,22 @@
 				Force-stops the node's active run. Task nodes run their [code]on_interrupt[/code] script hook and every still-active behaviour tree child is interrupted as well. Calling it on a node without an active run is a safe no-op, so it is idempotent.
 			</description>
 		</method>
+		<method name="reset">
+			<return type="void" />
+			<description>
+				Interrupts the active run of this node and its whole subtree, propagates the reset to every behaviour tree child, and clears node-lifetime state, such as a memory sequence's stored child, a repeat-until or limiter budget and latch, or a run-once held result. Per-run state is initialised again when the next run starts. Disabling the node, or an ancestor, triggers the same reset.
+			</description>
+		</method>
 	</methods>
 	<members>
 		<member name="evaluation_method" type="int" setter="set_evaluation_method" getter="get_evaluation_method" enum="NNBTNodesEvaluationMethod" default="4">
 			Used with Utility-based Behaviour Tree nodes. This defines how the [NNConsideration] nodes (assigned as child nodes of the behaviour tree node) are evaluated to calculate the score for the node. The default is [code]Multiply[/code] (4). In GDScript use the class constants, for example [code]NNBTNodes.Multiply[/code]. The enum-scoped form [code]NNBTNodes.NNBTNodesEvaluationMethod.Multiply[/code] is also accepted; there is no bare global enum name.
 		</member>
-		<member name="internal_status" type="int" setter="set_internal_status" getter="get_internal_status" default="0">
-			The current internal status of the node, useful for debugging and seeing how the execution progresses. The following choices are possible: "Unticked:0,Ticked:1,Completed:2".
-		</member>
-		<member name="reset_rule" type="int" setter="set_reset_rule" getter="get_reset_rule" enum="NNBTNodesResetRule" default="2">
-			Defines how the Behaviour Tree node is reset. The default is [code]WHEN_TICKED_AFTER_BEING_COMPLETED[/code] (2). In GDScript use the class constants, for example [code]NNBTNodes.WHEN_TICKED[/code]. The enum-scoped form [code]NNBTNodes.NNBTNodesResetRule.WHEN_TICKED[/code] is also accepted; there is no bare global enum name.
-		</member>
 		<member name="score" type="float" setter="set_score" getter="get_score" default="0.0">
 			The score this node received from the Utility-based evaluation.
 		</member>
-		<member name="tick_result" type="int" setter="set_tick_result" getter="get_tick_result" enum="NNBTNodes.Status" default="1">
-			Result after the tick.
+		<member name="tick_result" type="int" setter="" getter="get_tick_result" enum="NNBTNodes.Status" default="1">
+			The result of this node's most recent tick, written automatically by the node's tick handling. Read-only: the running-action query derives from it, so scripts cannot set it.
 		</member>
 	</members>
 	<constants>
@@ -99,18 +99,6 @@
 		<constant name="SUCCESS" value="1" enum="Status">
 		</constant>
 		<constant name="SKIP" value="-2" enum="Status">
-		</constant>
-		<constant name="WHEN_TICKED" value="0" enum="NNBTNodesResetRule">
-			Resets the node at the start of every tick, so it replays from its first child.
-		</constant>
-		<constant name="WHEN_COMPLETED" value="1" enum="NNBTNodesResetRule">
-			Resets the node as soon as it completes, so the next tick starts a fresh run.
-		</constant>
-		<constant name="WHEN_TICKED_AFTER_BEING_COMPLETED" value="2" enum="NNBTNodesResetRule">
-			Resets the node on the first tick after it has completed, which is the default.
-		</constant>
-		<constant name="NEVER" value="3" enum="NNBTNodesResetRule">
-			Never resets the node automatically.
 		</constant>
 		<constant name="Sum" value="0" enum="NNBTNodesEvaluationMethod">
 			Adds the scores of the enabled considerations.

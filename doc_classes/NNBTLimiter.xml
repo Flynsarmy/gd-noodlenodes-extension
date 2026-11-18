@@ -1,17 +1,18 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <class name="NNBTLimiter" inherits="NNBTDecoratorNodes" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
 	<brief_description>
-		Ticks its first enabled behaviour tree child for [member max_repeat_times] and then returns -1 (failure) until the node is reset.
+		Ticks its first enabled behaviour tree child for at most [member max_repeat_times] ticks in total and then completes with -1 (failure). The budget is node-lifetime state that survives run boundaries and interrupts, and an explicit reset refills it.
 	</brief_description>
 	<description>
-		The limiter node ticks its first enabled behaviour tree child for [member max_repeat_times] and then returns -1 (failure) until the node is reset.
+		The limiter node ticks its first enabled behaviour tree child for at most [member max_repeat_times] ticks in total and then completes with -1 (failure). A child that returns [code]RUNNING[/code] keeps the limiter running, and each tick consumes one unit of the budget.
+		The tick budget is node-lifetime state, so it is not refilled when a run starts or ends, nor by an interrupt. Once the budget is spent the node completes with [code]FAILURE[/code] on every tick. An explicit [method reset], disabling the node (or an ancestor), or an ancestor reset refills it.
 		Only the first enabled behaviour tree child is ticked. Any additional enabled behaviour tree children are ignored, and the node reports a one-time error the first time it is ticked with more than one enabled behaviour tree child.
 	</description>
 	<tutorials>
 	</tutorials>
 	<members>
 		<member name="max_repeat_times" type="int" setter="set_max_repeat_times" getter="get_max_repeat_times" default="3">
-			The maximum times the limiter node can be ticked.
+			The maximum times the limiter node can be ticked in total. The budget is node-lifetime state: an explicit reset or disabling the node refills it.
 		</member>
 	</members>
 </class>

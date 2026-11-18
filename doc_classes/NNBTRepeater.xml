@@ -6,11 +6,11 @@
 	<description>
 		The repeater node ticks its first enabled child node [member repeat_times] times. It returns [code]RUNNING[/code] while repetitions remain and returns [code]SUCCESS[/code] immediately after the final successful repetition.
 
-		If the child returns [code]FAILURE[/code] the repeater immediately returns [code]FAILURE[/code] without counting that tick as a repetition. If the child returns [code]RUNNING[/code] the repeater returns [code]RUNNING[/code] without counting that tick as a repetition either.
+		If the child returns [code]FAILURE[/code] the repeater immediately returns [code]FAILURE[/code] without counting that tick as a repetition. Every [code]SUCCESS[/code] from the child counts as one completed repetition. If the child returns [code]RUNNING[/code] the repeater returns [code]RUNNING[/code] without counting that tick as a repetition either.
 
 		If [member repeat_times] is set to [code]-1[/code] the child is ticked indefinitely and the repeater never completes on its own. If [member repeat_times] is set to [code]0[/code] the repeater returns [code]SUCCESS[/code] immediately without ticking its child node.
 
-		With the default reset rules, the next tick after completion starts a fresh run. With [code]reset_rule[/code] set to Never the repeater returns its stored terminal result and does not tick its child again until it is explicitly reset or its reset rule is changed.
+		A terminal result completes the run. The next tick starts a fresh run with a new repetition count, so a repeater that finishes starts over instead of holding its result. Wrap the repeater in [NNBTRunOnce] to hold the completed result instead.
 	</description>
 	<tutorials>
 	</tutorials>

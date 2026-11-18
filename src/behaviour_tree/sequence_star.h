@@ -13,6 +13,8 @@ class NNBTSequenceStar : public NNBTSequence {
 protected:
 	static void _bind_methods();
 
+	virtual void _on_before_run(Variant blackboard, float delta) override;
+
 public:
 	NNBTSequenceStar();
 	~NNBTSequenceStar();

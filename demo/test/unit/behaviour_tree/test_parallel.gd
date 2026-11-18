@@ -4,10 +4,6 @@ extends GutTest
 
 const BLACKBOARD: Dictionary = {}
 
-# NNBTNodes does not expose its internal status constants to GDScript.
-const INTERNAL_STATUS_TICKED := 1
-const INTERNAL_STATUS_COMPLETED := 2
-
 
 class ConstantLeaf extends NNBTLeaf:
 	var result: int = NNBTNodes.SUCCESS
@@ -69,11 +65,10 @@ func _tick_and_assert(tree: Dictionary, expected: int) -> void:
 	var result: int = tree["root"].tick(BLACKBOARD, 0.1)
 
 	assert_eq(result, expected)
-	assert_eq(parallel.tick_result, expected)
 	if expected == NNBTNodes.RUNNING:
-		assert_eq(parallel.internal_status, INTERNAL_STATUS_TICKED)
+		assert_true(parallel.get_is_running())
 	else:
-		assert_eq(parallel.internal_status, INTERNAL_STATUS_COMPLETED)
+		assert_false(parallel.get_is_running())
 
 
 func test_failure_before_running_returns_failure() -> void:
@@ -201,7 +196,7 @@ func test_completed_parallel_recovers_on_next_tick() -> void:
 
 	_tick_and_assert(tree, NNBTNodes.FAILURE)
 
-	# Default reset rules should allow the completed parallel to tick again.
+	# A new run ticks the completed parallel again.
 	leaf.result = NNBTNodes.RUNNING
 	_tick_and_assert(tree, NNBTNodes.RUNNING)
 	assert_eq(leaf.tick_count, 2)
@@ -303,18 +298,16 @@ func test_new_run_starts_with_fresh_memory() -> void:
 	tree["root"].free()
 
 
-func test_never_reset_rule_starts_fresh_memory_each_run() -> void:
+func test_starts_fresh_memory_each_run() -> void:
 	var first: ScriptedLeaf = _make_scripted([NNBTNodes.FAILURE, NNBTNodes.SUCCESS])
 	var second: ConstantLeaf = _make_leaf(NNBTNodes.SUCCESS)
 	var tree: Dictionary = _build_parallel([first, second])
-	var parallel: NNBTParallel = tree["parallel"]
-	parallel.reset_rule = NNBTNodes.NEVER
 
 	_tick_and_assert(tree, NNBTNodes.FAILURE)
 	assert_eq(first.tick_count, 1)
 	assert_eq(second.tick_count, 0)
 
-	# A completed Never parallel starts a fresh run through the run lifecycle.
+	# A completed parallel starts a fresh run, which clears the child-result memory.
 	_tick_and_assert(tree, NNBTNodes.SUCCESS)
 	assert_eq(first.tick_count, 2)
 	assert_eq(second.tick_count, 1)

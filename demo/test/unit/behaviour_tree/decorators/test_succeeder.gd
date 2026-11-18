@@ -5,10 +5,6 @@ extends GutTest
 
 const BLACKBOARD: Dictionary = {}
 
-# NNBTNodes does not expose its internal status constants to GDScript.
-const INTERNAL_STATUS_TICKED := 1
-const INTERNAL_STATUS_COMPLETED := 2
-
 
 class CountingLeaf extends NNBTLeaf:
 	var result: int = NNBTNodes.SUCCESS
@@ -34,8 +30,7 @@ func test_succeeder_running_child_keeps_running() -> void:
 	var succeeder: NNBTSucceeder = tree[1]
 
 	assert_eq(root.tick(BLACKBOARD, 0.1), NNBTNodes.RUNNING)
-	assert_eq(succeeder.tick_result, NNBTNodes.RUNNING)
-	assert_eq(succeeder.internal_status, INTERNAL_STATUS_TICKED)
+	assert_true(succeeder.get_is_running())
 
 	root.free()
 
@@ -48,8 +43,7 @@ func test_succeeder_success_child_succeeds() -> void:
 	var succeeder: NNBTSucceeder = tree[1]
 
 	assert_eq(root.tick(BLACKBOARD, 0.1), NNBTNodes.SUCCESS)
-	assert_eq(succeeder.tick_result, NNBTNodes.SUCCESS)
-	assert_eq(succeeder.internal_status, INTERNAL_STATUS_COMPLETED)
+	assert_false(succeeder.get_is_running())
 	assert_eq(leaf.tick_count, 1)
 
 	root.free()
@@ -63,8 +57,7 @@ func test_succeeder_failure_child_succeeds() -> void:
 	var succeeder: NNBTSucceeder = tree[1]
 
 	assert_eq(root.tick(BLACKBOARD, 0.1), NNBTNodes.SUCCESS, "A failing child must still succeed through a succeeder.")
-	assert_eq(succeeder.tick_result, NNBTNodes.SUCCESS)
-	assert_eq(succeeder.internal_status, INTERNAL_STATUS_COMPLETED)
+	assert_false(succeeder.get_is_running())
 
 	root.free()
 
@@ -75,8 +68,7 @@ func test_succeeder_failure_on_no_children() -> void:
 	root.add_child(succeeder)
 
 	assert_eq(root.tick(BLACKBOARD, 0.1), NNBTNodes.FAILURE, "A succeeder without child nodes must fail.")
-	assert_eq(succeeder.tick_result, NNBTNodes.FAILURE)
-	assert_eq(succeeder.internal_status, INTERNAL_STATUS_COMPLETED)
+	assert_false(succeeder.get_is_running())
 
 	root.free()
 
@@ -89,8 +81,7 @@ func test_failer_running_child_keeps_running() -> void:
 	var failer: NNBTFailer = tree[1]
 
 	assert_eq(root.tick(BLACKBOARD, 0.1), NNBTNodes.RUNNING)
-	assert_eq(failer.tick_result, NNBTNodes.RUNNING)
-	assert_eq(failer.internal_status, INTERNAL_STATUS_TICKED)
+	assert_true(failer.get_is_running())
 
 	root.free()
 
@@ -103,8 +94,7 @@ func test_failer_success_child_fails() -> void:
 	var failer: NNBTFailer = tree[1]
 
 	assert_eq(root.tick(BLACKBOARD, 0.1), NNBTNodes.FAILURE, "A succeeding child must fail through a failer.")
-	assert_eq(failer.tick_result, NNBTNodes.FAILURE)
-	assert_eq(failer.internal_status, INTERNAL_STATUS_COMPLETED)
+	assert_false(failer.get_is_running())
 	assert_eq(leaf.tick_count, 1)
 
 	root.free()
@@ -118,8 +108,7 @@ func test_failer_failure_child_fails() -> void:
 	var failer: NNBTFailer = tree[1]
 
 	assert_eq(root.tick(BLACKBOARD, 0.1), NNBTNodes.FAILURE)
-	assert_eq(failer.tick_result, NNBTNodes.FAILURE)
-	assert_eq(failer.internal_status, INTERNAL_STATUS_COMPLETED)
+	assert_false(failer.get_is_running())
 
 	root.free()
 
@@ -130,8 +119,7 @@ func test_failer_failure_on_no_children() -> void:
 	root.add_child(failer)
 
 	assert_eq(root.tick(BLACKBOARD, 0.1), NNBTNodes.FAILURE, "A failer without child nodes must fail.")
-	assert_eq(failer.tick_result, NNBTNodes.FAILURE)
-	assert_eq(failer.internal_status, INTERNAL_STATUS_COMPLETED)
+	assert_false(failer.get_is_running())
 
 	root.free()
 
@@ -145,7 +133,6 @@ func test_failure_on_no_enabled_child() -> void:
 		var root: NNBTRoot = tree[0]
 
 		assert_eq(root.tick(BLACKBOARD, 0.1), NNBTNodes.FAILURE, "%s without an enabled child must fail." % decorator.get_class())
-		assert_eq(decorator.tick_result, NNBTNodes.FAILURE)
 		assert_eq(leaf.tick_count, 0)
 
 		root.free()

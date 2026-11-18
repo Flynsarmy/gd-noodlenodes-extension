@@ -24,7 +24,7 @@ NNBTScoreBasedPicker::~NNBTScoreBasedPicker() {
 
 // Getters and Setters.
 
-void NNBTScoreBasedPicker::reset_bt_node() {
+void NNBTScoreBasedPicker::_on_before_run(Variant blackboard, float delta) {
 	// Evaluate the scores and pick the child with the highest
 	// score to run.
 	_current_child_index = -1;
@@ -44,31 +44,17 @@ void NNBTScoreBasedPicker::reset_bt_node() {
 }
 
 NNBTNodes::Status NNBTScoreBasedPicker::_tick(Variant blackboard, float delta) {
-	if (get_internal_status() == BT_INTERNAL_STATUS_UNTICKED) {
-		reset_bt_node();
-	}
-
-	set_internal_status(BT_INTERNAL_STATUS_TICKED);
-
 	if (_current_child_index < 0) {
-		set_internal_status(BT_INTERNAL_STATUS_COMPLETED);
-		set_tick_result(Status::FAILURE);
 		return Status::FAILURE; // No valid child found.
 	}
 
 	NNBTNodes *btnode = _child_btnodes[_current_child_index];
 	if (btnode != nullptr) {
 		Status return_value = btnode->tick(blackboard, delta);
-		set_tick_result(return_value);
-		if (return_value == Status::FAILURE || return_value == Status::SUCCESS) {
-			_current_child_index = -1;
-			set_internal_status(BT_INTERNAL_STATUS_COMPLETED);
-		} else if (return_value == Status::RUNNING) {
+		if (return_value == Status::RUNNING) {
 			_interrupt_other_active_children(btnode);
 		}
 		return return_value;
 	} //endif node was of correct type
-	set_internal_status(BT_INTERNAL_STATUS_COMPLETED);
-	set_tick_result(Status::FAILURE);
 	return Status::FAILURE;
 }

@@ -44,17 +44,11 @@ NNBTNodes::Status NNBTUntilFail::_tick(Variant blackboard, float delta) {
 		Status result = btnode->tick(blackboard, delta);
 
 		if (result == Status::FAILURE) {
-			set_internal_status(BT_INTERNAL_STATUS_COMPLETED);
-			set_tick_result(Status::SUCCESS);
 			return Status::SUCCESS;
 		}
 
-		set_internal_status(BT_INTERNAL_STATUS_TICKED);
-		set_tick_result(Status::RUNNING);
 		return Status::RUNNING;
 	}
 
-	set_internal_status(BT_INTERNAL_STATUS_COMPLETED);
-	set_tick_result(Status::FAILURE);
 	return Status::FAILURE;
 }

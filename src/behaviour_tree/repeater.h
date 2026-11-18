@@ -15,6 +15,10 @@ private:
 protected:
 	static void _bind_methods();
 
+	virtual void _on_before_run(Variant blackboard, float delta) override;
+	virtual void _on_after_run(Variant blackboard, float delta) override;
+	virtual void _on_interrupt(Variant blackboard, float delta) override;
+
 public:
 	NNBTRepeater();
 	~NNBTRepeater();
@@ -28,7 +32,6 @@ public:
 	void set_times_repeated(int repeat_times);
 
 	// Handling functions.
-	virtual void reset_bt_node() override;
 	virtual Status _tick(Variant blackboard, float delta) override;
 };
 

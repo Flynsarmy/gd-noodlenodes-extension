@@ -12,10 +12,6 @@ void NNBTSequenceStar::_bind_methods() {
 // Constructor and destructor.
 
 NNBTSequenceStar::NNBTSequenceStar() {
-	// A memory sequence whose memory is erased after every run would be
-	// pointless, so the memory survives a completed run by default. Any other
-	// reset rule, or an explicit reset, still clears it.
-	set_reset_rule(NNBTNodesResetRule::NEVER);
 }
 
 NNBTSequenceStar::~NNBTSequenceStar() {
@@ -23,19 +19,20 @@ NNBTSequenceStar::~NNBTSequenceStar() {
 
 // Handling methods.
 
+void NNBTSequenceStar::_on_before_run(Variant blackboard, float delta) {
+	// Deliberately keeps the child cursor so the memory spans runs.
+}
+
 void NNBTSequenceStar::reset() {
-	// An explicit reset always intended to clear the child memory, including
-	// the reset() triggered by disabling the node.
-	reset_bt_node();
+	// An explicit reset and a disable both clear the child memory.
+	_current_child_index = 0;
 	NNBTSequence::reset();
 }
 
 NNBTNodes::Status NNBTSequenceStar::_tick(Variant blackboard, float delta) {
 	Status result = NNBTSequence::_tick(blackboard, delta);
 	if (result == Status::SUCCESS) {
-		// The run finished, so forget the memory and start the next run from
-		// the first child. A FAILURE deliberately leaves the index on the
-		// failed child, which the Never reset rule preserves for the next run.
+		// SUCCESS forgets the memory; FAILURE keeps the index on the failed child.
 		_current_child_index = 0;
 	}
 	return result;

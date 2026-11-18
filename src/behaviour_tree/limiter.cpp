@@ -20,7 +20,7 @@ void NNBTLimiter::_bind_methods() {
 
 NNBTLimiter::NNBTLimiter() {
 	_max_repeat_times = 3;
-	_current_repeat_times = -1;
+	_current_repeat_times = _max_repeat_times;
 }
 
 NNBTLimiter::~NNBTLimiter() {
@@ -30,6 +30,8 @@ NNBTLimiter::~NNBTLimiter() {
 
 void NNBTLimiter::set_max_repeat_times(int max_repeat_times) {
 	_max_repeat_times = max_repeat_times;
+	// Refill the cross-run budget so a newly configured maximum applies to the next run.
+	_current_repeat_times = max_repeat_times;
 }
 
 int NNBTLimiter::get_max_repeat_times() const {
@@ -38,8 +40,9 @@ int NNBTLimiter::get_max_repeat_times() const {
 
 // Handling functions.
 
-void NNBTLimiter::reset_bt_node() {
+void NNBTLimiter::reset() {
 	_current_repeat_times = _max_repeat_times;
+	NNBTDecoratorNodes::reset();
 }
 
 NNBTNodes::Status NNBTLimiter::_tick(Variant blackboard, float delta) {
@@ -48,13 +51,7 @@ NNBTNodes::Status NNBTLimiter::_tick(Variant blackboard, float delta) {
 
 	_report_extra_enabled_child_btnodes();
 
-	if (get_internal_status() == BT_INTERNAL_STATUS_UNTICKED) {
-		reset_bt_node();
-	}
-	set_internal_status(BT_INTERNAL_STATUS_TICKED);
 	if (_current_repeat_times == 0) {
-		set_internal_status(BT_INTERNAL_STATUS_COMPLETED);
-		set_tick_result(Status::FAILURE);
 		return Status::FAILURE;
 	}
 
@@ -67,14 +64,12 @@ NNBTNodes::Status NNBTLimiter::_tick(Variant blackboard, float delta) {
 		}
 		--_current_repeat_times;
 		Status result = btnode->tick(blackboard, delta);
-		set_tick_result(result);
 		if (result != Status::RUNNING) {
 			return result;
 		}
-		break;
+		// The tick already consumed one budget unit, so a RUNNING child passes through.
+		return Status::RUNNING;
 	}
 	// If we get here, there are no child nodes set.
-	set_internal_status(BT_INTERNAL_STATUS_COMPLETED);
-	set_tick_result(Status::FAILURE);
 	return Status::FAILURE;
 }

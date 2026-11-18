@@ -4,9 +4,6 @@ extends GutTest
 
 const BLACKBOARD: Dictionary = {}
 
-# NNBTNodes does not expose its internal status constants to GDScript.
-const INTERNAL_STATUS_TICKED := 1
-const INTERNAL_STATUS_COMPLETED := 2
 
 const CUSTOM_STATUS_SCRIPT := "res://test/unit/behaviour_tree/leaf_custom_status.gd"
 const LEAF_NAME := "BadLeaf"
@@ -73,7 +70,7 @@ func _assert_validation_error(value_fragment: String, type_fragment := "") -> vo
 func _assert_rejected(root: NNBTRoot, leaf: NNBTNodes, value_fragment: String, type_fragment := "") -> void:
 	assert_eq(root.tick(BLACKBOARD, 0.1), NNBTNodes.FAILURE)
 	assert_eq(leaf.tick_result, NNBTNodes.FAILURE)
-	assert_eq(leaf.internal_status, INTERNAL_STATUS_COMPLETED)
+	assert_false(leaf.get_is_running())
 	_assert_validation_error(value_fragment, type_fragment)
 
 
@@ -161,7 +158,7 @@ func test_valid_status_skip_is_passed_through() -> void:
 
 	assert_eq(root.tick(BLACKBOARD, 0.1), NNBTNodes.SKIP)
 	assert_eq(leaf.tick_result, NNBTNodes.SKIP)
-	assert_eq(leaf.internal_status, INTERNAL_STATUS_TICKED)
+	assert_true(leaf.get_is_running())
 	assert_engine_error_count(0)
 
 	root.free()
@@ -173,7 +170,7 @@ func test_valid_status_failure_is_passed_through() -> void:
 
 	assert_eq(root.tick(BLACKBOARD, 0.1), NNBTNodes.FAILURE)
 	assert_eq(leaf.tick_result, NNBTNodes.FAILURE)
-	assert_eq(leaf.internal_status, INTERNAL_STATUS_COMPLETED)
+	assert_false(leaf.get_is_running())
 	assert_engine_error_count(0)
 
 	root.free()
@@ -185,7 +182,7 @@ func test_valid_status_running_is_passed_through() -> void:
 
 	assert_eq(root.tick(BLACKBOARD, 0.1), NNBTNodes.RUNNING)
 	assert_eq(leaf.tick_result, NNBTNodes.RUNNING)
-	assert_eq(leaf.internal_status, INTERNAL_STATUS_TICKED)
+	assert_true(leaf.get_is_running())
 	assert_engine_error_count(0)
 
 	root.free()
@@ -197,14 +194,14 @@ func test_valid_status_success_is_passed_through() -> void:
 
 	assert_eq(root.tick(BLACKBOARD, 0.1), NNBTNodes.SUCCESS)
 	assert_eq(leaf.tick_result, NNBTNodes.SUCCESS)
-	assert_eq(leaf.internal_status, INTERNAL_STATUS_COMPLETED)
+	assert_false(leaf.get_is_running())
 	assert_engine_error_count(0)
 
 	root.free()
 
 
-# Regression: a sequence used to silently skip an out-of-range child and report
-# SUCCESS. It must now stop on the FAILURE the leaf was coerced to.
+# An out-of-range child result coerces to FAILURE, so the sequence must stop on
+# it instead of skipping the child and reporting SUCCESS.
 
 func test_sequence_stops_at_invalid_leaf() -> void:
 	var bad_leaf: ConstantLeaf = _make_leaf(42)

@@ -138,9 +138,9 @@ func test_limiter_ticks_only_first_enabled_child() -> void:
 	limiter.add_child(second)
 	bt_root.add_child(limiter)
 
-	# The single child path already falls through to failure when it is running,
-	# so the first child's RUNNING result must not expose the second child.
-	assert_eq(bt_root.tick(BLACKBOARD, 0.1), NNBTNodes.FAILURE)
+	# A RUNNING child keeps the limiter running, so the first child's RUNNING
+	# result is passed through and must not expose the second child.
+	assert_eq(bt_root.tick(BLACKBOARD, 0.1), NNBTNodes.RUNNING)
 	assert_eq(first.tick_count, 1, "only the first enabled child is ticked")
 	assert_eq(second.tick_count, 0, "the second enabled child is never ticked")
 
@@ -157,7 +157,7 @@ func test_limiter_with_one_child_reports_no_error() -> void:
 	limiter.add_child(child)
 	bt_root.add_child(limiter)
 
-	assert_eq(bt_root.tick(BLACKBOARD, 0.1), NNBTNodes.FAILURE)
+	assert_eq(bt_root.tick(BLACKBOARD, 0.1), NNBTNodes.RUNNING, "a RUNNING child keeps the limiter running")
 	assert_eq(child.tick_count, 1)
 	assert_eq(get_errors().size(), 0, "a single child is a valid configuration")
 

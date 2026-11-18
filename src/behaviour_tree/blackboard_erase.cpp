@@ -47,8 +47,6 @@ void NNBTBlackboardErase::_report_configuration_error(const String &p_reason) {
 }
 
 NNBTNodes::Status NNBTBlackboardErase::_tick(Variant blackboard, float delta) {
-	set_internal_status(BT_INTERNAL_STATUS_TICKED);
-
 	Status result = Status::FAILURE;
 	if (_key.is_empty()) {
 		_report_configuration_error("requires a non-empty blackboard key");
@@ -58,7 +56,5 @@ NNBTNodes::Status NNBTBlackboardErase::_tick(Variant blackboard, float delta) {
 		result = Status::SUCCESS;
 	}
 
-	set_tick_result(result);
-	set_internal_status(BT_INTERNAL_STATUS_COMPLETED);
 	return result;
 }

@@ -38,9 +38,6 @@ NNBTNodes::Status NNBTFixedResult::get_fixed_result() const {
 NNBTNodes::Status NNBTFixedResult::_tick(Variant blackboard, float delta) {
 	_report_extra_enabled_child_btnodes();
 
-	set_internal_status(BT_INTERNAL_STATUS_TICKED);
-
-	set_tick_result(_fixed_result);
 	for (unsigned int i = 0; i < _num_child_btnodes; i++) {
 		NNBTNodes *btnode = _child_btnodes[i];
 		if (!btnode->get_is_enabled()) {
@@ -48,9 +45,6 @@ NNBTNodes::Status NNBTFixedResult::_tick(Variant blackboard, float delta) {
 		}
 		btnode->tick(blackboard, delta);
 		break;
-	}
-	if (_fixed_result != Status::RUNNING) {
-		set_internal_status(BT_INTERNAL_STATUS_COMPLETED);
 	}
 	return _fixed_result;
 }

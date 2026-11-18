@@ -26,12 +26,8 @@ NNBTNodes::Status NNBTPassThrough::_tick(Variant blackboard, float delta) {
 	// The passthrough node calls its on_tick method, if it has one, and then
 	// ticks the first behaviour tree node child and returns the result of the
 	// child. Otherwise it returns what ever is set as the tick result property.
-	set_internal_status(BT_INTERNAL_STATUS_TICKED);
 	if (has_method("on_tick")) {
-		Variant on_tick_result = call("on_tick", blackboard, delta);
-		if (on_tick_result.get_type() == Variant::Type::INT) {
-			set_tick_result(static_cast<Status>((int64_t)on_tick_result));
-		}
+		call("on_tick", blackboard, delta);
 	}
 
 	for (unsigned int i = 0; i < _num_child_btnodes; i++) {
@@ -41,17 +37,10 @@ NNBTNodes::Status NNBTPassThrough::_tick(Variant blackboard, float delta) {
 		}
 
 		Status child_result = btnode->tick(blackboard, delta);
-		set_tick_result(child_result);
-		if (child_result != Status::RUNNING) {
-			set_internal_status(BT_INTERNAL_STATUS_COMPLETED);
-		}
 		return child_result;
 	} //endfor child ndoes
 
 	Status fallback_result = get_tick_result();
-	if (fallback_result != Status::RUNNING) {
-		set_internal_status(BT_INTERNAL_STATUS_COMPLETED);
-	}
 	return fallback_result;
 }
 

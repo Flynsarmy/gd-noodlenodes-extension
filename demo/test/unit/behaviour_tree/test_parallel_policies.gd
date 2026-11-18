@@ -4,9 +4,6 @@ extends GutTest
 
 const BLACKBOARD: Dictionary = {}
 
-# NNBTNodes does not expose its internal status constants to GDScript.
-const INTERNAL_STATUS_TICKED := 1
-const INTERNAL_STATUS_COMPLETED := 2
 
 # NNBTParallel exposes its policy constants, repeated here so failures name the
 # intended constant even if a binding changes.
@@ -170,11 +167,10 @@ func test_policy_truth_table() -> void:
 			var label: String = "%s with success_policy %d / failure_policy %d" % [test_case["name"], combination[0], combination[1]]
 
 			assert_eq(tree["result"], expected, label)
-			assert_eq(parallel.tick_result, expected, label)
 			if expected == NNBTNodes.RUNNING:
-				assert_eq(parallel.internal_status, INTERNAL_STATUS_TICKED, label)
+				assert_true(parallel.get_is_running(), label)
 			else:
-				assert_eq(parallel.internal_status, INTERNAL_STATUS_COMPLETED, label)
+				assert_false(parallel.get_is_running(), label)
 
 			for leaf_index in leaves.size():
 				assert_eq(leaves[leaf_index].tick_count, expected_ticks[leaf_index], label + ": child %d tick count" % leaf_index)
@@ -205,7 +201,6 @@ func test_default_policies_reproduce_the_existing_matrix() -> void:
 		assert_eq(parallel.success_policy, NNBTParallel.SUCCESS_REQUIRE_ALL)
 		assert_eq(parallel.failure_policy, NNBTParallel.FAILURE_REQUIRE_ONE)
 		assert_eq(root.tick(BLACKBOARD, 0.1), expectation["expected"])
-		assert_eq(parallel.tick_result, expectation["expected"])
 		for leaf_index in leaves.size():
 			assert_eq(leaves[leaf_index].tick_count, expectation["ticks"][leaf_index])
 

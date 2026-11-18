@@ -71,6 +71,7 @@
 #include "behaviour_tree/pass_through.h"
 #include "behaviour_tree/repeat_until.h"
 #include "behaviour_tree/repeater.h"
+#include "behaviour_tree/run_once.h"
 #include "behaviour_tree/succeeder.h"
 #include "behaviour_tree/time_limiter.h"
 #include "behaviour_tree/until_fail.h"
@@ -219,6 +220,7 @@ void register_scene_classes() {
 	GDREGISTER_VIRTUAL_CLASS(NNBTDecoratorNodes);
 	GDREGISTER_CLASS(NNBTRepeater);
 	GDREGISTER_CLASS(NNBTRepeatUntil);
+	GDREGISTER_CLASS(NNBTRunOnce);
 	GDREGISTER_CLASS(NNBTLimiter);
 	GDREGISTER_CLASS(NNBTFixedResult);
 	GDREGISTER_CLASS(NNBTInverter);

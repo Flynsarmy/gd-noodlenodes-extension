@@ -2,7 +2,6 @@
 
 #include "../agent_behaviours/considerations.h"
 #include "../noodle_nodes.h"
-#include "definitions.h"
 #include <godot_cpp/classes/node.hpp>
 #include <godot_cpp/classes/ref.hpp>
 #include <vector>
@@ -47,21 +46,7 @@ public:
 	void set_score(float score);
 	float get_score() const;
 
-	void set_tick_result(Status tick_result);
 	Status get_tick_result() const;
-
-	void set_internal_status(int internal_status);
-	int get_internal_status() const;
-
-	void set_reset_rule(int reset_rule);
-	int get_reset_rule() const;
-
-	enum NNBTNodesResetRule {
-		WHEN_TICKED = 0,
-		WHEN_COMPLETED,
-		WHEN_TICKED_AFTER_BEING_COMPLETED,
-		NEVER,
-	};
 
 	// Handling functions.
 
@@ -71,7 +56,6 @@ public:
 	Status tick(Variant blackboard, float delta);
 
 	virtual void reset();
-	virtual void reset_bt_node() {};
 	virtual void update_child_vectors();
 
 	// Force-stops the current run, interrupting the node's active subtree.
@@ -85,8 +69,6 @@ public:
 	ObjectID get_run_owner() const;
 	// Marks the driver of the next or active run.
 	void set_run_owner(ObjectID p_owner);
-
-	inline virtual bool has_completed() { return (_internal_status == BT_INTERNAL_STATUS_COMPLETED); };
 
 	NodePath get_tree_root() const;
 
@@ -111,9 +93,6 @@ private:
 	float _score;
 	int _evaluation_method;
 	Status _tick_result;
-	int _internal_status;
-	int _reset_rule;
-	bool _has_reset_rule_changed;
 	// Run lifecycle state. A run starts on the first tick after the node has no
 	// active run and ends on a terminal result or an interrupt.
 	bool _is_running;
@@ -159,5 +138,4 @@ protected:
 } //namespace godot
 
 VARIANT_ENUM_CAST(NNBTNodes::Status)
-VARIANT_ENUM_CAST(NNBTNodes::NNBTNodesResetRule)
 VARIANT_ENUM_CAST(NNBTNodes::NNBTNodesEvaluationMethod)

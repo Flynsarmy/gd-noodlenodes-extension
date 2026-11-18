@@ -2,10 +2,6 @@ extends GutTest
 @warning_ignore('unused_parameter')
 @warning_ignore('return_value_discarded')
 
-# NNBTNodes does not expose its internal status constants to GDScript.
-const INTERNAL_STATUS_TICKED := 1
-const INTERNAL_STATUS_COMPLETED := 2
-
 
 class RunningCondition extends NNBTConditionLeaf:
 	var result: int = NNBTNodes.RUNNING
@@ -313,8 +309,7 @@ func test_condition_leaf_running_is_returned_unchanged_and_reported_once() -> vo
 	bt_root.add_child(leaf)
 
 	assert_eq(bt_root.tick({}, 0.1), NNBTNodes.RUNNING, "the RUNNING result is not coerced")
-	assert_eq(leaf.tick_result, NNBTNodes.RUNNING)
-	assert_eq(leaf.internal_status, INTERNAL_STATUS_TICKED, "a RUNNING condition stays ticked")
+	assert_true(leaf.get_is_running(), "a RUNNING condition stays ticked")
 
 	var errors: Array = get_errors()
 	assert_eq(errors.size(), 1, "one warning for the RUNNING condition")
@@ -327,8 +322,7 @@ func test_condition_leaf_running_is_returned_unchanged_and_reported_once() -> vo
 
 	leaf.result = NNBTNodes.SUCCESS
 	assert_eq(bt_root.tick({}, 0.1), NNBTNodes.SUCCESS)
-	assert_eq(leaf.tick_result, NNBTNodes.SUCCESS)
-	assert_eq(leaf.internal_status, INTERNAL_STATUS_COMPLETED, "a SUCCESS condition completes")
+	assert_false(leaf.get_is_running(), "a SUCCESS condition completes")
 
 	bt_root.free()
 
@@ -339,7 +333,6 @@ func test_action_leaf_running_is_propagated() -> void:
 	bt_root.add_child(leaf)
 
 	assert_eq(bt_root.tick({}, 0.1), NNBTNodes.RUNNING)
-	assert_eq(leaf.tick_result, NNBTNodes.RUNNING)
 
 	assert_engine_error_count(0)
 	bt_root.free()

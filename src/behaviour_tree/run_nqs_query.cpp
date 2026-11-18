@@ -29,7 +29,7 @@ NNBTRunNQSQuery::NNBTRunNQSQuery() {
 }
 
 NNBTRunNQSQuery::~NNBTRunNQSQuery() {
-	reset_bt_node();
+	_cancel_posted_query();
 }
 
 void NNBTRunNQSQuery::set_nqs_search_space(NNNQSSearchSpaces *nqs_search_space) {
@@ -37,7 +37,7 @@ void NNBTRunNQSQuery::set_nqs_search_space(NNNQSSearchSpaces *nqs_search_space) 
 	if (_nqs_search_space_cache == search_space_id) {
 		return;
 	}
-	reset_bt_node();
+	_cancel_posted_query();
 	_nqs_search_space_cache = search_space_id;
 }
 
@@ -73,7 +73,7 @@ bool NNBTRunNQSQuery::get_is_high_priority() const {
 	return _is_high_priority;
 }
 
-void NNBTRunNQSQuery::reset_bt_node() {
+void NNBTRunNQSQuery::_cancel_posted_query() {
 	NNNQSSearchSpaces *search_space = _resolve_nqs_search_space();
 	if (search_space != nullptr) {
 		if (_query_completed_callable.is_valid() && search_space->is_connected("query_completed", _query_completed_callable)) {
@@ -115,7 +115,7 @@ NNBTNodes::Status NNBTRunNQSQuery::_tick(Variant blackboard, float delta) {
 	NNNodeQuerySystem *nqs = godot::Object::cast_to<NNNodeQuerySystem>(Engine::get_singleton()->get_singleton("NodeQuerySystem"));
 	Status result = Status::FAILURE;
 	if (!is_node_ready() || Engine::get_singleton()->is_editor_hint() || search_space == nullptr || nqs == nullptr) {
-		reset_bt_node();
+		_cancel_posted_query();
 	} else {
 		if (_query_state == QueryState::RUNNING &&
 				(search_space->get_nqs_query_registration() != _posted_query_registration || !search_space->get_is_query_still_running())) {
@@ -123,12 +123,8 @@ NNBTNodes::Status NNBTRunNQSQuery::_tick(Variant blackboard, float delta) {
 		}
 
 		if (_query_state == QueryState::CANCELLED) {
-			reset_bt_node();
-			if (get_reset_rule() == NNBTNodesResetRule::NEVER) {
-				_query_state = QueryState::CANCELLED;
-			}
+			_cancel_posted_query();
 		} else {
-			set_internal_status(BT_INTERNAL_STATUS_TICKED);
 			switch (_query_state) {
 				case QueryState::IDLE: {
 					if (nqs->post_query(search_space, _is_high_priority) == 1) {
@@ -138,7 +134,7 @@ NNBTNodes::Status NNBTRunNQSQuery::_tick(Variant blackboard, float delta) {
 						if (_connect_query_completed(search_space)) {
 							result = Status::RUNNING;
 						} else {
-							reset_bt_node();
+							_cancel_posted_query();
 						}
 					}
 				} break;
@@ -154,19 +150,21 @@ NNBTNodes::Status NNBTRunNQSQuery::_tick(Variant blackboard, float delta) {
 		}
 	}
 
-	if (result != Status::RUNNING) {
-		set_internal_status(BT_INTERNAL_STATUS_COMPLETED);
-	}
-	set_tick_result(result);
 	return result;
+}
+
+void NNBTRunNQSQuery::_on_after_run(Variant blackboard, float delta) {
+	// The run is over, so drop the posted query and its completion connection.
+	_cancel_posted_query();
+	NNBTTaskNodes::_on_after_run(blackboard, delta);
 }
 
 void NNBTRunNQSQuery::_on_interrupt(Variant blackboard, float delta) {
 	// Stop only this leaf's own posted query before running the script hook.
-	reset_bt_node();
+	_cancel_posted_query();
 	NNBTTaskNodes::_on_interrupt(blackboard, delta);
 }
 
 void NNBTRunNQSQuery::_exit_tree() {
-	reset_bt_node();
+	_cancel_posted_query();
 }

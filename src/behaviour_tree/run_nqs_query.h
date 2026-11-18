@@ -31,10 +31,12 @@ private:
 	NNNQSSearchSpaces *_resolve_nqs_search_space() const;
 	bool _connect_query_completed(NNNQSSearchSpaces *p_search_space);
 	void _on_query_completed(Object *p_search_space, int64_t p_query_registration);
+	void _cancel_posted_query();
 
 protected:
 	static void _bind_methods();
 
+	virtual void _on_after_run(Variant blackboard, float delta) override;
 	virtual void _on_interrupt(Variant blackboard, float delta) override;
 
 public:
@@ -56,7 +58,6 @@ public:
 	bool get_is_high_priority() const;
 
 	// Handling functions.
-	virtual void reset_bt_node() override;
 	virtual Status _tick(Variant blackboard, float delta) override;
 
 	// Godot virtuals.

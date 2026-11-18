@@ -66,8 +66,6 @@ NNBTNodes::Status NNBTCooldownTicks::get_cooldown_return_value() const {
 NNBTNodes::Status NNBTCooldownTicks::_tick(Variant blackboard, float delta) {
 	_report_extra_enabled_child_btnodes();
 
-	set_internal_status(BT_INTERNAL_STATUS_TICKED);
-
 	if (_current_cooldown_ticks > 0) {
 		_current_cooldown_ticks--;
 		return _cooldown_return_value;
@@ -81,20 +79,11 @@ NNBTNodes::Status NNBTCooldownTicks::_tick(Variant blackboard, float delta) {
 
 		if (result != Status::RUNNING) {
 			_current_cooldown_ticks = _cooldown_ticks;
-
-			set_internal_status(BT_INTERNAL_STATUS_COMPLETED);
-			set_tick_result(result);
-			return result;
-		} else {
-			set_internal_status(BT_INTERNAL_STATUS_TICKED);
-			set_tick_result(result);
-			return result;
 		}
-		break;
+
+		return result;
 	}
 
 	_current_cooldown_ticks = _cooldown_ticks;
-	set_internal_status(BT_INTERNAL_STATUS_COMPLETED);
-	set_tick_result(Status::FAILURE);
 	return Status::FAILURE;
 }

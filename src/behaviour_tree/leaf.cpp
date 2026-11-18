@@ -25,7 +25,6 @@ NNBTLeaf::~NNBTLeaf() {
 // Handling methods.
 
 NNBTNodes::Status NNBTLeaf::_tick(Variant blackboard, float delta) {
-	set_internal_status(BT_INTERNAL_STATUS_TICKED);
 	// Call the script override directly so the raw Variant is validated before
 	// any Status coercion. A missing override fails every tick and is reported
 	// once per leaf instance.
@@ -37,12 +36,6 @@ NNBTNodes::Status NNBTLeaf::_tick(Variant blackboard, float delta) {
 		_has_missing_on_tick_reported = true;
 		String node_location = is_inside_tree() ? String(get_path()) : get_name() + String(" (not in tree)");
 		ERR_PRINT(vformat("NNBTLeaf node '%s' (%s) has no on_tick(blackboard: Variant, delta: float) -> Status override. Add on_tick to the node's script; returning FAILURE.", node_location, get_class()));
-	}
-
-	set_tick_result(return_value);
-
-	if (return_value == Status::FAILURE || return_value == Status::SUCCESS) {
-		set_internal_status(BT_INTERNAL_STATUS_COMPLETED);
 	}
 
 	return return_value;

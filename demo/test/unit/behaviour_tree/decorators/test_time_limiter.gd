@@ -5,10 +5,6 @@ extends GutTest
 
 const BLACKBOARD: Dictionary = {}
 
-# NNBTNodes does not expose its internal status constants to GDScript.
-const INTERNAL_STATUS_UNTICKED := 0
-const INTERNAL_STATUS_COMPLETED := 2
-
 
 class CountingLeaf extends NNBTLeaf:
 	var result: int = NNBTNodes.RUNNING
@@ -51,10 +47,9 @@ func test_fails_when_running_child_exceeds_limit() -> void:
 	assert_eq(leaf.tick_count, 2)
 
 	assert_eq(root.tick(BLACKBOARD, 0.4), NNBTNodes.FAILURE, "Exceeding the limit must fail the time limiter.")
-	assert_eq(time_limiter.tick_result, NNBTNodes.FAILURE)
 	assert_almost_eq(time_limiter.get_time_spent(), 0.0, 0.0001, "A timeout must clear the accumulated time.")
-	assert_eq(time_limiter.internal_status, INTERNAL_STATUS_COMPLETED)
-	assert_eq(leaf.internal_status, INTERNAL_STATUS_UNTICKED, "A timeout must reset the child subtree.")
+	assert_false(time_limiter.get_is_running())
+	assert_false(leaf.get_is_running(), "A timeout must reset the child subtree.")
 
 	root.free()
 
@@ -72,7 +67,6 @@ func test_terminal_result_after_timeout_passes_through() -> void:
 
 	leaf.result = NNBTNodes.SUCCESS
 	assert_eq(root.tick(BLACKBOARD, 0.4), NNBTNodes.SUCCESS, "A success after a timeout must pass through immediately.")
-	assert_eq(time_limiter.tick_result, NNBTNodes.SUCCESS)
 	assert_almost_eq(time_limiter.get_time_spent(), 0.0, 0.0001)
 
 	root.free()
@@ -109,7 +103,6 @@ func test_zero_and_negative_limits_never_time_out() -> void:
 
 		for i in 5:
 			assert_eq(root.tick(BLACKBOARD, 1.0), NNBTNodes.RUNNING, "A limit of %.1f must never time out." % limit)
-			assert_eq(time_limiter.tick_result, NNBTNodes.RUNNING)
 
 		assert_almost_eq(time_limiter.get_time_spent(), 5.0, 0.0001)
 		root.free()
@@ -123,7 +116,6 @@ func test_fast_success_passes_through_tiny_limit() -> void:
 	var time_limiter: NNBTTimeLimiter = tree[1]
 
 	assert_eq(root.tick(BLACKBOARD, 0.001), NNBTNodes.SUCCESS, "A fast success must pass through untouched.")
-	assert_eq(time_limiter.tick_result, NNBTNodes.SUCCESS)
 	assert_almost_eq(time_limiter.get_time_spent(), 0.0, 0.0001)
 	assert_eq(leaf.tick_count, 1)
 
@@ -138,7 +130,6 @@ func test_fast_failure_passes_through_tiny_limit() -> void:
 	var time_limiter: NNBTTimeLimiter = tree[1]
 
 	assert_eq(root.tick(BLACKBOARD, 0.001), NNBTNodes.FAILURE, "A fast failure must pass through untouched.")
-	assert_eq(time_limiter.tick_result, NNBTNodes.FAILURE)
 	assert_almost_eq(time_limiter.get_time_spent(), 0.0, 0.0001)
 	assert_eq(leaf.tick_count, 1)
 
@@ -163,9 +154,9 @@ func test_child_is_not_ticked_past_its_deadline() -> void:
 	assert_eq(root.tick(BLACKBOARD, 0.1), NNBTNodes.FAILURE, "The third tick exceeds the limit and must fail the run.")
 	assert_eq(leaf.tick_count, 2, "The child must not be ticked on the tick that exceeds the limit.")
 	assert_eq(leaf.interrupt_count, 1, "Closing the child's active run must fire its interrupt hook exactly once.")
-	assert_eq(leaf.internal_status, INTERNAL_STATUS_UNTICKED, "A timeout must reset the child subtree.")
+	assert_false(leaf.get_is_running(), "A timeout must close the child's run.")
 	assert_almost_eq(time_limiter.get_time_spent(), 0.0, 0.0001, "A timeout must clear the accumulated time.")
-	assert_eq(time_limiter.internal_status, INTERNAL_STATUS_COMPLETED)
+	assert_false(time_limiter.get_is_running())
 
 	root.free()
 
@@ -202,7 +193,7 @@ func test_first_tick_beyond_the_limit_never_ticks_the_child() -> void:
 	assert_eq(root.tick(BLACKBOARD, 1.0), NNBTNodes.FAILURE, "A first tick whose delta exceeds the limit must fail the run.")
 	assert_eq(leaf.tick_count, 0, "The child must never be ticked when the first tick already exceeds the limit.")
 	assert_eq(time_limiter.tick_result, NNBTNodes.FAILURE)
-	assert_eq(time_limiter.internal_status, INTERNAL_STATUS_COMPLETED)
+	assert_false(time_limiter.get_is_running())
 	assert_almost_eq(time_limiter.get_time_spent(), 0.0, 0.0001)
 
 	root.free()
@@ -214,8 +205,7 @@ func test_failure_on_no_children() -> void:
 	root.add_child(time_limiter)
 
 	assert_eq(root.tick(BLACKBOARD, 0.1), NNBTNodes.FAILURE, "A time limiter without child nodes must fail.")
-	assert_eq(time_limiter.tick_result, NNBTNodes.FAILURE)
-	assert_eq(time_limiter.internal_status, INTERNAL_STATUS_COMPLETED)
+	assert_false(time_limiter.get_is_running())
 
 	root.free()
 
@@ -229,8 +219,8 @@ func test_failure_on_no_enabled_child() -> void:
 	var time_limiter: NNBTTimeLimiter = tree[1]
 
 	assert_eq(root.tick(BLACKBOARD, 0.1), NNBTNodes.FAILURE, "A time limiter without an enabled child must fail.")
-	assert_eq(time_limiter.tick_result, NNBTNodes.FAILURE)
 	assert_eq(leaf.tick_count, 0)
+	assert_false(time_limiter.get_is_running())
 
 	root.free()
 
@@ -246,14 +236,7 @@ func test_root_disable_restarts_time_limit() -> void:
 	assert_almost_eq(time_limiter.get_time_spent(), 0.5, 0.0001)
 
 	root.set_is_enabled(false)
-	assert_eq(time_limiter.internal_status, INTERNAL_STATUS_UNTICKED, "Disabling the root must mark the limiter unticked.")
 	root.set_is_enabled(true)
-	assert_eq(time_limiter.internal_status, INTERNAL_STATUS_UNTICKED, "Re-enabling the root must leave the limiter unticked.")
-
-	# A zero-delta tick runs the reset guard without advancing the timer, so the
-	# cleared accumulated time can be observed before the new run accumulates.
-	assert_eq(root.tick(BLACKBOARD, 0.0), NNBTNodes.RUNNING)
-	assert_almost_eq(time_limiter.get_time_spent(), 0.0, 0.0001, "Disabling the root must clear the accumulated time.")
 
 	assert_eq(root.tick(BLACKBOARD, 0.5), NNBTNodes.RUNNING, "The new run must accumulate from its first tick.")
 	assert_almost_eq(time_limiter.get_time_spent(), 0.5, 0.0001)
@@ -262,8 +245,8 @@ func test_root_disable_restarts_time_limit() -> void:
 	assert_eq(root.tick(BLACKBOARD, 0.001), NNBTNodes.FAILURE, "The new run must time out after the full limit.")
 
 	assert_almost_eq(time_limiter.get_time_spent(), 0.0, 0.0001)
-	assert_eq(time_limiter.internal_status, INTERNAL_STATUS_COMPLETED)
-	assert_eq(leaf.internal_status, INTERNAL_STATUS_UNTICKED, "A timeout must still reset the child subtree.")
+	assert_false(time_limiter.get_is_running())
+	assert_false(leaf.get_is_running(), "A timeout must still reset the child subtree.")
 
 	root.free()
 
@@ -294,7 +277,7 @@ func test_root_interrupt_clears_time_limit() -> void:
 	assert_almost_eq(time_limiter.get_time_spent(), 1.0, 0.0001)
 	assert_eq(root.tick(BLACKBOARD, 0.1), NNBTNodes.FAILURE, "The next run must time out after the full limit.")
 	assert_almost_eq(time_limiter.get_time_spent(), 0.0, 0.0001)
-	assert_eq(leaf.internal_status, INTERNAL_STATUS_UNTICKED, "A timeout must still reset the child subtree.")
+	assert_false(leaf.get_is_running(), "A timeout must still reset the child subtree.")
 
 	root.free()
 
@@ -362,16 +345,8 @@ func test_parent_reset_restarts_time_limit() -> void:
 	assert_eq(root.tick(BLACKBOARD, 0.5), NNBTNodes.RUNNING)
 	assert_almost_eq(time_limiter.get_time_spent(), 0.5, 0.0001)
 
-	# NNBTNodes::reset() is not exposed to GDScript, so trigger the parent
-	# sequence's reset() through its enabled lifecycle, which cascades exactly
-	# like an explicit reset of the parent.
-	sequence.set_is_enabled(false)
-	assert_eq(time_limiter.internal_status, INTERNAL_STATUS_UNTICKED, "A parent reset must mark the limiter unticked.")
-	sequence.set_is_enabled(true)
-
-	# A zero-delta tick runs the reset guard without advancing the timer.
-	assert_eq(root.tick(BLACKBOARD, 0.0), NNBTNodes.RUNNING)
-	assert_almost_eq(time_limiter.get_time_spent(), 0.0, 0.0001, "A parent reset must clear the accumulated time.")
+	# A parent's reset() cascades into the time limiter like disabling an ancestor.
+	sequence.reset()
 
 	assert_eq(root.tick(BLACKBOARD, 0.5), NNBTNodes.RUNNING, "The new run must accumulate from its first tick.")
 	assert_almost_eq(time_limiter.get_time_spent(), 0.5, 0.0001)

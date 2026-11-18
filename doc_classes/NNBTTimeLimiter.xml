@@ -10,7 +10,7 @@
 
 		When the limit is exceeded the child is not ticked on that tick, its active run is closed (its subtree is interrupted and reset), the accumulated time is cleared, and the node completes with [code]FAILURE[/code]. A first tick whose [code]delta[/code] already exceeds the limit fails the run without ticking the child at all.
 
-		Time is accumulated from delta only and never from the wall clock, so the limit is deterministic and pause-safe. A [member time_limit] of [code]0[/code] or any negative value means unlimited and never times the child out; negative values are accepted unchanged and the property range hint is for authoring only. A reset rule of [code]WhenTicked[/code] clears the accumulated time on every tick. An explicit reset of this node or of an ancestor, such as disabling and re-enabling the root, also clears the accumulated time. An interrupt, such as an ancestor switching to another branch, also clears the accumulated time.
+		Time is accumulated from delta only and never from the wall clock, so the limit is deterministic and pause-safe. The accumulated time belongs to the current run and starts at zero when the run starts. A [member time_limit] of [code]0[/code] or any negative value means unlimited and never times the child out; negative values are accepted unchanged and the property range hint is for authoring only. An explicit reset of this node or of an ancestor, such as disabling and re-enabling the root, also clears the accumulated time. An interrupt, such as an ancestor switching to another branch, also clears the accumulated time.
 
 		A terminal child result passes through unchanged and completes the node immediately, so a fast [code]SUCCESS[/code] or [code]FAILURE[/code] is never altered.
 

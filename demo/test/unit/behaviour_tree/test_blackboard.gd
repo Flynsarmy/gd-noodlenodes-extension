@@ -2,10 +2,6 @@ extends GutTest
 @warning_ignore('unused_parameter')
 @warning_ignore('return_value_discarded')
 
-# NNBTNodes does not expose its internal status constants to GDScript.
-const INTERNAL_STATUS_TICKED := 1
-const INTERNAL_STATUS_COMPLETED := 2
-
 
 class LegacyLeaf extends NNBTLeaf:
 	var received_blackboard: Variant = null

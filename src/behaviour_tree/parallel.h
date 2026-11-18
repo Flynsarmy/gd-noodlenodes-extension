@@ -54,7 +54,6 @@ public:
 
 	// Handling functions.
 
-	virtual void reset_bt_node() override;
 	virtual void update_child_vectors() override;
 
 	virtual Status _tick(Variant blackboard, float delta) override;

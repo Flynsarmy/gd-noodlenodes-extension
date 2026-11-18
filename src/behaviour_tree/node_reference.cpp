@@ -171,13 +171,10 @@ void NNBTNodeReference::_on_interrupt(Variant blackboard, float delta) {
 NNBTNodes::Status NNBTNodeReference::_tick(Variant blackboard, float delta) {
 	if (_is_ticking) {
 		ERR_PRINT("NNBTNodeReference::_tick(): Detected a cycle in node_reference links; returning FAILURE.");
-		set_internal_status(BT_INTERNAL_STATUS_COMPLETED);
-		set_tick_result(Status::FAILURE);
 		return Status::FAILURE;
 	}
 
 	_is_ticking = true;
-	set_internal_status(BT_INTERNAL_STATUS_TICKED);
 	NNBTNodes *target = get_node_reference();
 	Status result = Status::FAILURE;
 	if (target != nullptr) {
@@ -194,9 +191,5 @@ NNBTNodes::Status NNBTNodeReference::_tick(Variant blackboard, float delta) {
 		result = target->tick(blackboard, delta);
 	}
 	_is_ticking = false;
-	set_tick_result(result);
-	if (result != Status::RUNNING) {
-		set_internal_status(BT_INTERNAL_STATUS_COMPLETED);
-	}
 	return result;
 }

@@ -7,8 +7,6 @@ extends GutTest
 # run ownership. The feature branches were tested separately; this file covers
 # their interaction.
 
-const RESET_RULE_WHEN_TICKED := 0
-
 
 class HookedSet extends NNBTBlackboardSet:
 	var events: Array = []
@@ -92,10 +90,10 @@ func test_shared_target_takeover_keeps_blackboard_writes_on_its_own_root() -> vo
 	var root: NNBTRoot = NNBTRoot.new()
 	root.blackboard = referencer_board
 	var selector: NNBTSelector = NNBTSelector.new()
-	selector.reset_rule = RESET_RULE_WHEN_TICKED
+	selector.reactive = true
 	root.add_child(selector)
 	var sequence: NNBTSequence = NNBTSequence.new()
-	sequence.reset_rule = RESET_RULE_WHEN_TICKED
+	sequence.reactive = true
 	selector.add_child(sequence)
 	var condition: FlippingCondition = FlippingCondition.new()
 	sequence.add_child(condition)

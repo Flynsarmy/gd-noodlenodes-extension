@@ -25,8 +25,6 @@ NNBTInverter::~NNBTInverter() {
 NNBTNodes::Status NNBTInverter::_tick(Variant blackboard, float delta) {
 	_report_extra_enabled_child_btnodes();
 
-	set_internal_status(BT_INTERNAL_STATUS_TICKED);
-
 	for (unsigned int i = 0; i < _num_child_btnodes; i++) {
 		NNBTNodes *btnode = _child_btnodes[i];
 		if (!btnode->get_is_enabled()) {
@@ -40,13 +38,7 @@ NNBTNodes::Status NNBTInverter::_tick(Variant blackboard, float delta) {
 			result = Status::SUCCESS;
 		}
 
-		set_tick_result(result);
-		if (result != Status::RUNNING) {
-			set_internal_status(BT_INTERNAL_STATUS_COMPLETED);
-		}
 		return result;
 	}
-	set_internal_status(BT_INTERNAL_STATUS_COMPLETED);
-	set_tick_result(Status::FAILURE);
 	return Status::FAILURE;
 }

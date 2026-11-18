@@ -17,12 +17,6 @@ void NNBTNodes::_bind_methods() {
 	BIND_ENUM_CONSTANT(SUCCESS);
 	BIND_ENUM_CONSTANT(SKIP);
 
-	// NNBTNodesResetRule.
-	BIND_ENUM_CONSTANT(WHEN_TICKED);
-	BIND_ENUM_CONSTANT(WHEN_COMPLETED);
-	BIND_ENUM_CONSTANT(WHEN_TICKED_AFTER_BEING_COMPLETED);
-	BIND_ENUM_CONSTANT(NEVER);
-
 	// NNBTNodesEvaluationMethod.
 	BIND_ENUM_CONSTANT(Sum);
 	BIND_ENUM_CONSTANT(Min);
@@ -30,10 +24,6 @@ void NNBTNodes::_bind_methods() {
 	BIND_ENUM_CONSTANT(Mean);
 	BIND_ENUM_CONSTANT(Multiply);
 	BIND_ENUM_CONSTANT(FirstNonZero);
-
-	ClassDB::bind_method(D_METHOD("set_reset_rule", "reset_rule"), &NNBTNodes::set_reset_rule);
-	ClassDB::bind_method(D_METHOD("get_reset_rule"), &NNBTNodes::get_reset_rule);
-	ADD_PROPERTY(PropertyInfo(Variant::INT, "reset_rule", PROPERTY_HINT_ENUM, "WhenTicked:0,WhenCompleted:1,WhenTickedAfterBeingCompleted:2,Never:3"), "set_reset_rule", "get_reset_rule");
 
 	ClassDB::bind_method(D_METHOD("set_evaluation_method", "evaluation_method"), &NNBTNodes::set_evaluation_method);
 	ClassDB::bind_method(D_METHOD("get_evaluation_method"), &NNBTNodes::get_evaluation_method);
@@ -49,6 +39,7 @@ void NNBTNodes::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_actor"), &NNBTNodes::get_actor);
 
 	ClassDB::bind_method(D_METHOD("interrupt"), &NNBTNodes::interrupt);
+	ClassDB::bind_method(D_METHOD("reset"), &NNBTNodes::reset);
 	ClassDB::bind_method(D_METHOD("get_is_running"), &NNBTNodes::get_is_running);
 
 	ADD_SUBGROUP("Debugging", "");
@@ -57,13 +48,8 @@ void NNBTNodes::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_score"), &NNBTNodes::get_score);
 	ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "score", PROPERTY_HINT_NONE), "set_score", "get_score");
 
-	ClassDB::bind_method(D_METHOD("set_tick_result", "tick_result"), &NNBTNodes::set_tick_result);
 	ClassDB::bind_method(D_METHOD("get_tick_result"), &NNBTNodes::get_tick_result);
-	ADD_PROPERTY(PropertyInfo(Variant::INT, "tick_result", PROPERTY_HINT_ENUM, "Running:0,Success:1,Failure:-1,Skip:-2"), "set_tick_result", "get_tick_result");
-
-	ClassDB::bind_method(D_METHOD("set_internal_status", "internal_status"), &NNBTNodes::set_internal_status);
-	ClassDB::bind_method(D_METHOD("get_internal_status"), &NNBTNodes::get_internal_status);
-	ADD_PROPERTY(PropertyInfo(Variant::INT, "internal_status", PROPERTY_HINT_ENUM, "Unticked:0,Ticked:1,Completed:2"), "set_internal_status", "get_internal_status");
+	ADD_PROPERTY(PropertyInfo(Variant::INT, "tick_result", PROPERTY_HINT_ENUM, "Running:0,Success:1,Failure:-1,Skip:-2"), "", "get_tick_result");
 
 	// Signals.
 }
@@ -74,9 +60,6 @@ NNBTNodes::NNBTNodes() {
 	_score = 0.0;
 	_evaluation_method = NNBTNodesEvaluationMethod::Multiply;
 	_tick_result = Status::SUCCESS;
-	_internal_status = BT_INTERNAL_STATUS_UNTICKED;
-	_reset_rule = NNBTNodesResetRule::WHEN_TICKED_AFTER_BEING_COMPLETED;
-	_has_reset_rule_changed = false;
 	_is_running = false;
 	_run_owner = ObjectID();
 	_run_blackboard = Variant();
@@ -111,54 +94,8 @@ float NNBTNodes::get_score() const {
 	return _score;
 }
 
-void NNBTNodes::set_tick_result(Status tick_result) {
-	_tick_result = tick_result;
-}
-
 NNBTNodes::Status NNBTNodes::get_tick_result() const {
 	return _tick_result;
-}
-
-void NNBTNodes::set_internal_status(int internal_status) {
-#ifdef DEBUG_ENABLED
-	_last_visited_timestamp = godot::Time::get_singleton()->get_ticks_usec();
-#endif
-	switch (_reset_rule) {
-		case NNBTNodesResetRule::WHEN_COMPLETED: {
-			if (internal_status == BT_INTERNAL_STATUS_COMPLETED) {
-				reset_bt_node();
-			}
-		} break;
-		case NNBTNodesResetRule::WHEN_TICKED_AFTER_BEING_COMPLETED: {
-			if (_internal_status == BT_INTERNAL_STATUS_COMPLETED &&
-					internal_status == BT_INTERNAL_STATUS_TICKED) {
-				reset_bt_node();
-			}
-		} break;
-		case NNBTNodesResetRule::WHEN_TICKED: {
-			if (internal_status == BT_INTERNAL_STATUS_TICKED && (_internal_status != BT_INTERNAL_STATUS_UNTICKED || _has_reset_rule_changed)) {
-				reset_bt_node();
-			}
-		} break;
-		default: {
-		} break;
-	}
-
-	_internal_status = internal_status;
-	_has_reset_rule_changed = false;
-}
-
-int NNBTNodes::get_internal_status() const {
-	return _internal_status;
-}
-
-void NNBTNodes::set_reset_rule(int reset_rule) {
-	_has_reset_rule_changed = (reset_rule != _reset_rule);
-	_reset_rule = reset_rule;
-}
-
-int NNBTNodes::get_reset_rule() const {
-	return _reset_rule;
 }
 
 bool NNBTNodes::get_is_running() const {
@@ -243,7 +180,6 @@ Node *NNBTNodes::get_actor() const {
 
 void NNBTNodes::reset() {
 	interrupt();
-	_internal_status = BT_INTERNAL_STATUS_UNTICKED;
 	for (int i = 0; i < _num_child_btnodes; i++) {
 		_child_btnodes[i]->reset();
 	}
@@ -317,6 +253,9 @@ float NNBTNodes::evaluate() {
 }
 
 NNBTNodes::Status NNBTNodes::tick(Variant blackboard, float delta) {
+#ifdef DEBUG_ENABLED
+	_last_visited_timestamp = godot::Time::get_singleton()->get_ticks_usec();
+#endif
 	// Disabled nodes never start a run. A reference may have stamped an owner
 	// onto this node just before calling tick(), so clear it here to keep the
 	// invariant that a node with no active run has no run owner.
@@ -337,6 +276,8 @@ NNBTNodes::Status NNBTNodes::tick(Variant blackboard, float delta) {
 	}
 
 	Status result = _tick(blackboard, delta);
+	// Only the wrapper writes the tick result, so it always describes the most recent tick.
+	_tick_result = result;
 	if (_is_running && (result == Status::SUCCESS || result == Status::FAILURE)) {
 		Variant run_blackboard = _run_blackboard;
 		float run_delta = _run_delta;

@@ -35,15 +35,11 @@ bool NNBTSequence::get_reactive() const {
 
 // Handling methods.
 
-void NNBTSequence::reset_bt_node() {
+void NNBTSequence::_on_before_run(Variant blackboard, float delta) {
 	_current_child_index = 0;
 }
 
 NNBTNodes::Status NNBTSequence::_tick(Variant blackboard, float delta) {
-	if (get_internal_status() == BT_INTERNAL_STATUS_UNTICKED) {
-		_current_child_index = 0;
-	}
-	set_internal_status(BT_INTERNAL_STATUS_TICKED);
 	// A reactive sequence re-evaluates from the first child on every tick
 	// instead of resuming from the child that was running previously.
 	if (_is_reactive) {
@@ -53,9 +49,7 @@ NNBTNodes::Status NNBTSequence::_tick(Variant blackboard, float delta) {
 		NNBTNodes *btnode = _child_btnodes[_current_child_index];
 		if (btnode->get_is_enabled()) {
 			Status result = btnode->tick(blackboard, delta);
-			set_tick_result(result);
 			if (result == Status::FAILURE) {
-				set_internal_status(BT_INTERNAL_STATUS_COMPLETED);
 				return Status::FAILURE;
 			} else if (result == Status::RUNNING) {
 				_interrupt_other_active_children(btnode);
@@ -64,7 +58,5 @@ NNBTNodes::Status NNBTSequence::_tick(Variant blackboard, float delta) {
 		} //endif is active
 		++_current_child_index;
 	} //endwhile children to tick
-	set_internal_status(BT_INTERNAL_STATUS_COMPLETED);
-	set_tick_result(Status::SUCCESS);
 	return Status::SUCCESS;
 }

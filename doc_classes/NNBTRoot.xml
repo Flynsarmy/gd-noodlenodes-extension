@@ -55,7 +55,7 @@
 		<method name="get_running_action" qualifiers="const">
 			<return type="NNBTNodes" />
 			<description>
-				Returns the deepest node on the active path after the last tick, or [code]null[/code] when nothing is active. The active path follows the enabled children that the last tick left running: every node on it is enabled, has an internal status of ticked and has a tick result of [code]RUNNING[/code]. When a parallel node has several active children, the first active child in child order wins.
+				Returns the deepest node on the active path after the last tick, or [code]null[/code] when nothing is active. The active path follows the enabled children that the last tick left running: every node on it is enabled, has an active run and has a tick result of [code]RUNNING[/code]. When a parallel node has several active children, the first active child in child order wins.
 				The node is tracked through an object ID, so the method returns [code]null[/code] when the active node was freed and never returns a freed object.
 			</description>
 		</method>

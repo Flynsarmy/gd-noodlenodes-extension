@@ -47,28 +47,21 @@ int NNBTRepeater::get_times_repeated() const {
 
 // Handling functions.
 
-void NNBTRepeater::reset_bt_node() {
+void NNBTRepeater::_on_before_run(Variant blackboard, float delta) {
 	_times_repeated = 0;
+	NNBTDecoratorNodes::_on_before_run(blackboard, delta);
 }
 
-/**
- * Repeats the first enabled child node _repeat_times times.
- *
- * Every successful child tick counts as one completed repetition. The node
- * returns RUNNING while repetitions remain and SUCCESS after the final one.
- * A RUNNING child does not count as a repetition, so the node returns RUNNING
- * without changing the counter. A FAILURE child ends the run immediately with
- * FAILURE and does not count as a repetition.
- *
- * repeat_times == -1 repeats forever and never completes on its own.
- * repeat_times == 0 succeeds immediately without ticking the child.
- *
- * Terminal results set BT_INTERNAL_STATUS_COMPLETED so the reset rule in
- * NNBTNodes::set_internal_status() starts a fresh run on the next tick. Under
- * reset_rule Never a completed repeater instead returns its terminal result
- * and does not re-tick its child until it is explicitly reset or its reset
- * rule changes.
- */
+void NNBTRepeater::_on_after_run(Variant blackboard, float delta) {
+	_times_repeated = 0;
+	NNBTDecoratorNodes::_on_after_run(blackboard, delta);
+}
+
+void NNBTRepeater::_on_interrupt(Variant blackboard, float delta) {
+	_times_repeated = 0;
+	NNBTDecoratorNodes::_on_interrupt(blackboard, delta);
+}
+
 NNBTNodes::Status NNBTRepeater::_tick(Variant blackboard, float delta) {
 	if (!get_is_enabled() || _child_btnodes.size() == 0)
 		return Status::FAILURE;
@@ -77,19 +70,7 @@ NNBTNodes::Status NNBTRepeater::_tick(Variant blackboard, float delta) {
 
 	_report_extra_enabled_child_btnodes();
 
-	if (get_internal_status() == BT_INTERNAL_STATUS_COMPLETED &&
-			get_reset_rule() == NNBTNodesResetRule::NEVER) {
-		return get_tick_result();
-	}
-
-	if (get_internal_status() == BT_INTERNAL_STATUS_UNTICKED) {
-		reset_bt_node();
-	}
-	set_internal_status(BT_INTERNAL_STATUS_TICKED);
-
 	if (_repeat_times == 0) {
-		set_internal_status(BT_INTERNAL_STATUS_COMPLETED);
-		set_tick_result(Status::SUCCESS);
 		return Status::SUCCESS;
 	}
 
@@ -102,13 +83,10 @@ NNBTNodes::Status NNBTRepeater::_tick(Variant blackboard, float delta) {
 		Status result = btnode->tick(blackboard, delta);
 
 		if (result == Status::RUNNING) {
-			set_tick_result(result);
 			return result;
 		}
 
 		if (result == Status::FAILURE) {
-			set_internal_status(BT_INTERNAL_STATUS_COMPLETED);
-			set_tick_result(result);
 			return result;
 		}
 
@@ -116,17 +94,12 @@ NNBTNodes::Status NNBTRepeater::_tick(Variant blackboard, float delta) {
 		_times_repeated++;
 
 		if (_repeat_times < 0 || _times_repeated < _repeat_times) {
-			set_tick_result(Status::RUNNING);
 			return Status::RUNNING;
 		}
 
-		set_internal_status(BT_INTERNAL_STATUS_COMPLETED);
-		set_tick_result(Status::SUCCESS);
 		return Status::SUCCESS;
 	}
 
 	// There were no enabled child nodes to repeat.
-	set_internal_status(BT_INTERNAL_STATUS_COMPLETED);
-	set_tick_result(Status::FAILURE);
 	return Status::FAILURE;
 }

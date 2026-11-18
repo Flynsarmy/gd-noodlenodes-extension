@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="NNBTRunOnce" inherits="NNBTDecoratorNodes" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
+	<brief_description>
+		Runs its child node once and then holds the child's first terminal result.
+	</brief_description>
+	<description>
+		The run once node ticks its first enabled child node like any decorator. The first time the child returns [code]SUCCESS[/code] or [code]FAILURE[/code] that result is latched, and every later tick returns the latched result without ticking the child again. While the child has not produced a terminal result yet, every tick ticks it and returns its result unchanged.
+
+		The latch survives an interrupt: an interrupt only cancels the child subtree, so the held result is still returned afterwards. An explicit reset clears the latch, and disabling the node also clears it because disabling resets the subtree.
+
+		While a result is latched, each tick is a degenerate run that starts and ends immediately, so the [code]on_before_run[/code] and [code]on_after_run[/code] script hooks of this node still fire on every tick.
+
+		The typical use is to wrap the child of an [NNBTRoot] to make the whole tree run once: the root keeps ticking, but the wrapped subtree finishes its first terminal result and stays there.
+	</description>
+	<tutorials>
+	</tutorials>
+</class>

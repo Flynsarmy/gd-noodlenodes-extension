@@ -4,10 +4,6 @@ extends GutTest
 
 const BLACKBOARD: Dictionary = {}
 
-# NNBTNodes does not expose its internal status constants to GDScript.
-const INTERNAL_STATUS_UNTICKED := 0
-const INTERNAL_STATUS_COMPLETED := 2
-
 
 class CountingLeaf extends NNBTLeaf:
 	var result: int = NNBTNodes.SUCCESS
@@ -115,8 +111,8 @@ func test_reparent_introduced_cycle_does_not_hang_reset_or_tick() -> void:
 
 	# Ticking the cycle must return FAILURE instead of recursing forever.
 	assert_eq(bt_root.tick(BLACKBOARD, 0.1), NNBTNodes.FAILURE)
-	assert_eq(reference.internal_status, INTERNAL_STATUS_COMPLETED)
-	assert_eq(composite.internal_status, INTERNAL_STATUS_COMPLETED)
+	assert_false(reference.get_is_running())
+	assert_false(composite.get_is_running())
 	assert_eq(reference.tick_result, NNBTNodes.FAILURE)
 
 	# One report from reset(), one from tick().
@@ -152,7 +148,7 @@ func test_valid_reference_chain_resets_and_ticks() -> void:
 	# A -> B -> composite -> leaf chain without errors.
 	bt_root.is_enabled = false
 	bt_root.is_enabled = true
-	assert_eq(leaf.internal_status, INTERNAL_STATUS_UNTICKED)
+	assert_false(leaf.get_is_running())
 	assert_eq(leaf.tick_count, 1)
 
 	assert_eq(bt_root.tick(BLACKBOARD, 0.1), NNBTNodes.SUCCESS)
@@ -210,7 +206,7 @@ func test_freed_reference_target_is_safe_on_reset_and_tick() -> void:
 
 	# Ticking after the target was freed fails safely.
 	assert_eq(bt_root.tick(BLACKBOARD, 0.1), NNBTNodes.FAILURE)
-	assert_eq(reference.internal_status, INTERNAL_STATUS_COMPLETED)
+	assert_false(reference.get_is_running())
 	assert_eq(reference.tick_result, NNBTNodes.FAILURE)
 
 	assert_engine_error_count(0)

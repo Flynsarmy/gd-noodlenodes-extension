@@ -4,10 +4,6 @@ extends GutTest
 
 const BLACKBOARD: Dictionary = {}
 
-# NNBTNodes does not expose its internal status constants to GDScript.
-const INTERNAL_STATUS_TICKED := 1
-const INTERNAL_STATUS_COMPLETED := 2
-
 
 class ResultLeaf extends NNBTLeaf:
 	var result: int = NNBTNodes.SUCCESS
@@ -50,8 +46,7 @@ func test_bare_leaf_fails_instead_of_running() -> void:
 	# the missing return value became RUNNING and the leaf never completed.
 	for tick_index in range(3):
 		assert_eq(bt_root.tick(BLACKBOARD, 0.1), NNBTNodes.FAILURE, "bare leaf tick %d must fail" % tick_index)
-		assert_eq(leaf.tick_result, NNBTNodes.FAILURE)
-		assert_eq(leaf.internal_status, INTERNAL_STATUS_COMPLETED)
+		assert_false(leaf.get_is_running())
 
 	_consume_missing_on_tick_error("BareLeaf")
 	bt_root.free()
@@ -83,8 +78,7 @@ func test_bare_leaf_fails_its_sequence_and_stops_traversal() -> void:
 	sequence.add_child(following_leaf)
 
 	assert_eq(bt_root.tick(BLACKBOARD, 0.1), NNBTNodes.FAILURE)
-	assert_eq(sequence.tick_result, NNBTNodes.FAILURE)
-	assert_eq(sequence.internal_status, INTERNAL_STATUS_COMPLETED)
+	assert_false(sequence.get_is_running())
 	assert_eq(following_leaf.tick_count, 0, "the sequence must stop at the failing leaf")
 
 	_consume_missing_on_tick_error("BareLeaf")
@@ -97,15 +91,12 @@ func test_overriding_leaf_returns_script_statuses() -> void:
 	bt_root.add_child(leaf)
 
 	assert_eq(bt_root.tick(BLACKBOARD, 0.1), NNBTNodes.RUNNING)
-	assert_eq(leaf.tick_result, NNBTNodes.RUNNING)
 
 	leaf.result = NNBTNodes.SUCCESS
 	assert_eq(bt_root.tick(BLACKBOARD, 0.1), NNBTNodes.SUCCESS)
-	assert_eq(leaf.tick_result, NNBTNodes.SUCCESS)
 
 	leaf.result = NNBTNodes.FAILURE
 	assert_eq(bt_root.tick(BLACKBOARD, 0.1), NNBTNodes.FAILURE)
-	assert_eq(leaf.tick_result, NNBTNodes.FAILURE)
 
 	assert_eq(leaf.tick_count, 3, "every tick must reach the script override")
 	assert_engine_error_count(0)
@@ -118,8 +109,7 @@ func test_running_override_stays_ticked() -> void:
 	bt_root.add_child(leaf)
 
 	assert_eq(bt_root.tick(BLACKBOARD, 0.1), NNBTNodes.RUNNING)
-	assert_eq(leaf.tick_result, NNBTNodes.RUNNING)
-	assert_eq(leaf.internal_status, INTERNAL_STATUS_TICKED, "a running leaf must not complete")
+	assert_true(leaf.get_is_running(), "a running leaf must not complete")
 
 	assert_engine_error_count(0)
 	bt_root.free()
