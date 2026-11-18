@@ -55,22 +55,7 @@ void NNBTTimeLimiter::_on_interrupt(Variant blackboard, float delta) {
 	NNBTDecoratorNodes::_on_interrupt(blackboard, delta);
 }
 
-/**
- * Fails the run when the first enabled child has been RUNNING for longer than
- * time_limit seconds of accumulated delta.
- *
- * The child is ticked first. The delta of every tick whose child result is
- * RUNNING is accumulated; the limit is exceeded only when the accumulated time
- * is strictly greater than time_limit. At that point the child subtree is
- * reset, the accumulated time is cleared, and the node completes with FAILURE.
- *
- * A time_limit of 0 or any negative value means unlimited and never times the
- * child out. Time is accumulated from delta only and never from the wall
- * clock, so the limit is deterministic and pause-safe.
- *
- * A terminal child result passes through unchanged and completes the node
- * immediately, even when it arrives long after the deadline would have.
- */
+// Checks the deadline before ticking the child so an expired child gets no extra tick.
 NNBTNodes::Status NNBTTimeLimiter::_tick(Variant blackboard, float delta) {
 	_report_extra_enabled_child_btnodes();
 
@@ -94,22 +79,18 @@ NNBTNodes::Status NNBTTimeLimiter::_tick(Variant blackboard, float delta) {
 			continue;
 		}
 
+		_time_spent += delta;
+		if (_time_limit > 0.0f && _time_spent > _time_limit) {
+			btnode->reset();
+			_time_spent = 0.0f;
+			set_internal_status(BT_INTERNAL_STATUS_COMPLETED);
+			set_tick_result(Status::FAILURE);
+			return Status::FAILURE;
+		}
+
 		Status result = btnode->tick(blackboard, delta);
 
 		if (result == Status::RUNNING) {
-			_time_spent += delta;
-			if (_time_limit > 0.0f && _time_spent > _time_limit) {
-				// Interrupts and clears the child subtree so the next run
-				// starts it from scratch. This node's own reset_bt_node() is
-				// not used here because the timeout is not a reset of the
-				// limiter itself.
-				btnode->reset();
-				_time_spent = 0.0f;
-				set_internal_status(BT_INTERNAL_STATUS_COMPLETED);
-				set_tick_result(Status::FAILURE);
-				return Status::FAILURE;
-			}
-
 			set_tick_result(Status::RUNNING);
 			return Status::RUNNING;
 		}

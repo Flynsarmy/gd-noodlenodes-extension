@@ -19,6 +19,13 @@ class CountingLeaf extends NNBTLeaf:
 		return result
 
 
+class HookCountingLeaf extends CountingLeaf:
+	var interrupt_count: int = 0
+
+	func on_interrupt(_blackboard: Variant, _delta: float) -> void:
+		interrupt_count += 1
+
+
 func _build_tree(time_limit: float, child: NNBTNodes) -> Array:
 	var root: NNBTRoot = NNBTRoot.new()
 	var time_limiter: NNBTTimeLimiter = NNBTTimeLimiter.new()
@@ -115,7 +122,7 @@ func test_fast_success_passes_through_tiny_limit() -> void:
 	var root: NNBTRoot = tree[0]
 	var time_limiter: NNBTTimeLimiter = tree[1]
 
-	assert_eq(root.tick(BLACKBOARD, 1.0), NNBTNodes.SUCCESS, "A fast success must pass through untouched.")
+	assert_eq(root.tick(BLACKBOARD, 0.001), NNBTNodes.SUCCESS, "A fast success must pass through untouched.")
 	assert_eq(time_limiter.tick_result, NNBTNodes.SUCCESS)
 	assert_almost_eq(time_limiter.get_time_spent(), 0.0, 0.0001)
 	assert_eq(leaf.tick_count, 1)
@@ -130,8 +137,72 @@ func test_fast_failure_passes_through_tiny_limit() -> void:
 	var root: NNBTRoot = tree[0]
 	var time_limiter: NNBTTimeLimiter = tree[1]
 
-	assert_eq(root.tick(BLACKBOARD, 1.0), NNBTNodes.FAILURE, "A fast failure must pass through untouched.")
+	assert_eq(root.tick(BLACKBOARD, 0.001), NNBTNodes.FAILURE, "A fast failure must pass through untouched.")
 	assert_eq(time_limiter.tick_result, NNBTNodes.FAILURE)
+	assert_almost_eq(time_limiter.get_time_spent(), 0.0, 0.0001)
+	assert_eq(leaf.tick_count, 1)
+
+	root.free()
+
+
+func test_child_is_not_ticked_past_its_deadline() -> void:
+	var leaf: HookCountingLeaf = HookCountingLeaf.new()
+	leaf.result = NNBTNodes.RUNNING
+	var tree: Array = _build_tree(0.25, leaf)
+	var root: NNBTRoot = tree[0]
+	var time_limiter: NNBTTimeLimiter = tree[1]
+
+	assert_eq(root.tick(BLACKBOARD, 0.1), NNBTNodes.RUNNING)
+	assert_almost_eq(time_limiter.get_time_spent(), 0.1, 0.0001)
+	assert_eq(leaf.tick_count, 1)
+
+	assert_eq(root.tick(BLACKBOARD, 0.1), NNBTNodes.RUNNING)
+	assert_almost_eq(time_limiter.get_time_spent(), 0.2, 0.0001)
+	assert_eq(leaf.tick_count, 2)
+
+	assert_eq(root.tick(BLACKBOARD, 0.1), NNBTNodes.FAILURE, "The third tick exceeds the limit and must fail the run.")
+	assert_eq(leaf.tick_count, 2, "The child must not be ticked on the tick that exceeds the limit.")
+	assert_eq(leaf.interrupt_count, 1, "Closing the child's active run must fire its interrupt hook exactly once.")
+	assert_eq(leaf.internal_status, INTERNAL_STATUS_UNTICKED, "A timeout must reset the child subtree.")
+	assert_almost_eq(time_limiter.get_time_spent(), 0.0, 0.0001, "A timeout must clear the accumulated time.")
+	assert_eq(time_limiter.internal_status, INTERNAL_STATUS_COMPLETED)
+
+	root.free()
+
+
+func test_tick_landing_exactly_on_the_limit_still_ticks_the_child() -> void:
+	var leaf: CountingLeaf = CountingLeaf.new()
+	leaf.result = NNBTNodes.RUNNING
+	var tree: Array = _build_tree(1.0, leaf)
+	var root: NNBTRoot = tree[0]
+	var time_limiter: NNBTTimeLimiter = tree[1]
+
+	assert_eq(root.tick(BLACKBOARD, 0.5), NNBTNodes.RUNNING)
+	assert_almost_eq(time_limiter.get_time_spent(), 0.5, 0.0001)
+	assert_eq(leaf.tick_count, 1)
+
+	assert_eq(root.tick(BLACKBOARD, 0.5), NNBTNodes.RUNNING, "A tick that lands exactly on the limit must still tick the child.")
+	assert_almost_eq(time_limiter.get_time_spent(), 1.0, 0.0001)
+	assert_eq(leaf.tick_count, 2)
+
+	assert_eq(root.tick(BLACKBOARD, 0.5), NNBTNodes.FAILURE, "The limit is exceeded only strictly after the full limit.")
+	assert_eq(leaf.tick_count, 2, "The child must not be ticked once the limit is strictly exceeded.")
+	assert_almost_eq(time_limiter.get_time_spent(), 0.0, 0.0001)
+
+	root.free()
+
+
+func test_first_tick_beyond_the_limit_never_ticks_the_child() -> void:
+	var leaf: CountingLeaf = CountingLeaf.new()
+	leaf.result = NNBTNodes.RUNNING
+	var tree: Array = _build_tree(0.5, leaf)
+	var root: NNBTRoot = tree[0]
+	var time_limiter: NNBTTimeLimiter = tree[1]
+
+	assert_eq(root.tick(BLACKBOARD, 1.0), NNBTNodes.FAILURE, "A first tick whose delta exceeds the limit must fail the run.")
+	assert_eq(leaf.tick_count, 0, "The child must never be ticked when the first tick already exceeds the limit.")
+	assert_eq(time_limiter.tick_result, NNBTNodes.FAILURE)
+	assert_eq(time_limiter.internal_status, INTERNAL_STATUS_COMPLETED)
 	assert_almost_eq(time_limiter.get_time_spent(), 0.0, 0.0001)
 
 	root.free()
