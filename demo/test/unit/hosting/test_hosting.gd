@@ -6,12 +6,17 @@ extends GutTest
 class CountingLeaf extends NNBTLeaf:
 	var result: int = NNBTNodes.RUNNING
 	var tick_count: int = 0
+	var interrupt_count: int = 0
 	var deltas: Array = []
 
 	func on_tick(delta: float) -> Status:
 		tick_count += 1
 		deltas.append(delta)
 		return result
+
+	@warning_ignore('native_method_override')
+	func on_interrupt(_delta: float) -> void:
+		interrupt_count += 1
 
 
 class CountingState extends NNSTNode:
@@ -144,6 +149,7 @@ func test_host_state_ticks_its_hosted_bt_root_only_while_active() -> void:
 	assert_true(host_state.transition_to(host_state.get_path_to(idle_state)))
 	assert_false(host_state.get_is_active())
 	assert_null(bt_root.get_running_action(), "leaving the host state interrupts the run")
+	assert_eq(leaf.interrupt_count, 1, "the interrupted leaf is told its run ended")
 
 	chart.tick(0.1)
 	assert_eq(leaf.tick_count, 2, "an inactive host no longer ticks its root")
@@ -358,6 +364,194 @@ func test_host_reports_the_final_state_of_a_hosted_chart() -> void:
 	assert_eq(hosted_results.size(), 1, "entering the final state is one completion")
 	assert_same(hosted_results[0][0], inner)
 	assert_eq(hosted_results[0][1], true)
+
+
+func test_success_report_dispatches_through_an_ancestor_transition() -> void:
+	var chart := NNSTRoot.new()
+	chart.process_thread = NNSTRoot.MANUAL
+	var compound := NNSTNode.new()
+	compound.name = "Compound"
+	var host_state := NNSTNode.new()
+	host_state.name = "Host"
+	var target_state := NNSTNode.new()
+	target_state.name = "Target"
+	var transition := NNSTTransition.new()
+	compound.add_child(host_state)
+	compound.add_child(transition)
+	transition.event_name = "hosted_succeeded"
+	chart.add_child(compound)
+	chart.add_child(target_state)
+	transition.to = transition.get_path_to(target_state)
+	var leaf := _make_leaf(NNBTNodes.RUNNING)
+	host_state.add_child(_make_bt_root(leaf))
+	add_child_autofree(chart)
+
+	assert_true(host_state.get_is_active(), "the compound state enters its first child")
+
+	chart.tick(0.1)
+	leaf.result = NNBTNodes.SUCCESS
+	chart.tick(0.1)
+
+	assert_true(target_state.get_is_active(), "the default success event bubbles up to the ancestor transition")
+	assert_false(host_state.get_is_active(), "the compound branch with the host is left behind")
+
+
+func test_failure_report_dispatches_the_failure_event() -> void:
+	var parts := _make_chart_with_active_host()
+	var chart: NNSTRoot = parts["chart"]
+	var host_state: NNSTNode = parts["host_state"]
+	var other_state: NNSTNode = parts["other_state"]
+	var transition := NNSTTransition.new()
+	host_state.add_child(transition)
+	transition.event_name = "hosted_failed"
+	transition.to = transition.get_path_to(other_state)
+	host_state.add_child(_make_bt_root(_make_leaf(NNBTNodes.FAILURE)))
+	var events: Array = []
+	chart.event_received.connect(func(name: String) -> void: events.append(name))
+	add_child_autofree(chart)
+
+	chart.tick(0.1)
+
+	assert_true(other_state.get_is_active(), "a failed run sends the failure event")
+	assert_eq(events, ["hosted_failed"], "a failed run sends no success event")
+
+
+func test_empty_hosted_event_names_send_no_event() -> void:
+	var parts := _make_chart_with_active_host()
+	var chart: NNSTRoot = parts["chart"]
+	var host_state: NNSTNode = parts["host_state"]
+	host_state.hosted_success_event = ""
+	host_state.hosted_failure_event = ""
+	host_state.add_child(_make_bt_root(_make_leaf(NNBTNodes.SUCCESS)))
+	var events: Array = []
+	var hosted_results: Array = []
+	chart.event_received.connect(func(name: String) -> void: events.append(name))
+	host_state.hosted_root_finished.connect(func(root: Node, succeeded: bool) -> void: hosted_results.append([root, succeeded]))
+	add_child_autofree(chart)
+
+	chart.tick(0.1)
+
+	assert_eq(hosted_results.size(), 1, "the report still reaches its handler")
+	assert_eq(events, [], "an empty event name sends nothing")
+	assert_true(host_state.get_is_active(), "without an event the host stays active")
+
+
+func test_hosted_chart_report_moves_the_chart_from_inside_its_entry() -> void:
+	var parts := _make_chart_with_active_host()
+	var chart: NNSTRoot = parts["chart"]
+	var host_state: NNSTNode = parts["host_state"]
+	var other_state: NNSTNode = parts["other_state"]
+	var inner := NNSTRoot.new()
+	var final_state := NNSTNode.new()
+	final_state.is_final = true
+	inner.add_child(final_state)
+	host_state.add_child(inner)
+	var transition := NNSTTransition.new()
+	host_state.add_child(transition)
+	transition.event_name = "hosted_succeeded"
+	transition.to = transition.get_path_to(other_state)
+	add_child_autofree(chart)
+
+	chart.tick(0.1)
+
+	assert_true(other_state.get_is_active(), "the hosted chart's final state moves the outer chart")
+	assert_false(host_state.get_is_active(), "the host state is left behind")
+	assert_false(inner.get_is_active(), "the report deactivates the chart that is still entering")
+
+
+func test_report_handler_transition_suppresses_the_stale_event() -> void:
+	var parts := _make_chart_with_active_host()
+	var chart: NNSTRoot = parts["chart"]
+	var host_state: NNSTNode = parts["host_state"]
+	var other_state: NNSTNode = parts["other_state"]
+	var leaf := _make_leaf(NNBTNodes.RUNNING)
+	host_state.add_child(_make_bt_root(leaf))
+	var events: Array = []
+	chart.event_received.connect(func(name: String) -> void: events.append(name))
+	host_state.hosted_root_finished.connect(
+			func(_root: Node, _succeeded: bool) -> void:
+				host_state.transition_to(host_state.get_path_to(other_state)))
+	add_child_autofree(chart)
+
+	chart.tick(0.1)
+	leaf.result = NNBTNodes.SUCCESS
+	chart.tick(0.1)
+
+	assert_true(other_state.get_is_active(), "the handler moved the chart")
+	assert_eq(events, [], "the stale success event is not delivered after the handler left the state")
+
+
+func test_report_handler_detaching_the_chart_suppresses_the_stale_event() -> void:
+	var parts := _make_chart_with_active_host()
+	var chart: NNSTRoot = parts["chart"]
+	var host_state: NNSTNode = parts["host_state"]
+	var other_state: NNSTNode = parts["other_state"]
+	var leaf := _make_leaf(NNBTNodes.RUNNING)
+	host_state.add_child(_make_bt_root(leaf))
+	var detached_parent := Node.new()
+	var events: Array = []
+	chart.event_received.connect(func(name: String) -> void: events.append(name))
+	# Detaching the chart leaves the state alive and active, so only the chart
+	# membership captured in the activation can identify the report as stale.
+	host_state.hosted_root_finished.connect(
+			func(_root: Node, _succeeded: bool) -> void:
+				chart.reparent(detached_parent, false))
+	add_child_autofree(chart)
+
+	chart.tick(0.1)
+	leaf.result = NNBTNodes.SUCCESS
+	chart.tick(0.1)
+
+	assert_false(chart.is_inside_tree(), "the handler detached the chart from the tree")
+	assert_true(host_state.get_is_active(), "the detached state is still active")
+	assert_eq(events, [], "the stale success event is not delivered after the chart was detached")
+	assert_false(other_state.get_is_active(), "the chart is unchanged")
+	detached_parent.free()
+
+
+func test_every_completed_hosted_run_reports_an_event() -> void:
+	var parts := _make_chart_with_active_host()
+	var chart: NNSTRoot = parts["chart"]
+	var host_state: NNSTNode = parts["host_state"]
+	host_state.add_child(_make_bt_root(_make_leaf(NNBTNodes.SUCCESS)))
+	var events: Array = []
+	chart.event_received.connect(func(name: String) -> void: events.append(name))
+	add_child_autofree(chart)
+
+	chart.tick(0.1)
+	chart.tick(0.1)
+
+	assert_eq(events, ["hosted_succeeded", "hosted_succeeded"], "every completed run reports again")
+
+
+func test_host_state_survives_a_report_handler_freeing_the_root() -> void:
+	var parts := _make_chart_with_active_host()
+	var chart: NNSTRoot = parts["chart"]
+	var host_state: NNSTNode = parts["host_state"]
+	var bt_root := _make_bt_root(_make_leaf(NNBTNodes.SUCCESS))
+	host_state.add_child(bt_root)
+	var events: Array = []
+	var ticks: Array = []
+	chart.event_received.connect(func(name: String) -> void: events.append(name))
+	host_state.state_ticked.connect(func(delta: float) -> void: ticks.append(delta))
+	# Godot refuses to free an object while it is still emitting, so the root is
+	# freed on the next frame rather than from inside its own report.
+	host_state.hosted_root_finished.connect(func(root: Node, _succeeded: bool) -> void: root.queue_free())
+	add_child_autofree(chart)
+
+	chart.tick(0.1)
+
+	assert_eq(events, ["hosted_succeeded"], "the report still sends its event")
+	assert_eq(ticks.size(), 1, "the host ticked once while the root still existed")
+
+	await get_tree().process_frame
+	assert_false(is_instance_valid(bt_root), "the handler freed the hosted root")
+
+	chart.tick(0.1)
+
+	assert_true(host_state.get_is_active(), "the host survives a root freed by its report handler")
+	assert_eq(ticks.size(), 2, "the host keeps ticking")
+	assert_eq(events, ["hosted_succeeded"], "a freed root reports nothing more")
 
 
 func test_host_state_survives_freeing_its_hosted_root_from_on_tick() -> void:

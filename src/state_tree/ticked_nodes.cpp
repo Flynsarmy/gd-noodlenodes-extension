@@ -73,6 +73,14 @@ void NNSTTickedNodes::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_is_final"), &NNSTTickedNodes::get_is_final);
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "is_final", PROPERTY_HINT_NONE), "set_is_final", "get_is_final");
 
+	ClassDB::bind_method(D_METHOD("set_hosted_success_event", "event_name"), &NNSTTickedNodes::set_hosted_success_event);
+	ClassDB::bind_method(D_METHOD("get_hosted_success_event"), &NNSTTickedNodes::get_hosted_success_event);
+	ADD_PROPERTY(PropertyInfo(Variant::STRING, "hosted_success_event", PROPERTY_HINT_NONE), "set_hosted_success_event", "get_hosted_success_event");
+
+	ClassDB::bind_method(D_METHOD("set_hosted_failure_event", "event_name"), &NNSTTickedNodes::set_hosted_failure_event);
+	ClassDB::bind_method(D_METHOD("get_hosted_failure_event"), &NNSTTickedNodes::get_hosted_failure_event);
+	ADD_PROPERTY(PropertyInfo(Variant::STRING, "hosted_failure_event", PROPERTY_HINT_NONE), "set_hosted_failure_event", "get_hosted_failure_event");
+
 	ClassDB::bind_method(D_METHOD("set_score", "score"), &NNSTTickedNodes::set_score);
 	ClassDB::bind_method(D_METHOD("get_score"), &NNSTTickedNodes::get_score);
 	ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "score", PROPERTY_HINT_NONE), "set_score", "get_score");
@@ -110,6 +118,8 @@ void NNSTTickedNodes::_bind_methods() {
 NNSTTickedNodes::NNSTTickedNodes() {
 	_root_host.configure(this);
 	_is_final = false;
+	_hosted_success_event = "hosted_succeeded";
+	_hosted_failure_event = "hosted_failed";
 	_is_on_entered_condition_true = true;
 	_evaluation_method = NNSTTickedNodesEvaluationMethod::Multiply;
 	_score = 0.0;
@@ -153,6 +163,22 @@ bool NNSTTickedNodes::get_is_final() const {
 	return _is_final;
 }
 
+void NNSTTickedNodes::set_hosted_success_event(const String &p_event_name) {
+	_hosted_success_event = p_event_name;
+}
+
+String NNSTTickedNodes::get_hosted_success_event() const {
+	return _hosted_success_event;
+}
+
+void NNSTTickedNodes::set_hosted_failure_event(const String &p_event_name) {
+	_hosted_failure_event = p_event_name;
+}
+
+String NNSTTickedNodes::get_hosted_failure_event() const {
+	return _hosted_failure_event;
+}
+
 void NNSTTickedNodes::_on_internal_status_changed(bool p_is_active) {
 	if (p_is_active) {
 		_root_host.activate();
@@ -162,7 +188,19 @@ void NNSTTickedNodes::_on_internal_status_changed(bool p_is_active) {
 }
 
 void NNSTTickedNodes::_on_hosted_root_finished(bool p_succeeded, Node *p_root) {
+	// The handler is user code: it can transition, reparent or free this state,
+	// so the event only goes out for the activation the report started in.
+	const ActivationIdentity activation = _capture_activation_identity();
+	const String event_name = p_succeeded ? _hosted_success_event : _hosted_failure_event;
+	const ObjectID id = ObjectID(get_instance_id());
+
 	emit_signal("hosted_root_finished", Variant(p_root), p_succeeded);
+
+	if (ObjectDB::get_instance(id) == nullptr || event_name.is_empty() || !_is_dispatch_activation_valid(activation)) {
+		return;
+	}
+
+	send_event(event_name);
 }
 
 NNSTRoot *NNSTTickedNodes::_get_tree_root() const {

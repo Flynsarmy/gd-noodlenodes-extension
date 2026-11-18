@@ -17,6 +17,8 @@ private:
 	NNSTRoot *_root;
 	NNRootHost _root_host;
 	bool _is_final;
+	String _hosted_success_event;
+	String _hosted_failure_event;
 	bool _is_on_entered_condition_true;
 	int _evaluation_method;
 	float _score;
@@ -126,6 +128,12 @@ public:
 
 	void set_is_final(bool is_final);
 	bool get_is_final() const;
+
+	void set_hosted_success_event(const String &p_event_name);
+	String get_hosted_success_event() const;
+
+	void set_hosted_failure_event(const String &p_event_name);
+	String get_hosted_failure_event() const;
 
 	void set_score(float score);
 	float get_score() const;

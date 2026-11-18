@@ -569,3 +569,16 @@ If you want full control over when the tree updates, set the root's **Process Th
 State trees can be nested too. A state tree root placed under a state, or under an agent action, is driven by that host instead of by the SceneTree: it starts when the host activates, the host ticks it with the host's delta at the host's rate, and deactivating the host exits the active states so the next activation starts a fresh chart. A hosted root also never enters its chart on `NOTIFICATION_READY`; its first host tick does that. While it is hosted, the root's own `process_thread` and `tick_rate` are ignored and the editor shows a configuration warning. The instructions above about `tick_rate` and `process_thread` still apply to a root that nothing hosts.
 
 A state can be marked as final with its **Is Final** property. Entering a final state reports the chart as finished by emitting the root's `finished(true)` signal, which is useful when the state tree is hosted and something else decides what happens next. A final state keeps ticking like any other state: it does not stop the chart by itself, so a hosted chart keeps running until its host deactivates it, and an unhosted chart keeps ticking.
+
+
+### A state that runs a behaviour tree
+
+A state does not have to run a script. Put a behaviour tree root, a nested state tree root or an agent under the state and the state drives it: the root starts when the state is entered, ticks with the state's delta while the state is active, and resets when the state is exited.
+
+When the hosted root finishes, the state sends an event into the chart. A behaviour tree reports success or failure when its run ends, and a nested state tree does the same when it enters a final state. The event names come from the state's **Hosted Success Event** and **Hosted Failure Event** properties, which default to `hosted_succeeded` and `hosted_failed`.
+
+Add a transition node under the state (or under any ancestor state), set its **Event Name** to one of those names and give its **To** property the path to the state you want next. The chart then moves on when the hosted root finishes, without a line of script. Leaving an event name empty sends no event at all.
+
+Every completion is sent. After a hosted behaviour tree returns success or failure it starts a new run on the next host tick, so it reports again each time it finishes. If its task should only run once per entry, leave the state through the transition, or wrap the tree in **RunOnce** to hold the result instead of starting another run.
+
+The event is an ordinary chart event: it is queued and handled after the current tick and transaction, and a transition on an ancestor state can handle it just as well as one on the state itself.
