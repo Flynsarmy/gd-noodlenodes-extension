@@ -150,7 +150,7 @@ For the tree side itself, see [Getting started with Behaviour Trees](Getting_sta
 
 
 
-### 3.4 Scoring blackboard facts
+### 3.5 Scoring blackboard facts
 
 A blackboard is a set of named facts shared by an agent and everything below it. Each agent, behaviour-tree root and state-tree root resolves a board, and a root with no board assigned inherits the board of the nearest ancestor root above it. A tree parented under your agent therefore already sees the facts your agent works with.
 

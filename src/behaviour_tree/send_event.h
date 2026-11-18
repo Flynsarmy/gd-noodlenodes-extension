@@ -6,16 +6,12 @@
 
 namespace godot {
 
-class NNSTRoot;
-
 class NNBTSendEvent : public NNBTTaskNodes {
 	GDCLASS(NNBTSendEvent, NNBTTaskNodes)
 
 private:
 	String _event_name;
 	NodePath _target;
-
-	NNSTRoot *_resolve_target() const;
 
 protected:
 	static void _bind_methods();

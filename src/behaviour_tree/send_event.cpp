@@ -1,6 +1,7 @@
 #include "send_event.h"
 
 #include "../state_tree/root.h"
+#include "../state_tree/state_tree_resolver.h"
 #include <godot_cpp/core/class_db.hpp>
 
 using namespace godot;
@@ -46,25 +47,12 @@ NodePath NNBTSendEvent::get_target() const {
 
 // Handling methods.
 
-NNSTRoot *NNBTSendEvent::_resolve_target() const {
-	if (!_target.is_empty()) {
-		return Object::cast_to<NNSTRoot>(get_node_or_null(_target));
-	}
-
-	for (Node *node = get_parent(); node != nullptr; node = node->get_parent()) {
-		if (NNSTRoot *root = Object::cast_to<NNSTRoot>(node)) {
-			return root;
-		}
-	}
-	return nullptr;
-}
-
 NNBTNodes::Status NNBTSendEvent::_tick(float delta) {
 	if (_event_name.is_empty()) {
 		return Status::FAILURE;
 	}
 
-	NNSTRoot *target = _resolve_target();
+	NNSTRoot *target = nn_resolve_state_tree(this, _target);
 	if (target == nullptr) {
 		return Status::FAILURE;
 	}

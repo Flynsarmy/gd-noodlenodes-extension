@@ -90,6 +90,8 @@ func test_send_event_fails_with_an_empty_event_name() -> void:
 	var bt_root := NNBTRoot.new()
 	_make_send_leaf(bt_root, "")
 	state_a.add_child(bt_root)
+	# The failing leaf would otherwise report through the state's own hosted_failed event.
+	state_a.hosted_failure_event = ""
 	_make_event_transition(state_a, "go", state_b)
 	add_child_autofree(chart)
 
