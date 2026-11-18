@@ -17,7 +17,7 @@ NNAngleToVector3SearchCriterion::~NNAngleToVector3SearchCriterion() {
 void NNAngleToVector3SearchCriterion::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("set_angle_to_direction_vector", "angle_to_direction_vector"), &NNAngleToVector3SearchCriterion::set_angle_to_direction_vector);
 	ClassDB::bind_method(D_METHOD("get_angle_to_direction_vector"), &NNAngleToVector3SearchCriterion::get_angle_to_direction_vector);
-	ADD_PROPERTY(PropertyInfo(Variant::VECTOR3, "Angle_to_vector", PROPERTY_HINT_NONE), "set_angle_to_direction_vector", "get_angle_to_direction_vector");
+	ADD_PROPERTY(PropertyInfo(Variant::VECTOR3, "angle_to_direction_vector", PROPERTY_HINT_NONE), "set_angle_to_direction_vector", "get_angle_to_direction_vector");
 
 	ClassDB::bind_method(D_METHOD("set_min_angle_degrees", "min_angle_degrees"), &NNAngleToVector3SearchCriterion::set_min_angle_degrees);
 	ClassDB::bind_method(D_METHOD("get_min_angle_degrees"), &NNAngleToVector3SearchCriterion::get_min_angle_degrees);

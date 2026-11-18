@@ -164,3 +164,15 @@ func test_signed_scoring_for_a_rotated_reference() -> void:
 		assert_almost_eq(scores[i], expected_scores[result_name], SCORE_EPSILON,
 				"Score for %s must follow the signed angle." % result_name)
 	assert_eq(_result_names(query), ["positive_45", "aligned", "negative_45"], "Results are ordered by descending score.")
+
+
+# Scenes store the reference direction by property name, so every angle
+# criterion must expose it under the same name its setter uses.
+func test_angle_criteria_expose_angle_to_direction_vector() -> void:
+	var criterion_2d: NNAngleToVector2SearchCriterion = autofree(NNAngleToVector2SearchCriterion.new())
+	criterion_2d.set("angle_to_direction_vector", Vector2(0.0, 1.0))
+	assert_eq(criterion_2d.get_angle_to_direction_vector(), Vector2(0.0, 1.0))
+
+	var criterion_3d: NNAngleToVector3SearchCriterion = autofree(NNAngleToVector3SearchCriterion.new())
+	criterion_3d.set("angle_to_direction_vector", Vector3(1.0, 0.0, 0.0))
+	assert_eq(criterion_3d.get_angle_to_direction_vector(), Vector3(1.0, 0.0, 0.0))
