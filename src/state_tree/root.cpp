@@ -33,6 +33,14 @@ void NNSTRoot::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_assigned_blackboard"), &NNSTRoot::get_assigned_blackboard);
 	ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "blackboard", PROPERTY_HINT_RESOURCE_TYPE, "NNBlackboard"), "set_blackboard_resource", "get_assigned_blackboard");
 
+	ClassDB::bind_method(D_METHOD("set_actor", "actor"), &NNSTRoot::set_actor);
+	ClassDB::bind_method(D_METHOD("get_assigned_actor"), &NNSTRoot::get_assigned_actor);
+	ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "actor", PROPERTY_HINT_NODE_TYPE, "Node"), "set_actor", "get_assigned_actor");
+
+	ClassDB::bind_method(D_METHOD("set_actor_node_path", "actor_node_path"), &NNSTRoot::set_actor_node_path);
+	ClassDB::bind_method(D_METHOD("get_actor_node_path"), &NNSTRoot::get_actor_node_path);
+	ADD_PROPERTY(PropertyInfo(Variant::NODE_PATH, "actor_node_path"), "set_actor_node_path", "get_actor_node_path");
+
 	ClassDB::bind_method(D_METHOD("set_expression_property", "name", "value"), &NNSTRoot::set_expression_property);
 	ClassDB::bind_method(D_METHOD("get_expression_property", "name", "default"), &NNSTRoot::get_expression_property, Variant());
 	ClassDB::bind_method(D_METHOD("set_initial_expression_properties", "properties"), &NNSTRoot::set_initial_expression_properties);
@@ -69,6 +77,7 @@ void NNSTRoot::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_child_sensors"), &NNSTRoot::get_child_sensors);
 
 	ADD_SIGNAL(MethodInfo("event_received", PropertyInfo(Variant::STRING, "name")));
+	ADD_SIGNAL(MethodInfo("finished", PropertyInfo(Variant::BOOL, "succeeded")));
 
 	// Bound by name, not by method pointer: a freed root must not be
 	// dereferenced while the signal is being emitted.
@@ -92,8 +101,6 @@ NNSTRoot::NNSTRoot() {
 	_child_sensors.clear();
 	_num_child_sensors = 0;
 
-	_local_blackboard.instantiate();
-
 	_initial_expression_properties = Dictionary();
 	_initial_expression_properties_applied = false;
 
@@ -110,6 +117,7 @@ NNSTRoot::NNSTRoot() {
 	_tick_scheduler.configure(this, [this](double p_delta, double p_tick_delta, bool p_due) -> bool {
 		return _auto_tick_step_callback(p_delta, p_tick_delta, p_due);
 	});
+	_hosted_root.configure(this, [this](bool p_hosted) { _tick_scheduler.set_hosted(p_hosted); }, [this]() { _reset_chart(); }, [this](double p_delta) { tick((float)p_delta); }, [this]() { _reset_chart(); });
 }
 
 NNSTRoot::~NNSTRoot() {
@@ -128,15 +136,35 @@ uint64_t NNSTRoot::get_total_tick_usec() const {
 #endif
 
 void NNSTRoot::set_blackboard_resource(const Ref<NNBlackboard> &p_blackboard) {
-	_blackboard = p_blackboard;
+	_root_context.set_blackboard(p_blackboard);
 }
 
 Ref<NNBlackboard> NNSTRoot::get_assigned_blackboard() const {
-	return _blackboard;
+	return _root_context.get_assigned_blackboard();
 }
 
 NNBlackboard *NNSTRoot::get_blackboard_resource() const {
-	return _blackboard.is_valid() ? _blackboard.ptr() : _local_blackboard.ptr();
+	return _root_context.resolve_blackboard(this);
+}
+
+void NNSTRoot::set_actor(Node *p_actor) {
+	_root_context.set_actor(p_actor);
+}
+
+Node *NNSTRoot::get_assigned_actor() const {
+	return _root_context.get_assigned_actor();
+}
+
+Node *NNSTRoot::get_actor() const {
+	return _root_context.resolve_actor(this);
+}
+
+void NNSTRoot::set_actor_node_path(const NodePath &p_actor_node_path) {
+	_root_context.set_actor_node_path(p_actor_node_path);
+}
+
+NodePath NNSTRoot::get_actor_node_path() const {
+	return _root_context.get_actor_node_path();
 }
 
 void NNSTRoot::set_initial_expression_properties(const Dictionary &p_properties) {
@@ -441,6 +469,10 @@ bool NNSTRoot::_register_applied_transition() {
 
 bool NNSTRoot::get_is_event_processing_halted() const {
 	return _event_processing_halted;
+}
+
+void NNSTRoot::_report_finished(bool p_succeeded) {
+	emit_signal("finished", p_succeeded);
 }
 
 bool NNSTRoot::_is_active_child_activation_valid(ObjectID p_state_id, uint64_t p_epoch) const {
@@ -842,6 +874,49 @@ void NNSTRoot::_transition_in() {
 	}
 };
 
+void NNSTRoot::_reset_chart() {
+	// Exit callbacks must not run the change pipeline while the chart is being
+	// torn down; the work they queue is dropped below instead.
+	const bool was_locked_down = _locked_down;
+	_locked_down = true;
+
+	// An exit callback can transition the chart again. Keep exiting until no
+	// active state is left so nothing stays orphaned active, and bound the work
+	// so a transition loop cannot hang the engine.
+	int iterations = 0;
+	while (!_active_states.empty() && ++iterations <= MAX_PROCESSING_PASS_TRANSITIONS) {
+		const std::vector<ObjectID> active_state_ids = _active_states;
+		for (unsigned int i = 0; i < active_state_ids.size(); i++) {
+			NNSTTickedNodes *state = _get_active_state(active_state_ids[i]);
+			if (state != nullptr && state->get_is_active()) {
+				state->_transition_out();
+			}
+		}
+
+		std::vector<ObjectID> remaining;
+		for (unsigned int i = 0; i < _active_states.size(); i++) {
+			NNSTTickedNodes *state = _get_active_state(_active_states[i]);
+			if (state != nullptr && state->get_is_active()) {
+				remaining.push_back(_active_states[i]);
+			}
+		}
+		_active_states = remaining;
+		_num_active_states = (unsigned int)_active_states.size();
+	}
+
+	_active_states.clear();
+	_num_active_states = 0;
+	set_internal_status(ST_INTERNAL_STATUS_INACTIVE);
+
+	_needs_reselection = false;
+	_event_queue.clear();
+	_queued_state_enters.clear();
+	_property_change_pending = false;
+	_state_change_pending = false;
+
+	_locked_down = was_locked_down;
+}
+
 // Godot virtuals.
 
 void NNSTRoot::_notification(int p_what) {
@@ -864,7 +939,9 @@ void NNSTRoot::_notification(int p_what) {
 
 	if (p_what == NOTIFICATION_ENTER_TREE) {
 		_tick_scheduler.on_tree_entered();
+		_hosted_root.resolve_host();
 	} else if (p_what == NOTIFICATION_EXIT_TREE) {
+		_hosted_root.release_host();
 		// get_tree() is unreliable on tree exit, so the stored SceneTree ID is used.
 		_tick_scheduler.on_tree_exited();
 	}
@@ -908,7 +985,9 @@ void NNSTRoot::_notification(int p_what) {
 		// Only the root's own readiness may activate it. A child order change
 		// must not enter a ready-but-inactive root: inactive here means it was
 		// transitioned out on purpose, so its owner decides when to re-enter it.
+		// A hosted chart enters on its first host tick instead.
 		if (is_inside_tree() && !_last_notification_had_child_removal && !_needs_reselection &&
+				!_hosted_root.is_hosted() &&
 				(p_what == NOTIFICATION_READY || _internal_status == ST_INTERNAL_STATUS_ACTIVE)) {
 			// on_enter_state() callbacks run inside this transition in; events
 			// they send are queued until it has finished.
@@ -918,4 +997,12 @@ void NNSTRoot::_notification(int p_what) {
 
 		return;
 	}
+}
+
+PackedStringArray NNSTRoot::_get_configuration_warnings() const {
+	PackedStringArray warnings;
+	if (nn_find_host_ancestor(this) != nullptr) {
+		warnings.push_back(String(get_class()) + " is driven by its ancestor host: its process_thread and tick_rate are ignored.");
+	}
+	return warnings;
 }

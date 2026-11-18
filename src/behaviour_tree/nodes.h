@@ -3,12 +3,9 @@
 #include "../agent_behaviours/considerations.h"
 #include "../noodle_nodes.h"
 #include <godot_cpp/classes/node.hpp>
-#include <godot_cpp/classes/ref.hpp>
 #include <vector>
 
 namespace godot {
-
-class NNBlackboard;
 
 class NNBTNodes : public NoodleNodes {
 	GDCLASS(NNBTNodes, NoodleNodes)
@@ -71,20 +68,6 @@ public:
 	void set_run_owner(ObjectID p_owner);
 
 	NodePath get_tree_root() const;
-
-	// Blackboard and actor helpers. These resolve against the nearest NNBTRoot
-	// ancestor and are documented to return silent safe defaults when no root
-	// exists.
-	virtual NNBlackboard *get_blackboard_resource() const;
-	// Ref-returning wrapper bound under the GDScript name
-	// "get_blackboard_resource". Returning the raw pointer to GDScript would
-	// leave the RefCounted resource unowned by the returned Variant.
-	Ref<NNBlackboard> get_blackboard_resource_ref() const;
-	Variant get_blackboard(const String &key, const Variant &default_value = Variant()) const;
-	bool set_blackboard(const String &key, const Variant &value);
-	bool has_blackboard(const String &key) const;
-	bool erase_blackboard(const String &key);
-	virtual Node *get_actor() const;
 
 	// Godot virtuals.
 	virtual void _notification(int p_what);

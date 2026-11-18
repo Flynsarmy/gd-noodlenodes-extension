@@ -1,5 +1,7 @@
 #pragma once
 
+#include "../host.h"
+#include "../root_context.h"
 #include "../tick_scheduler.h"
 #include "branch_nodes.h"
 #include "node.h"
@@ -66,6 +68,11 @@ private:
 	bool _run_transition_to(NNSTTickedNodes *to_state);
 
 	NNTickScheduler _tick_scheduler;
+	NNHostedRoot _hosted_root;
+
+	// Leaves the chart inactive from the current active set, without running
+	// the change pipeline from the exit callbacks.
+	void _reset_chart();
 
 	void _on_scene_tree_process_frame();
 	void _on_scene_tree_physics_frame();
@@ -77,9 +84,7 @@ private:
 	TypedArray<NNSensors> _child_sensors;
 	unsigned int _num_child_sensors;
 
-	Ref<NNBlackboard> _blackboard;
-	// Never a property, so it is not serialised and every root gets its own.
-	Ref<NNBlackboard> _local_blackboard;
+	NNRootContext _root_context;
 
 	// Initial values for expression properties. Applied once, when the root
 	// first transitions in, before any state is entered.
@@ -155,9 +160,19 @@ public:
 
 	// Getters and setters for attributes.
 
+	bool is_root() const override { return true; }
+
+	NNHostedRoot *get_hosted_root() override { return &_hosted_root; }
+
 	void set_blackboard_resource(const Ref<NNBlackboard> &p_blackboard);
 	Ref<NNBlackboard> get_assigned_blackboard() const;
 	NNBlackboard *get_blackboard_resource() const override;
+
+	void set_actor(Node *p_actor);
+	Node *get_assigned_actor() const;
+	Node *get_actor() const override;
+	void set_actor_node_path(const NodePath &p_actor_node_path);
+	NodePath get_actor_node_path() const;
 
 	void set_expression_property(const StringName &p_name, const Variant &p_value);
 	Variant get_expression_property(const StringName &p_name, const Variant &p_default = Variant()) const;
@@ -200,6 +215,9 @@ public:
 	bool _register_applied_transition();
 	bool get_is_event_processing_halted() const;
 
+	// Emits "finished". Final states call this when they are entered.
+	void _report_finished(bool p_succeeded);
+
 	bool auto_tick_step(int p_process_thread, double p_delta);
 
 	virtual void _transition_in() override;
@@ -230,6 +248,7 @@ public:
 
 	// Godot virtuals.
 	void _notification(int p_what);
+	virtual PackedStringArray _get_configuration_warnings() const override;
 };
 
 } //namespace godot

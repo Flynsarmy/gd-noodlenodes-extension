@@ -12,7 +12,6 @@
 
 namespace godot {
 
-class NNBlackboard;
 class NNSTRoot; // Forward declaration
 class NNSTTransition; // Forward declaration
 class NNSTTickedNodes; // Forward declaration
@@ -62,6 +61,8 @@ protected:
 	bool _has_active_state(ObjectID state_id) const;
 	bool _contains_child_state(ObjectID state_id) const;
 	void _update_input_processing();
+	// Called after a real ACTIVE <-> INACTIVE edge.
+	virtual void _on_internal_status_changed(bool p_is_active) {}
 
 	// Returns the instance IDs of the child transitions that handle the given
 	// event name, in child order. Guards run user code that can free or
@@ -81,14 +82,6 @@ public:
 	// Getters and setters for attributes.
 
 	bool get_is_active() const;
-
-	virtual NNBlackboard *get_blackboard_resource() const;
-	// Returns a Ref so the resource stays owned when the value reaches GDScript.
-	Ref<NNBlackboard> get_blackboard_resource_ref() const;
-	Variant get_blackboard(const String &key, const Variant &default_value = Variant()) const;
-	bool set_blackboard(const String &key, const Variant &value);
-	bool has_blackboard(const String &key) const;
-	bool erase_blackboard(const String &key);
 
 	// Monotonic identity of this node's current activation. Changes on every
 	// ACTIVE <-> INACTIVE edge, so callers can tell whether an activation they

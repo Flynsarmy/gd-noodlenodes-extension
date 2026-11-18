@@ -31,6 +31,9 @@ public:
 
 	void rearm();
 
+	void set_hosted(bool p_hosted);
+	bool is_hosted() const;
+
 	void on_tree_entered();
 	void on_tree_exited();
 	void on_enabled_changed(bool p_enabled);
@@ -42,7 +45,14 @@ public:
 
 	bool step(int p_process_thread, double p_delta);
 
+	// The host's step for a hosted owner. It applies the rate schedule and the
+	// delta accumulation, but never touches the frame signals or the owner's
+	// process thread.
+	bool step_hosted(double p_delta);
+
 private:
+	bool _advance(double p_delta);
+
 	godot::NoodleNodes *_owner;
 	StepCallback _step;
 
@@ -51,4 +61,5 @@ private:
 	uint64_t _frame;
 	double _elapsed_delta;
 	godot::ObjectID _process_tree_id;
+	bool _is_hosted;
 };

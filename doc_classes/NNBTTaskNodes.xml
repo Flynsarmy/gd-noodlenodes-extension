@@ -35,7 +35,7 @@
 			<return type="int" enum="NNBTNodes.Status" />
 			<param index="0" name="delta" type="float" />
 			<description>
-				Logic to be executed each tick. The node's data lives in the nearest [NNBTRoot] blackboard, reachable with the [NNBTNodes] blackboard helpers, and the actor is available with [method NNBTNodes.get_actor].
+				Logic to be executed each tick. The node's data lives in the nearest [NoodleNodes] root blackboard, reachable with the [NoodleNodes] blackboard helpers, and the actor is available with [method NoodleNodes.get_actor].
 				Must return one of [code]SKIP[/code] (-2), [code]FAILURE[/code] (-1), [code]RUNNING[/code] (0) or [code]SUCCESS[/code] (1). Task nodes that use the return value report any other type or value as an engine error naming the node and handle it as [code]FAILURE[/code].
 			</description>
 		</method>

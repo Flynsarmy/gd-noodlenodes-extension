@@ -4,9 +4,9 @@
 		Compares a blackboard value against a configured value.
 	</brief_description>
 	<description>
-		Reads [member key] from the [NNBlackboard] of the nearest [NNBTRoot] ancestor and compares the stored value with [member value] using [member operator]. Returns [code]SUCCESS[/code] when the comparison holds and [code]FAILURE[/code] otherwise.
+		Reads [member key] from the effective [NNBlackboard] of the nearest [NNBTRoot] ancestor and compares the stored value with [member value] using [member operator]. Returns [code]SUCCESS[/code] when the comparison holds and [code]FAILURE[/code] otherwise.
 		A missing key, a null-valued key, or an incompatible pair of types makes the comparison fail ([code]FAILURE[/code]) without an engine error and without crashing. An empty [member key] or a missing [NNBTRoot] ancestor with a blackboard is a configuration error that is reported once per node instance.
-		This leaf is fully data-driven: it is configured entirely by its properties, does not call and is not affected by an [code]on_tick[/code] override in an attached script, and works on the [NNBlackboard] of the nearest [NNBTRoot] ancestor through the [NNBTNodes] blackboard helpers.
+		This leaf is fully data-driven: it is configured entirely by its properties, does not call and is not affected by an [code]on_tick[/code] override in an attached script, and works on the effective [NNBlackboard] of the nearest [NNBTRoot] ancestor through the [NoodleNodes] blackboard helpers.
 	</description>
 	<tutorials>
 	</tutorials>

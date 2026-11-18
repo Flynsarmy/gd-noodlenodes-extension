@@ -1,6 +1,8 @@
 #pragma once
 
 #include "../agent_behaviours/sensors.h"
+#include "../host.h"
+#include "../root_context.h"
 #include "../tick_scheduler.h"
 #include "blackboard.h"
 #include "nodes.h"
@@ -15,19 +17,10 @@ class NNBTRoot : public NNBTNodes {
 	GDCLASS(NNBTRoot, NNBTNodes)
 
 private:
-	// The explicitly assigned blackboard. Null means no board was assigned, in
-	// which case the private per-root fallback below is used.
-	Ref<NNBlackboard> _blackboard;
-	// Private per-root fallback board. It is never exposed as a property, so it
-	// is never serialised and every instantiated root gets its own.
-	Ref<NNBlackboard> _local_blackboard;
-
-	// The explicit actor is stored as an ObjectID so a freed actor is detected
-	// instead of being dereferenced.
-	ObjectID _actor_id;
-	NodePath _actor_node_path;
+	NNRootContext _root_context;
 
 	NNTickScheduler _tick_scheduler;
+	NNHostedRoot _hosted_root;
 	// Monotonic tree time. It is never reset, so recorded cooldown start times
 	// stay in the past. Double so a long session keeps the precision of the
 	// per-frame deltas.
@@ -71,6 +64,10 @@ public:
 	~NNBTRoot();
 
 	// Getters and setters for attributes.
+
+	bool is_root() const override { return true; }
+
+	NNHostedRoot *get_hosted_root() override { return &_hosted_root; }
 
 	void set_blackboard_resource(const Ref<NNBlackboard> &p_blackboard);
 	Ref<NNBlackboard> get_assigned_blackboard() const;

@@ -8,7 +8,10 @@
 		The agent updates itself automatically. Every eligible step of the frame signal selected with [member process_thread] performs the thinking step with [method evaluate_options] and [method update_current_behaviour], and then emits [code]frame_tick[/code] on the selected behaviour group, behaviour and action. Thinking happens first, so an action chosen on a step receives its frame tick in that same step. [member tick_rate] is the single thinking throttle: a rate of [code]N[/code] thinks on every [code]N[/code]th eligible step, while [code]frame_tick[/code] still fires on every eligible step.
 		Frame steps are driven by the SceneTree's [code]process_frame[/code] and [code]physics_frame[/code] signals rather than by this node's own [code]_process[/code]/[code]_physics_process[/code] overrides, so a script attached to the agent keeps its own callbacks and cannot shadow the automatic steps. The signal connections exist only while the agent is in the tree and enabled, and no step happens while the agent cannot process (paused or process mode disabled). Because stepping no longer depends on this node's process callbacks, [code]set_process()[/code] and [code]set_physics_process()[/code] do not stop the agent.
 		Both thinking primitives stay callable by hand. Set [member process_thread] to [code]Manual[/code] and call [method tick] from a custom scheduler, or call [method auto_tick_step] to reuse the scheduler's guards and rate schedule.
+		The agent can be hosted. A host is an ancestor state ([NNSTTickedNodes]) that is active or an ancestor action ([NNAction]) that is the current action of another agent, and the nearest host ancestor is the one that drives the agent. A host drives the agent with its own delta at its own rate, so a hosted agent never steps from the SceneTree frame signals and its [member process_thread] is ignored, with an editor configuration warning. Its [member tick_rate] still throttles thinking on the host's eligible steps, while [code]frame_tick[/code] still fires on every host tick. A root nested inside another root's subtree is not hosted across that root; the nearest ancestor root owns its subtree. Deactivating the host aborts the current behaviour. The agent reports no completion of its own: it runs until its host deactivates it.
 		Noodle Nodes systems can be susceptible to oscillation, which means that two or more evaluated options get the highest score and the system ends up switching several times between the options. The agent only picks a new behaviour when its running behaviour is no longer a valid candidate, so it does not re-roll the selection on every thinking step. The [member current_behaviour_bias] property adds to the running behaviour's score before the candidates are ranked, so a positive bias keeps it among the [member num_behaviours_to_select] candidates for longer and a negative bias makes it drop out sooner. In a sense the AI Agent is "more determined" to continue with the currently selected behaviour.
+		The agent is a root of the shared blackboard and actor context. [member blackboard] is the explicitly assigned [NNBlackboard], and an explicit assignment always wins. When it is [code]null[/code] the agent inherits the effective board of the nearest ancestor root of any Noodle Nodes system (a behaviour tree root, a state tree root or another agent), and falls back to its own private per-instance board only when it has no root ancestor, so the blackboard helpers work without any setup. The private board is never a property, so it is never serialised. Assigning [code]null[/code] clears the assignment and returns to inherited resolution. [member actor] is the explicitly assigned actor; read the resolved actor with [method get_actor], which resolves the live explicit actor, then [member actor_node_path], then the actor of the nearest ancestor root of any Noodle Nodes system, then the agent's parent. Both are resolved from the agent's current position in the scene tree on demand, so reparenting re-resolves them, and a freed explicit actor falls through to the path, the inherited actor or the parent.
+		Behaviours, actions, sensors and considerations below the agent reach the same board and actor through the [NoodleNodes] helpers, and because the rule follows the nearest ancestor root, a behaviour tree or state tree nested anywhere below the agent shares its context too.
 	</description>
 	<tutorials>
 	</tutorials>
@@ -46,6 +49,24 @@
 				Gathers input from sensors and evaluates all the available behaviours by calculating a score for each of them, then keeps the top [member num_behaviours_to_select] behaviours as candidates. The running behaviour keeps running while it is still one of those candidates; otherwise a new candidate is picked with a probability proportional to its score. Candidates must still be enabled and belong to this agent after evaluation and exit callbacks run. The automatic step calls this on every step selected by [member tick_rate], passing the time elapsed since the previous thinking step; it remains callable by hand for custom schedulers.
 			</description>
 		</method>
+		<method name="get_actor_node_path" qualifiers="const">
+			<return type="NodePath" />
+			<description>
+				Returns the fallback actor path. This is the value of [member actor_node_path].
+			</description>
+		</method>
+		<method name="get_assigned_actor" qualifiers="const">
+			<return type="Node" />
+			<description>
+				Returns the explicitly assigned actor, or [code]null[/code] when none is assigned or the assigned actor was freed. This is the value of [member actor]. Use [method get_actor] to read the resolved actor, which may be inherited from an ancestor root or fall back to the agent's parent.
+			</description>
+		</method>
+		<method name="get_assigned_blackboard" qualifiers="const">
+			<return type="NNBlackboard" />
+			<description>
+				Returns the explicitly assigned blackboard, or [code]null[/code] when none is assigned. This is the value of [member blackboard]. Use [method NoodleNodes.get_blackboard_resource] to read the effective board, which is the assigned board, the board inherited from the nearest ancestor root, or this agent's private board.
+			</description>
+		</method>
 		<method name="get_current_action_node" qualifiers="const">
 			<return type="NNAction" />
 			<description>
@@ -65,6 +86,27 @@
 			<return type="int" />
 			<description>
 				Returns the seed of the random number generator that picks between selection candidates. The generator is randomized when the agent is created, so agents do not share a selection stream by default.
+			</description>
+		</method>
+		<method name="set_actor">
+			<return type="void" />
+			<param index="0" name="actor" type="Node" />
+			<description>
+				Assigns [param actor] as the agent's explicit actor. Assigning [code]null[/code] clears the assignment, so resolution returns to [member actor_node_path], then the nearest ancestor root's actor, then the agent's parent.
+			</description>
+		</method>
+		<method name="set_actor_node_path">
+			<return type="void" />
+			<param index="0" name="actor_node_path" type="NodePath" />
+			<description>
+				Sets the fallback actor path, resolved relative to this agent. It is used when no live explicit [member actor] is set and wins over the actor inherited from an ancestor root.
+			</description>
+		</method>
+		<method name="set_blackboard_resource">
+			<return type="void" />
+			<param index="0" name="blackboard" type="NNBlackboard" />
+			<description>
+				Assigns [param blackboard] as the agent's blackboard. An explicit assignment wins over the board inherited from an ancestor root. Assigning [code]null[/code] clears the assignment and returns to inherited resolution, which is the nearest ancestor root's board or this agent's private board.
 			</description>
 		</method>
 		<method name="set_current_action_node">
@@ -107,6 +149,15 @@
 		</method>
 	</methods>
 	<members>
+		<member name="actor" type="Node" setter="set_actor" getter="get_assigned_actor">
+			The explicitly assigned actor, or [code]null[/code] when none is assigned. No resolved fallback is ever stored here. To read the resolved actor use [method get_actor], which resolves the explicit actor, then [member actor_node_path], then the actor of the nearest ancestor root of any Noodle Nodes system, then the agent's parent on demand.
+		</member>
+		<member name="actor_node_path" type="NodePath" setter="set_actor_node_path" getter="get_actor_node_path">
+			Fallback actor path, used when no live explicit [member actor] is set. The path is resolved relative to this agent and wins over the actor inherited from an ancestor root.
+		</member>
+		<member name="blackboard" type="NNBlackboard" setter="set_blackboard_resource" getter="get_assigned_blackboard">
+			The explicitly assigned [NNBlackboard] resource, or [code]null[/code] when none is assigned. An explicit assignment always wins. When it is [code]null[/code] the agent inherits the effective board of the nearest ancestor root of any Noodle Nodes system and uses its own private per-instance board only when it has no root ancestor, so the blackboard helpers work without any setup. Assigning [code]null[/code] clears the assignment and returns to inherited resolution. The private board is never a property, so it is never serialised. Blackboards default to [code]resource_local_to_scene = true[/code], so an assigned inspector board is per scene instance unless you deliberately untick it to share one board. This property is the assignment only; [method NoodleNodes.get_blackboard_resource] returns the effective board.
+		</member>
 		<member name="current_behaviour_bias" type="float" setter="set_current_behaviour_bias" getter="get_current_behaviour_bias" default="0.1">
 			This property can be used to set a bias to the current behaviour score. This can be useful to reduce or eliminate oscillation between Behaviours. The bias gets added after the actual consideration-based score has been calculated and before the candidates are ranked, so a positive bias keeps the running behaviour among the top [member num_behaviours_to_select] candidates for longer while a negative bias makes it drop out sooner. It has no effect when there is no running behaviour.
 		</member>
@@ -117,10 +168,10 @@
 			The number of highest scoring behaviours kept as selection candidates. The running behaviour keeps running while it is still one of them, so it is only replaced when it drops out of this list. When a new behaviour has to be chosen, the pick is random with a probability proportional to score, so higher scoring candidates are preferred. Equal scores retain evaluation order when the list is full. A value of [code]1[/code] always follows the single highest scoring candidate, which makes selection deterministic. Must be between 1 and 16; invalid assignments report an error and leave the value unchanged.
 		</member>
 		<member name="process_thread" type="int" enum="NNAgent.ProcessThread" setter="set_process_thread" getter="get_process_thread" default="1">
-			Selects the SceneTree frame signal that drives the automatic steps, not this node's processing flags. Defaults to [constant PHYSICS], so an agent steps automatically once added to a scene. [constant IDLE] uses [code]process_frame[/code], [constant PHYSICS] uses [code]physics_frame[/code] and [constant MANUAL] connects neither so a custom scheduler calls [method tick]. Exactly one signal is connected at a time. Out-of-range values fall back to [constant PHYSICS]. Setting this property re-arms the [member tick_rate] schedule.
+			Selects the SceneTree frame signal that drives the automatic steps, not this node's processing flags. Defaults to [constant PHYSICS], so an agent steps automatically once added to a scene. [constant IDLE] uses [code]process_frame[/code], [constant PHYSICS] uses [code]physics_frame[/code] and [constant MANUAL] connects neither so a custom scheduler calls [method tick]. Exactly one signal is connected at a time. Out-of-range values fall back to [constant PHYSICS]. Setting this property re-arms the [member tick_rate] schedule. Ignored while an ancestor state or action hosts the agent, because the host drives every step; the editor reports a configuration warning when the value would be ignored.
 		</member>
 		<member name="tick_rate" type="int" setter="set_tick_rate" getter="get_tick_rate" default="6">
-			The single thinking throttle. A rate of [code]N[/code] performs [method evaluate_options] and [method update_current_behaviour] on every [code]N[/code]th eligible step, while the selected nodes still receive [code]frame_tick[/code] on every eligible step. A thinking step receives the delta accumulated over the steps since the previous thinking step; [code]frame_tick[/code] receives only the current step's delta. The default of [code]6[/code] thinks about ten times per second at 60 physics ticks per second, and the first eligible step always thinks, so a new agent picks a behaviour immediately. Values below 1 clamp to 1, and ineligible emissions do not advance the count. Setting this property or [member process_thread], an [member is_enabled] change, and entering or leaving the tree re-arm the schedule so the next eligible step is due and discard the accumulated delta.
+			The single thinking throttle. A rate of [code]N[/code] performs [method evaluate_options] and [method update_current_behaviour] on every [code]N[/code]th eligible step, while the selected nodes still receive [code]frame_tick[/code] on every eligible step. A thinking step receives the delta accumulated over the steps since the previous thinking step; [code]frame_tick[/code] receives only the current step's delta. The default of [code]6[/code] thinks about ten times per second at 60 physics ticks per second, and the first eligible step always thinks, so a new agent picks a behaviour immediately. Values below 1 clamp to 1, and ineligible emissions do not advance the count. Setting this property or [member process_thread], an [member is_enabled] change, and entering or leaving the tree re-arm the schedule so the next eligible step is due and discard the accumulated delta. While an ancestor state or action hosts the agent, the host's ticks are the eligible steps, so this rate still throttles thinking and [code]frame_tick[/code] still fires on every host tick; [member process_thread] does not apply.
 		</member>
 		<member name="top_scoring_behaviour_name" type="String" setter="set_top_scoring_behaviour_name" getter="get_top_scoring_behaviour_name" default="&quot;&quot;">
 			This property shows what was the top scoring behaviour after the latest [method evaluate_options] method call.

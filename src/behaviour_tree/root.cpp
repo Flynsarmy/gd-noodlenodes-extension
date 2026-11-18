@@ -44,6 +44,7 @@ void NNBTRoot::_bind_methods() {
 
 	ADD_SIGNAL(MethodInfo("tree_enabled"));
 	ADD_SIGNAL(MethodInfo("tree_disabled"));
+	ADD_SIGNAL(MethodInfo("finished", PropertyInfo(Variant::BOOL, "succeeded")));
 
 #ifdef DEBUG_ENABLED
 	ADD_SUBGROUP("Debugging", "");
@@ -70,13 +71,10 @@ void NNBTRoot::_bind_methods() {
 // Constructor and destructor.
 
 NNBTRoot::NNBTRoot() {
-	// The explicit assignment starts empty. Every root owns a private board
-	// that is used until a board is assigned.
-	_local_blackboard.instantiate();
-	_actor_id = ObjectID();
 	_tick_scheduler.configure(this, [this](double p_delta, double p_tick_delta, bool p_due) -> bool {
 		return _auto_tick_step_callback(p_delta, p_tick_delta, p_due);
 	});
+	_hosted_root.configure(this, [this](bool p_hosted) { _tick_scheduler.set_hosted(p_hosted); }, [this]() { reset(); }, [this](double p_delta) { tick((float)p_delta); }, [this]() { reset(); });
 	_running_action_id = ObjectID();
 	_ticked_child_id = ObjectID();
 	_elapsed_time = 0.0;
@@ -102,52 +100,35 @@ uint64_t NNBTRoot::get_total_tick_usec() const {
 #endif
 
 void NNBTRoot::set_blackboard_resource(const Ref<NNBlackboard> &p_blackboard) {
-	// Null is legal and clears the assignment, falling back to the private
-	// per-root board.
-	_blackboard = p_blackboard;
+	_root_context.set_blackboard(p_blackboard);
 }
 
 Ref<NNBlackboard> NNBTRoot::get_assigned_blackboard() const {
-	return _blackboard;
+	return _root_context.get_assigned_blackboard();
 }
 
 NNBlackboard *NNBTRoot::get_blackboard_resource() const {
-	return _blackboard.is_valid() ? _blackboard.ptr() : _local_blackboard.ptr();
+	return _root_context.resolve_blackboard(this);
 }
 
 void NNBTRoot::set_actor(Node *p_actor) {
-	_actor_id = p_actor != nullptr ? ObjectID(p_actor->get_instance_id()) : ObjectID();
+	_root_context.set_actor(p_actor);
 }
 
 Node *NNBTRoot::get_assigned_actor() const {
-	if (!_actor_id.is_null()) {
-		return godot::Object::cast_to<Node>(ObjectDB::get_instance(_actor_id));
-	}
-	return nullptr;
+	return _root_context.get_assigned_actor();
 }
 
 Node *NNBTRoot::get_actor() const {
-	// Resolution is on demand so entering the tree or reparenting re-resolves
-	// naturally. The explicit actor wins, then actor_node_path, then parent.
-	if (Node *actor = get_assigned_actor()) {
-		return actor;
-	}
-
-	if (!_actor_node_path.is_empty()) {
-		if (Node *actor = get_node_or_null(_actor_node_path)) {
-			return actor;
-		}
-	}
-
-	return get_parent();
+	return _root_context.resolve_actor(this);
 }
 
 void NNBTRoot::set_actor_node_path(const NodePath &p_actor_node_path) {
-	_actor_node_path = p_actor_node_path;
+	_root_context.set_actor_node_path(p_actor_node_path);
 }
 
 NodePath NNBTRoot::get_actor_node_path() const {
-	return _actor_node_path;
+	return _root_context.get_actor_node_path();
 }
 
 void NNBTRoot::set_tick_rate(int p_tick_rate) {
@@ -173,10 +154,18 @@ double NNBTRoot::get_elapsed_time() const {
 // Handling functions.
 
 NNBTNodes::Status NNBTRoot::tick(float delta) {
+	// A disabled root or an editor tick returns FAILURE without running
+	// anything, so it must not report a finished run.
+	const bool can_finish = get_is_enabled() && !Engine::get_singleton()->is_editor_hint();
 	Status result = NNBTNodes::tick(delta);
 	// Track the active path once the tree has settled. This never changes the
 	// result the caller sees.
 	_update_running_action(result);
+
+	if (can_finish && (result == Status::SUCCESS || result == Status::FAILURE)) {
+		// A handler may free this root, so nothing is touched after the emit.
+		emit_signal("finished", result == Status::SUCCESS);
+	}
 	return result;
 }
 
@@ -344,6 +333,9 @@ PackedStringArray NNBTRoot::_get_configuration_warnings() const {
 	if (_count_enabled_child_btnodes() != 1) {
 		warnings.push_back(String(get_class()) + " must have exactly one enabled behaviour-tree child.");
 	}
+	if (nn_find_host_ancestor(this) != nullptr) {
+		warnings.push_back(String(get_class()) + " is driven by its ancestor host: its process_thread and tick_rate are ignored.");
+	}
 	return warnings;
 }
 
@@ -411,9 +403,11 @@ void NNBTRoot::_notification(int p_what) {
 	if (p_what == NOTIFICATION_ENTER_TREE) {
 		// Re-arm the schedule and connect the selected frame signal.
 		_tick_scheduler.on_tree_entered();
+		_hosted_root.resolve_host();
 	} else if (p_what == NOTIFICATION_EXIT_TREE) {
 		// Leaving the tree stops auto-ticking without emitting a signal. The
 		// stored SceneTree ID is used because get_tree() is unreliable here.
+		_hosted_root.release_host();
 		_tick_scheduler.on_tree_exited();
 		_running_action_id = ObjectID();
 		_ticked_child_id = ObjectID();

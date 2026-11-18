@@ -4,6 +4,7 @@
 		Base class for [NNSensor] and [NNSensorGroup].
 	</brief_description>
 	<description>
+		The [method NoodleNodes.get_blackboard] family and [method NoodleNodes.get_actor] resolve through the owning [NNAgent] and its effective board and actor.
 	</description>
 	<tutorials>
 	</tutorials>

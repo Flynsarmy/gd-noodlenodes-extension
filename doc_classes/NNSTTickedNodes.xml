@@ -4,6 +4,7 @@
 		Base class for state tree nodes that are ticked by [NNSTRoot].
 	</brief_description>
 	<description>
+		An active state can host roots under it. It starts them when it is entered, ticks them with the state's tick delta after its own [method on_tick] and any pending transition, and deactivates them when it is exited. A root counts as hosted when this state is its nearest host ancestor, so the enclosing [NNSTRoot]'s rate and process thread drive it and the root's own [code]process_thread[/code] is ignored. An [NNAgent]'s [member NNAgent.tick_rate] still throttles its thinking on the host's steps. A root nested inside another root's subtree is not hosted across that root; the nearest ancestor root owns its subtree. This state does not act on a hosted root finishing; [signal hosted_root_finished] reports it to any connection you make.
 	</description>
 	<tutorials>
 	</tutorials>
@@ -71,6 +72,9 @@
 		<member name="evaluation_method" type="int" setter="set_evaluation_method" getter="get_evaluation_method" default="4">
 			Defines how the considerations are aggregated. Can be one of the following: `Sum:0,Min:1,Max:2,Mean:3,Multiply:4,FirstNonZero:5`.
 		</member>
+		<member name="is_final" type="bool" setter="set_is_final" getter="get_is_final" default="false">
+			Marks this state as a final state of the chart. Entering it reports the chart as finished by emitting [signal NNSTRoot.finished] with [code]succeeded[/code] set to [code]true[/code]. This applies to every state type. A final state keeps ticking like any other state: it does not stop the chart or exit itself, so the chart keeps running until a host deactivates it or it is transitioned out.
+		</member>
 		<member name="score" type="float" setter="set_score" getter="get_score" default="0.0">
 			A value (usually between 0 and 1) that affects the likelihood of this node being entered when the parent's [member NNSTBranchNodes.child_state_selection_rule] property is set to `UtilityScoring`. The highest scored child of the parent node will be selected.
 			[b]Note:[/b] This value isn't set manually. It's calculated by adding [NNSTConsiderations] children that will be evaluated at time of scoring.
@@ -81,6 +85,13 @@
 			<param index="0" name="name" type="String" />
 			<description>
 				Emitted when this state receives an event sent with [method NNSTBranchNodes.send_event]. The event is delivered to the innermost active state first and bubbles up until a state consumes it, so a state only receives an event that reached it through its active child chain.
+			</description>
+		</signal>
+		<signal name="hosted_root_finished">
+			<param index="0" name="root" type="Node" />
+			<param index="1" name="succeeded" type="bool" />
+			<description>
+				Emitted when a root hosted under this state reports that a run finished. [param root] is the hosted root and [param succeeded] is its completion result. The state does not react to the completion itself, so connect to this signal to handle it.
 			</description>
 		</signal>
 		<signal name="state_check_enter_condition">

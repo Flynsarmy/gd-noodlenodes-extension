@@ -4,7 +4,7 @@
 		Runs a user-defined [code]on_tick(delta)[/code] method without returning any result value.
 	</brief_description>
 	<description>
-		The PassBy node can be used to run a user-defined [code]on_tick(delta)[/code] method without returning any result value. The purpose of this node is to allow running any additional logic during a tick without affecting the flow of the Behaviour Tree. In essence, the functionality is similar to the [NNBTPassThrough] node, but this node can be placed within a sequence, for example. The method receives only the [param delta] of the tick; the node's data lives in the nearest [NNBTRoot] blackboard.
+		The PassBy node can be used to run a user-defined [code]on_tick(delta)[/code] method without returning any result value. The purpose of this node is to allow running any additional logic during a tick without affecting the flow of the Behaviour Tree. In essence, the functionality is similar to the [NNBTPassThrough] node, but this node can be placed within a sequence, for example. The method receives only the [param delta] of the tick; the node's data lives in the effective blackboard of the nearest [NNBTRoot] ancestor.
 	</description>
 	<tutorials>
 	</tutorials>

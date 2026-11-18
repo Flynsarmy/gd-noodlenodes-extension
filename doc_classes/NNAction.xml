@@ -7,6 +7,7 @@
 		This node type should be added as child nodes of the [NNBehaviour] node. They are used when a behaviour is being executed by the AI agent.
 		Action groups can be used create sequences of actions, or to pick one random action from several choices. This allows for more complex actions to be performed by a behaviour. You can nest as many action groups as you need, and they can contain any number and combination of actions or action groups.
 		[b]Note:[/b] When the AI agent has chosen a behaviour, the action step function is called to find the first action to execute. The action that is being executed must be set as finished for the AI agent step function to be able to go to the next action. The action logic itself can be implemented anywhere else.
+		The current action can host roots under it. They are started when the action starts, ticked on every [signal frame_tick] it receives with the agent's step delta, and reset when the action ends. The agent's [member NNAgent.process_thread] drives the timing; its [member NNAgent.tick_rate] only throttles thinking, so [signal frame_tick] and the hosted root tick on every eligible agent step. A hosted root's own [code]process_thread[/code] is ignored; an [NNAgent]'s [member NNAgent.tick_rate] still throttles its thinking on those steps.
 	</description>
 	<tutorials>
 	</tutorials>
@@ -30,6 +31,13 @@
 			<param index="0" name="delta" type="float" />
 			<description>
 				Emitted on every eligible agent step while this action is selected. Use it to handle action update logic. The signal fires on the agent's selected frame signal, so its cadence is set by [member NNAgent.process_thread].
+			</description>
+		</signal>
+		<signal name="hosted_root_finished">
+			<param index="0" name="root" type="Node" />
+			<param index="1" name="succeeded" type="bool" />
+			<description>
+				Emitted when a root hosted under this action reports that a run finished. [param root] is the hosted root and [param succeeded] is its completion result. The action does not react to the completion itself, so connect to this signal to handle it.
 			</description>
 		</signal>
 	</signals>

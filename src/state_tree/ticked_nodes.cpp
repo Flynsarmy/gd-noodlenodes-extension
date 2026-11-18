@@ -69,6 +69,10 @@ static void _discard_history_registrations(const ObjectID &history_id, const NNS
 void NNSTTickedNodes::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_root"), &NNSTTickedNodes::get_root);
 
+	ClassDB::bind_method(D_METHOD("set_is_final", "is_final"), &NNSTTickedNodes::set_is_final);
+	ClassDB::bind_method(D_METHOD("get_is_final"), &NNSTTickedNodes::get_is_final);
+	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "is_final", PROPERTY_HINT_NONE), "set_is_final", "get_is_final");
+
 	ClassDB::bind_method(D_METHOD("set_score", "score"), &NNSTTickedNodes::set_score);
 	ClassDB::bind_method(D_METHOD("get_score"), &NNSTTickedNodes::get_score);
 	ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "score", PROPERTY_HINT_NONE), "set_score", "get_score");
@@ -96,11 +100,16 @@ void NNSTTickedNodes::_bind_methods() {
 	ADD_SIGNAL(MethodInfo("transition_pending",
 			PropertyInfo(Variant::FLOAT, "initial_delay"),
 			PropertyInfo(Variant::FLOAT, "remaining_delay")));
+	ADD_SIGNAL(MethodInfo("hosted_root_finished",
+			PropertyInfo(Variant::OBJECT, "root", PROPERTY_HINT_NODE_TYPE, "Node"),
+			PropertyInfo(Variant::BOOL, "succeeded")));
 }
 
 // Constructor and destructor.
 
 NNSTTickedNodes::NNSTTickedNodes() {
+	_root_host.configure(this);
+	_is_final = false;
 	_is_on_entered_condition_true = true;
 	_evaluation_method = NNSTTickedNodesEvaluationMethod::Multiply;
 	_score = 0.0;
@@ -134,6 +143,26 @@ void NNSTTickedNodes::set_root(NNSTRoot *p_root) {
 
 NNSTRoot *NNSTTickedNodes::get_root() const {
 	return _root;
+}
+
+void NNSTTickedNodes::set_is_final(bool is_final) {
+	_is_final = is_final;
+}
+
+bool NNSTTickedNodes::get_is_final() const {
+	return _is_final;
+}
+
+void NNSTTickedNodes::_on_internal_status_changed(bool p_is_active) {
+	if (p_is_active) {
+		_root_host.activate();
+	} else {
+		_root_host.deactivate();
+	}
+}
+
+void NNSTTickedNodes::_on_hosted_root_finished(bool p_succeeded, Node *p_root) {
+	emit_signal("hosted_root_finished", Variant(p_root), p_succeeded);
 }
 
 NNSTRoot *NNSTTickedNodes::_get_tree_root() const {
@@ -1079,6 +1108,14 @@ void NNSTTickedNodes::on_enter_state() {
 	call("on_enter_state");
 	emit_signal("state_entered");
 
+	if (_is_final) {
+		// Re-resolve: the callbacks above can free or reparent the chart.
+		NNSTRoot *report_root = _get_tree_root();
+		if (report_root != nullptr) {
+			report_root->_report_finished(true);
+		}
+	}
+
 	// Automatic transitions are evaluated when the state is entered. Route
 	// through the root so the change pipeline's reentrancy lock is honoured,
 	// carrying the identity of this activation.
@@ -1109,6 +1146,12 @@ void NNSTTickedNodes::on_tick(float delta) {
 	// children tick so a transition that elapses this frame exits the state
 	// before its children run.
 	_process_pending_transition(delta);
+
+	// Roots hosted by this state tick at the state tree's own rate, after the
+	// user tick and any pending transition.
+	if (get_is_active()) {
+		_root_host.tick(delta);
+	}
 
 	// The callback above (and every child tick below) may free, remove or
 	// reparent active states. Snapshot IDs and re-resolve before each child.

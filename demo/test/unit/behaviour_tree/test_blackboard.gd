@@ -441,6 +441,194 @@ func test_leaf_on_tick_writes_through_the_root_blackboard() -> void:
 	bt_root.free()
 
 
+func test_behaviour_tree_under_state_tree_inherits_its_board() -> void:
+	var st_root := NNSTRoot.new()
+	var state := NNSTNode.new()
+	st_root.add_child(state)
+	var bt_root := NNBTRoot.new()
+	state.add_child(bt_root)
+	var leaf := HelperWritingLeaf.new()
+	bt_root.add_child(leaf)
+
+	assert_eq(bt_root.get_blackboard_resource(), st_root.get_blackboard_resource(), "the nested root inherits the state root's board")
+	assert_eq(leaf.get_blackboard_resource(), st_root.get_blackboard_resource(), "the leaf resolves through both roots")
+
+	st_root.set_blackboard("from_state_root", 7)
+	assert_eq(leaf.get_blackboard("from_state_root", 0), 7, "an ancestor root write reaches the leaf")
+	assert_true(leaf.set_blackboard("from_leaf", "ok"))
+	assert_eq(st_root.get_blackboard("from_leaf", ""), "ok", "a leaf write lands in the inherited board")
+
+	assert_eq(bt_root.tick(0.1), NNBTNodes.SUCCESS)
+	assert_eq(st_root.get_blackboard("helper_key", ""), "helper_value", "a tick writes through the inherited board")
+
+	assert_engine_error_count(0)
+	st_root.free()
+
+
+func test_inner_root_explicit_board_overrides_inheritance() -> void:
+	var st_root := NNSTRoot.new()
+	var outer_board := NNBlackboard.new()
+	st_root.blackboard = outer_board
+	var state := NNSTNode.new()
+	st_root.add_child(state)
+	var bt_root := NNBTRoot.new()
+	state.add_child(bt_root)
+	var leaf := NNBTLeaf.new()
+	bt_root.add_child(leaf)
+
+	assert_eq(bt_root.get_blackboard_resource(), outer_board, "the inner root inherits the assigned board")
+
+	var inner_board := NNBlackboard.new()
+	bt_root.blackboard = inner_board
+	assert_eq(bt_root.get_blackboard_resource(), inner_board, "an explicit assignment on the inner root wins")
+	assert_true(leaf.set_blackboard("key", "inner"))
+	assert_eq(inner_board.get_value("key", ""), "inner")
+	assert_false(outer_board.has_value("key"), "the inherited board is untouched")
+
+	bt_root.blackboard = null
+	assert_eq(bt_root.get_blackboard_resource(), outer_board, "clearing the assignment returns to inheritance")
+	assert_true(leaf.set_blackboard("key", "outer"))
+	assert_eq(outer_board.get_value("key", ""), "outer")
+
+	assert_engine_error_count(0)
+	st_root.free()
+
+
+func test_root_without_a_root_ancestor_keeps_its_board_private() -> void:
+	var container := Node.new()
+	var st_root := NNSTRoot.new()
+	container.add_child(st_root)
+	var bt_root := NNBTRoot.new()
+	container.add_child(bt_root)
+
+	var st_board := st_root.get_blackboard_resource()
+	var bt_board := bt_root.get_blackboard_resource()
+	assert_ne(st_board, bt_board, "sibling roots never share a fallback board")
+
+	assert_true(bt_root.set_blackboard("only_bt", 1))
+	assert_false(st_root.has_blackboard("only_bt"), "a write does not leak to a sibling root")
+	assert_false(st_board.has_value("only_bt"))
+
+	var wrapper := Node.new()
+	container.add_child(wrapper)
+	var nested_root := NNBTRoot.new()
+	wrapper.add_child(nested_root)
+	assert_ne(nested_root.get_blackboard_resource(), st_board, "a root under a plain node does not inherit")
+	assert_ne(nested_root.get_blackboard_resource(), bt_board)
+
+	container.free()
+
+
+func test_inner_root_inherits_the_actor_of_its_ancestor_root() -> void:
+	var container := Node.new()
+	var st_root := NNSTRoot.new()
+	container.add_child(st_root)
+	var outer_actor := Node.new()
+	container.add_child(outer_actor)
+	st_root.actor = outer_actor
+
+	var state := NNSTNode.new()
+	st_root.add_child(state)
+	var bt_root := NNBTRoot.new()
+	state.add_child(bt_root)
+	var leaf := NNBTLeaf.new()
+	bt_root.add_child(leaf)
+
+	assert_eq(bt_root.get_actor(), outer_actor, "the inner root inherits the ancestor root's actor")
+	assert_eq(leaf.get_actor(), outer_actor, "a node below the inner root sees the inherited actor")
+
+	var inner_actor := Node.new()
+	container.add_child(inner_actor)
+	bt_root.actor = inner_actor
+	assert_eq(bt_root.get_actor(), inner_actor, "an explicit actor on the inner root wins")
+	assert_eq(leaf.get_actor(), inner_actor)
+
+	bt_root.actor = null
+	var path_actor := Node.new()
+	bt_root.add_child(path_actor)
+	bt_root.actor_node_path = bt_root.get_path_to(path_actor)
+	assert_eq(bt_root.get_actor(), path_actor, "actor_node_path wins over the inherited actor")
+	assert_eq(leaf.get_actor(), path_actor)
+
+	assert_engine_error_count(0)
+	container.free()
+
+
+func test_reparented_root_re_resolves_board_and_actor() -> void:
+	var container := Node.new()
+	var st_root := NNSTRoot.new()
+	container.add_child(st_root)
+	var state := NNSTNode.new()
+	st_root.add_child(state)
+	var bt_root := NNBTRoot.new()
+	state.add_child(bt_root)
+	var leaf := NNBTLeaf.new()
+	bt_root.add_child(leaf)
+
+	var outer_board := st_root.get_blackboard_resource()
+	st_root.set_blackboard("outer_key", 1)
+	assert_eq(leaf.get_blackboard("outer_key", 0), 1)
+
+	var new_parent := Node.new()
+	container.add_child(new_parent)
+	bt_root.reparent(new_parent)
+
+	assert_ne(bt_root.get_blackboard_resource(), outer_board, "the reparented root no longer inherits the old board")
+	assert_eq(leaf.get_blackboard("outer_key", -1), -1, "the inherited data is gone")
+	assert_eq(bt_root.get_actor(), new_parent, "the actor re-resolves to the new parent")
+	assert_eq(leaf.get_actor(), new_parent)
+
+	container.free()
+
+
+func test_reparented_root_does_not_use_a_freed_ancestor() -> void:
+	var st_root := NNSTRoot.new()
+	var inherited_board: NNBlackboard = st_root.get_blackboard_resource()
+	var state := NNSTNode.new()
+	st_root.add_child(state)
+	var bt_root := NNBTRoot.new()
+	state.add_child(bt_root)
+	var leaf := NNBTLeaf.new()
+	bt_root.add_child(leaf)
+
+	assert_eq(leaf.get_blackboard_resource(), inherited_board, "the leaf starts on the inherited board")
+
+	state.remove_child(bt_root)
+	st_root.free()
+
+	assert_true(is_instance_valid(inherited_board), "the retained board stays alive after the ancestor is freed")
+	assert_ne(bt_root.get_blackboard_resource(), inherited_board, "a freed ancestor is never resolved")
+	assert_true(bt_root.set_blackboard("after_free", 1))
+	assert_eq(leaf.get_blackboard("after_free", 0), 1, "the surviving root keeps a working private board")
+	assert_engine_error_count(0)
+
+	bt_root.free()
+
+
+func test_nested_root_follows_a_reparented_ancestor_root() -> void:
+	var container := Node.new()
+	var first_parent := Node.new()
+	container.add_child(first_parent)
+	var second_parent := Node.new()
+	container.add_child(second_parent)
+
+	var st_root := NNSTRoot.new()
+	first_parent.add_child(st_root)
+	var state := NNSTNode.new()
+	st_root.add_child(state)
+	var bt_root := NNBTRoot.new()
+	state.add_child(bt_root)
+	var leaf := NNBTLeaf.new()
+	bt_root.add_child(leaf)
+
+	assert_eq(leaf.get_actor(), first_parent, "the actor resolves from the ancestor root's position")
+
+	st_root.reparent(second_parent)
+	assert_eq(leaf.get_actor(), second_parent, "the nested root follows the ancestor root")
+
+	container.free()
+
+
 func _save_serialised_scene(scene_root: Node, path: String) -> String:
 	var packed := PackedScene.new()
 	assert_eq(packed.pack(scene_root), OK, "packing the scene succeeds")

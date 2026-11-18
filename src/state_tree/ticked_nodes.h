@@ -1,5 +1,6 @@
 #pragma once
 
+#include "../host.h"
 #include "branch_nodes.h"
 #include "history.h"
 #include <cstdint>
@@ -14,6 +15,8 @@ class NNSTTickedNodes : public NNSTBranchNodes {
 
 private:
 	NNSTRoot *_root;
+	NNRootHost _root_host;
+	bool _is_final;
 	bool _is_on_entered_condition_true;
 	int _evaluation_method;
 	float _score;
@@ -98,6 +101,9 @@ protected:
 	// parent chain when set_root() has not run yet.
 	NNSTRoot *_resolve_tree_root() const;
 
+	virtual void _on_internal_status_changed(bool p_is_active) override;
+	virtual void _on_hosted_root_finished(bool p_succeeded, Node *p_root) override;
+
 public:
 	NNSTTickedNodes();
 	~NNSTTickedNodes();
@@ -115,6 +121,11 @@ public:
 
 	void set_root(NNSTRoot *p_root); // Setter
 	NNSTRoot *get_root() const;
+
+	NNRootHost *get_root_host() override { return &_root_host; }
+
+	void set_is_final(bool is_final);
+	bool get_is_final() const;
 
 	void set_score(float score);
 	float get_score() const;

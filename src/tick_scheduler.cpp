@@ -16,6 +16,7 @@ NNTickScheduler::NNTickScheduler() {
 	_frame = 0;
 	_elapsed_delta = 0.0;
 	_process_tree_id = ObjectID();
+	_is_hosted = false;
 }
 
 void NNTickScheduler::configure(NoodleNodes *p_owner, StepCallback p_step) {
@@ -51,6 +52,23 @@ void NNTickScheduler::rearm() {
 	_elapsed_delta = 0.0;
 }
 
+void NNTickScheduler::set_hosted(bool p_hosted) {
+	if (_is_hosted == p_hosted) {
+		return;
+	}
+	_is_hosted = p_hosted;
+	rearm();
+	if (p_hosted) {
+		disconnect_connections();
+	} else {
+		update_connections();
+	}
+}
+
+bool NNTickScheduler::is_hosted() const {
+	return _is_hosted;
+}
+
 void NNTickScheduler::on_tree_entered() {
 	rearm();
 	update_connections();
@@ -72,6 +90,11 @@ void NNTickScheduler::on_enabled_changed(bool p_enabled) {
 
 void NNTickScheduler::update_connections() {
 	if (_owner == nullptr) {
+		return;
+	}
+	// A hosted owner is driven by its host, so it must not listen to frames.
+	if (_is_hosted) {
+		disconnect_connections();
 		return;
 	}
 	// get_tree() reports an error outside the tree, so check before calling it.
@@ -141,6 +164,10 @@ void NNTickScheduler::handle_frame_signal(int p_process_thread, double p_delta) 
 }
 
 bool NNTickScheduler::step(int p_process_thread, double p_delta) {
+	// The host owns the timing of a hosted owner.
+	if (_is_hosted) {
+		return false;
+	}
 	if (_owner == nullptr || !_step) {
 		return false;
 	}
@@ -158,6 +185,27 @@ bool NNTickScheduler::step(int p_process_thread, double p_delta) {
 		return false;
 	}
 
+	return _advance(p_delta);
+}
+
+bool NNTickScheduler::step_hosted(double p_delta) {
+	if (!_is_hosted) {
+		return false;
+	}
+	if (_owner == nullptr || !_step) {
+		return false;
+	}
+	if (!_owner->get_is_enabled()) {
+		return false;
+	}
+	if (Engine::get_singleton()->is_editor_hint()) {
+		return false;
+	}
+
+	return _advance(p_delta);
+}
+
+bool NNTickScheduler::_advance(double p_delta) {
 	const uint64_t frame = _frame++;
 	const bool due = _tick_rate <= 1 || (frame % (uint64_t)_tick_rate) == 0;
 

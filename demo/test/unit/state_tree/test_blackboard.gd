@@ -196,6 +196,46 @@ func test_shared_blackboard_between_bt_and_st_roots() -> void:
 	assert_engine_error_count(0)
 
 
+func test_nested_chart_inherits_board_and_actor() -> void:
+	var outer_root: NNSTRoot = add_child_autofree(NNSTRoot.new())
+	var outer_board := NNBlackboard.new()
+	outer_root.blackboard = outer_board
+	var outer_actor: Node = autofree(Node.new())
+	outer_root.actor = outer_actor
+
+	var state: NNSTNode = NNSTNode.new()
+	outer_root.add_child(state)
+	var inner_root: NNSTRoot = NNSTRoot.new()
+	state.add_child(inner_root)
+	var inner_state: NNSTNode = NNSTNode.new()
+	inner_root.add_child(inner_state)
+
+	assert_eq(inner_root.get_blackboard_resource(), outer_board, "the inner chart inherits the outer chart's board")
+	assert_eq(inner_state.get_blackboard_resource(), outer_board, "its states resolve through both roots")
+	assert_true(inner_state.set_blackboard("inner_key", 1))
+	assert_eq(outer_root.get_blackboard("inner_key", 0), 1, "the write lands in the inherited board")
+	assert_eq(inner_root.get_actor(), outer_actor, "the actor is inherited")
+	assert_eq(inner_state.get_actor(), outer_actor)
+
+	var inner_actor: Node = autofree(Node.new())
+	inner_root.actor = inner_actor
+	assert_eq(inner_state.get_actor(), inner_actor, "an explicit actor on the inner chart wins")
+
+	var path_actor := Node.new()
+	inner_root.add_child(path_actor)
+	inner_root.actor = null
+	inner_root.actor_node_path = inner_root.get_path_to(path_actor)
+	assert_eq(inner_state.get_actor(), path_actor, "actor_node_path wins over the inherited actor")
+
+	var inner_board := NNBlackboard.new()
+	inner_root.blackboard = inner_board
+	assert_eq(inner_state.get_blackboard_resource(), inner_board, "an explicit board on the inner chart wins")
+	inner_root.blackboard = null
+	assert_eq(inner_state.get_blackboard_resource(), outer_board, "clearing it returns to inheritance")
+
+	assert_engine_error_count(0)
+
+
 func _save_serialised_scene(scene_root: Node, path: String) -> String:
 	var packed := PackedScene.new()
 	assert_eq(packed.pack(scene_root), OK, "packing the scene succeeds")

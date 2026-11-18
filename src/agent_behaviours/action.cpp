@@ -14,16 +14,19 @@ void NNAction::_bind_methods() {
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "action_id", PROPERTY_HINT_NONE), "set_action_id", "get_action_id");
 
 	// Signals.
-
 	ADD_SIGNAL(MethodInfo("action_entered"));
 	ADD_SIGNAL(MethodInfo("frame_tick", PropertyInfo(Variant::FLOAT, "delta")));
 	ADD_SIGNAL(MethodInfo("action_exited"));
+	ADD_SIGNAL(MethodInfo("hosted_root_finished",
+			PropertyInfo(Variant::OBJECT, "root", PROPERTY_HINT_NODE_TYPE, "Node"),
+			PropertyInfo(Variant::BOOL, "succeeded")));
 }
 
 // Constructor and destructor.
 
 NNAction::NNAction() {
 	_action_id = 0;
+	_root_host.configure(this);
 }
 
 NNAction::~NNAction() {
@@ -34,11 +37,13 @@ NNAction::~NNAction() {
 bool NNAction::start_action() {
 	set_is_finished(false);
 	set_has_failed(false);
+	_root_host.activate();
 	emit_signal("action_entered");
 	return true;
 }
 
 bool NNAction::end_action() {
+	_root_host.deactivate();
 	emit_signal("action_exited");
 	set_is_finished(false);
 	set_has_failed(false);
@@ -51,6 +56,14 @@ Node *NNAction::step_actions() {
 		return nullptr;
 	}
 	return this;
+}
+
+void NNAction::tick_hosted_roots(double p_delta) {
+	_root_host.tick(p_delta);
+}
+
+void NNAction::_on_hosted_root_finished(bool p_succeeded, Node *p_root) {
+	emit_signal("hosted_root_finished", Variant(p_root), p_succeeded);
 }
 
 // Getters and Setters.

@@ -22,6 +22,18 @@ void NNAgent::_bind_methods() {
 	BIND_ENUM_CONSTANT(PHYSICS);
 	BIND_ENUM_CONSTANT(MANUAL);
 
+	ClassDB::bind_method(D_METHOD("set_blackboard_resource", "blackboard"), &NNAgent::set_blackboard_resource);
+	ClassDB::bind_method(D_METHOD("get_assigned_blackboard"), &NNAgent::get_assigned_blackboard);
+	ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "blackboard", PROPERTY_HINT_RESOURCE_TYPE, "NNBlackboard"), "set_blackboard_resource", "get_assigned_blackboard");
+
+	ClassDB::bind_method(D_METHOD("set_actor", "actor"), &NNAgent::set_actor);
+	ClassDB::bind_method(D_METHOD("get_assigned_actor"), &NNAgent::get_assigned_actor);
+	ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "actor", PROPERTY_HINT_NODE_TYPE, "Node"), "set_actor", "get_assigned_actor");
+
+	ClassDB::bind_method(D_METHOD("set_actor_node_path", "actor_node_path"), &NNAgent::set_actor_node_path);
+	ClassDB::bind_method(D_METHOD("get_actor_node_path"), &NNAgent::get_actor_node_path);
+	ADD_PROPERTY(PropertyInfo(Variant::NODE_PATH, "actor_node_path"), "set_actor_node_path", "get_actor_node_path");
+
 	ClassDB::bind_method(D_METHOD("set_current_behaviour_group_node"), &NNAgent::set_current_behaviour_group_node);
 	ClassDB::bind_method(D_METHOD("get_current_behaviour_group_node"), &NNAgent::get_current_behaviour_group_node);
 
@@ -117,6 +129,8 @@ NNAgent::NNAgent() {
 	_tick_scheduler.configure(this, [this](double p_delta, double p_tick_delta, bool p_due) -> bool {
 		return _auto_tick_step_callback(p_delta, p_tick_delta, p_due);
 	});
+	// A host activation starts a fresh thinking schedule, so the first host tick thinks.
+	_hosted_root.configure(this, [this](bool p_hosted) { _tick_scheduler.set_hosted(p_hosted); }, [this]() { _tick_scheduler.rearm(); }, [this](double p_delta) { _tick_scheduler.step_hosted(p_delta); }, [this]() { abort_current_behaviour(); });
 	// The agent's rate throttles only thinking, so 6 keeps actions smooth; tree roots gate the whole tick and stay at 1.
 	_tick_scheduler.set_tick_rate(6);
 
@@ -779,6 +793,38 @@ bool NNAgent::_auto_tick_step_callback(double p_delta, double p_tick_delta, bool
 
 // Getters and Setters.
 
+void NNAgent::set_blackboard_resource(const Ref<NNBlackboard> &p_blackboard) {
+	_root_context.set_blackboard(p_blackboard);
+}
+
+Ref<NNBlackboard> NNAgent::get_assigned_blackboard() const {
+	return _root_context.get_assigned_blackboard();
+}
+
+NNBlackboard *NNAgent::get_blackboard_resource() const {
+	return _root_context.resolve_blackboard(this);
+}
+
+void NNAgent::set_actor(Node *p_actor) {
+	_root_context.set_actor(p_actor);
+}
+
+Node *NNAgent::get_assigned_actor() const {
+	return _root_context.get_assigned_actor();
+}
+
+Node *NNAgent::get_actor() const {
+	return _root_context.resolve_actor(this);
+}
+
+void NNAgent::set_actor_node_path(const NodePath &p_actor_node_path) {
+	_root_context.set_actor_node_path(p_actor_node_path);
+}
+
+NodePath NNAgent::get_actor_node_path() const {
+	return _root_context.get_actor_node_path();
+}
+
 void NNAgent::set_current_behaviour_name(godot::String current_behaviour_name) {
 	_current_behaviour_name = current_behaviour_name;
 }
@@ -895,7 +941,9 @@ void NNAgent::_on_is_enabled_changed(bool p_is_enabled) {
 void NNAgent::_notification(int p_what) {
 	if (p_what == NOTIFICATION_ENTER_TREE) {
 		_tick_scheduler.on_tree_entered();
+		_hosted_root.resolve_host();
 	} else if (p_what == NOTIFICATION_EXIT_TREE) {
+		_hosted_root.release_host();
 		// get_tree() is unreliable on tree exit, so the stored SceneTree ID is used.
 		_tick_scheduler.on_tree_exited();
 	}
@@ -967,12 +1015,14 @@ void NNAgent::_tick_selected_nodes(const char *signal_name, double delta) {
 	NNAction *action = _resolve_action(action_id);
 	if (action != nullptr) {
 		action->emit_signal(signal_name, delta);
-#ifdef DEBUG_ENABLED
+		// A tick listener may have freed or reparented the action.
 		action = _resolve_action(action_id);
 		if (action != nullptr) {
+#ifdef DEBUG_ENABLED
 			action->set_last_visited_timestamp(current_timestamp);
-		}
 #endif
+			action->tick_hosted_roots(delta);
+		}
 	}
 }
 
@@ -1012,4 +1062,12 @@ void NNAgent::_on_scene_tree_process_frame() {
 
 void NNAgent::_on_scene_tree_physics_frame() {
 	_tick_scheduler.handle_frame_signal(ProcessThread::PHYSICS, get_physics_process_delta_time());
+}
+
+PackedStringArray NNAgent::_get_configuration_warnings() const {
+	PackedStringArray warnings;
+	if (nn_find_host_ancestor(this) != nullptr) {
+		warnings.push_back(String(get_class()) + " is driven by its ancestor host: its process_thread is ignored, its tick_rate still throttles thinking, and its current behaviour is aborted when the host deactivates.");
+	}
+	return warnings;
 }

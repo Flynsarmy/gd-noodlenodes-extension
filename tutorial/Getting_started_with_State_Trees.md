@@ -565,3 +565,7 @@ func _ready():
 ```
 
 If you want full control over when the tree updates, set the root's **Process Thread** property to **Manual** and call `tick(delta)` from your own scheduler, for example with your own delay or cooldown logic. Calling `tick(delta)` by hand also re-enters a chart that was transitioned out on purpose, which the automatic ticking never does.
+
+State trees can be nested too. A state tree root placed under a state, or under an agent action, is driven by that host instead of by the SceneTree: it starts when the host activates, the host ticks it with the host's delta at the host's rate, and deactivating the host exits the active states so the next activation starts a fresh chart. A hosted root also never enters its chart on `NOTIFICATION_READY`; its first host tick does that. While it is hosted, the root's own `process_thread` and `tick_rate` are ignored and the editor shows a configuration warning. The instructions above about `tick_rate` and `process_thread` still apply to a root that nothing hosts.
+
+A state can be marked as final with its **Is Final** property. Entering a final state reports the chart as finished by emitting the root's `finished(true)` signal, which is useful when the state tree is hosted and something else decides what happens next. A final state keeps ticking like any other state: it does not stop the chart by itself, so a hosted chart keeps running until its host deactivates it, and an unhosted chart keeps ticking.

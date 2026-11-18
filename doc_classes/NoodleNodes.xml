@@ -1,11 +1,57 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <class name="NoodleNodes" inherits="Node" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
 	<brief_description>
+		Base class for every Noodle Nodes behaviour tree, state tree and agent node.
 	</brief_description>
 	<description>
+		Every Noodle Nodes node resolves its blackboard and actor through the nearest ancestor root of any Noodle Nodes system, so a behaviour tree [NNBTRoot], a state tree [NNSTRoot] or an [NNAgent] can provide the data for the nodes below it, whichever system they belong to. An ancestor root may itself resolve further up when it has no explicit board or actor of its own, and an explicit assignment always wins over inheritance. With no root ancestor the blackboard helpers return their default value, [code]false[/code] or [code]null[/code], and [method get_actor] returns [code]null[/code], without reporting errors.
 	</description>
 	<tutorials>
 	</tutorials>
+	<methods>
+		<method name="erase_blackboard">
+			<return type="bool" />
+			<param index="0" name="key" type="String" />
+			<description>
+				Erases [param key] from the effective blackboard resolved through the nearest ancestor root. Returns [code]false[/code] when the key is absent or when there is no root.
+			</description>
+		</method>
+		<method name="get_actor" qualifiers="const">
+			<return type="Node" />
+			<description>
+				Returns the actor of the nearest ancestor root, or [code]null[/code] when there is no root. A root resolves its own actor on demand: its explicit [code]actor[/code] wins, then its [code]actor_node_path[/code], then the actor inherited from the root above it, then its parent.
+			</description>
+		</method>
+		<method name="get_blackboard" qualifiers="const">
+			<return type="Variant" />
+			<param index="0" name="key" type="String" />
+			<param index="1" name="default_value" type="Variant" default="null" />
+			<description>
+				Returns the value stored under [param key] in the effective blackboard resolved through the nearest ancestor root. Returns [param default_value] when the key is missing, its value is [code]null[/code], or there is no root. Blackboard keys are always [String]s.
+			</description>
+		</method>
+		<method name="get_blackboard_resource" qualifiers="const">
+			<return type="NNBlackboard" />
+			<description>
+				Returns the effective [NNBlackboard] resolved through the nearest ancestor root: the board explicitly assigned to a root, or the board that root inherits from the root above it, or the private board of the outermost root. Returns [code]null[/code] only when there is no root ancestor.
+			</description>
+		</method>
+		<method name="has_blackboard" qualifiers="const">
+			<return type="bool" />
+			<param index="0" name="key" type="String" />
+			<description>
+				Returns [code]true[/code] when [param key] exists in the effective blackboard resolved through the nearest ancestor root and its value is not [code]null[/code]; returns [code]false[/code] otherwise, including when there is no root.
+			</description>
+		</method>
+		<method name="set_blackboard">
+			<return type="bool" />
+			<param index="0" name="key" type="String" />
+			<param index="1" name="value" type="Variant" />
+			<description>
+				Stores [param value] under [param key] in the effective blackboard resolved through the nearest ancestor root. Returns [code]false[/code] when the key is empty or there is no root.
+			</description>
+		</method>
+	</methods>
 	<members>
 		<member name="is_enabled" type="bool" setter="set_is_enabled" getter="get_is_enabled" default="true">
 		</member>

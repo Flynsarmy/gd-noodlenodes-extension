@@ -1,5 +1,7 @@
 #pragma once
 
+#include "../host.h"
+#include "../root_context.h"
 #include "../tick_scheduler.h"
 #include "noodle_nodes.h"
 
@@ -22,6 +24,8 @@ class NNAgent : public NoodleNodes {
 	GDCLASS(NNAgent, NoodleNodes)
 
 private:
+	NNRootContext _root_context;
+
 	Ref<RandomNumberGenerator> _rng;
 	// Scene nodes are tracked by instance ID. They can be freed, removed or
 	// reparented from arbitrary engine/user callbacks between uses, so a raw
@@ -45,6 +49,7 @@ private:
 	godot::String _current_behaviour_name;
 
 	NNTickScheduler _tick_scheduler;
+	NNHostedRoot _hosted_root;
 
 #ifdef DEBUG_ENABLED
 	uint64_t _total_evaluate_options_usec;
@@ -97,6 +102,20 @@ public:
 	~NNAgent();
 
 	// Getters and setters for attributes.
+
+	bool is_root() const override { return true; }
+
+	NNHostedRoot *get_hosted_root() override { return &_hosted_root; }
+
+	void set_blackboard_resource(const Ref<NNBlackboard> &p_blackboard);
+	Ref<NNBlackboard> get_assigned_blackboard() const;
+	NNBlackboard *get_blackboard_resource() const override;
+
+	void set_actor(Node *p_actor);
+	Node *get_assigned_actor() const;
+	Node *get_actor() const override;
+	void set_actor_node_path(const NodePath &p_actor_node_path);
+	NodePath get_actor_node_path() const;
 
 #ifdef DEBUG_ENABLED
 	inline uint64_t get_last_visited_timestamp() const { return _last_visited_timestamp; };
@@ -154,6 +173,7 @@ public:
 
 	// Godot virtuals
 	void _notification(int p_what);
+	virtual PackedStringArray _get_configuration_warnings() const override;
 };
 
 } //namespace godot

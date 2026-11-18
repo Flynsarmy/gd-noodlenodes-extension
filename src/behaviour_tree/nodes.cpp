@@ -1,8 +1,5 @@
 #include "nodes.h"
 #include "../agent_behaviours/considerations.h"
-#include "blackboard.h"
-#include "blackboard_helpers.h"
-#include "root.h"
 #include <godot_cpp/classes/engine.hpp>
 #include <godot_cpp/classes/time.hpp>
 #include <godot_cpp/core/class_db.hpp>
@@ -31,13 +28,6 @@ void NNBTNodes::_bind_methods() {
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "evaluation_method", PROPERTY_HINT_ENUM, "Sum:0,Min:1,Max:2,Mean:3,Multiply:4,FirstNonZero:5"), "set_evaluation_method", "get_evaluation_method");
 
 	ClassDB::bind_method(D_METHOD("get_tree_root"), &NNBTNodes::get_tree_root);
-
-	ClassDB::bind_method(D_METHOD("get_blackboard_resource"), &NNBTNodes::get_blackboard_resource_ref);
-	ClassDB::bind_method(D_METHOD("get_blackboard", "key", "default_value"), &NNBTNodes::get_blackboard, Variant());
-	ClassDB::bind_method(D_METHOD("set_blackboard", "key", "value"), &NNBTNodes::set_blackboard);
-	ClassDB::bind_method(D_METHOD("has_blackboard", "key"), &NNBTNodes::has_blackboard);
-	ClassDB::bind_method(D_METHOD("erase_blackboard", "key"), &NNBTNodes::erase_blackboard);
-	ClassDB::bind_method(D_METHOD("get_actor"), &NNBTNodes::get_actor);
 
 	ClassDB::bind_method(D_METHOD("interrupt"), &NNBTNodes::interrupt);
 	ClassDB::bind_method(D_METHOD("reset"), &NNBTNodes::reset);
@@ -118,45 +108,6 @@ NodePath NNBTNodes::get_tree_root() const {
 		parent_node = furthest_node->get_parent();
 	}
 	return get_path_to(furthest_node);
-}
-
-// Blackboard and actor helpers.
-
-NNBlackboard *NNBTNodes::get_blackboard_resource() const {
-	return nn_resolve_blackboard_resource<NNBTNodes, NNBTRoot>(this);
-}
-
-Ref<NNBlackboard> NNBTNodes::get_blackboard_resource_ref() const {
-	return Ref<NNBlackboard>(get_blackboard_resource());
-}
-
-Variant NNBTNodes::get_blackboard(const String &key, const Variant &default_value) const {
-	NNBlackboard *board = get_blackboard_resource();
-	return board != nullptr ? board->get_value(key, default_value) : default_value;
-}
-
-bool NNBTNodes::set_blackboard(const String &key, const Variant &value) {
-	NNBlackboard *board = get_blackboard_resource();
-	return board != nullptr ? board->set_value(key, value) : false;
-}
-
-bool NNBTNodes::has_blackboard(const String &key) const {
-	NNBlackboard *board = get_blackboard_resource();
-	return board != nullptr ? board->has_value(key) : false;
-}
-
-bool NNBTNodes::erase_blackboard(const String &key) {
-	NNBlackboard *board = get_blackboard_resource();
-	return board != nullptr ? board->erase_value(key) : false;
-}
-
-Node *NNBTNodes::get_actor() const {
-	for (Node *node = const_cast<NNBTNodes *>(this); node != nullptr; node = node->get_parent()) {
-		if (NNBTRoot *root = godot::Object::cast_to<NNBTRoot>(node)) {
-			return root->get_actor();
-		}
-	}
-	return nullptr;
 }
 
 // Handling methods.
