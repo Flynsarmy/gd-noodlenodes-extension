@@ -731,6 +731,7 @@ void NNAgent::abort_current_behaviour() {
 }
 
 void NNAgent::tick(double delta) {
+	_advance_behaviour_cooldowns(delta);
 	evaluate_options((float)delta);
 	update_current_behaviour();
 	_tick_selected_nodes("frame_tick", delta);
@@ -741,6 +742,7 @@ bool NNAgent::auto_tick_step(int p_process_thread, double p_delta) {
 }
 
 bool NNAgent::_auto_tick_step_callback(double p_delta, double p_tick_delta, bool p_due) {
+	_advance_behaviour_cooldowns(p_delta);
 	if (p_due) {
 		evaluate_options((float)p_tick_delta);
 		update_current_behaviour();
@@ -937,6 +939,34 @@ void NNAgent::_tick_selected_nodes(const char *signal_name, double delta) {
 			action->set_last_visited_timestamp(current_timestamp);
 		}
 #endif
+	}
+}
+
+void NNAgent::_advance_behaviour_cooldowns(double delta) {
+	std::vector<ObjectID> behaviour_ids = _child_behaviour_ids;
+	for (unsigned int i = 0; i < behaviour_ids.size(); ++i) {
+		NNBehaviours *behaviours_node = _get_child_behaviour(behaviour_ids[i]);
+		if (behaviours_node == nullptr || !behaviours_node->get_is_enabled())
+			continue;
+
+		if (!behaviours_node->is_behaviour_group()) {
+			NNBehaviour *behaviour = godot::Object::cast_to<NNBehaviour>(behaviours_node);
+			if (behaviour != nullptr) {
+				behaviour->advance_cooldown(delta);
+			}
+			continue;
+		}
+
+		std::vector<ObjectID> group_child_ids = behaviours_node->get_child_behaviour_ids();
+		for (unsigned int c = 0; c < group_child_ids.size(); ++c) {
+			NNBehaviours *group_child = _get_group_child_behaviour(behaviour_ids[i], group_child_ids[c]);
+			if (group_child == nullptr || !group_child->get_is_enabled() || group_child->is_behaviour_group())
+				continue;
+			NNBehaviour *behaviour = godot::Object::cast_to<NNBehaviour>(group_child);
+			if (behaviour != nullptr) {
+				behaviour->advance_cooldown(delta);
+			}
+		}
 	}
 }
 

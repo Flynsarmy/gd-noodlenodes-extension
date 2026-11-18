@@ -11,6 +11,24 @@ class CountingConsideration extends NNConsideration:
 		return 1.0
 
 
+class ScriptedBehaviour extends NNBehaviour:
+	func _process(_delta: float) -> void:
+		pass
+
+
+func _make_consideration(value: float) -> NNConsideration:
+	var consideration := NNConsideration.new()
+	consideration.activation_input_value = value
+	return consideration
+
+
+func _make_behaviour(consideration: NNConsideration) -> NNBehaviour:
+	var behaviour := NNBehaviour.new()
+	behaviour.add_child(consideration)
+	behaviour.add_child(NNAction.new())
+	return behaviour
+
+
 func _make_fixture() -> Dictionary:
 	var consideration := CountingConsideration.new()
 	consideration.activation_input_value = 1.0
@@ -113,3 +131,48 @@ func test_disabled_agent_neither_thinks_nor_frame_ticks() -> void:
 	await get_tree().physics_frame
 	assert_eq(consideration.eval_count, 0, "a disabled agent connects no frame signal")
 	assert_eq(ticks.size(), 0, "a disabled agent receives no frame tick")
+
+
+func test_cooldown_seconds_expires_for_a_behaviour_that_overrides_process() -> void:
+	var scripted := ScriptedBehaviour.new()
+	scripted.cooldown_seconds = 1.0
+	scripted.add_child(_make_consideration(0.9))
+	scripted.add_child(NNAction.new())
+	var fallback := _make_behaviour(_make_consideration(0.5))
+
+	var agent := NNAgent.new()
+	agent.process_thread = NNAgent.MANUAL
+	agent.add_child(scripted)
+	agent.add_child(fallback)
+	add_child_autofree(agent)
+
+	agent.tick(0.1)
+	assert_eq(agent.get_current_behaviour_node(), scripted, "the highest score is chosen first")
+
+	agent.tick(0.1)
+	assert_eq(agent.get_current_behaviour_node(), fallback, "a behaviour on cooldown is skipped")
+
+	agent.tick(1.0)
+	assert_eq(agent.get_current_behaviour_node(), scripted, "the cooldown counts down as the agent ticks")
+
+
+func test_auto_tick_step_advances_cooldown_by_the_caller_delta_outside_the_tree() -> void:
+	var high := _make_behaviour(_make_consideration(0.9))
+	high.cooldown_seconds = 0.2
+	var fallback := _make_behaviour(_make_consideration(0.5))
+
+	var agent := NNAgent.new()
+	agent.process_thread = NNAgent.PHYSICS
+	agent.tick_rate = 1
+	agent.add_child(high)
+	agent.add_child(fallback)
+	autofree(agent)
+
+	assert_true(agent.auto_tick_step(NNAgent.PHYSICS, 0.1), "an agent outside the tree auto-ticks on the caller's delta")
+	assert_eq(agent.get_current_behaviour_node(), high, "the highest score is chosen first")
+
+	assert_true(agent.auto_tick_step(NNAgent.PHYSICS, 0.1))
+	assert_eq(agent.get_current_behaviour_node(), fallback, "half the cooldown has elapsed, so the high scorer is still benched")
+
+	assert_true(agent.auto_tick_step(NNAgent.PHYSICS, 0.1))
+	assert_eq(agent.get_current_behaviour_node(), high, "another step expires the cooldown exactly")

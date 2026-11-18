@@ -59,10 +59,9 @@ public:
 	// Godot virtuals.
 	void _ready() override;
 
-	void _process(double delta) override;
-
 	// Handling functions.
 
+	void advance_cooldown(double delta);
 	float evaluate() override;
 	NNAction *start_behaviour();
 	void end_behaviour();

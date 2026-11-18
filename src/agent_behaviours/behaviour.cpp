@@ -115,19 +115,15 @@ void NNBehaviour::_ready() {
 	// Get the considerations and actions.
 }
 
-void NNBehaviour::_process(double delta) {
-	if (!get_is_enabled())
-		return;
-	if (Engine::get_singleton()->is_editor_hint())
-		return;
-	if (_current_cooldown_seconds > 0.0f) {
-		_current_cooldown_seconds -= delta;
-		if (_current_cooldown_seconds < 0.0f)
-			_current_cooldown_seconds = 0.0f;
-	}
-}
-
 // Handling functions.
+
+void NNBehaviour::advance_cooldown(double delta) {
+	if (_current_cooldown_seconds <= 0.0f)
+		return;
+	_current_cooldown_seconds -= (float)delta;
+	if (_current_cooldown_seconds < 0.0f)
+		_current_cooldown_seconds = 0.0f;
+}
 
 float NNBehaviour::evaluate() {
 #ifdef DEBUG_ENABLED

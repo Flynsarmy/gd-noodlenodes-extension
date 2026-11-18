@@ -57,6 +57,7 @@ private:
 	void _reconcile_selected_nodes();
 	void _end_current_action(bool emit_action_changed);
 	void _tick_selected_nodes(const char *signal_name, double delta);
+	void _advance_behaviour_cooldowns(double delta);
 
 	void _on_scene_tree_process_frame();
 	void _on_scene_tree_physics_frame();

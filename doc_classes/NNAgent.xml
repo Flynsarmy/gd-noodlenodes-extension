@@ -36,7 +36,7 @@
 			<param index="1" name="delta" type="float" />
 			<description>
 				The shared body of the frame-signal handlers, and the deterministic driver for custom schedulers. Runs the agent's scheduled step and returns [code]true[/code] when it actually stepped. It applies the same guards and [member tick_rate] schedule as the frame-signal handlers, so tests and custom schedulers can drive the agent directly, even outside the tree. A thinking step receives the [param delta] plus the deltas of the non-due calls since the previous thinking step, while [code]frame_tick[/code] receives only the [param delta] of this call.
-				The call is ignored, returning [code]false[/code], when [param process_thread] is not the selected [member process_thread], when the selected thread is [constant MANUAL], when the agent is disabled, in the editor, or when [member tick_rate] makes the thinking step not due. An ignored call does not advance the [member tick_rate] schedule; an eligible step that is not a thinking step still emits [code]frame_tick[/code].
+				The call is ignored, returning [code]false[/code], when [param process_thread] is not the selected [member process_thread], when the selected thread is [constant MANUAL], when the agent is disabled, in the editor, or when [member tick_rate] makes the thinking step not due. An ignored call does not advance the [member tick_rate] schedule; an eligible step that is not a thinking step still emits [code]frame_tick[/code]. Every eligible step also counts down the [member NNBehaviour.cooldown_seconds] of all enabled behaviours by [param delta], whether or not the step thinks.
 			</description>
 		</method>
 		<method name="evaluate_options">
@@ -83,7 +83,7 @@
 			<return type="void" />
 			<param index="0" name="delta" type="float" />
 			<description>
-				Runs one full unguarded agent step: [method evaluate_options], [method update_current_behaviour], then [code]frame_tick[/code] on the selected nodes. Use it with [member process_thread] set to [code]Manual[/code] when a custom scheduler owns the timing. The scheduler guards do not apply, so it also works outside the tree.
+				Runs one full unguarded agent step: [method evaluate_options], [method update_current_behaviour], then [code]frame_tick[/code] on the selected nodes. The [member NNBehaviour.cooldown_seconds] of all enabled behaviours counts down by [param delta] before the thinking step. Use it with [member process_thread] set to [code]Manual[/code] when a custom scheduler owns the timing. The scheduler guards do not apply, so it also works outside the tree.
 			</description>
 		</method>
 		<method name="update_current_behaviour">
