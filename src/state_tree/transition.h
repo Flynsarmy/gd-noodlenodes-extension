@@ -37,10 +37,6 @@ public:
 	String get_delay_in_seconds() const;
 	void set_delay_in_seconds(const String &p_delay_in_seconds);
 
-	// Deprecated float alias kept for compatibility with the reference addon.
-	float get_delay_seconds() const;
-	void set_delay_seconds(float p_delay_seconds);
-
 	// Handling functions.
 	// Evaluates the guard using this transition's parent as the state context.
 	virtual bool _can_transition();

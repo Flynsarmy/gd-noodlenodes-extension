@@ -53,9 +53,6 @@
 		<member name="delay_in_seconds" type="String" setter="set_delay_in_seconds" getter="get_delay_in_seconds" default="&quot;0.0&quot;">
 			An expression for the delay in seconds before this transition is taken. A plain number is used directly. The expression can use the keys of the root's [member NNSTRoot.blackboard] as input names. Invalid or negative results fall back to [code]0.0[/code], which takes the transition immediately. While a delay is pending, [signal NNSTTickedNodes.transition_pending] is emitted on the parent state every tick, and the pending transition is cancelled when the state exits.
 		</member>
-		<member name="delay_seconds" type="float" setter="set_delay_seconds" getter="get_delay_seconds" default="0.0">
-			Deprecated float alias for [member delay_in_seconds]. Prefer [member delay_in_seconds].
-		</member>
 		<member name="event_name" type="String" setter="set_event_name" getter="get_event_name" default="&quot;&quot;">
 			Case sensitive event name that will trigger this [NNSTTransition]. An empty name makes the transition automatic.
 		</member>

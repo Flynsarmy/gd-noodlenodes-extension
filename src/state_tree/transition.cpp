@@ -31,12 +31,6 @@ void NNSTTransition::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_delay_in_seconds"), &NNSTTransition::get_delay_in_seconds);
 	ADD_PROPERTY(PropertyInfo(Variant::STRING, "delay_in_seconds", PROPERTY_HINT_EXPRESSION), "set_delay_in_seconds", "get_delay_in_seconds");
 
-	// Deprecated float alias. It is hidden from the inspector and is backed by
-	// the delay_in_seconds expression, matching the reference addon.
-	ClassDB::bind_method(D_METHOD("set_delay_seconds", "delay_seconds"), &NNSTTransition::set_delay_seconds);
-	ClassDB::bind_method(D_METHOD("get_delay_seconds"), &NNSTTransition::get_delay_seconds);
-	ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "delay_seconds", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_NONE), "set_delay_seconds", "get_delay_seconds");
-
 	ClassDB::bind_method(D_METHOD("take", "immediately"), &NNSTTransition::take, DEFVAL(true));
 	ClassDB::bind_method(D_METHOD("evaluate_delay"), &NNSTTransition::evaluate_delay);
 
@@ -83,17 +77,6 @@ String NNSTTransition::get_delay_in_seconds() const {
 
 void NNSTTransition::set_delay_in_seconds(const String &p_delay_in_seconds) {
 	_delay_in_seconds = p_delay_in_seconds;
-}
-
-float NNSTTransition::get_delay_seconds() const {
-	if (!_delay_in_seconds.is_valid_float()) {
-		return 0.0f;
-	}
-	return (float)_delay_in_seconds.to_float();
-}
-
-void NNSTTransition::set_delay_seconds(float p_delay_seconds) {
-	_delay_in_seconds = String::num(p_delay_seconds);
 }
 
 // Handling functions.
