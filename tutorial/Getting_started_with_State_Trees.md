@@ -416,7 +416,7 @@ What this code does:
  * The row `@onready var sensor_distance:UtilityAIDistanceVector2Sensor = $UtilityAISTRoot/UtilityAIDistanceVector2Sensor` gets a reference to the Vector2 based distance sensor of the AI entity. This sensor is used to check the distance and to get the direction vector towards the target.
  * The row `var movement_speed:float = 0.0` defines a variable that we will use to control the movement speed of the AI entity.
  * In the `_physics_process(delta)` method we first set the distance sensor **from-position** as the global position of the AI entity, and the **to-position** as the location of the mouse cursor from the parent node. The sensor will use these two positions to calculate the distance from the AI entity to the mouse cursor, and also the direction vector that we will use later for movement.
- * The state tree needs no manual tick. By default the root ticks itself on the **Physics** frame signal, so once the AI entity is in the scene the active states run their `on_tick()` methods every physics frame. The root's **Tick Rate** property ticks less often (a rate of 2 ticks on every second physics frame). To drive the tree from your own scheduler instead, set the root's **Process Thread** property to **Manual** and call `tick(delta)` yourself. The state handling methods get no user data, so the states read the AI entity from the tree itself: `get_root()` returns the **UtilityAISTRoot** node and its parent is the **ai_entity** node. In this scene that means `get_root().get_parent()` is the AI entity, which gives the state handling methods access to all its properties.
+ * The state tree needs no manual tick. By default the root ticks itself on the **Physics** frame signal, so once the AI entity is in the scene the active states run their `on_tick()` methods every physics frame. The root's **Tick Rate** property ticks less often (a rate of 2 ticks on every second physics frame). To drive the tree from your own scheduler instead, set the root's **Process Thread** property to **Manual** and call `tick(delta)` yourself. The state handling methods get no user data, so the states read the AI entity with `get_actor()`. The root's actor defaults to its parent, the **ai_entity** node, so `get_actor()` gives the state handling methods access to all its properties. Set the root's **Actor** or **Actor Node Path** property to use a different node.
  * After the tree has ticked, the row `self.global_position += sensor_distance.direction_vector * movement_speed * delta` moves the AI entity based on the direction vector calculated by the distance sensor. Delta time is used to scale the movement amount. The `movement_speed` is set by the active state.
  * The final rows of the method make sure the character sprite is facing the direction it is moving to by flipping the sprite horizontally when needed.
 
@@ -429,12 +429,12 @@ extends UtilityAISTNode
 
 
 func on_enter_condition():
-	var actor = get_root().get_parent()
+	var actor = get_actor()
 	return actor.sensor_distance.distance > 200.0
 
 
 func on_enter_state():
-	var actor = get_root().get_parent()
+	var actor = get_actor()
 	actor.movement_speed = -100
 	actor.play("moving")
 
@@ -444,13 +444,13 @@ func on_exit_state():
 
 
 func on_tick(_delta):
-	var actor = get_root().get_parent()
+	var actor = get_actor()
 	if actor.sensor_distance.distance <= 200:
 		transition_to(".")
 
 ```
 
-For all the methods we read the AI entity with `get_root().get_parent()` and store it in a local `actor` variable. You can name that variable anything you want. The state handling methods themselves receive no user data: `on_enter_condition()`, `on_enter_state()` and `on_exit_state()` take no parameters, and `on_tick()` receives only the tick's delta time, which these states don't use and therefore name `_delta`. In step 7.1 the **ai_entity** node is the parent of the **UtilityAISTRoot** node, so `get_root().get_parent()` is the AI entity.
+For all the methods we read the AI entity with `get_actor()` and store it in a local `actor` variable. You can name that variable anything you want. The state handling methods themselves receive no user data: `on_enter_condition()`, `on_enter_state()` and `on_exit_state()` take no parameters, and `on_tick()` receives only the tick's delta time, which these states don't use and therefore name `_delta`. In step 7.1 the **ai_entity** node is the parent of the **UtilityAISTRoot** node, so `get_actor()` is the AI entity.
 
 The **on_enter_condition()** method is used to determine if the state should be entered. It is executed when the `transition_to()` method is called and the state tree is evaluated. The *Moving closer* state is entered if the distance between the AI entity and the mouse cursor is more than 200 pixels. 
 
@@ -469,12 +469,12 @@ extends UtilityAISTNode
 
 
 func on_enter_condition():
-	var actor = get_root().get_parent()
+	var actor = get_actor()
 	return actor.sensor_distance.distance < 90.0
 
 
 func on_enter_state():
-	var actor = get_root().get_parent()
+	var actor = get_actor()
 	actor.movement_speed = 100
 	actor.play("moving")
 
@@ -484,7 +484,7 @@ func on_exit_state():
 
 
 func on_tick(_delta):
-	var actor = get_root().get_parent()
+	var actor = get_actor()
 	if actor.sensor_distance.distance >= 90 :
 		transition_to(".")
 
@@ -502,7 +502,7 @@ extends UtilityAISTNode
 
 
 func on_enter_state():
-	var actor = get_root().get_parent()
+	var actor = get_actor()
 	actor.movement_speed = 0
 	actor.play("default")
 
@@ -512,7 +512,7 @@ func on_exit_state():
 
 
 func on_tick(_delta):
-	var actor = get_root().get_parent()
+	var actor = get_actor()
 	if actor.sensor_distance.distance > 200 or actor.sensor_distance.distance < 90:
 		transition_to("Moving")
 

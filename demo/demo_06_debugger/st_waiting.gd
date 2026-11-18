@@ -11,7 +11,7 @@ func _sensor_distance() -> float:
 
 
 func on_enter_state() -> void:
-	var actor := get_root().get_parent() as AnimatedSprite2D
+	var actor := get_actor() as AnimatedSprite2D
 	if actor == null:
 		return
 	actor.movement_speed = 0.0

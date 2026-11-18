@@ -16,7 +16,7 @@ func on_tick(delta: float) -> void:
 	var velocity: Vector3 = input_dir * target_speed
 
 	# Don't slow down, only speed up
-	get_root().actor.velocity.x = lerp(get_root().actor.velocity.x, velocity.x, get_blackboard('acceleration', 0.75))
-	get_root().actor.velocity.z = lerp(get_root().actor.velocity.z, velocity.z, get_blackboard('acceleration', 0.75))
+	get_actor().velocity.x = lerp(get_actor().velocity.x, velocity.x, get_blackboard('acceleration', 0.75))
+	get_actor().velocity.z = lerp(get_actor().velocity.z, velocity.z, get_blackboard('acceleration', 0.75))
 
 	get_root().movement_state.rotate_towards_input(delta)
