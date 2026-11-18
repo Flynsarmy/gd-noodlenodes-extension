@@ -5,6 +5,7 @@
 	</brief_description>
 	<description>
 		The score based picker node evaluates its direct child nodes and calculates a score for each of them based on [NNConsideration] and [NNConsiderationGroup] nodes that are set as the childs of them. The direct child node with the highest score is chosen and then ticked.
+		The choice is made when a run starts and kept until the run ends, so a child added during a run joins the next run. If the chosen child is removed during a run the picker returns failure, and the next run chooses a new child from the surviving children.
 	</description>
 	<tutorials>
 	</tutorials>

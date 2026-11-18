@@ -9,7 +9,7 @@ class NNBTScoreBasedPicker : public NNBTCompositeNodes {
 	GDCLASS(NNBTScoreBasedPicker, NNBTCompositeNodes)
 
 private:
-	int _current_child_index;
+	NNBTNodes *_selected_child;
 
 protected:
 	static void _bind_methods();
@@ -23,6 +23,8 @@ public:
 	// Getters and setters for attributes.
 
 	// Handling functions.
+
+	virtual void update_child_vectors() override;
 
 	virtual Status _tick(float delta) override;
 };

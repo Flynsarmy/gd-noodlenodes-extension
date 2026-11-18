@@ -6,6 +6,7 @@
 	<description>
 		This node type is used to create sequences.
 		The [NNBTRandomSequence] node executes its child nodes in a random order until either all of the succeed (returning [code]1[/code]) or one of them fails (returning [code]-1[/code]). If a child returns running (0) the sequence will return running to its parent.
+		The random order is chosen when a run starts and stays fixed until the run ends, so a child added during a run joins the next run. A child removed during a run drops out of the current run and is never ticked again, even if it was the running child; the sequence then continues with the next surviving child.
 	</description>
 	<tutorials>
 	</tutorials>
