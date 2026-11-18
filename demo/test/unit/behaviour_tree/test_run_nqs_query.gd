@@ -262,17 +262,17 @@ func test_rejected_posting_fails_then_retry_succeeds() -> void:
 	var _nodes: Array = _make_root_with_leaf(_search_space)
 	var _root: NNBTRoot = _nodes[0]
 	var _child: NNBTRunNQSQuery = _nodes[1]
+	_child.top_n_to_find = 2
 	var _nqs: NNNodeQuerySystem = Engine.get_singleton("NodeQuerySystem")
 
-	# Another poster already scheduled this search space.
+	# Another poster's query asks for fewer results than the leaf needs, so it cannot be joined.
 	assert_eq(_nqs.post_query(_search_space, true), 1)
 	assert_true(_search_space.is_query_still_running)
-	assert_eq(_nqs.get_num_active_high_priority_queries(), 1)
 
 	assert_eq(_root.tick(0.1), NNBTNodes.FAILURE, "A rejected post must not report success.")
 	assert_false(_child.get_is_running())
-	# The other poster's query must be left untouched.
-	assert_true(_search_space.is_query_still_running)
+	assert_true(_search_space.is_query_still_running, "The other poster's query must be left untouched.")
+	assert_eq(_search_space.top_n_to_find, 1)
 	assert_eq(_nqs.get_num_active_high_priority_queries(), 1)
 
 	assert_true(_nqs.stop_query(_search_space))
@@ -281,6 +281,61 @@ func test_rejected_posting_fails_then_retry_succeeds() -> void:
 	_complete_query(_search_space)
 	await wait_physics_frames(2)
 
+	assert_eq(_root.tick(0.1), NNBTNodes.SUCCESS)
+
+func test_joins_another_posters_query_and_writes_its_own_result_limit() -> void:
+	var _container: Node2D = add_child_autofree(Node2D.new())
+	_container.add_child(Node2D.new())
+	_container.add_child(Node2D.new())
+	var _search_space: NNNodeChildrenSearchSpace = _make_search_space()
+	_search_space.parent_node = _container
+	_search_space.top_n_to_find = 2
+	add_child_autofree(_search_space)
+	var _nqs: NNNodeQuerySystem = Engine.get_singleton("NodeQuerySystem")
+	assert_eq(_nqs.post_query(_search_space, true), 1)
+	var _nodes: Array = _make_root_with_leaf(_search_space)
+	var _root: NNBTRoot = _nodes[0]
+	var _child: NNBTRunNQSQuery = _nodes[1]
+	_child.results_key = "nqs_results"
+
+	assert_eq(_root.tick(0.1), NNBTNodes.RUNNING, "A compatible running query is joined, not rejected.")
+	assert_eq(_search_space.top_n_to_find, 2, "Joining keeps the other poster's result limit.")
+	_complete_query(_search_space)
+
+	assert_eq(_search_space.query_results.size(), 2)
+	assert_eq(_root.get_blackboard("nqs_results"), [_search_space.query_results[0]])
+	assert_eq(_root.get_blackboard("nqs_result"), _search_space.query_results[0])
+	assert_eq(_root.tick(0.1), NNBTNodes.SUCCESS)
+
+func test_resetting_a_joined_leaf_leaves_the_other_query_running() -> void:
+	var _search_space: NNNodeChildrenSearchSpace = _make_search_space()
+	add_child_autofree(_search_space)
+	var _nqs: NNNodeQuerySystem = Engine.get_singleton("NodeQuerySystem")
+	assert_eq(_nqs.post_query(_search_space, true), 1)
+	var _nodes: Array = _make_root_with_leaf(_search_space)
+	var _root: NNBTRoot = _nodes[0]
+
+	assert_eq(_root.tick(0.1), NNBTNodes.RUNNING)
+	_root.is_enabled = false
+	_root.is_enabled = true
+
+	assert_true(_search_space.is_query_still_running)
+	assert_eq(_nqs.get_num_active_high_priority_queries(), 1)
+
+func test_stopping_a_joined_query_makes_the_leaf_post_its_own() -> void:
+	var _search_space: NNNodeChildrenSearchSpace = _make_search_space()
+	add_child_autofree(_search_space)
+	var _nqs: NNNodeQuerySystem = Engine.get_singleton("NodeQuerySystem")
+	assert_eq(_nqs.post_query(_search_space, true), 1)
+	var _nodes: Array = _make_root_with_leaf(_search_space)
+	var _root: NNBTRoot = _nodes[0]
+
+	assert_eq(_root.tick(0.1), NNBTNodes.RUNNING)
+	assert_true(_nqs.stop_query(_search_space))
+
+	assert_eq(_root.tick(0.1), NNBTNodes.RUNNING, "The owner stopping its query is not this leaf's failure.")
+	assert_true(_search_space.is_query_still_running)
+	_complete_query(_search_space)
 	assert_eq(_root.tick(0.1), NNBTNodes.SUCCESS)
 
 func test_reassigning_while_running_stops_the_old_query_and_runs_the_new_one() -> void:
@@ -561,18 +616,6 @@ func test_freeing_leaf_releases_only_its_own_query() -> void:
 		assert_eq(space.is_query_still_running, replace_query)
 		assert_eq(nqs.get_num_active_high_priority_queries(), 1 if replace_query else 0)
 		nqs.clear_queries()
-
-func test_rejected_post_does_not_change_another_posters_result_limit() -> void:
-	var space := _make_search_space()
-	add_child_autofree(space)
-	space.top_n_to_find = 7
-	var nqs: NNNodeQuerySystem = Engine.get_singleton("NodeQuerySystem")
-	assert_eq(nqs.post_query(space, true), 1)
-	var nodes := _make_root_with_leaf(space)
-	var root: NNBTRoot = nodes[0]
-
-	assert_eq(root.tick(0.1), NNBTNodes.FAILURE)
-	assert_eq(space.top_n_to_find, 7)
 
 func test_leaf_does_not_post_before_it_is_ready() -> void:
 	var space := _make_search_space()

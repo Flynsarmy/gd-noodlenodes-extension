@@ -41,6 +41,7 @@ NNBTRunNQSQuery::NNBTRunNQSQuery() {
 	_top_n_to_find = 1;
 	_query_state = QueryState::IDLE;
 	_posted_query_registration = 0;
+	_owns_posted_query = false;
 	_is_high_priority = true;
 	_best_result_key = "nqs_result";
 	_results_key = "";
@@ -122,8 +123,8 @@ void NNBTRunNQSQuery::_cancel_posted_query() {
 		if (_query_completed_callable.is_valid() && search_space->is_connected("query_completed", _query_completed_callable)) {
 			search_space->disconnect("query_completed", _query_completed_callable);
 		}
-		// Stop only our live registration, never an externally replaced query.
-		if (_posted_query_registration != 0 && search_space->get_nqs_query_registration() == _posted_query_registration) {
+		// Stop only our live registration, never a joined or externally replaced query.
+		if (_owns_posted_query && _posted_query_registration != 0 && search_space->get_nqs_query_registration() == _posted_query_registration) {
 			NNNodeQuerySystem *nqs = godot::Object::cast_to<NNNodeQuerySystem>(Engine::get_singleton()->get_singleton("NodeQuerySystem"));
 			if (nqs != nullptr) {
 				nqs->stop_query(search_space);
@@ -132,8 +133,29 @@ void NNBTRunNQSQuery::_cancel_posted_query() {
 	}
 	_query_completed_callable = Callable();
 	_posted_query_registration = 0;
+	_owns_posted_query = false;
 	_query_state = QueryState::IDLE;
 	// post_query() initializes query variables when the next run actually starts.
+}
+
+// Joining another poster's query avoids starving behind a sensor that re-posts the space before this leaf ticks.
+bool NNBTRunNQSQuery::_post_or_join_query(NNNQSSearchSpaces *p_search_space, NNNodeQuerySystem *p_nqs) {
+	if (p_nqs->post_query(p_search_space, _is_high_priority) == 1) {
+		p_search_space->set_top_n_to_find(_top_n_to_find);
+		_owns_posted_query = true;
+	} else if (p_search_space->get_nqs_query_index() > -1 && p_search_space->get_is_query_still_running() &&
+			p_search_space->get_top_n_to_find() >= _top_n_to_find) {
+		_owns_posted_query = false;
+	} else {
+		return false;
+	}
+	_posted_query_registration = p_search_space->get_nqs_query_registration();
+	_query_state = QueryState::RUNNING;
+	if (!_connect_query_completed(p_search_space)) {
+		_cancel_posted_query();
+		return false;
+	}
+	return true;
 }
 
 bool NNBTRunNQSQuery::_connect_query_completed(NNNQSSearchSpaces *p_search_space) {
@@ -157,6 +179,11 @@ void NNBTRunNQSQuery::_on_query_completed(Object *p_search_space, int64_t p_quer
 	// the first write.
 	TypedArray<Node> results = search_space->get_query_results();
 	PackedFloat64Array scores = search_space->get_query_result_scores();
+	if (results.size() > _top_n_to_find) {
+		// slice() copies: the space's own array is shared with the query's other listeners.
+		results = results.slice(0, _top_n_to_find);
+		scores.resize(_top_n_to_find);
+	}
 	String best_result_key = _best_result_key;
 	String results_key = _results_key;
 	String result_scores_key = _result_scores_key;
@@ -205,7 +232,12 @@ NNBTNodes::Status NNBTRunNQSQuery::_tick(float delta) {
 	} else {
 		if (_query_state == QueryState::RUNNING &&
 				(search_space->get_nqs_query_registration() != _posted_query_registration || !search_space->get_is_query_still_running())) {
-			_query_state = QueryState::CANCELLED;
+			if (_owns_posted_query) {
+				_query_state = QueryState::CANCELLED;
+			} else {
+				// The joined query's owner stopped it, which is no failure of this leaf's.
+				_cancel_posted_query();
+			}
 		}
 
 		if (_query_state == QueryState::CANCELLED) {
@@ -213,15 +245,8 @@ NNBTNodes::Status NNBTRunNQSQuery::_tick(float delta) {
 		} else {
 			switch (_query_state) {
 				case QueryState::IDLE: {
-					if (nqs->post_query(search_space, _is_high_priority) == 1) {
-						search_space->set_top_n_to_find(_top_n_to_find);
-						_posted_query_registration = search_space->get_nqs_query_registration();
-						_query_state = QueryState::RUNNING;
-						if (_connect_query_completed(search_space)) {
-							result = Status::RUNNING;
-						} else {
-							_cancel_posted_query();
-						}
+					if (_post_or_join_query(search_space, nqs)) {
+						result = Status::RUNNING;
 					}
 				} break;
 				case QueryState::RUNNING:

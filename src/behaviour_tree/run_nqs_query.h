@@ -29,11 +29,13 @@ private:
 	String _result_scores_key;
 
 	QueryState _query_state;
-	// A nonzero token identifies the registration this leaf posted.
+	// A nonzero token identifies the registration this leaf posted or joined.
 	uint64_t _posted_query_registration;
+	bool _owns_posted_query;
 	Callable _query_completed_callable;
 
 	NNNQSSearchSpaces *_resolve_nqs_search_space() const;
+	bool _post_or_join_query(NNNQSSearchSpaces *p_search_space, NNNodeQuerySystem *p_nqs);
 	bool _connect_query_completed(NNNQSSearchSpaces *p_search_space);
 	void _on_query_completed(Object *p_search_space, int64_t p_query_registration);
 	void _cancel_posted_query();
