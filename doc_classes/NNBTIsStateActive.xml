@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="NNBTIsStateActive" inherits="NNBTConditionLeaf" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
+	<brief_description>
+		Checks whether a state tree state is active.
+	</brief_description>
+	<description>
+		Returns [constant NNBTNodes.SUCCESS] when [member state] is active and [constant NNBTNodes.FAILURE] otherwise. An empty [member state], or a path that does not resolve to an [NNSTTickedNodes], also returns [constant NNBTNodes.FAILURE] without an engine error, because nothing is active.
+		This mirrors [NNSTStateIsActiveGuard]: the path is resolved relative to this leaf and read on every tick.
+		This leaf is fully data-driven: it is configured entirely by its properties, does not call and is not affected by an [code]on_tick[/code] override in an attached script.
+	</description>
+	<tutorials>
+	</tutorials>
+	<members>
+		<member name="state" type="NodePath" setter="set_state" getter="get_state" default="NodePath(&quot;&quot;)">
+			The state to check, as a path relative to this leaf.
+		</member>
+	</members>
+</class>

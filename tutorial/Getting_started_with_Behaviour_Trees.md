@@ -19,7 +19,8 @@ For this tutorial, we'll start with an empty Godot 4.1  project.
  6. [Creating the Behaviour Tree for the AI-entity](Getting_started_with_Behaviour_Trees.md#6-creating-the-behaviour-tree-for-the-ai-entity)
  7. [Adding the on_tick() methods](Getting_started_with_Behaviour_Trees.md#7-adding-the-on_tick-methods)
  8. [Running the main scene](Getting_started_with_Behaviour_Trees.md#8-running-the-main-scene)
- 9. [Next steps](Getting_started_with_Behaviour_Trees.md#9-next-steps)
+ 9. [Driving state trees from behaviour trees](Getting_started_with_Behaviour_Trees.md#9-driving-state-trees-from-behaviour-trees)
+ 10. [Next steps](Getting_started_with_Behaviour_Trees.md#10-next-steps)
 
 
 
@@ -493,7 +494,20 @@ Now that we've added the logic for the AI in the form of the behaviour tree and 
 To change the number of AI entities created, change the `num_entities` variable to a larger value in the **tutorial_scene**.
 
 
-## 9. Next steps
+## 9. Driving state trees from behaviour trees
+
+A behaviour tree does not have to work alone. Three task nodes connect it to a state tree.
+
+`NNBTSendEvent` sends an event to a state tree chart, which is how a behaviour can trigger a transition. Leave its `target` path empty when the tree is hosted under a state: the event then goes to the nearest ancestor `NNSTRoot`, which is the usual setup. Set `target` to a `NodePath` to drive another chart. The event name must be non-empty and the target must exist, otherwise the leaf returns *failure*.
+
+`NNBTIsStateActive` is a condition that returns *success* while the state at its `state` path is active. The path is relative to the leaf, so the same condition can be used from a tree hosted under the state it watches.
+
+`NNBTRunHostedRoot` makes the leaf a host for the roots below it. Put a nested `NNSTRoot`, an `NNAgent` or even another `NNBTRoot` under the leaf: the nested roots start when the leaf starts running, tick with the leaf's own delta, and are reset when the leaf is interrupted or its run ends. The leaf returns *running* until a nested root reports `finished`, then returns the matching *success* or *failure*. A hosted agent never finishes by itself, so a leaf hosting an agent keeps running until the tree interrupts it (for example by leaving the state that hosts the behaviour tree).
+
+Behaviour trees hosted by states, and state trees hosted by behaviour-tree leaves, can be nested as deeply as the design needs. Each nested root keeps its own blackboard and actor, inherited from the nearest ancestor root, so shared state is available without extra wiring.
+
+
+## 10. Next steps
 
 This concludes the tutorial, but there are things you can try to learn more. For instance:
 

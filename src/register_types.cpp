@@ -78,10 +78,13 @@
 #include "behaviour_tree/until_fail.h"
 
 // Tasks
+#include "behaviour_tree/is_state_active.h"
 #include "behaviour_tree/leaf.h"
 #include "behaviour_tree/node_reference.h"
 #include "behaviour_tree/pass_by.h"
+#include "behaviour_tree/run_hosted_root.h"
 #include "behaviour_tree/run_nqs_query.h"
+#include "behaviour_tree/send_event.h"
 
 // STATE TREE
 
@@ -217,6 +220,9 @@ void register_scene_classes() {
 	GDREGISTER_CLASS(NNBTRunNQSQuery);
 	GDREGISTER_CLASS(NNBTPassBy);
 	GDREGISTER_CLASS(NNBTNodeReference);
+	GDREGISTER_CLASS(NNBTIsStateActive);
+	GDREGISTER_CLASS(NNBTSendEvent);
+	GDREGISTER_CLASS(NNBTRunHostedRoot);
 
 	GDREGISTER_VIRTUAL_CLASS(NNBTDecoratorNodes);
 	GDREGISTER_CLASS(NNBTRepeater);

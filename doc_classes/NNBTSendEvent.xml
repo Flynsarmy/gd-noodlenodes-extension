@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="NNBTSendEvent" inherits="NNBTTaskNodes" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
+	<brief_description>
+		Sends a state tree event from a behaviour tree.
+	</brief_description>
+	<description>
+		Returns [constant NNBTNodes.SUCCESS] after dispatching [member event_name] to the target chart, and [constant NNBTNodes.FAILURE] when [member event_name] is empty or no target resolves.
+		The target is [member target] when it is set, resolved relative to this leaf; otherwise the nearest [NNSTRoot] ancestor is used, which is the common case for a behaviour tree hosted below a state. The target is resolved again on every tick, so reparenting the leaf or freeing the target never leaves a stale reference behind.
+		Events are dispatched by the chart: while a transition is in flight the event is queued and processed afterwards.
+		This leaf is fully data-driven: it is configured entirely by its properties, does not call and is not affected by an [code]on_tick[/code] override in an attached script.
+	</description>
+	<tutorials>
+	</tutorials>
+	<members>
+		<member name="event_name" type="String" setter="set_event_name" getter="get_event_name" default="&quot;&quot;">
+			The event name to send. An empty name returns [constant NNBTNodes.FAILURE] without sending anything.
+		</member>
+		<member name="target" type="NodePath" setter="set_target" getter="get_target" default="NodePath(&quot;&quot;)">
+			The chart to send the event to, as a path relative to this leaf. When empty, the nearest [NNSTRoot] ancestor is used.
+		</member>
+	</members>
+</class>
