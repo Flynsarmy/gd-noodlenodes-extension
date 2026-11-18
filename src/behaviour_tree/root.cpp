@@ -316,7 +316,7 @@ NNBTNodes::Status NNBTRoot::_tick(float delta) {
 		NNPerformanceMonitorSingleton::get_singleton()->increment_total_time_elapsed_behaviour_trees_usec(_total_tick_usec);
 #endif
 		if (result == Status::RUNNING) {
-			// Keep the running child, interrupt any other previously active child.
+			// Keep the running child, interrupt any other child that is active.
 			_interrupt_other_active_children(btnode);
 		}
 		return result;

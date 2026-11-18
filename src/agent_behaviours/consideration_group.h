@@ -39,7 +39,7 @@ public:
 
 	// Handling functions.
 
-	virtual float evaluate() override; //NNAgent* agent, float delta) override;
+	virtual float evaluate() override;
 };
 
 } //namespace godot

@@ -124,10 +124,22 @@ void NNSTBranchNodes::set_internal_status(int internal_status) {
 	}
 
 	_internal_status = internal_status;
+	_update_input_processing();
 }
 
 int NNSTBranchNodes::get_internal_status() const {
 	return _internal_status;
+}
+
+// Overriding the engine input virtuals makes Godot enable input processing on
+// every instance, so it is limited to the active state's script. A script that
+// overrides an engine virtual directly is kept working while the state is
+// active.
+void NNSTBranchNodes::_update_input_processing() {
+	const bool is_active = _internal_status == ST_INTERNAL_STATUS_ACTIVE;
+	set_process_input(is_active && (has_method("on_input") || has_method("_input")));
+	set_process_unhandled_input(is_active && (has_method("on_unhandled_input") || has_method("_unhandled_input")));
+	set_process_unhandled_key_input(is_active && (has_method("on_unhandled_key_input") || has_method("_unhandled_key_input")));
 }
 
 // Handling methods.
@@ -354,10 +366,9 @@ NNSTBranchNodes *NNSTBranchNodes::_get_common_ancestor(NNSTTickedNodes *from_sta
  * The new list is adopted *before* the states are entered or exited. A state's
  * on_enter_state(), on_exit_state() or on_tick() method can call
  * transition_to(), which changes the active state lists of the common ancestor.
- * If the list was assigned after entering the children (as it used to be), a
- * transition requested while entering a state would either see an empty active
- * state list (and crash) or be overwritten when the _transition_in() call
- * returned.
+ * Assigning the list only after entering the children would let such a
+ * transition see an empty active state list (and crash), or be overwritten when
+ * the _transition_in() call returned.
  */
 void NNSTBranchNodes::_apply_active_states(std::vector<ObjectID> &new_active_states, NNSTRoot *p_root) {
 	// A transition from on_enter_state() may already have transitioned this
@@ -487,6 +498,12 @@ void NNSTBranchNodes::_unhandled_key_input(const Ref<InputEvent> &p_event) {
 }
 
 void NNSTBranchNodes::_notification(int p_what) {
+	if (p_what == NOTIFICATION_ENTER_TREE || p_what == NOTIFICATION_READY) {
+		// Godot re-enables input processing for every instance of a class that
+		// overrides the input virtuals.
+		_update_input_processing();
+	}
+
 	if (p_what == NOTIFICATION_READY || p_what == NOTIFICATION_CHILD_ORDER_CHANGED) {
 		if (Engine::get_singleton()->is_editor_hint()) {
 			return;

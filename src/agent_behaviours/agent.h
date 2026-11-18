@@ -29,9 +29,9 @@ private:
 	ObjectID _current_behaviour_group_id;
 	ObjectID _current_behaviour_id;
 	ObjectID _current_action_id;
-	// An action started during behaviour selection is only reported through
-	// action_changed on the next update_current_behaviour(), matching the
-	// historical signal timing.
+	// An action started during behaviour selection is reported through
+	// action_changed on the next update_current_behaviour(), where the signal
+	// is documented to fire.
 	bool _current_action_change_pending;
 
 	float _current_behaviour_bias;

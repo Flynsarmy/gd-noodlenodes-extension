@@ -235,12 +235,12 @@ int NNNodeQuerySystem::post_query(NNNQSSearchSpaces *search_space, bool is_high_
 	uint64_t method_start_time_usec = godot::Time::get_singleton()->get_ticks_usec();
 
 	if (is_high_priority) {
-		if (search_space == nullptr) { //|| _post_high_priority_queries_time_elapsed_usec >= _post_query_time_budget_per_frame_high_priority_queries ) {
+		if (search_space == nullptr) {
 			_current_post_high_priority_queries_time_elapsed_usec += (godot::Time::get_singleton()->get_ticks_usec() - method_start_time_usec);
 			return -1;
 		}
 		// Bail out if the search space is already being queried.
-		if (search_space->get_nqs_query_index() > -1) { //_high_priority_queries.has( search_space ) ){
+		if (search_space->get_nqs_query_index() > -1) {
 			_current_post_high_priority_queries_time_elapsed_usec += (godot::Time::get_singleton()->get_ticks_usec() - method_start_time_usec);
 			return -1;
 		}
@@ -264,7 +264,7 @@ int NNNodeQuerySystem::post_query(NNNQSSearchSpaces *search_space, bool is_high_
 		return 1;
 	}
 
-	if (search_space == nullptr) { //} || _post_regular_queries_time_elapsed_usec >= _post_query_time_budget_per_frame_regular_queries ) {
+	if (search_space == nullptr) {
 		_current_post_regular_queries_time_elapsed_usec += (godot::Time::get_singleton()->get_ticks_usec() - method_start_time_usec);
 		return -1;
 	}
@@ -272,7 +272,7 @@ int NNNodeQuerySystem::post_query(NNNQSSearchSpaces *search_space, bool is_high_
 	// Regular priority.
 
 	// Bail out if the search space is already being queried.
-	if (search_space->get_nqs_query_index() > -1) { ////_regular_queries.has( search_space ) ){
+	if (search_space->get_nqs_query_index() > -1) {
 		_current_post_regular_queries_time_elapsed_usec += (godot::Time::get_singleton()->get_ticks_usec() - method_start_time_usec);
 		return -1;
 	}

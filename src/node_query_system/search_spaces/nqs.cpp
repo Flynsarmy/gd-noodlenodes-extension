@@ -350,7 +350,7 @@ bool NNNQSSearchSpaces::execute_query(uint64_t time_budget_usec) {
 		time_budget_remaining_usec -= _preprocessing_time_usec;
 		if (time_budget_usec > 0 && preprocessing_end_timestamp_usec >= method_time_limit_timestamp_usec) {
 			// Update the debug counters before exiting.
-			_current_call_runtime_usec = preprocessing_end_timestamp_usec - method_start_time_usec; //godot::Time::get_singleton()->get_ticks_usec();
+			_current_call_runtime_usec = preprocessing_end_timestamp_usec - method_start_time_usec;
 			_average_call_runtime_usec = _average_call_runtime_usec * 0.5 + 0.5 * _current_call_runtime_usec;
 			_current_query_runtime_usec += _current_call_runtime_usec;
 
@@ -360,7 +360,7 @@ bool NNNQSSearchSpaces::execute_query(uint64_t time_budget_usec) {
 
 	// Handle the criteria.
 	if (!_is_criteria_handled) {
-		while (_current_criterion_index < (int)_num_filtering_criteria) { // get_child_count() ) {
+		while (_current_criterion_index < (int)_num_filtering_criteria) {
 			NNNQSSearchCriteria *criterion = _filtering_criteria[_current_criterion_index];
 			if (!criterion->get_is_enabled()) {
 				++_current_criterion_index;
@@ -496,7 +496,7 @@ void NNNQSSearchSpaces::place_to_query_results_based_on_score(Node *node, float 
 			return; // Worse than the worst on the list.
 	}
 
-	int i = 0; //_current_query_result_scores.bsearch(score);
+	int i = 0;
 	while (i < num_entries && _current_query_result_scores[i] >= score) {
 		i++;
 	}
@@ -505,8 +505,8 @@ void NNNQSSearchSpaces::place_to_query_results_based_on_score(Node *node, float 
 		_current_query_results.insert(i, node);
 		_current_query_result_scores.insert(i, score);
 		if (num_entries + 1 > _top_n_to_find) {
-			_current_query_result_scores.remove_at(_top_n_to_find); //.slice(0, _top_n_to_find-1);//.remove_at(_top_n_to_find);
-			_current_query_results.remove_at(_top_n_to_find); //(0, _top_n_to_find-1); //.remove_at(_top_n_to_find);
+			_current_query_result_scores.remove_at(_top_n_to_find);
+			_current_query_results.remove_at(_top_n_to_find);
 		}
 		return;
 	}

@@ -61,6 +61,7 @@ protected:
 	NNSTTickedNodes *_get_active_state(ObjectID state_id) const;
 	bool _has_active_state(ObjectID state_id) const;
 	bool _contains_child_state(ObjectID state_id) const;
+	void _update_input_processing();
 
 	// Returns the instance IDs of the child transitions that handle the given
 	// event name, in child order. Guards run user code that can free or

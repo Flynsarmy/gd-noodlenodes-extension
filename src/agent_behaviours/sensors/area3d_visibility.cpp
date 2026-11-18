@@ -71,7 +71,7 @@ void NNArea3DVisibilitySensor::_bind_methods() {
 
 	ClassDB::bind_method(D_METHOD("set_squared_distances_to_intersecting_areas", "squared_distances_to_intersecting_areas"), &NNArea3DVisibilitySensor::set_squared_distances_to_intersecting_areas);
 	ClassDB::bind_method(D_METHOD("get_squared_distances_to_intersecting_areas"), &NNArea3DVisibilitySensor::get_squared_distances_to_intersecting_areas);
-	ADD_PROPERTY(PropertyInfo(Variant::ARRAY, "squared_distances_to_intersecting_areas", PROPERTY_HINT_ARRAY_TYPE, vformat("%s/%s:%s", Variant::OBJECT, PROPERTY_HINT_RESOURCE_TYPE, "float")), "set_squared_distances_to_intersecting_areas", "get_squared_distances_to_intersecting_areas");
+	ADD_PROPERTY(PropertyInfo(Variant::ARRAY, "squared_distances_to_intersecting_areas", PROPERTY_HINT_ARRAY_TYPE, "float"), "set_squared_distances_to_intersecting_areas", "get_squared_distances_to_intersecting_areas");
 
 	ClassDB::bind_method(D_METHOD("set_closest_unoccluded_area_index", "closest_unoccluded_area_index"), &NNArea3DVisibilitySensor::set_closest_unoccluded_area_index);
 	ClassDB::bind_method(D_METHOD("get_closest_unoccluded_area_index"), &NNArea3DVisibilitySensor::get_closest_unoccluded_area_index);
@@ -83,7 +83,7 @@ void NNArea3DVisibilitySensor::_bind_methods() {
 
 	ClassDB::bind_method(D_METHOD("set_squared_distances_to_unoccluded_areas", "squared_distances_to_unoccluded_areas"), &NNArea3DVisibilitySensor::set_squared_distances_to_unoccluded_areas);
 	ClassDB::bind_method(D_METHOD("get_squared_distances_to_unoccluded_areas"), &NNArea3DVisibilitySensor::get_squared_distances_to_unoccluded_areas);
-	ADD_PROPERTY(PropertyInfo(Variant::ARRAY, "squared_distances_to_unoccluded_areas", PROPERTY_HINT_ARRAY_TYPE, vformat("%s/%s:%s", Variant::OBJECT, PROPERTY_HINT_RESOURCE_TYPE, "float")), "set_squared_distances_to_unoccluded_areas", "get_squared_distances_to_unoccluded_areas");
+	ADD_PROPERTY(PropertyInfo(Variant::ARRAY, "squared_distances_to_unoccluded_areas", PROPERTY_HINT_ARRAY_TYPE, "float"), "set_squared_distances_to_unoccluded_areas", "get_squared_distances_to_unoccluded_areas");
 
 	ADD_SUBGROUP("Bodies", "");
 
@@ -97,7 +97,7 @@ void NNArea3DVisibilitySensor::_bind_methods() {
 
 	ClassDB::bind_method(D_METHOD("set_squared_distances_to_intersecting_bodies", "squared_distances_to_intersecting_bodies"), &NNArea3DVisibilitySensor::set_squared_distances_to_intersecting_bodies);
 	ClassDB::bind_method(D_METHOD("get_squared_distances_to_intersecting_bodies"), &NNArea3DVisibilitySensor::get_squared_distances_to_intersecting_bodies);
-	ADD_PROPERTY(PropertyInfo(Variant::ARRAY, "squared_distances_to_intersecting_bodies", PROPERTY_HINT_ARRAY_TYPE, vformat("%s/%s:%s", Variant::OBJECT, PROPERTY_HINT_RESOURCE_TYPE, "float")), "set_squared_distances_to_intersecting_bodies", "get_squared_distances_to_intersecting_bodies");
+	ADD_PROPERTY(PropertyInfo(Variant::ARRAY, "squared_distances_to_intersecting_bodies", PROPERTY_HINT_ARRAY_TYPE, "float"), "set_squared_distances_to_intersecting_bodies", "get_squared_distances_to_intersecting_bodies");
 
 	ClassDB::bind_method(D_METHOD("set_closest_unoccluded_body_index", "closest_unoccluded_body_index"), &NNArea3DVisibilitySensor::set_closest_unoccluded_body_index);
 	ClassDB::bind_method(D_METHOD("get_closest_unoccluded_body_index"), &NNArea3DVisibilitySensor::get_closest_unoccluded_body_index);
@@ -109,7 +109,7 @@ void NNArea3DVisibilitySensor::_bind_methods() {
 
 	ClassDB::bind_method(D_METHOD("set_squared_distances_to_unoccluded_bodies", "squared_distances_to_unoccluded_bodies"), &NNArea3DVisibilitySensor::set_squared_distances_to_unoccluded_bodies);
 	ClassDB::bind_method(D_METHOD("get_squared_distances_to_unoccluded_bodies"), &NNArea3DVisibilitySensor::get_squared_distances_to_unoccluded_bodies);
-	ADD_PROPERTY(PropertyInfo(Variant::ARRAY, "squared_distances_to_unoccluded_bodies", PROPERTY_HINT_ARRAY_TYPE, vformat("%s/%s:%s", Variant::OBJECT, PROPERTY_HINT_RESOURCE_TYPE, "float")), "set_squared_distances_to_unoccluded_bodies", "get_squared_distances_to_unoccluded_bodies");
+	ADD_PROPERTY(PropertyInfo(Variant::ARRAY, "squared_distances_to_unoccluded_bodies", PROPERTY_HINT_ARRAY_TYPE, "float"), "set_squared_distances_to_unoccluded_bodies", "get_squared_distances_to_unoccluded_bodies");
 }
 
 // Constructor and destructor.

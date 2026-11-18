@@ -21,17 +21,6 @@ void NNBTParallel::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("set_failure_policy", "failure_policy"), &NNBTParallel::set_failure_policy);
 	ClassDB::bind_method(D_METHOD("get_failure_policy"), &NNBTParallel::get_failure_policy);
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "failure_policy", PROPERTY_HINT_ENUM, "RequireOne:0,RequireAll:1"), "set_failure_policy", "get_failure_policy");
-
-	//ClassDB::bind_method(D_METHOD("set_is_reactive", "is_reactive"), &NNBTParallel::set_is_reactive);
-	//ClassDB::bind_method(D_METHOD("get_is_reactive"), &NNBTParallel::get_is_reactive);
-	//ADD_PROPERTY(PropertyInfo(Variant::BOOL, "is_reactive", PROPERTY_HINT_NONE), "set_is_reactive","get_is_reactive");
-
-	/*
-	ClassDB::bind_method(D_METHOD("set_score", "score"), &NNBTParallel::set_score);
-	ClassDB::bind_method(D_METHOD("get_score"), &NNBTParallel::get_score);
-	ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "score", PROPERTY_HINT_NONE ), "set_score","get_score");
-	/**/
-	//ClassDB::bind_method(D_METHOD("_tick", "blackboard", "delta"), &NNBTParallel::tick);
 }
 
 // Constructor and destructor.
@@ -39,7 +28,6 @@ void NNBTParallel::_bind_methods() {
 NNBTParallel::NNBTParallel() {
 	_success_policy = SuccessPolicy::SUCCESS_REQUIRE_ALL;
 	_failure_policy = FailurePolicy::FAILURE_REQUIRE_ONE;
-	//_is_reactive = true;
 }
 
 NNBTParallel::~NNBTParallel() {
@@ -107,16 +95,6 @@ int NNBTParallel::get_failure_policy() const {
 	return _failure_policy;
 }
 
-/**
-void NNBTParallel::set_is_reactive( bool is_reactive ) {
-	_is_reactive = is_reactive;
-}
-
-bool NNBTParallel::get_is_reactive() const {
-	return _is_reactive;
-}
-/**/
-
 NNBTNodes::Status NNBTParallel::_evaluate_policies(int p_num_enabled, int p_num_success, int p_num_failure) const {
 	// An empty parallel has p_num_enabled == 0, so "require all" is trivially
 	// true and "require one" is false.
@@ -124,7 +102,7 @@ NNBTNodes::Status NNBTParallel::_evaluate_policies(int p_num_enabled, int p_num_
 	bool failure_met = (_failure_policy == FailurePolicy::FAILURE_REQUIRE_ALL) ? (p_num_failure == p_num_enabled) : (p_num_failure > 0);
 
 	if (success_met && failure_met) {
-		// Both-met tie goes to FAILURE, matching the historical matrix.
+		// Documented precedence: FAILURE wins when both policies are met.
 		return Status::FAILURE;
 	}
 	if (success_met) {

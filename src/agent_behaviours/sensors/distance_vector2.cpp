@@ -21,11 +21,11 @@ void NNDistanceVector2Sensor::_bind_methods() {
 
 	ClassDB::bind_method(D_METHOD("set_is_distance_calculated", "is_distance_calculated"), &NNDistanceVector2Sensor::set_is_distance_calculated);
 	ClassDB::bind_method(D_METHOD("get_is_distance_calculated"), &NNDistanceVector2Sensor::get_is_distance_calculated);
-	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "is_distance_calculated", PROPERTY_HINT_RANGE, "0.00000001,1000.0,or_greater"), "set_is_distance_calculated", "get_is_distance_calculated");
+	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "is_distance_calculated", PROPERTY_HINT_NONE), "set_is_distance_calculated", "get_is_distance_calculated");
 
 	ClassDB::bind_method(D_METHOD("set_is_direction_vector_calculated", "is_direction_vector_calculated"), &NNDistanceVector2Sensor::set_is_direction_vector_calculated);
 	ClassDB::bind_method(D_METHOD("get_is_direction_vector_calculated"), &NNDistanceVector2Sensor::get_is_direction_vector_calculated);
-	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "is_direction_vector_calculated", PROPERTY_HINT_RANGE, "0.00000001,1000.0,or_greater"), "set_is_direction_vector_calculated", "get_is_direction_vector_calculated");
+	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "is_direction_vector_calculated", PROPERTY_HINT_NONE), "set_is_direction_vector_calculated", "get_is_direction_vector_calculated");
 
 	ADD_SUBGROUP("Debugging", "");
 

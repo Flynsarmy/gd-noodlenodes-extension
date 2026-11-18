@@ -41,7 +41,7 @@ void NNBTSelector::_on_before_run(float delta) {
 
 NNBTNodes::Status NNBTSelector::_tick(float delta) {
 	// A reactive selector re-evaluates from the first child on every tick
-	// instead of resuming from the child that was running previously.
+	// instead of resuming from the child already in progress.
 	if (_is_reactive) {
 		_current_child_index = 0;
 	}
@@ -49,7 +49,7 @@ NNBTNodes::Status NNBTSelector::_tick(float delta) {
 		NNBTNodes *btnode = _child_btnodes[_current_child_index];
 		if (btnode->get_is_enabled()) {
 			Status result = btnode->tick(delta);
-			if (result == Status::SUCCESS) { //&& _current_child_index == get_child_count() - 1 ) {
+			if (result == Status::SUCCESS) {
 				return Status::SUCCESS;
 			} else if (result == Status::RUNNING) {
 				_interrupt_other_active_children(btnode);

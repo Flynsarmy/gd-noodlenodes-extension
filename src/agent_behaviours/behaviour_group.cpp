@@ -71,7 +71,7 @@ float NNBehaviourGroup::evaluate() {
 		float child_score = considerationsNode->evaluate();
 		if (considerationsNode->get_has_vetoed()) {
 			_score = 0.0f;
-			return _score; //return false; // The consideration vetoed this behaviour group.
+			return _score;
 		}
 		switch (_evaluation_method) {
 			case NNConsiderationGroup::NNConsiderationGroupEvaluationMethod::Min: {

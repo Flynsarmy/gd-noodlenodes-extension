@@ -216,8 +216,8 @@ NNBehaviour *NNAgent::_get_candidate(const ObjectID &behaviour_group_id, const O
 }
 
 void NNAgent::_emit_node_signal(const char *signal_name, const ObjectID &node_id) {
-	// Never pass a previously cached pointer to a signal. Resolve the ID again
-	// first; it may have been freed by an end callback or another listener.
+	// Resolve the ID again instead of reusing a pointer: the node may have been
+	// freed by an end callback or another listener.
 	Object *node = ObjectDB::get_instance(node_id);
 	if (node != nullptr) {
 		emit_signal(signal_name, node);
@@ -666,8 +666,8 @@ void NNAgent::update_current_behaviour() {
 		Object *signal_action = new_action_id.is_null() ? nullptr : ObjectDB::get_instance(new_action_id);
 		emit_signal("action_changed", signal_action != nullptr ? Variant(signal_action) : Variant());
 	} else if (_current_action_change_pending) {
-		// The action was adopted when the behaviour was selected. Report it on
-		// the first update, where action_changed has historically fired.
+		// The action was adopted during behaviour selection. Report it here so
+		// listeners see it on the update step rather than mid-selection.
 		_current_action_change_pending = false;
 		Object *signal_action = new_action_id.is_null() ? nullptr : ObjectDB::get_instance(new_action_id);
 		emit_signal("action_changed", signal_action != nullptr ? Variant(signal_action) : Variant());

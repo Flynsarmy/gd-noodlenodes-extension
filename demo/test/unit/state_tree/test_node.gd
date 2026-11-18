@@ -134,6 +134,34 @@ func test_initial_state_only_accepts_immediate_children() -> void:
 	_node.initial_state = NodePath('.')
 	assert_eq(_node.initial_state, NodePath(''))
 
+func test_input_processing_only_on_active_scripted_states() -> void:
+	var _root: NNSTRoot = _add_manual_root(NNSTRoot.new())
+	var _active: NNSTNode = load("res://test/unit/state_tree/node_input_logger.gd").new()
+	var _inactive: NNSTNode = load("res://test/unit/state_tree/node_input_logger.gd").new()
+	var _scriptless: NNSTNode = NNSTNode.new()
+	_root.add_child(_active)
+	_root.add_child(_inactive)
+	_root.add_child(_scriptless)
+
+	assert_true(_active.get_is_active())
+	assert_false(_inactive.get_is_active())
+	assert_true(_active.is_processing_unhandled_input())
+	assert_false(_inactive.is_processing_unhandled_input())
+
+	var event := InputEventAction.new()
+	event.action = "probe"
+	event.pressed = true
+	get_viewport().push_input(event)
+
+	assert_eq(_active.unhandled_input_calls, 1)
+	assert_eq(_inactive.unhandled_input_calls, 0)
+
+	assert_true(_active.transition_to(_active.get_path_to(_scriptless)))
+
+	assert_false(_active.is_processing_unhandled_input())
+	assert_true(_scriptless.get_is_active())
+	assert_false(_scriptless.is_processing_unhandled_input())
+
 func test_active_grandchild_freed_before_tick_is_safe() -> void:
 	var _root: NNSTRoot = _add_manual_root(NNSTRoot.new())
 	var _parent: NNSTNode = NNSTNode.new()

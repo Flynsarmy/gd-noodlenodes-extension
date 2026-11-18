@@ -4,6 +4,7 @@
 		Base class for all State Tree nodes.
 	</brief_description>
 	<description>
+		Input events are only delivered to active states. A script on an active state receives them through [method on_input], [method on_unhandled_input] and [method on_unhandled_key_input], or through the engine input virtuals it overrides itself.
 	</description>
 	<tutorials>
 	</tutorials>

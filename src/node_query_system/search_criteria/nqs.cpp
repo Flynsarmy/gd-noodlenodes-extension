@@ -96,5 +96,5 @@ float NNNQSSearchCriteria::sample_activation_curve(float input_value) const {
 	if (_activation_curve.is_valid()) {
 		return _activation_curve->sample(input_value);
 	}
-	return input_value; //0.0f;
+	return input_value;
 }

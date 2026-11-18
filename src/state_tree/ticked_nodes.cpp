@@ -928,9 +928,9 @@ bool NNSTTickedNodes::_perform_transition(TransitionPlan &plan) {
 	// branch is given its new active child before that child is entered, so a
 	// state's on_enter_state() always sees a consistent tree: its ancestors are
 	// active and its own active child is already registered. Entering the
-	// lineage bottom-up (as this used to) entered a state before its ancestors
-	// were registered, so any transition_to() it requested was seen as coming
-	// from a branch that had never been entered and was discarded.
+	// lineage bottom-up would enter a state before its ancestors were
+	// registered, so any transition_to() it requested would be seen as coming
+	// from a branch that had never been entered and would be discarded.
 	NNSTTickedNodes *lineage_first_child = godot::Object::cast_to<NNSTTickedNodes>(ObjectDB::get_instance(lineage[lineage.size() - 2]));
 	if (lineage_first_child == nullptr) {
 		_discard_history_registrations(plan.history_id, plan.history_entry);

@@ -177,7 +177,7 @@ void register_scene_classes() {
 	GDREGISTER_CLASS(NNBehaviourGroup);
 	GDREGISTER_CLASS(NNAgent);
 
-	// // Special sensors.
+	// Special sensors.
 	GDREGISTER_CLASS(NNBooleanSensor);
 	GDREGISTER_CLASS(NNFloatRangeSensor);
 	GDREGISTER_CLASS(NNIntRangeSensor);

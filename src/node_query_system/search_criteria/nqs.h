@@ -5,8 +5,8 @@
 
 namespace godot {
 
-class NNNQSSearchCriteria : public NoodleNodes { //NodeQuerySystem {
-	GDCLASS(NNNQSSearchCriteria, NoodleNodes) //NodeQuerySystem )
+class NNNQSSearchCriteria : public NoodleNodes {
+	GDCLASS(NNNQSSearchCriteria, NoodleNodes)
 
 private:
 	bool _use_for_scoring;

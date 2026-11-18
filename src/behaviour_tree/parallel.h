@@ -21,7 +21,6 @@ public:
 	};
 
 private:
-	//bool _is_reactive;
 	int _success_policy;
 	int _failure_policy;
 	// Terminal result of every child that has finished in the current run. A
@@ -43,8 +42,6 @@ public:
 	~NNBTParallel();
 
 	// Getters and setters for attributes.
-	//void set_is_reactive( bool is_reactive );
-	//bool get_is_reactive() const;
 
 	void set_success_policy(int p_success_policy);
 	int get_success_policy() const;

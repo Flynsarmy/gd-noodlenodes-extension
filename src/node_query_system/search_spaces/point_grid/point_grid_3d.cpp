@@ -261,7 +261,7 @@ void NNPointGrid3DSearchSpace::create_point_grid_nodes(Node3D *template_node) {
 			ERR_FAIL_MSG("NNPointGrid3DSearchSpace::create_point_grid_nodes(): Error, could not duplicate template node. Out of memory?");
 			return;
 		} //endif nullptr
-		_point_grid_parent_node->add_child(new_node); //, false, godot::Node::InternalMode::INTERNAL_MODE_BACK );
+		_point_grid_parent_node->add_child(new_node);
 		new_node->set_position(_point_grid_default_positions[i] + _offset_vector);
 		_point_grid.push_back(new_node);
 		_generated_point_grid_node_ids.push_back(static_cast<uint64_t>(new_node->get_instance_id()));

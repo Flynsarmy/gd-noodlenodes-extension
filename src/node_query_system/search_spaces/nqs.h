@@ -7,8 +7,8 @@
 
 namespace godot {
 
-class NNNQSSearchSpaces : public NoodleNodes { //NodeQuerySystem {
-	GDCLASS(NNNQSSearchSpaces, NoodleNodes) //NodeQuerySystem)
+class NNNQSSearchSpaces : public NoodleNodes {
+	GDCLASS(NNNQSSearchSpaces, NoodleNodes)
 
 private:
 	bool _is_run_in_debug_mode;

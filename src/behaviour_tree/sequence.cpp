@@ -41,7 +41,7 @@ void NNBTSequence::_on_before_run(float delta) {
 
 NNBTNodes::Status NNBTSequence::_tick(float delta) {
 	// A reactive sequence re-evaluates from the first child on every tick
-	// instead of resuming from the child that was running previously.
+	// instead of resuming from the child already in progress.
 	if (_is_reactive) {
 		_current_child_index = 0;
 	}
