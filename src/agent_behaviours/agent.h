@@ -16,7 +16,7 @@
 #include <godot_cpp/core/object_id.hpp>
 #include <vector>
 
-#define UTILITYAIAGENT_MAX_TOP_SCORING_BEHAVIOURS 16
+#define NN_AGENT_MAX_TOP_SCORING_BEHAVIOURS 16
 
 namespace godot {
 
@@ -42,9 +42,9 @@ private:
 
 	int _num_behaviours_to_select;
 	int _num_possible_behaviours;
-	ObjectID _top_scoring_behaviour_group_ids[UTILITYAIAGENT_MAX_TOP_SCORING_BEHAVIOURS];
-	ObjectID _top_scoring_behaviour_ids[UTILITYAIAGENT_MAX_TOP_SCORING_BEHAVIOURS];
-	float _top_scoring_behaviours_score[UTILITYAIAGENT_MAX_TOP_SCORING_BEHAVIOURS];
+	ObjectID _top_scoring_behaviour_group_ids[NN_AGENT_MAX_TOP_SCORING_BEHAVIOURS];
+	ObjectID _top_scoring_behaviour_ids[NN_AGENT_MAX_TOP_SCORING_BEHAVIOURS];
+	float _top_scoring_behaviours_score[NN_AGENT_MAX_TOP_SCORING_BEHAVIOURS];
 	godot::String _top_scoring_behaviour_name;
 	godot::String _current_behaviour_name;
 

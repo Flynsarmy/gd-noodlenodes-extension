@@ -116,7 +116,7 @@ NNAgent::NNAgent() {
 	_current_behaviour_id = ObjectID();
 	_num_behaviours_to_select = 1;
 	_num_possible_behaviours = 0;
-	for (int i = 0; i < UTILITYAIAGENT_MAX_TOP_SCORING_BEHAVIOURS; i++) {
+	for (int i = 0; i < NN_AGENT_MAX_TOP_SCORING_BEHAVIOURS; i++) {
 		_top_scoring_behaviours_score[i] = 0.0f;
 		_top_scoring_behaviour_ids[i] = ObjectID();
 		_top_scoring_behaviour_group_ids[i] = ObjectID();
@@ -877,7 +877,7 @@ NNAction *NNAgent::peek_current_action() const {
 #endif
 
 void NNAgent::set_num_behaviours_to_select(int num_behaviours_to_select) {
-	ERR_FAIL_COND_MSG(num_behaviours_to_select < 1 || num_behaviours_to_select > UTILITYAIAGENT_MAX_TOP_SCORING_BEHAVIOURS,
+	ERR_FAIL_COND_MSG(num_behaviours_to_select < 1 || num_behaviours_to_select > NN_AGENT_MAX_TOP_SCORING_BEHAVIOURS,
 			"NNAgent::set_num_behaviours_to_select(): num_behaviours_to_select must be between 1 and 16.");
 	_num_behaviours_to_select = num_behaviours_to_select;
 }
