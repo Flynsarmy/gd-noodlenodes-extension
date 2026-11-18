@@ -7,11 +7,14 @@ NNPerformanceMonitorSingleton *NNPerformanceMonitorSingleton::_singleton = nullp
 
 NNPerformanceMonitorSingleton::NNPerformanceMonitorSingleton() {
 	set_is_enabled(false);
+	_is_performance_counter_initialized = false;
 	_total_time_elapsed_ai_agents_usec = 0;
+	_total_time_elapsed_ai_agents_update_behaviour_usec = 0;
 	_total_time_elapsed_behaviour_trees_usec = 0;
 	_total_time_elapsed_state_trees_usec = 0;
 	_total_time_elapsed_htn_usec = 0;
 	_current_total_time_elapsed_ai_agents_usec = 0;
+	_current_total_time_elapsed_ai_agents_update_behaviour_usec = 0;
 	_current_total_time_elapsed_behaviour_trees_usec = 0;
 	_current_total_time_elapsed_state_trees_usec = 0;
 	_current_total_time_elapsed_htn_usec = 0;
