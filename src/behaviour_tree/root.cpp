@@ -56,6 +56,8 @@ void NNBTRoot::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("auto_tick_step", "process_thread", "delta"), &NNBTRoot::auto_tick_step);
 	ClassDB::bind_method(D_METHOD("get_running_action"), &NNBTRoot::get_running_action);
 
+	ClassDB::bind_method(D_METHOD("get_elapsed_time"), &NNBTRoot::get_elapsed_time);
+
 	ClassDB::bind_method(D_METHOD("tick", "delta"), &NNBTRoot::tick);
 
 	// The frame handlers are connected as engine-resolved method callables. A
@@ -77,6 +79,7 @@ NNBTRoot::NNBTRoot() {
 	});
 	_running_action_id = ObjectID();
 	_ticked_child_id = ObjectID();
+	_elapsed_time = 0.0;
 #ifdef DEBUG_ENABLED
 	_total_tick_usec = 0;
 #endif
@@ -161,6 +164,10 @@ void NNBTRoot::set_process_thread(int p_process_thread) {
 
 int NNBTRoot::get_process_thread() const {
 	return _tick_scheduler.get_process_thread();
+}
+
+double NNBTRoot::get_elapsed_time() const {
+	return _elapsed_time;
 }
 
 // Handling functions.
@@ -291,6 +298,8 @@ NNBTNodes::Status NNBTRoot::_tick(float delta) {
 		return Status::FAILURE;
 	}
 #endif
+
+	_elapsed_time += delta;
 
 	_report_extra_enabled_child_btnodes();
 

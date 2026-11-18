@@ -52,6 +52,12 @@
 				Returns the explicitly assigned blackboard, or [code]null[/code] when none is assigned. This is the value of [member blackboard]. Use [method NNBTNodes.get_blackboard_resource] to read the effective board, which is the assigned board or this root's private board.
 			</description>
 		</method>
+		<method name="get_elapsed_time" qualifiers="const">
+			<return type="float" />
+			<description>
+				Returns the total [code]delta[/code] this tree has been ticked with since it was created, in seconds. It advances only while the tree is actually ticked, so a paused, disabled or editor-inspected root does not advance it, and it is never reset, not even by [method NNBTNodes.reset]. Nodes that measure durations in tree time, such as [NNBTCooldown], read this clock.
+			</description>
+		</method>
 		<method name="get_running_action" qualifiers="const">
 			<return type="NNBTNodes" />
 			<description>

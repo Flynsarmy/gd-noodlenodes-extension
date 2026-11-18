@@ -61,7 +61,7 @@
 #include "behaviour_tree/sequence_star.h"
 
 // Decorators
-#include "behaviour_tree/cooldown_msec.h"
+#include "behaviour_tree/cooldown.h"
 #include "behaviour_tree/cooldown_ticks.h"
 #include "behaviour_tree/decorator_nodes.h"
 #include "behaviour_tree/delayer.h"
@@ -227,7 +227,7 @@ void register_scene_classes() {
 	GDREGISTER_CLASS(NNBTInverter);
 	GDREGISTER_CLASS(NNBTPassThrough);
 	GDREGISTER_CLASS(NNBTCooldownTicks);
-	GDREGISTER_CLASS(NNBTCooldownMsec);
+	GDREGISTER_CLASS(NNBTCooldown);
 	GDREGISTER_CLASS(NNBTDelayer);
 	GDREGISTER_CLASS(NNBTTimeLimiter);
 	GDREGISTER_CLASS(NNBTSucceeder);

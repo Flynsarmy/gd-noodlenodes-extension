@@ -28,6 +28,10 @@ private:
 	NodePath _actor_node_path;
 
 	NNTickScheduler _tick_scheduler;
+	// Monotonic tree time. It is never reset, so recorded cooldown start times
+	// stay in the past. Double so a long session keeps the precision of the
+	// per-frame deltas.
+	double _elapsed_time;
 	// The deepest node on the active path after the last tick. It is stored as
 	// an ObjectID so a freed node is detected instead of dereferenced.
 	ObjectID _running_action_id;
@@ -91,6 +95,9 @@ public:
 	// The deepest node on the active path after the last tick, or null when
 	// nothing is active. Resolved by ObjectID, so a freed node yields null.
 	NNBTNodes *get_running_action() const;
+
+	// The total delta the tree has been ticked with since it was created.
+	double get_elapsed_time() const;
 
 #ifdef DEBUG_ENABLED
 	uint64_t get_total_tick_usec() const;

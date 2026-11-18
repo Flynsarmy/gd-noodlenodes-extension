@@ -5,7 +5,7 @@ extends GutTest
 
 func test_get_tree_root() -> void:
 	var _root: NNBTRoot = NNBTRoot.new()
-	var _child: NNBTCooldownMsec = NNBTCooldownMsec.new()
+	var _child: NNBTCooldown = NNBTCooldown.new()
 	var _grandchild: NNBTFixedResult = NNBTFixedResult.new()
 
 	_child.add_child(_grandchild)
@@ -15,7 +15,7 @@ func test_get_tree_root() -> void:
 	assert_eq(_grandchild.get_tree_root(), NodePath("../.."))
 	assert_eq(_root.get_tree_root(), NodePath("."), "a root returns itself")
 
-	var _orphan: NNBTCooldownMsec = NNBTCooldownMsec.new()
+	var _orphan: NNBTCooldown = NNBTCooldown.new()
 	assert_eq(_orphan.get_tree_root(), NodePath("."), "an orphan returns itself")
 
 	_root.free()

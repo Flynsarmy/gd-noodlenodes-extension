@@ -126,7 +126,7 @@ func test_decorators_tick_only_first_enabled_child() -> void:
 		NNBTRepeater,
 		NNBTRepeatUntil,
 		NNBTCooldownTicks,
-		NNBTCooldownMsec,
+		NNBTCooldown,
 		NNBTFixedResult,
 	]
 
@@ -156,14 +156,14 @@ func test_decorators_tick_only_first_enabled_child() -> void:
 
 func test_decorators_without_an_enabled_child_fail() -> void:
 	var configured: Dictionary = {
-		NNBTCooldownMsec: { "cooldown_msec": 100 },
+		NNBTCooldown: { "cooldown_seconds": 5.0 },
 		NNBTCooldownTicks: { "cooldown_ticks": 2 },
 		NNBTDelayer: { "wait_time": 5.0 },
 		NNBTRepeater: { "repeat_times": 2 },
 		NNBTRepeatUntil: { "max_repeat_times": 2 },
 	}
 	var decorator_types: Array = [
-		NNBTCooldownMsec,
+		NNBTCooldown,
 		NNBTCooldownTicks,
 		NNBTDelayer,
 		NNBTInverter,
