@@ -8,12 +8,16 @@
 		Action groups can be used create sequences of actions, or to pick one random action from several choices. This allows for more complex actions to be performed by a behaviour. You can nest as many action groups as you need, and they can contain any number and combination of actions or action groups.
 		[b]Note:[/b] When the AI agent has chosen a behaviour, the action step function is called to find the first action to execute. The action that is being executed must be set as finished for the AI agent step function to be able to go to the next action. The action logic itself can be implemented anywhere else.
 		The current action can host roots under it. They are started when the action starts, ticked on every [signal frame_tick] it receives with the agent's step delta, and reset when the action ends. The agent's [member NNAgent.process_thread] drives the timing; its [member NNAgent.tick_rate] only throttles thinking, so [signal frame_tick] and the hosted root tick on every eligible agent step. A hosted root's own [code]process_thread[/code] is ignored; an [NNAgent]'s [member NNAgent.tick_rate] still throttles its thinking on those steps.
+		By default a hosted root that finishes finishes this action, so a script can let a behaviour tree or state tree decide the result. A successful run marks the action finished, and a failed run marks it failed and finished, which ends the behaviour. Set [member finish_from_hosted_root] to [code]false[/code] to handle the result in a [signal hosted_root_finished] listener instead.
 	</description>
 	<tutorials>
 	</tutorials>
 	<members>
 		<member name="action_id" type="int" setter="set_action_id" getter="get_action_id" default="0">
 			A user-definable numeric ID for the action. Provided as an alternative to using action node names for identifying which is the current action the AI agent is currently executing.
+		</member>
+		<member name="finish_from_hosted_root" type="bool" setter="set_finish_from_hosted_root" getter="get_finish_from_hosted_root" default="true">
+			If [code]true[/code], a hosted root that finishes finishes this action. A successful run marks the action finished; a failed run marks it failed and finished, which ends the behaviour. Set this to [code]false[/code] to handle the result only from [signal hosted_root_finished].
 		</member>
 	</members>
 	<signals>
@@ -37,7 +41,7 @@
 			<param index="0" name="root" type="Node" />
 			<param index="1" name="succeeded" type="bool" />
 			<description>
-				Emitted when a root hosted under this action reports that a run finished. [param root] is the hosted root and [param succeeded] is its completion result. The action does not react to the completion itself, so connect to this signal to handle it.
+				Emitted when a root hosted under this action reports that a run finished. [param root] is the hosted root and [param succeeded] is its completion result. When [member finish_from_hosted_root] is [code]true[/code] the action has already finished itself from the result, and a failure has marked it failed and finished as well. The signal fires either way, so connect to it for extra handling, or clear the property to handle the result only in a listener.
 			</description>
 		</signal>
 	</signals>

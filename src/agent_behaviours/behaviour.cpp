@@ -7,6 +7,7 @@
 
 #include "consideration.h"
 #include "consideration_group.h"
+#include "state_tree_event.h"
 
 using namespace godot;
 
@@ -31,6 +32,14 @@ void NNBehaviour::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_cooldown_turns"), &NNBehaviour::get_cooldown_turns);
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "cooldown_turns", PROPERTY_HINT_RANGE, "0,64,or_greater,suffix:turns"), "set_cooldown_turns", "get_cooldown_turns");
 
+	ClassDB::bind_method(D_METHOD("set_on_selected_event", "on_selected_event"), &NNBehaviour::set_on_selected_event);
+	ClassDB::bind_method(D_METHOD("get_on_selected_event"), &NNBehaviour::get_on_selected_event);
+	ADD_PROPERTY(PropertyInfo(Variant::STRING, "on_selected_event", PROPERTY_HINT_NONE), "set_on_selected_event", "get_on_selected_event");
+
+	ClassDB::bind_method(D_METHOD("set_on_selected_event_path", "on_selected_event_path"), &NNBehaviour::set_on_selected_event_path);
+	ClassDB::bind_method(D_METHOD("get_on_selected_event_path"), &NNBehaviour::get_on_selected_event_path);
+	ADD_PROPERTY(PropertyInfo(Variant::NODE_PATH, "on_selected_event_path", PROPERTY_HINT_NODE_PATH_VALID_TYPES, "NNSTRoot"), "set_on_selected_event_path", "get_on_selected_event_path");
+
 	ADD_SUBGROUP("Debugging", "");
 
 	ClassDB::bind_method(D_METHOD("set_current_action_index", "current_action_index"), &NNBehaviour::set_current_action_index);
@@ -54,6 +63,8 @@ NNBehaviour::NNBehaviour() {
 	_current_action_index = 0;
 	_can_be_interrupted = true;
 	_behaviour_id = 0;
+	_on_selected_event = "";
+	_on_selected_event_path = NodePath();
 	_num_child_considerations = 0;
 }
 
@@ -94,6 +105,22 @@ void NNBehaviour::set_cooldown_turns(int cooldown_turns) {
 
 int NNBehaviour::get_cooldown_turns() const {
 	return _cooldown_turns;
+}
+
+void NNBehaviour::set_on_selected_event(const String &on_selected_event) {
+	_on_selected_event = on_selected_event;
+}
+
+String NNBehaviour::get_on_selected_event() const {
+	return _on_selected_event;
+}
+
+void NNBehaviour::set_on_selected_event_path(const NodePath &on_selected_event_path) {
+	_on_selected_event_path = on_selected_event_path;
+}
+
+NodePath NNBehaviour::get_on_selected_event_path() const {
+	return _on_selected_event_path;
 }
 
 void NNBehaviour::set_current_action_index(int current_action_index) {
@@ -201,6 +228,7 @@ NNAction *NNBehaviour::start_behaviour() {
 	// No action selected yet; start the search at child index 0.
 	_current_action_index = -1;
 	emit_signal("behaviour_entered");
+	nn_send_state_tree_event(this, _on_selected_event_path, _on_selected_event);
 	// Return the started action so the agent can track it. The entered signal
 	// runs user code first, so the caller must re-resolve by ID before use.
 	return update_behaviour();

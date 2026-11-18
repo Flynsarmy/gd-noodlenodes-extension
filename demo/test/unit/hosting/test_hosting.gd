@@ -32,6 +32,17 @@ class CountingState extends NNSTNode:
 		exit_count += 1
 
 
+class EventActionObservingState extends NNSTNode:
+	var action: NNAction
+	var agent: NNAgent
+	var action_was_finished: bool = false
+
+	@warning_ignore('native_method_override')
+	func on_enter_state() -> void:
+		action_was_finished = action.get_is_finished()
+		agent.abort_current_behaviour()
+
+
 class CountingConsideration extends NNConsideration:
 	var eval_count: int = 0
 
@@ -80,6 +91,23 @@ func _make_chart_with_inactive_host() -> Dictionary:
 	return {"chart": chart, "idle_state": idle_state, "host_state": host_state}
 
 
+# A manually ticked chart that moves from its first state to its second on an event.
+func _make_event_chart(event_name: String) -> Dictionary:
+	var chart := NNSTRoot.new()
+	chart.process_thread = NNSTRoot.MANUAL
+	var first_state := NNSTNode.new()
+	first_state.name = "First"
+	var second_state := NNSTNode.new()
+	second_state.name = "Second"
+	var transition := NNSTTransition.new()
+	transition.event_name = event_name
+	chart.add_child(first_state)
+	chart.add_child(second_state)
+	first_state.add_child(transition)
+	transition.to = transition.get_path_to(second_state)
+	return {"chart": chart, "first_state": first_state, "second_state": second_state}
+
+
 # A manually ticked chart whose hosting state is entered on ready.
 func _make_chart_with_active_host() -> Dictionary:
 	var chart := NNSTRoot.new()
@@ -103,6 +131,15 @@ func _make_bt_root(child: Node) -> NNBTRoot:
 	var bt_root := NNBTRoot.new()
 	bt_root.add_child(child)
 	return bt_root
+
+
+func _make_behaviour(score: float, action: NNAction) -> NNBehaviour:
+	var consideration := NNConsideration.new()
+	consideration.activation_input_value = score
+	var behaviour := NNBehaviour.new()
+	behaviour.add_child(consideration)
+	behaviour.add_child(action)
+	return behaviour
 
 
 func _make_agent_with_hosted_tree(bt_root: NNBTRoot, action: NNAction, consideration: NNConsideration = null) -> Dictionary:
@@ -669,3 +706,263 @@ func test_hosted_root_reparented_out_of_its_host_ticks_itself_again() -> void:
 
 	chart.tick(0.1)
 	assert_eq(leaf.tick_count, 1, "the old host no longer ticks it")
+
+
+func test_hosted_bt_success_finishes_the_action_and_advances_to_the_next() -> void:
+	var bt_root := _make_bt_root(_make_leaf(NNBTNodes.SUCCESS))
+	var action := NNAction.new()
+	var fixture := _make_agent_with_hosted_tree(bt_root, action)
+	var agent: NNAgent = fixture["agent"]
+	var behaviour: NNBehaviour = fixture["behaviour"]
+	var next_action := NNAction.new()
+	behaviour.add_child(next_action)
+	agent.process_thread = NNAgent.MANUAL
+	add_child_autofree(agent)
+
+	agent.tick(0.1)
+	assert_same(agent.get_current_action_node(), action)
+	assert_true(action.get_is_finished(), "a successful hosted run finishes the action in the same step")
+	assert_false(action.get_has_failed())
+
+	agent.tick(0.1)
+	assert_same(agent.get_current_action_node(), next_action, "the agent advances past the finished action")
+	assert_null(bt_root.get_running_action(), "the finished action resets its hosted root")
+
+
+func test_hosted_bt_failure_ends_the_behaviour() -> void:
+	var bt_root := _make_bt_root(_make_leaf(NNBTNodes.FAILURE))
+	var action := NNAction.new()
+	var fixture := _make_agent_with_hosted_tree(bt_root, action)
+	var agent: NNAgent = fixture["agent"]
+	agent.process_thread = NNAgent.MANUAL
+	add_child_autofree(agent)
+
+	agent.tick(0.1)
+	assert_true(action.get_is_finished())
+	assert_true(action.get_has_failed(), "a failed hosted run fails the action")
+
+	agent.tick(0.1)
+	assert_null(agent.get_current_action_node(), "the failed action ends the behaviour")
+	assert_null(agent.get_current_behaviour_node())
+
+
+func test_hosted_root_finish_can_be_opted_out_of() -> void:
+	var bt_root := _make_bt_root(_make_leaf(NNBTNodes.SUCCESS))
+	var action := NNAction.new()
+	action.finish_from_hosted_root = false
+	var fixture := _make_agent_with_hosted_tree(bt_root, action)
+	var agent: NNAgent = fixture["agent"]
+	agent.process_thread = NNAgent.MANUAL
+	var results: Array = []
+	action.hosted_root_finished.connect(func(root: Node, succeeded: bool) -> void: results.append([root, succeeded]))
+	add_child_autofree(agent)
+
+	agent.tick(0.1)
+	assert_eq(results.size(), 1)
+	assert_same(results[0][0], bt_root)
+	assert_eq(results[0][1], true)
+
+	agent.tick(0.1)
+	assert_same(agent.get_current_action_node(), action, "the action keeps running without the completion contract")
+	assert_false(action.get_is_finished())
+
+
+func test_behaviour_change_interrupts_a_hosted_bt() -> void:
+	var leaf := _make_leaf(NNBTNodes.RUNNING)
+	var bt_root := _make_bt_root(leaf)
+	var hosted_action := NNAction.new()
+	hosted_action.add_child(bt_root)
+	var first := _make_behaviour(0.5, hosted_action)
+	var second_action := NNAction.new()
+	var second := _make_behaviour(1.0, second_action)
+	second.is_enabled = false
+	var agent := NNAgent.new()
+	agent.process_thread = NNAgent.MANUAL
+	agent.add_child(first)
+	agent.add_child(second)
+	add_child_autofree(agent)
+
+	agent.tick(0.1)
+	assert_same(agent.get_current_behaviour_node(), first)
+	assert_same(agent.get_current_action_node(), hosted_action)
+	assert_eq(leaf.tick_count, 1)
+
+	second.is_enabled = true
+	agent.tick(0.1)
+	assert_same(agent.get_current_behaviour_node(), second, "the higher-scoring behaviour takes over")
+	assert_same(agent.get_current_action_node(), second_action)
+	assert_null(bt_root.get_running_action(), "interrupting the behaviour resets the hosted root")
+
+	agent.tick(0.1)
+	assert_eq(leaf.tick_count, 1, "the interrupted root no longer ticks")
+
+
+func test_state_tree_event_action_transitions_a_chart() -> void:
+	var parts := _make_event_chart("Go")
+	var chart: NNSTRoot = parts["chart"]
+	var first_state: NNSTNode = parts["first_state"]
+	var second_state: NNSTNode = parts["second_state"]
+	var first_action := NNAction.new()
+	var action := NNActionStateTreeEvent.new()
+	action.event_name = "Go"
+	var behaviour := _make_behaviour(1.0, first_action)
+	behaviour.add_child(action)
+	var agent := NNAgent.new()
+	agent.process_thread = NNAgent.MANUAL
+	agent.add_child(behaviour)
+	add_child_autofree(agent)
+	add_child_autofree(chart)
+
+	chart.tick(0.1)
+	assert_true(first_state.get_is_active())
+
+	action.state_tree_path = action.get_path_to(chart)
+	agent.tick(0.1)
+	assert_same(agent.get_current_action_node(), first_action)
+	assert_true(first_state.get_is_active())
+
+	# A follow-up action lets the finished event action be seen as current at the end of a step.
+	first_action.set_is_finished(true)
+	agent.tick(0.1)
+	assert_true(second_state.get_is_active(), "the event action transitions the chart")
+	assert_same(agent.get_current_action_node(), action)
+	assert_true(action.get_is_finished(), "the event action finishes in the step that starts it")
+
+	agent.tick(0.1)
+	assert_null(agent.get_current_action_node(), "the finished event action is released")
+
+
+func test_behaviour_on_selected_event_transitions_a_chart() -> void:
+	var parts := _make_event_chart("Go")
+	var chart: NNSTRoot = parts["chart"]
+	var first_state: NNSTNode = parts["first_state"]
+	var second_state: NNSTNode = parts["second_state"]
+	var behaviour := _make_behaviour(1.0, NNAction.new())
+	behaviour.on_selected_event = "Go"
+	var agent := NNAgent.new()
+	agent.process_thread = NNAgent.MANUAL
+	agent.add_child(behaviour)
+	add_child_autofree(agent)
+	add_child_autofree(chart)
+
+	chart.tick(0.1)
+	assert_true(first_state.get_is_active())
+
+	behaviour.on_selected_event_path = behaviour.get_path_to(chart)
+	agent.tick(0.1)
+	assert_same(agent.get_current_behaviour_node(), behaviour)
+	assert_true(second_state.get_is_active(), "selecting the behaviour transitions the chart")
+
+
+func test_finish_handler_can_abort_the_current_behaviour() -> void:
+	var bt_root := _make_bt_root(_make_leaf(NNBTNodes.SUCCESS))
+	var action := NNAction.new()
+	var fixture := _make_agent_with_hosted_tree(bt_root, action)
+	var agent: NNAgent = fixture["agent"]
+	agent.process_thread = NNAgent.MANUAL
+	add_child_autofree(agent)
+	action.hosted_root_finished.connect(func(_root: Node, _succeeded: bool) -> void: agent.abort_current_behaviour())
+
+	agent.tick(0.1)
+	assert_null(agent.get_current_action_node(), "the handler ends the action")
+	assert_null(agent.get_current_behaviour_node(), "the handler ends the behaviour")
+	assert_null(bt_root.get_running_action())
+	assert_false(action.get_is_finished(), "ending the action in the handler is not overridden by the finish")
+
+	agent.tick(0.1)
+
+
+func test_finish_handler_can_free_the_action() -> void:
+	var bt_root := _make_bt_root(_make_leaf(NNBTNodes.SUCCESS))
+	var action := NNAction.new()
+	var fixture := _make_agent_with_hosted_tree(bt_root, action)
+	var agent: NNAgent = fixture["agent"]
+	agent.process_thread = NNAgent.MANUAL
+	add_child_autofree(agent)
+	action.hosted_root_finished.connect(func(_root: Node, _succeeded: bool) -> void: action.queue_free())
+
+	agent.tick(0.1)
+	await get_tree().process_frame
+	assert_false(is_instance_valid(action), "the handler frees the finished action")
+
+	agent.tick(0.1)
+	assert_null(agent.get_current_action_node())
+	assert_null(agent.get_current_behaviour_node())
+	agent.tick(0.1)
+	assert_null(agent.get_current_action_node(), "the freed action is not selected again")
+	assert_null(agent.get_current_behaviour_node())
+
+
+func test_event_action_finishes_before_the_chart_receives_the_event() -> void:
+	var chart := NNSTRoot.new()
+	chart.process_thread = NNSTRoot.MANUAL
+	var first_state := NNSTNode.new()
+	first_state.name = "First"
+	var observing := EventActionObservingState.new()
+	observing.name = "Observing"
+	var transition := NNSTTransition.new()
+	transition.event_name = "Go"
+	chart.add_child(first_state)
+	chart.add_child(observing)
+	first_state.add_child(transition)
+	transition.to = transition.get_path_to(observing)
+	add_child_autofree(chart)
+
+	chart.tick(0.1)
+	assert_true(first_state.get_is_active())
+
+	var action := NNActionStateTreeEvent.new()
+	action.event_name = "Go"
+	var behaviour := _make_behaviour(1.0, action)
+	var agent := NNAgent.new()
+	agent.process_thread = NNAgent.MANUAL
+	agent.add_child(behaviour)
+	add_child_autofree(agent)
+
+	action.state_tree_path = action.get_path_to(chart)
+	observing.action = action
+	observing.agent = agent
+
+	agent.tick(0.1)
+	assert_true(observing.get_is_active(), "the event transitions the chart into the observing state")
+	assert_true(observing.action_was_finished, "the event action finishes before the chart receives the event")
+	assert_null(agent.get_current_behaviour_node(), "the chart handler aborts the behaviour")
+	assert_null(agent.get_current_action_node())
+
+
+func test_event_action_without_a_path_targets_the_host_chart() -> void:
+	var parts := _make_chart_with_active_host()
+	var chart: NNSTRoot = parts["chart"]
+	var host_state: NNSTNode = parts["host_state"]
+	var action := NNActionStateTreeEvent.new()
+	action.event_name = "Go"
+	var agent := NNAgent.new()
+	agent.process_thread = NNAgent.MANUAL
+	agent.add_child(_make_behaviour(1.0, action))
+	host_state.add_child(agent)
+	add_child_autofree(chart)
+
+	var events: Array = []
+	chart.event_received.connect(func(name: String) -> void: events.append(name))
+
+	chart.tick(0.1)
+	assert_eq(events, ["Go"], "the hosted agent signals its nearest ancestor chart")
+
+
+func test_selected_behaviour_event_without_a_path_targets_the_host_chart() -> void:
+	var parts := _make_chart_with_active_host()
+	var chart: NNSTRoot = parts["chart"]
+	var host_state: NNSTNode = parts["host_state"]
+	var behaviour := _make_behaviour(1.0, NNAction.new())
+	behaviour.on_selected_event = "Go"
+	var agent := NNAgent.new()
+	agent.process_thread = NNAgent.MANUAL
+	agent.add_child(behaviour)
+	host_state.add_child(agent)
+	add_child_autofree(chart)
+
+	var events: Array = []
+	chart.event_received.connect(func(name: String) -> void: events.append(name))
+
+	chart.tick(0.1)
+	assert_eq(events, ["Go"], "the hosted behaviour signals its nearest ancestor chart")

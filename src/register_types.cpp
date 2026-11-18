@@ -13,6 +13,7 @@
 // Core nodes
 #include "agent_behaviours/action.h"
 #include "agent_behaviours/action_group.h"
+#include "agent_behaviours/action_state_tree_event.h"
 #include "agent_behaviours/actions.h"
 #include "agent_behaviours/agent.h"
 #include "agent_behaviours/behaviour.h"
@@ -177,6 +178,7 @@ void register_scene_classes() {
 	GDREGISTER_VIRTUAL_CLASS(NNActions);
 	GDREGISTER_CLASS(NNActionGroup);
 	GDREGISTER_CLASS(NNAction);
+	GDREGISTER_CLASS(NNActionStateTreeEvent);
 	GDREGISTER_VIRTUAL_CLASS(NNBehaviours);
 	GDREGISTER_CLASS(NNBehaviour);
 	GDREGISTER_CLASS(NNBehaviourGroup);

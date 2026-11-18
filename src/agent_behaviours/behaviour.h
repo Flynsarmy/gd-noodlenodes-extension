@@ -24,6 +24,9 @@ private:
 
 	bool _can_be_interrupted;
 
+	String _on_selected_event;
+	NodePath _on_selected_event_path;
+
 protected:
 	static void _bind_methods();
 #ifdef DEBUG_ENABLED
@@ -52,6 +55,12 @@ public:
 
 	void set_cooldown_turns(int cooldown_turns);
 	int get_cooldown_turns() const;
+
+	void set_on_selected_event(const String &on_selected_event);
+	String get_on_selected_event() const;
+
+	void set_on_selected_event_path(const NodePath &on_selected_event_path);
+	NodePath get_on_selected_event_path() const;
 
 	void set_current_action_index(int current_action_index);
 	int get_current_action_index() const;

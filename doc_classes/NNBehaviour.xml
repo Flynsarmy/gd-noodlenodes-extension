@@ -8,6 +8,7 @@
 		The purpose of the behaviour nodes is to define what the AI agent will do based on different inputs given using the sensor nodes. To accomplish this each behaviour node must have one or more consideration or consideration group nodes as its childs, and also one or more action or action group nodes.
 		The behaviour node will use the consideration nodes that are its childs to determine a score for itself. Basically it just sums up the scores from the considerations. When the behaviour is chosen by the AI agent as the one to execute, the action nodes are stepped through.
 		On selection or restart, the first enabled action or action group is started regardless of where consideration nodes appear among the children. Subsequent updates continue the running action without starting it again.
+		When the behaviour becomes selected, an optional event can be sent to the [NNSTRoot] at [member on_selected_event_path] by setting [member on_selected_event]. This is the moment the behaviour is entered, so use it to hand the goal to a state chart. An empty [member on_selected_event_path] targets the nearest ancestor [NNSTRoot]; when there is no ancestor chart no event is sent, and an explicit path that does not resolve to an [NNSTRoot] reports an error.
 		The behaviour has also two "cooldown" properties: [member cooldown_seconds] and [member cooldown_turns]. These can be used to temporarily exclude some behaviours from subsequent AI agent's [member NNAgent.evaluate_options] calls once they have been chosen. The [member cooldown_seconds] is meant to be used with real-time games and the [member cooldown_turns] with turn based games but both can be used even at the same time. The difference in the cooldown countdown is that the [member cooldown_seconds] counts down as the owning [NNAgent] ticks (on each processed frame, or on each [method NNAgent.tick] call in [constant NNAgent.MANUAL] mode), independently of how many times the AI agent's [member NNAgent.evaluate_options] method is called, and the [member cooldown_turns] counts down only when the [member NNAgent.evaluate_options] method is called.
 	</description>
 	<tutorials>
@@ -26,6 +27,12 @@
 			If &gt; 0, after the behaviour is chosen it will a score of 0 during the [member NNAgent.evaluate_options] until the given number of calls to the evaluation function has been done.
 		</member>
 		<member name="current_action_index" type="int" setter="set_current_action_index" getter="get_current_action_index" default="0">
+		</member>
+		<member name="on_selected_event" type="String" setter="set_on_selected_event" getter="get_on_selected_event" default="&quot;&quot;">
+			The name of the event sent to the [NNSTRoot] at [member on_selected_event_path] when this behaviour becomes selected. Empty sends nothing.
+		</member>
+		<member name="on_selected_event_path" type="NodePath" setter="set_on_selected_event_path" getter="get_on_selected_event_path" default="NodePath(&quot;&quot;)">
+			The path to the [NNSTRoot] that receives [member on_selected_event] when this behaviour becomes selected. The path is relative to this behaviour unless it starts with a [code]/[/code]. Empty targets the nearest ancestor [NNSTRoot]; an explicit path that does not resolve to an [NNSTRoot] reports an error.
 		</member>
 	</members>
 	<signals>

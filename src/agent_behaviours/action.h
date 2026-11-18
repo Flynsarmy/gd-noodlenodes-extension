@@ -12,6 +12,7 @@ class NNAction : public NNActions {
 
 private:
 	int _action_id;
+	bool _finish_from_hosted_root;
 	NNRootHost _root_host;
 
 protected:
@@ -29,6 +30,9 @@ public:
 
 	void set_action_id(int action_id);
 	int get_action_id() const;
+
+	void set_finish_from_hosted_root(bool finish_from_hosted_root);
+	bool get_finish_from_hosted_root() const;
 
 	// Handling functions.
 

@@ -126,6 +126,29 @@ One of the callenges with utility based systems comes from their strength: defin
 Another issue can be *oscillation* between behaviours. The AI entity moves between two or more behaviours due to changes in the inputs and how the considerations weight them. This issue can be mitigated by using *cooldowns* and/or bias towards the currently active behaviour. 
 
 
+### 3.4 Realising a behaviour with a behaviour tree or state tree
+
+A behaviour chooses *what* to do; a tree under its action decides *how*. To realise a behaviour with a tree, add an `NNAction` as a child of the behaviour and an `NNBTRoot` (or an `NNSTRoot`) as a child of the action:
+
+```
+Approach (NNBehaviour)
+├── Do I need to go closer? (NNConsideration)
+└── NNAction
+    └── NNBTRoot
+        └── ... your tree ...
+```
+
+The action hosts the root. It starts the tree when the action starts, ticks it with the agent's step delta, and resets it when the action ends, so the tree runs exactly while the action is the agent's current action. The tree's own **Process Thread** and **Tick Rate** are ignored while it is hosted. If the behaviour changes mid-run, the tree is interrupted and starts from the top the next time the action runs instead of resuming.
+
+By default the tree also completes the action. A behaviour tree that returns **success** finishes the action, and the agent moves on to the next action or behaviour. A behaviour tree that returns **failure** fails and finishes the action too, which ends the behaviour. A state tree reports the same way when it enters a state with **Is Final** set. If you would rather decide yourself, set the action's **Finish From Hosted Root** property to **false**; the action then keeps running until you finish it. Either way the action emits `hosted_root_finished(root, succeeded)`, so you can react to the result without taking over the completion.
+
+You can send state tree events from an action as well. Add an `NNActionStateTreeEvent` as a child of the behaviour, set its **Event Name**, and point its **State Tree Path** at the `NNSTRoot` you want to talk to. The path is relative to the action, so a chart that is a sibling of the behaviour is reached with a path such as `../../AlarmChart`. Leaving the path empty targets the nearest ancestor chart instead, which is how an agent hosted under a state signals its own host. The action sends the event as it starts and finishes immediately, so the agent moves on without waiting.
+
+If the hand-over belongs to entering the behaviour rather than to one action, set the behaviour's **On Selected Event** and **On Selected Event Path** instead. The event is sent when the behaviour becomes selected, before any of its actions start, which is handy for switching a chart to a matching branch as soon as the behaviour wins. The path follows the same rules: relative to the behaviour, and empty for the nearest ancestor chart.
+
+For the tree side itself, see [Getting started with Behaviour Trees](Getting_started_with_Behaviour_Trees.md) and [Getting started with State Trees](Getting_started_with_State_Trees.md).
+
+
 
 ### 3.4 Scoring blackboard facts
 
@@ -483,4 +506,4 @@ Some of the ways to update the AI less often can be:
  * Set the **Process Thread** to **Manual** and call the agent's `tick(delta)` method from your own scheduler: a timer, a fixed-step accumulator, or an event. In manual mode the agent connects no SceneTree frame signal, so only your code drives it. `tick(delta)` performs a full step: it thinks and then frame-ticks the selected nodes.
  * Evaluate the AI Agent options based on **events**. For example, if you have an Area2D or Area3D that you use for sensing the environment, you can evaluate what the AI Agent should do when an enemy enters or exits the area. Another example could be the AI entity losing or gaining more health, getting an alarm signal, and so on. In manual mode you can also call `evaluate_options(delta)` and `update_current_behaviour()` yourself if you only want to think and not tick.
 
-Agent actions can also host a root. Add a behaviour tree root, a state tree root or even another agent under an `NNAction`, and it runs exactly while that action is the agent's current action: it starts when the action starts, ticks with the agent's step delta, and is reset when the action ends. Agents themselves can be hosted as well. An agent placed under a state, or under another agent's action, is driven by that host, so its own `process_thread` is ignored and it steps at the host's rate, while its `tick_rate` still throttles thinking on the host's eligible steps and actions still receive `frame_tick` on every host tick. Its current behaviour is aborted when the host deactivates. A root nested inside another root's subtree is not hosted across that root; the nearest ancestor root owns its subtree. Agent nodes and any root nested below them share the agent's blackboard and actor, so a hosted tree already sees the sensors and data of the agent around it.
+Agent actions can also host a root; see [3.4 Realising a behaviour with a behaviour tree or state tree](Getting_started_with_Agent_Behaviours.md#34-realising-a-behaviour-with-a-behaviour-tree-or-state-tree). Agents themselves can be hosted as well. An agent placed under a state, or under another agent's action, is driven by that host, so its own `process_thread` is ignored and it steps at the host's rate, while its `tick_rate` still throttles thinking on the host's eligible steps and actions still receive `frame_tick` on every host tick. Its current behaviour is aborted when the host deactivates. A root nested inside another root's subtree is not hosted across that root; the nearest ancestor root owns its subtree. Agent nodes and any root nested below them share the agent's blackboard and actor, so a hosted tree already sees the sensors and data of the agent around it.
