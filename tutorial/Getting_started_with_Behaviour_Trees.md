@@ -130,7 +130,7 @@ While behaviour trees are very good at choosing which tasks to execute at each m
 
 Moving between states is usually **cyclic**, meaning that you can transition between various states and even go back and forth between them. For instance, your AI can start in a *Patrol* state and transition to *Idle* or *Combat* states and back to *Patrol* state again. Behaviour Trees are **acyclic**. They start from the root node and then plummet down the tree, ticking the nodes, until they land on some task node. The task node may be within a branch that realizes the behaviour that can be associated with a *Patrol*, *Idle* or *Combat* state, but the tree itself is oblivious of this state. 
 
-If you find yourself wanting to move between states while building your behaviour tree, you should read up on [**State Trees**](Getting_started_with_State_Trees.md) and consider implementing your logic there instead. 
+If you find yourself wanting to move between states while building your behaviour tree, you should read up on [**State Trees**](Getting_started_with_State_Trees.md) and consider implementing your logic there instead, or host a state tree from the tree as described in section [9. Driving state trees from behaviour trees](Getting_started_with_Behaviour_Trees.md#9-driving-state-trees-from-behaviour-trees).
 
 
 ## 4. Utility enabled Behaviour Trees in Utility AI GDExtension
@@ -505,6 +505,8 @@ A behaviour tree does not have to work alone. Three task nodes connect it to a s
 `NNBTRunHostedRoot` makes the leaf a host for the roots below it. Put a nested `NNSTRoot`, an `NNAgent` or even another `NNBTRoot` under the leaf: the nested roots start when the leaf starts running, tick with the leaf's own delta, and are reset when the leaf is interrupted or its run ends. The leaf returns *running* until a nested root reports `finished`, then returns the matching *success* or *failure*. A hosted agent never finishes by itself, so a leaf hosting an agent keeps running until the tree interrupts it (for example by leaving the state that hosts the behaviour tree).
 
 Behaviour trees hosted by states, and state trees hosted by behaviour-tree leaves, can be nested as deeply as the design needs. Each nested root keeps its own blackboard and actor, inherited from the nearest ancestor root, so shared state is available without extra wiring.
+
+The same leaves work when an agent action hosts the tree. The tree can send `walk` or `run` to the chart that contains the agent, wait on `NNBTIsStateActive` until the movement state ends, and finish back into the action that hosts it. [Combining the systems](Combining_the_systems.md) builds that arrangement.
 
 
 ## 10. Next steps

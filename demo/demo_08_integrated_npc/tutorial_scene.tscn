@@ -1,0 +1,392 @@
+[gd_scene load_steps=18 format=3]
+
+[ext_resource type="Script" path="res://demo_08_integrated_npc/tutorial_scene.gd" id="1_scene"]
+[ext_resource type="Script" path="res://demo_08_integrated_npc/integrated_npc.gd" id="2_npc"]
+[ext_resource type="Script" path="res://demo_08_integrated_npc/threat.gd" id="3_threat"]
+[ext_resource type="Script" path="res://demo_08_integrated_npc/idle.gd" id="4_idle"]
+[ext_resource type="Script" path="res://demo_08_integrated_npc/moving.gd" id="5_moving"]
+[ext_resource type="Texture2D" path="res://icon.svg" id="6_icon"]
+[ext_resource type="Texture2D" path="res://assets/Standard sprites upd.png" id="7_sprites"]
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_idle"]
+atlas = ExtResource("7_sprites")
+region = Rect2(16, 32, 16, 16)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_move1"]
+atlas = ExtResource("7_sprites")
+region = Rect2(32, 32, 16, 16)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_move2"]
+atlas = ExtResource("7_sprites")
+region = Rect2(48, 32, 16, 16)
+
+[sub_resource type="SpriteFrames" id="SpriteFrames_npc"]
+animations = [{
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_idle")
+}],
+"loop": true,
+"name": &"idle",
+"speed": 5.0
+}, {
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_idle")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_move1")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_move2")
+}],
+"loop": true,
+"name": &"moving",
+"speed": 5.0
+}]
+
+[sub_resource type="Curve" id="Curve_calm"]
+_data = [Vector2(0, 1), 0.0, 0.0, 0, 0, Vector2(0.35, 0), 0.0, 0.0, 0, 0]
+point_count = 2
+
+[sub_resource type="Curve" id="Curve_curious"]
+_data = [Vector2(0.2, 0), 0.0, 0.0, 0, 0, Vector2(0.45, 1), 0.0, 0.0, 0, 0, Vector2(0.7, 0), 0.0, 0.0, 0, 0]
+point_count = 3
+
+[sub_resource type="Curve" id="Curve_threat"]
+_data = [Vector2(0.6, 0), 0.0, 0.0, 0, 0, Vector2(0.85, 1), 0.0, 0.0, 0, 0]
+point_count = 2
+
+[sub_resource type="Curve" id="Curve_cover"]
+_data = [Vector2(0, 0), 0.0, 0.0, 0, 0, Vector2(0.05, 1), 0.0, 0.0, 0, 0]
+point_count = 2
+
+[sub_resource type="Curve" id="Curve_nearest"]
+_data = [Vector2(0, 1), 0.0, 0.0, 0, 0, Vector2(1, 0), 0.0, 0.0, 0, 0]
+point_count = 2
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_status"]
+bg_color = Color(0.04, 0.05, 0.08, 0.88)
+corner_radius_top_left = 6
+corner_radius_top_right = 6
+corner_radius_bottom_right = 6
+corner_radius_bottom_left = 6
+content_margin_left = 12.0
+content_margin_top = 6.0
+content_margin_right = 12.0
+content_margin_bottom = 6.0
+
+[node name="IntegratedNpcShowcase" type="Node2D"]
+script = ExtResource("1_scene")
+
+[node name="Backdrop" type="CanvasLayer" parent="."]
+layer = -1
+
+[node name="Background" type="ColorRect" parent="Backdrop"]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.055, 0.065, 0.095, 1)
+
+[node name="Title" type="Label" parent="Backdrop"]
+anchors_preset = 10
+anchor_right = 1.0
+offset_left = 24.0
+offset_top = 12.0
+offset_right = -24.0
+offset_bottom = 50.0
+grow_horizontal = 2
+theme_override_colors/font_color = Color(0.82, 0.88, 1, 1)
+theme_override_colors/font_outline_color = Color(0.02, 0.03, 0.06, 1)
+theme_override_constants/outline_size = 8
+theme_override_font_sizes/font_size = 28
+text = "Noodle Nodes - Integrated NPC"
+horizontal_alignment = 1
+
+[node name="Subtitle" type="Label" parent="Backdrop"]
+anchors_preset = 10
+anchor_right = 1.0
+offset_left = 24.0
+offset_top = 50.0
+offset_right = -24.0
+offset_bottom = 72.0
+grow_horizontal = 2
+theme_override_colors/font_color = Color(0.62, 0.7, 0.85, 1)
+theme_override_colors/font_outline_color = Color(0.02, 0.03, 0.06, 1)
+theme_override_constants/outline_size = 6
+theme_override_font_sizes/font_size = 13
+text = "The NPC picks Patrol, Investigate or Flee from its threat alert and nearby cover  -  press F1 to toggle the debugger overlay"
+horizontal_alignment = 1
+
+[node name="Threat" type="Sprite2D" parent="." node_paths=PackedStringArray("target")]
+position = Vector2(980, 120)
+scale = Vector2(0.4, 0.4)
+modulate = Color(1, 0.35, 0.35, 1)
+texture = ExtResource("6_icon")
+script = ExtResource("3_threat")
+target = NodePath("../Npc")
+
+[node name="PatrolPoints" type="Node2D" parent="."]
+
+[node name="PatrolPoint1" type="Sprite2D" parent="PatrolPoints" groups=["patrol_point"]]
+position = Vector2(250, 180)
+scale = Vector2(0.12, 0.12)
+modulate = Color(0.45, 0.7, 1, 0.9)
+texture = ExtResource("6_icon")
+
+[node name="PatrolPoint2" type="Sprite2D" parent="PatrolPoints" groups=["patrol_point"]]
+position = Vector2(950, 180)
+scale = Vector2(0.12, 0.12)
+modulate = Color(0.45, 0.7, 1, 0.9)
+texture = ExtResource("6_icon")
+
+[node name="PatrolPoint3" type="Sprite2D" parent="PatrolPoints" groups=["patrol_point"]]
+position = Vector2(950, 520)
+scale = Vector2(0.12, 0.12)
+modulate = Color(0.45, 0.7, 1, 0.9)
+texture = ExtResource("6_icon")
+
+[node name="PatrolPoint4" type="Sprite2D" parent="PatrolPoints" groups=["patrol_point"]]
+position = Vector2(250, 520)
+scale = Vector2(0.12, 0.12)
+modulate = Color(0.45, 0.7, 1, 0.9)
+texture = ExtResource("6_icon")
+
+[node name="CluePoints" type="Node2D" parent="."]
+
+[node name="CluePoint1" type="Sprite2D" parent="CluePoints" groups=["clue_point"]]
+position = Vector2(420, 300)
+scale = Vector2(0.12, 0.12)
+modulate = Color(1, 0.9, 0.35, 0.9)
+texture = ExtResource("6_icon")
+
+[node name="CluePoint2" type="Sprite2D" parent="CluePoints" groups=["clue_point"]]
+position = Vector2(760, 300)
+scale = Vector2(0.12, 0.12)
+modulate = Color(1, 0.9, 0.35, 0.9)
+texture = ExtResource("6_icon")
+
+[node name="CluePoint3" type="Sprite2D" parent="CluePoints" groups=["clue_point"]]
+position = Vector2(600, 560)
+scale = Vector2(0.12, 0.12)
+modulate = Color(1, 0.9, 0.35, 0.9)
+texture = ExtResource("6_icon")
+
+[node name="CoverPoints" type="Node2D" parent="."]
+
+[node name="CoverPoint1" type="Sprite2D" parent="CoverPoints" groups=["cover_point"]]
+position = Vector2(1100, 320)
+scale = Vector2(0.12, 0.12)
+modulate = Color(0.45, 1, 0.55, 0.9)
+texture = ExtResource("6_icon")
+
+[node name="CoverPoint2" type="Sprite2D" parent="CoverPoints" groups=["cover_point"]]
+position = Vector2(100, 320)
+scale = Vector2(0.12, 0.12)
+modulate = Color(0.45, 1, 0.55, 0.9)
+texture = ExtResource("6_icon")
+
+[node name="CoverPoint3" type="Sprite2D" parent="CoverPoints" groups=["cover_point"]]
+position = Vector2(600, 60)
+scale = Vector2(0.12, 0.12)
+modulate = Color(0.45, 1, 0.55, 0.9)
+texture = ExtResource("6_icon")
+
+[node name="CoverPoint4" type="Sprite2D" parent="CoverPoints" groups=["cover_point"]]
+position = Vector2(600, 620)
+scale = Vector2(0.12, 0.12)
+modulate = Color(0.45, 1, 0.55, 0.9)
+texture = ExtResource("6_icon")
+
+[node name="Npc" type="AnimatedSprite2D" parent="." node_paths=PackedStringArray("threat")]
+position = Vector2(600, 340)
+scale = Vector2(2, 2)
+sprite_frames = SubResource("SpriteFrames_npc")
+animation = &"idle"
+script = ExtResource("2_npc")
+threat = NodePath("../Threat")
+
+[node name="Movement" type="NNSTRoot" parent="Npc"]
+
+[node name="Idle" type="NNSTNode" parent="Npc/Movement"]
+script = ExtResource("4_idle")
+
+[node name="StartWalking" type="NNSTTransition" parent="Npc/Movement/Idle"]
+event_name = "walk"
+to = NodePath("../../Walk")
+
+[node name="StartRunning" type="NNSTTransition" parent="Npc/Movement/Idle"]
+event_name = "run"
+to = NodePath("../../Run")
+
+[node name="Walk" type="NNSTNode" parent="Npc/Movement"]
+script = ExtResource("5_moving")
+speed = 140.0
+
+[node name="Stop" type="NNSTTransition" parent="Npc/Movement/Walk"]
+event_name = "stop"
+to = NodePath("../../Idle")
+
+[node name="Run" type="NNSTNode" parent="Npc/Movement"]
+script = ExtResource("5_moving")
+speed = 260.0
+
+[node name="Stop" type="NNSTTransition" parent="Npc/Movement/Run"]
+event_name = "stop"
+to = NodePath("../../Idle")
+
+[node name="SearchSpaces" type="Node2D" parent="Npc/Movement"]
+
+[node name="PatrolSpace" type="NNNodeGroupSearchSpace" parent="Npc/Movement/SearchSpaces"]
+group_name = &"patrol_point"
+
+[node name="Nearest" type="NNDistanceToNode2DSearchCriterion" parent="Npc/Movement/SearchSpaces/PatrolSpace" node_paths=PackedStringArray("distance_to")]
+distance_to = NodePath("../../../..")
+min_distance = 60.0
+max_distance = 2000.0
+activation_curve = SubResource("Curve_nearest")
+use_for_filtering = true
+
+[node name="ClueSpace" type="NNNodeGroupSearchSpace" parent="Npc/Movement/SearchSpaces"]
+group_name = &"clue_point"
+
+[node name="Nearest" type="NNDistanceToNode2DSearchCriterion" parent="Npc/Movement/SearchSpaces/ClueSpace" node_paths=PackedStringArray("distance_to")]
+distance_to = NodePath("../../../..")
+min_distance = 60.0
+max_distance = 2000.0
+activation_curve = SubResource("Curve_nearest")
+use_for_filtering = true
+
+[node name="CoverSpace" type="NNNodeGroupSearchSpace" parent="Npc/Movement/SearchSpaces"]
+group_name = &"cover_point"
+
+[node name="Nearest" type="NNDistanceToNode2DSearchCriterion" parent="Npc/Movement/SearchSpaces/CoverSpace" node_paths=PackedStringArray("distance_to")]
+distance_to = NodePath("../../../..")
+max_distance = 2000.0
+activation_curve = SubResource("Curve_nearest")
+
+[node name="NNAgent" type="NNAgent" parent="Npc/Movement"]
+
+[node name="AlertSensor" type="NNBlackboardSensor" parent="Npc/Movement/NNAgent"]
+key = "threat_alert"
+
+[node name="CoverSensor" type="NNNQSQuerySensor" parent="Npc/Movement/NNAgent" node_paths=PackedStringArray("nqs_search_space")]
+nqs_search_space = NodePath("../../SearchSpaces/CoverSpace")
+best_result_key = "cover_point"
+
+[node name="Patrol" type="NNBehaviour" parent="Npc/Movement/NNAgent"]
+on_selected_event = "stop"
+
+[node name="Calm" type="NNConsideration" parent="Npc/Movement/NNAgent/Patrol" node_paths=PackedStringArray("input_sensor")]
+input_sensor = NodePath("../../AlertSensor")
+activation_curve = SubResource("Curve_calm")
+
+[node name="PatrolAction" type="NNAction" parent="Npc/Movement/NNAgent/Patrol"]
+
+[node name="NNBTRoot" type="NNBTRoot" parent="Npc/Movement/NNAgent/Patrol/PatrolAction"]
+
+[node name="NNBTSequence" type="NNBTSequence" parent="Npc/Movement/NNAgent/Patrol/PatrolAction/NNBTRoot"]
+
+[node name="FindPoint" type="NNBTRunNQSQuery" parent="Npc/Movement/NNAgent/Patrol/PatrolAction/NNBTRoot/NNBTSequence" node_paths=PackedStringArray("nqs_search_space")]
+nqs_search_space = NodePath("../../../../../../SearchSpaces/PatrolSpace")
+best_result_key = "move_target"
+
+[node name="HasPoint" type="NNBTBlackboardHas" parent="Npc/Movement/NNAgent/Patrol/PatrolAction/NNBTRoot/NNBTSequence"]
+key = "move_target"
+
+[node name="StartWalk" type="NNBTSendEvent" parent="Npc/Movement/NNAgent/Patrol/PatrolAction/NNBTRoot/NNBTSequence"]
+event_name = "walk"
+
+[node name="WaitForArrival" type="NNBTUntilFail" parent="Npc/Movement/NNAgent/Patrol/PatrolAction/NNBTRoot/NNBTSequence"]
+
+[node name="Walker" type="NNBTIsStateActive" parent="Npc/Movement/NNAgent/Patrol/PatrolAction/NNBTRoot/NNBTSequence/WaitForArrival"]
+state = NodePath("../../../../../../../Walk")
+
+[node name="Investigate" type="NNBehaviour" parent="Npc/Movement/NNAgent"]
+on_selected_event = "stop"
+
+[node name="Curious" type="NNConsideration" parent="Npc/Movement/NNAgent/Investigate" node_paths=PackedStringArray("input_sensor")]
+input_sensor = NodePath("../../AlertSensor")
+activation_curve = SubResource("Curve_curious")
+
+[node name="InvestigateAction" type="NNAction" parent="Npc/Movement/NNAgent/Investigate"]
+
+[node name="NNBTRoot" type="NNBTRoot" parent="Npc/Movement/NNAgent/Investigate/InvestigateAction"]
+
+[node name="NNBTSequence" type="NNBTSequence" parent="Npc/Movement/NNAgent/Investigate/InvestigateAction/NNBTRoot"]
+
+[node name="FindPoint" type="NNBTRunNQSQuery" parent="Npc/Movement/NNAgent/Investigate/InvestigateAction/NNBTRoot/NNBTSequence" node_paths=PackedStringArray("nqs_search_space")]
+nqs_search_space = NodePath("../../../../../../SearchSpaces/ClueSpace")
+best_result_key = "move_target"
+
+[node name="HasPoint" type="NNBTBlackboardHas" parent="Npc/Movement/NNAgent/Investigate/InvestigateAction/NNBTRoot/NNBTSequence"]
+key = "move_target"
+
+[node name="StartWalk" type="NNBTSendEvent" parent="Npc/Movement/NNAgent/Investigate/InvestigateAction/NNBTRoot/NNBTSequence"]
+event_name = "walk"
+
+[node name="WaitForArrival" type="NNBTUntilFail" parent="Npc/Movement/NNAgent/Investigate/InvestigateAction/NNBTRoot/NNBTSequence"]
+
+[node name="Walker" type="NNBTIsStateActive" parent="Npc/Movement/NNAgent/Investigate/InvestigateAction/NNBTRoot/NNBTSequence/WaitForArrival"]
+state = NodePath("../../../../../../../Walk")
+
+[node name="Flee" type="NNBehaviour" parent="Npc/Movement/NNAgent"]
+on_selected_event = "stop"
+
+[node name="ThreatClose" type="NNConsideration" parent="Npc/Movement/NNAgent/Flee" node_paths=PackedStringArray("input_sensor")]
+input_sensor = NodePath("../../AlertSensor")
+activation_curve = SubResource("Curve_threat")
+
+[node name="CoverAvailable" type="NNConsideration" parent="Npc/Movement/NNAgent/Flee" node_paths=PackedStringArray("input_sensor")]
+input_sensor = NodePath("../../CoverSensor")
+activation_curve = SubResource("Curve_cover")
+
+[node name="FleeAction" type="NNAction" parent="Npc/Movement/NNAgent/Flee"]
+
+[node name="NNBTRoot" type="NNBTRoot" parent="Npc/Movement/NNAgent/Flee/FleeAction"]
+
+[node name="NNBTSequence" type="NNBTSequence" parent="Npc/Movement/NNAgent/Flee/FleeAction/NNBTRoot"]
+
+[node name="FindCover" type="NNBTRunNQSQuery" parent="Npc/Movement/NNAgent/Flee/FleeAction/NNBTRoot/NNBTSequence" node_paths=PackedStringArray("nqs_search_space")]
+nqs_search_space = NodePath("../../../../../../SearchSpaces/CoverSpace")
+best_result_key = "move_target"
+
+[node name="HasCover" type="NNBTBlackboardHas" parent="Npc/Movement/NNAgent/Flee/FleeAction/NNBTRoot/NNBTSequence"]
+key = "move_target"
+
+[node name="StartRun" type="NNBTSendEvent" parent="Npc/Movement/NNAgent/Flee/FleeAction/NNBTRoot/NNBTSequence"]
+event_name = "run"
+
+[node name="WaitForArrival" type="NNBTUntilFail" parent="Npc/Movement/NNAgent/Flee/FleeAction/NNBTRoot/NNBTSequence"]
+
+[node name="Runner" type="NNBTIsStateActive" parent="Npc/Movement/NNAgent/Flee/FleeAction/NNBTRoot/NNBTSequence/WaitForArrival"]
+state = NodePath("../../../../../../../Run")
+
+[node name="DebuggerLayer" type="CanvasLayer" parent="."]
+
+[node name="HudLayer" type="CanvasLayer" parent="."]
+layer = 2
+
+[node name="StatusBar" type="PanelContainer" parent="HudLayer"]
+anchors_preset = 12
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 8.0
+offset_top = -40.0
+offset_right = -8.0
+offset_bottom = -8.0
+grow_horizontal = 2
+grow_vertical = 0
+mouse_filter = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_status")
+
+[node name="Label" type="Label" parent="HudLayer/StatusBar"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_colors/font_color = Color(0.86, 0.9, 1, 1)
+theme_override_font_sizes/font_size = 14
+text = "Loading..."
+horizontal_alignment = 1

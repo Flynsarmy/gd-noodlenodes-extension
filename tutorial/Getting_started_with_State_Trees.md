@@ -579,6 +579,8 @@ When the hosted root finishes, the state sends an event into the chart. A behavi
 
 Add a transition node under the state (or under any ancestor state), set its **Event Name** to one of those names and give its **To** property the path to the state you want next. The chart then moves on when the hosted root finishes, without a line of script. Leaving an event name empty sends no event at all.
 
+A chart can also sit above an agent whose actions host behaviour trees. The chart then owns the continuous part, such as movement and animation, while the agent chooses the goal and each goal's tree runs its steps. Because the chart is above the agent, the tree's `NNBTSendEvent` leaves reach it with empty paths and the chart's `NNSTTransition` nodes handle the events. [Combining the systems](Combining_the_systems.md) builds that arrangement.
+
 Every completion is sent. After a hosted behaviour tree returns success or failure it starts a new run on the next host tick, so it reports again each time it finishes. If its task should only run once per entry, leave the state through the transition, or wrap the tree in **RunOnce** to hold the result instead of starting another run.
 
 The event is an ordinary chart event: it is queued and handled after the current tick and transaction, and a transition on an ancestor state can handle it just as well as one on the state itself.

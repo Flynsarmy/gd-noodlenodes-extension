@@ -71,6 +71,8 @@ A root can be hosted by another system instead of running on its own schedule. T
 
 The `demo/demo_06_debugger` scene is a runnable showcase. It runs Agent Behaviour, Behaviour Tree, and State Tree entities side by side and opens the overlay on start. The Moving state of each state tree hosts a small behaviour tree, so selecting a state tree shows the nesting in the overlay. Use `F1` to toggle the overlay, `1`/`2`/`3` to switch category, `Space` to spawn an entity, `Backspace` to remove one, and `P` to pause AI updates and watch the node colors fade.
 
+The `demo/demo_08_integrated_npc` scene shows the same nesting with all four systems working together: selecting **Agent Behaviours** or **State Trees** shows each goal's tree under the action that hosts it, and selecting a goal tree in the **Behaviour Trees** selector labels it with its host. See [Combining the systems](Combining_the_systems.md).
+
 To close the overlay, free the node named `NoodleNodesDebuggerOverlay`:
 
 ```gdscript

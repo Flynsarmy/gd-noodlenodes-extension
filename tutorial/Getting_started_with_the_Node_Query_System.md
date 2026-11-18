@@ -429,6 +429,8 @@ Utility AI agents can run NQS queries as well, through the **NNNQSQuerySensor**.
 
 An agent shares one blackboard and actor with the behaviour trees and state trees below it, so the sensor's key is visible to them without any extra wiring.
 
+A goal tree can run a query of its own with `NNBTRunNQSQuery` at the same time the agent scores a search space with `NNNQSQuerySensor`. The sensor answers *is there a good result?* and the leaf answers *which node do I use?*; both write to the shared board. [Combining the systems](Combining_the_systems.md) uses exactly that split for a cover point.
+
 
 The AI entity scene is now completed. It is time to run the **tutorial_scene** and see the results.
 
