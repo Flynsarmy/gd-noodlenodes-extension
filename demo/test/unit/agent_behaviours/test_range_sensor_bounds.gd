@@ -87,6 +87,26 @@ func test_equal_and_reversed_bounds_yield_a_zero_score() -> void:
 		assert_almost_eq(int_sensor.sensor_value, 0.0, 0.0001, "int bounds %s" % [bounds])
 
 
+func test_blackboard_sensor_uses_the_shared_range_model() -> void:
+	var _sensor: NNBlackboardSensor = NNBlackboardSensor.new()
+	_sensor.key = "distance"
+	_sensor.range_min_value = 0.0
+	_sensor.range_max_value = 100.0
+	var _root := _make_root_with(_sensor)
+
+	_root.set_blackboard("distance", 50.0)
+	_root.tick(0.1)
+	assert_almost_eq(_sensor.sensor_value, 0.5, 0.0001)
+
+	_root.set_blackboard("distance", 150)
+	_root.tick(0.1)
+	assert_almost_eq(_sensor.sensor_value, 1.0, 0.0001)
+
+	_root.set_blackboard("distance", -5.0)
+	_root.tick(0.1)
+	assert_almost_eq(_sensor.sensor_value, 0.0, 0.0001)
+
+
 func test_float_non_finite_bounds_stay_finite() -> void:
 	var _sensor: NNFloatRangeSensor = NNFloatRangeSensor.new()
 	var _root := _make_root_with(_sensor)

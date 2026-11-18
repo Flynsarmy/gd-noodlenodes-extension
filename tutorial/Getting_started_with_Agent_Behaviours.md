@@ -127,6 +127,20 @@ Another issue can be *oscillation* between behaviours. The AI entity moves betwe
 
 
 
+### 3.4 Scoring blackboard facts
+
+A blackboard is a set of named facts shared by an agent and everything below it. Each agent, behaviour-tree root and state-tree root resolves a board, and a root with no board assigned inherits the board of the nearest ancestor root above it. A tree parented under your agent therefore already sees the facts your agent works with.
+
+Behaviour trees write facts, for example with an `NNBTBlackboardSet` node, and state-tree expression guards read them. Because the agent and the trees below it share one board, a fact written by a tree can drive your agent's scoring as well.
+
+The `NNBlackboardSensor` reads one key on every evaluation and turns it into a 0..1 sensor value, scaling the number to the range set by `range_min_value` and `range_max_value` exactly like the `NNFloatRangeSensor`. Bools read as 1 or 0, and `default_value` is used when the key is missing or holds something that is not a bool, int or float.
+
+For instance, say your agent has *Patrol* and *Flee* behaviours and one of its actions hosts a behaviour tree that writes `enemy_near` when an enemy gets close. Add an `NNBlackboardSensor` that reads `enemy_near` and use it as the sensor of a consideration on *Flee*. On the agent's next evaluation the fact reads 1, the *Flee* consideration scores high, and the agent picks *Flee* over *Patrol*.
+
+The same sensor works as a child of a behaviour-tree or state-tree root. Those roots evaluate their own child sensors on every tick, so the sensor value stays current for whatever sits below them.
+
+
+
 ## 4. Creating the scenes
 
 The agent behaviour nodes work with both 2D and 3D scenes. For this tutorial we are creating everything in 2D because setting up the assets for 2D scenes is much quicker.

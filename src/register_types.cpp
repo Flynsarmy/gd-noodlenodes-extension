@@ -30,6 +30,7 @@
 #include "agent_behaviours/sensors/angle_vector3.h"
 #include "agent_behaviours/sensors/area2d_visibility.h"
 #include "agent_behaviours/sensors/area3d_visibility.h"
+#include "agent_behaviours/sensors/blackboard.h"
 #include "agent_behaviours/sensors/boolean.h"
 #include "agent_behaviours/sensors/distance_vector2.h"
 #include "agent_behaviours/sensors/distance_vector3.h"
@@ -181,6 +182,7 @@ void register_scene_classes() {
 	GDREGISTER_CLASS(NNAgent);
 
 	// Special sensors.
+	GDREGISTER_CLASS(NNBlackboardSensor);
 	GDREGISTER_CLASS(NNBooleanSensor);
 	GDREGISTER_CLASS(NNFloatRangeSensor);
 	GDREGISTER_CLASS(NNIntRangeSensor);

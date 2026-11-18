@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="NNBlackboardSensor" inherits="NNSensor" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
+	<brief_description>
+		Scores a blackboard value normalised into a configurable range.
+	</brief_description>
+	<description>
+		Reads [member key] from the effective [NNBlackboard] and scores it as a 0..1 sensor value, using [member range_min_value] and [member range_max_value] exactly like [NNFloatRangeSensor].
+		The board is resolved through the [NoodleNodes] blackboard helpers, which means the nearest ancestor root decides it. A root with no board assigned inherits the board of the nearest ancestor root, and only the outermost root owns a private board, so the sensor usually needs no setup.
+		A [bool] value reads as 1.0 or 0.0, and an [int] or [float] value is used as the number. Any other stored type, a [code]null[/code] value, a missing key or no board at all falls back to [member default_value].
+		The number is normalised into the range and clamped to 0..1: values below [member range_min_value] score 0 and values above [member range_max_value] score 1. Equal, reversed or non-finite bounds score 0.
+		The sensor is re-evaluated wherever sensors are evaluated: by [NNAgent] before it evaluates its behaviours, by [NNBTRoot] before it ticks its child, and by [NNSTRoot] before it ticks its states. It therefore works under an agent as well as under behaviour-tree and state-tree roots.
+	</description>
+	<tutorials>
+	</tutorials>
+	<members>
+		<member name="default_value" type="float" setter="set_default_value" getter="get_default_value" default="0.0">
+			The value scored when [member key] is missing, holds [code]null[/code], holds a type other than [bool], [int] or [float], or no blackboard is available.
+		</member>
+		<member name="key" type="String" setter="set_key" getter="get_key" default="&quot;&quot;">
+			The blackboard key to read. An empty key scores [member default_value].
+		</member>
+		<member name="range_max_value" type="float" setter="set_range_max_value" getter="get_range_max_value" default="1.0">
+			The maximum value for the range. Values above the maximum score 1, and equal, reversed or non-finite bounds score 0. The default 0..1 range scores a [bool] key as 0 or 1 directly.
+		</member>
+		<member name="range_min_value" type="float" setter="set_range_min_value" getter="get_range_min_value" default="0.0">
+			The minimum value for the range. Values below the minimum score 0.
+		</member>
+	</members>
+</class>

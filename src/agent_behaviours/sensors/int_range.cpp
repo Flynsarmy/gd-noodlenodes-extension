@@ -23,11 +23,10 @@ void NNIntRangeSensor::_bind_methods() {
 // Constructor and destructor.
 
 NNIntRangeSensor::NNIntRangeSensor() {
-	_range_max_value = 100;
 	_range_min_value = 0;
+	_range_max_value = 100;
 	_range_value = 0;
-	_range_length = 100;
-	_one_over_range_length = 1.0 / (float)_range_length;
+	_normalizer.set_bounds((float)_range_min_value, (float)_range_max_value);
 }
 
 NNIntRangeSensor::~NNIntRangeSensor() {
@@ -36,37 +35,15 @@ NNIntRangeSensor::~NNIntRangeSensor() {
 // Handling functions.
 
 float NNIntRangeSensor::evaluate_sensor_value() {
-	// Relative value, so calculate the position within the interval.
-	if (_range_length <= 0) {
-		// Degenerate range (equal or reversed bounds).
-		set_sensor_value(0.0f);
-		return get_sensor_value();
-	}
-	float range_result = ((float)(_range_value - _range_min_value)) * _one_over_range_length;
-	if (range_result < 0.0) {
-		range_result = 0.0;
-	} else if (range_result > 1.0) {
-		range_result = 1.0;
-	}
-
-	set_sensor_value(range_result);
+	set_sensor_value(_normalizer.normalize((float)_range_value));
 	return get_sensor_value();
-}
-
-void NNIntRangeSensor::_recalculate_range_length() {
-	_range_length = _range_max_value - _range_min_value;
-	if (_range_length > 0) {
-		_one_over_range_length = 1.0 / (float)_range_length;
-	} else {
-		_one_over_range_length = 0.0;
-	}
 }
 
 // Getters and Setters.
 
 void NNIntRangeSensor::set_range_min_value(int range_min_value) {
 	_range_min_value = range_min_value;
-	_recalculate_range_length();
+	_normalizer.set_bounds((float)_range_min_value, (float)_range_max_value);
 }
 
 int NNIntRangeSensor::get_range_min_value() const {
@@ -75,7 +52,7 @@ int NNIntRangeSensor::get_range_min_value() const {
 
 void NNIntRangeSensor::set_range_max_value(int range_max_value) {
 	_range_max_value = range_max_value;
-	_recalculate_range_length();
+	_normalizer.set_bounds((float)_range_min_value, (float)_range_max_value);
 }
 
 int NNIntRangeSensor::get_range_max_value() const {
@@ -83,12 +60,7 @@ int NNIntRangeSensor::get_range_max_value() const {
 }
 
 void NNIntRangeSensor::set_range_value(int range_value) {
-	_range_value = range_value;
-	if (_range_value < _range_min_value) {
-		_range_value = _range_min_value;
-	} else if (_range_value > _range_max_value) {
-		_range_value = _range_max_value;
-	}
+	_range_value = (int)_normalizer.clamp((float)range_value);
 }
 
 int NNIntRangeSensor::get_range_value() const {

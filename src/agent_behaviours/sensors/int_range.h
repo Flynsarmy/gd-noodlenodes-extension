@@ -1,6 +1,7 @@
 #pragma once
 
 #include "../sensor.h"
+#include "range_normalizer.h"
 #include <godot_cpp/classes/node.hpp>
 
 namespace godot {
@@ -11,11 +12,8 @@ class NNIntRangeSensor : public NNSensor {
 private:
 	int _range_min_value;
 	int _range_max_value;
-	int _range_length;
-	float _one_over_range_length;
 	int _range_value;
-
-	void _recalculate_range_length();
+	NNRangeNormalizer _normalizer;
 
 protected:
 	static void _bind_methods();
