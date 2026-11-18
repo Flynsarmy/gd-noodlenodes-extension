@@ -7,7 +7,7 @@ const REGULAR_PRIORITY := false
 
 
 func _make_query_system() -> NNNodeQuerySystem:
-	return add_child_autofree(NNNodeQuerySystem.new())
+	return autofree(NNNodeQuerySystem.new())
 
 
 func _make_search_space() -> NNNodeChildrenSearchSpace:

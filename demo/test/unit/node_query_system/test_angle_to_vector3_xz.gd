@@ -10,7 +10,7 @@ const SCORE_EPSILON := 0.0001
 
 
 func _make_nqs() -> NNNodeQuerySystem:
-	var nqs: NNNodeQuerySystem = add_child_autofree(NNNodeQuerySystem.new())
+	var nqs: NNNodeQuerySystem = autofree(NNNodeQuerySystem.new())
 	nqs.run_queries_time_budget_per_frame_usec = GENEROUS_BUDGET_USEC
 	nqs.high_priority_query_per_frame_execute_query_time_budget_usec = GENEROUS_BUDGET_USEC
 	nqs.regular_query_per_frame_execute_query_time_budget_usec = GENEROUS_BUDGET_USEC

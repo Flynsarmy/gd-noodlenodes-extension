@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8" ?>
-<class name="NNPerformanceMonitorSingleton" inherits="NoodleNodes" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
+<class name="NNPerformanceMonitorSingleton" inherits="Object" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
 	<brief_description>
 		Collects per-frame timings for agents, trees and HTN roots and exposes them as custom performance monitors.
 	</brief_description>
@@ -87,7 +87,4 @@
 			</description>
 		</method>
 	</methods>
-	<members>
-		<member name="is_enabled" type="bool" setter="set_is_enabled" getter="get_is_enabled" overrides="NoodleNodes" default="false" />
-	</members>
 </class>

@@ -201,7 +201,6 @@ bool NNDebuggerOverlay::_bind_overlay_view(Control *overlay) {
 
 void NNDebuggerOverlay::add_as_child_of(Node *debugger_parent_node) {
 	ERR_FAIL_NULL_MSG(debugger_parent_node, "NNDebuggerOverlay::add_as_child_of(): The debugger parent node must not be null.");
-	ERR_FAIL_COND_MSG(debugger_parent_node == this, "NNDebuggerOverlay::add_as_child_of(): The debugger overlay cannot be its own parent.");
 	ERR_FAIL_COND_MSG(debugger_parent_node->is_queued_for_deletion(), "NNDebuggerOverlay::add_as_child_of(): The debugger parent node is queued for deletion.");
 
 	Control *overlay = _get_overlay_scene();

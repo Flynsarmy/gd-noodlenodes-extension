@@ -1,11 +1,11 @@
 #pragma once
 
-#include "noodle_nodes.h"
+#include <godot_cpp/classes/object.hpp>
 
 namespace godot {
 
-class NNPerformanceMonitorSingleton : public NoodleNodes {
-	GDCLASS(NNPerformanceMonitorSingleton, NoodleNodes)
+class NNPerformanceMonitorSingleton : public Object {
+	GDCLASS(NNPerformanceMonitorSingleton, Object)
 
 private:
 	bool _is_performance_counter_initialized;

@@ -19,7 +19,7 @@ class CountingCriterion extends NNCustomSearchCriterion:
 
 
 func _make_nqs(budget_usec: int = GENEROUS_BUDGET_USEC) -> NNNodeQuerySystem:
-	var nqs: NNNodeQuerySystem = add_child_autofree(NNNodeQuerySystem.new())
+	var nqs: NNNodeQuerySystem = autofree(NNNodeQuerySystem.new())
 	nqs.run_queries_time_budget_per_frame_usec = budget_usec
 	# Recompute the high priority allocation after changing the frame budget.
 	nqs.time_allocation_pct_to_high_priority_queries = 0.8

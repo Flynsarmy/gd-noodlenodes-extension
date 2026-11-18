@@ -16,8 +16,8 @@ namespace godot {
 class NNHostedRoot;
 class NoodleNodes;
 
-class NNDebuggerOverlay : public Node {
-	GDCLASS(NNDebuggerOverlay, Node)
+class NNDebuggerOverlay : public Object {
+	GDCLASS(NNDebuggerOverlay, Object)
 
 private:
 	// Registries hold instance IDs so freed roots are never dereferenced.

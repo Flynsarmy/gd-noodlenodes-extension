@@ -1,17 +1,16 @@
 #ifndef NNNodeQuerySystem_H_INCLUDED
 #define NNNodeQuerySystem_H_INCLUDED
 
-#include "../noodle_nodes.h"
 #include "search_criteria/nqs.h"
 #include "search_spaces/nqs.h"
-#include <godot_cpp/classes/node.hpp>
+#include <godot_cpp/classes/object.hpp>
 
 #include <vector>
 
 namespace godot {
 
-class NNNodeQuerySystem : public NoodleNodes {
-	GDCLASS(NNNodeQuerySystem, NoodleNodes)
+class NNNodeQuerySystem : public Object {
+	GDCLASS(NNNodeQuerySystem, Object)
 
 private:
 	godot::TypedArray<NNNQSSearchSpaces> _high_priority_queries;
