@@ -74,6 +74,7 @@ grow_vertical = 2
 columns = 3
 column_titles_visible = true
 column_0_title = "Node"
+column_1_title = "Status"
 column_2_title = "Score"
 column_0_expand = true
 column_2_custom_min_width = 64

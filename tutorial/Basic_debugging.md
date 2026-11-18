@@ -67,7 +67,9 @@ Pass a `CanvasLayer` or a `Control` that covers the screen as the parent. AI Age
 
 The overlay has two selectors at the top. The first chooses **Agent Behaviours**, **Behaviour Trees**, or **State Trees**, and the second chooses one of the registered roots of that type. Next to the selectors, the debug text shows the number of registered roots and which root is being inspected. The tree below shows the nodes of the selected root, with their names and scores. Node colors fade as the last evaluation or tick becomes older, and the overlay refreshes automatically about ten times per second, so no manual update is needed.
 
-The `demo/demo_06_debugger` scene is a runnable showcase. It runs Agent Behaviour, Behaviour Tree, and State Tree entities side by side and opens the overlay on start. Use `F1` to toggle the overlay, `1`/`2`/`3` to switch category, `Space` to spawn an entity, `Backspace` to remove one, and `P` to pause AI updates and watch the node colors fade.
+A root can be hosted by another system instead of running on its own schedule. The overlay shows a hosted root nested under its host, which is an active state, an agent action, or an `NNBTRunHostedRoot` leaf, with its system type and a `(hosted)` marker in the Status column. The Status column marks the active path with `current`, `active`, or `running` and continues into a hosted root only while its host is active. Hosted roots also remain pickable in their own type selector, where they are labelled with the path of the host they run under.
+
+The `demo/demo_06_debugger` scene is a runnable showcase. It runs Agent Behaviour, Behaviour Tree, and State Tree entities side by side and opens the overlay on start. The Moving state of each state tree hosts a small behaviour tree, so selecting a state tree shows the nesting in the overlay. Use `F1` to toggle the overlay, `1`/`2`/`3` to switch category, `Space` to spawn an entity, `Backspace` to remove one, and `P` to pause AI updates and watch the node colors fade.
 
 To close the overlay, free the node named `NoodleNodesDebuggerOverlay`:
 

@@ -120,6 +120,9 @@ public:
 #ifdef DEBUG_ENABLED
 	inline uint64_t get_last_visited_timestamp() const { return _last_visited_timestamp; };
 	inline uint64_t get_last_evaluated_timestamp() const { return _last_evaluated_timestamp; };
+	// The debug overlay peeks these so a refresh never reconciles the agent.
+	NNBehaviour *peek_current_behaviour() const;
+	NNAction *peek_current_action() const;
 #endif
 
 	void set_process_thread(int p_process_thread);

@@ -13,6 +13,9 @@
 
 namespace godot {
 
+class NNHostedRoot;
+class NoodleNodes;
+
 class NNDebuggerOverlay : public Node {
 	GDCLASS(NNDebuggerOverlay, Node)
 
@@ -21,6 +24,13 @@ private:
 	std::vector<ObjectID> _behaviour_trees;
 	std::vector<ObjectID> _state_trees;
 	std::vector<ObjectID> _agents;
+
+	struct AgentSelection {
+		ObjectID agent_id;
+		ObjectID behaviour_id;
+		ObjectID action_id;
+	};
+	std::vector<AgentSelection> _agent_selections;
 
 	static NNDebuggerOverlay *_singleton;
 
@@ -50,6 +60,13 @@ private:
 	int _register_object(std::vector<ObjectID> &registry, uint64_t instance_id);
 	void _deregister_object(std::vector<ObjectID> &registry, uint64_t instance_id);
 	String _root_label(Node *root) const;
+	static String _host_path(const NoodleNodes *host);
+	static String _root_status_text(Node *root);
+	static String _active_path_status(Node *node);
+	static NNHostedRoot *_hosted_root_of(Node *root);
+	static bool _is_on_path_to(Node *node, const ObjectID &target_id);
+	void _cache_agent_selections(Node *root);
+	bool _node_is_on_active_path(Node *node);
 
 	void _rebuild_root_items();
 	void _ensure_root_items();
@@ -66,7 +83,7 @@ public:
 
 	// Godot virtuals.
 
-	void tree_add_child_nodes(Tree *tree, TreeItem *parent_node, Node *parent_ai_node);
+	void tree_add_child_nodes(Tree *tree, TreeItem *parent_node, Node *parent_ai_node, bool p_path_open);
 
 	// Handling methods.
 	int register_behaviour_tree(uint64_t instance_id);

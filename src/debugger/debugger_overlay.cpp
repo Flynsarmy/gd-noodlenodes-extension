@@ -15,7 +15,10 @@
 #include "../agent_behaviours/considerations.h"
 #include "../agent_behaviours/sensors.h"
 #include "../behaviour_tree/root.h"
+#include "../host.h"
+#include "../noodle_nodes.h"
 #include "../state_tree/root.h"
+#include "../state_tree/ticked_nodes.h"
 
 using namespace godot;
 
@@ -303,14 +306,186 @@ Node *NNDebuggerOverlay::_resolve_root_for_type(int type, ObjectID instance_id) 
 	return nullptr;
 }
 
+String NNDebuggerOverlay::_host_path(const NoodleNodes *host) {
+	std::vector<String> names;
+	for (const NoodleNodes *node = host; node != nullptr; node = Object::cast_to<NoodleNodes>(node->get_parent())) {
+		names.push_back(String(node->get_name()));
+		if (node->is_root()) {
+			break;
+		}
+	}
+
+	String path;
+	for (int i = (int)names.size() - 1; i >= 0; i--) {
+		if (!path.is_empty()) {
+			path += "/";
+		}
+		path += names[(size_t)i];
+	}
+	return path;
+}
+
 String NNDebuggerOverlay::_root_label(Node *root) const {
 	ERR_FAIL_NULL_V(root, String());
 
 	Node *owner = root->get_owner();
+	String label;
 	if (owner != nullptr) {
-		return String(owner->get_name()) + ": " + String(root->get_name());
+		label = String(owner->get_name()) + ": " + String(root->get_name());
+	} else {
+		label = String(root->get_name()) + " (no owner)";
 	}
-	return String(root->get_name()) + " (no owner)";
+
+	NoodleNodes *host = nn_find_host_ancestor(root);
+	if (host != nullptr) {
+		label += String(" (hosted in ") + _host_path(host) + ")";
+	}
+	return label;
+}
+
+String NNDebuggerOverlay::_root_status_text(Node *root) {
+	String type_name;
+	if (Object::cast_to<NNAgent>(root) != nullptr) {
+		type_name = "Agent";
+	} else if (Object::cast_to<NNBTRoot>(root) != nullptr) {
+		type_name = "Behaviour Tree";
+	} else if (Object::cast_to<NNSTRoot>(root) != nullptr) {
+		type_name = "State Tree";
+	}
+
+	if (type_name.is_empty()) {
+		return type_name;
+	}
+	if (nn_find_host_ancestor(root) != nullptr) {
+		type_name += " (hosted)";
+	}
+	return type_name;
+}
+
+String NNDebuggerOverlay::_active_path_status(Node *node) {
+	NoodleNodes *noodle = Object::cast_to<NoodleNodes>(node);
+	if (noodle == nullptr) {
+		return String();
+	}
+
+	NoodleNodes *ancestor_root = noodle->get_ancestor_root();
+	if (Object::cast_to<NNBTRoot>(ancestor_root) != nullptr) {
+		return "running";
+	}
+	if (Object::cast_to<NNSTRoot>(ancestor_root) != nullptr) {
+		return "active";
+	}
+	if (Object::cast_to<NNAgent>(ancestor_root) != nullptr) {
+		return "current";
+	}
+	return String();
+}
+
+NNHostedRoot *NNDebuggerOverlay::_hosted_root_of(Node *root) {
+	NoodleNodes *noodle = Object::cast_to<NoodleNodes>(root);
+	if (noodle == nullptr) {
+		return nullptr;
+	}
+
+	NNHostedRoot *hosted_root = noodle->get_hosted_root();
+	if (hosted_root == nullptr || !hosted_root->is_hosted()) {
+		return nullptr;
+	}
+	return hosted_root;
+}
+
+bool NNDebuggerOverlay::_is_on_path_to(Node *node, const ObjectID &target_id) {
+	if (node == nullptr || target_id.is_null()) {
+		return false;
+	}
+
+	Node *target = Object::cast_to<Node>(ObjectDB::get_instance((uint64_t)target_id));
+	if (target == nullptr) {
+		return false;
+	}
+	return node == target || node->is_ancestor_of(target);
+}
+
+void NNDebuggerOverlay::_cache_agent_selections(Node *root) {
+	_agent_selections.clear();
+	if (root == nullptr) {
+		return;
+	}
+
+	// Collecting runs no user code, so these child pointers stay valid here.
+	std::vector<ObjectID> agent_ids;
+	std::vector<Node *> pending;
+	pending.push_back(root);
+	while (!pending.empty()) {
+		Node *node = pending.back();
+		pending.pop_back();
+		if (Object::cast_to<NNAgent>(node) != nullptr) {
+			agent_ids.push_back(ObjectID(node->get_instance_id()));
+		}
+		for (int i = 0; i < node->get_child_count(); i++) {
+			Node *child = node->get_child(i);
+			if (child != nullptr) {
+				pending.push_back(child);
+			}
+		}
+	}
+
+	for (unsigned int i = 0; i < agent_ids.size(); i++) {
+		AgentSelection selection;
+		selection.agent_id = agent_ids[i];
+
+		NNAgent *agent = Object::cast_to<NNAgent>(ObjectDB::get_instance((uint64_t)agent_ids[i]));
+		if (agent == nullptr) {
+			continue;
+		}
+
+		if (NNBehaviour *behaviour = agent->peek_current_behaviour()) {
+			selection.behaviour_id = ObjectID(behaviour->get_instance_id());
+		}
+		if (NNAction *action = agent->peek_current_action()) {
+			selection.action_id = ObjectID(action->get_instance_id());
+		}
+
+		_agent_selections.push_back(selection);
+	}
+}
+
+bool NNDebuggerOverlay::_node_is_on_active_path(Node *node) {
+	NoodleNodes *noodle = Object::cast_to<NoodleNodes>(node);
+	if (noodle == nullptr) {
+		return false;
+	}
+
+	NoodleNodes *ancestor_root = noodle->get_ancestor_root();
+	if (ancestor_root == nullptr) {
+		return false;
+	}
+
+	if (NNBTRoot *bt_root = Object::cast_to<NNBTRoot>(ancestor_root)) {
+		NNBTNodes *running_action = bt_root->get_running_action();
+		if (running_action == nullptr) {
+			return false;
+		}
+		return node == running_action || node->is_ancestor_of(running_action);
+	}
+
+	if (Object::cast_to<NNSTRoot>(ancestor_root) != nullptr) {
+		NNSTTickedNodes *ticked_node = Object::cast_to<NNSTTickedNodes>(node);
+		return ticked_node != nullptr && ticked_node->get_is_active();
+	}
+
+	if (Object::cast_to<NNAgent>(ancestor_root) != nullptr) {
+		ObjectID agent_id(ancestor_root->get_instance_id());
+		for (unsigned int i = 0; i < _agent_selections.size(); i++) {
+			const AgentSelection &selection = _agent_selections[i];
+			if (selection.agent_id != agent_id) {
+				continue;
+			}
+			return _is_on_path_to(node, selection.behaviour_id) || _is_on_path_to(node, selection.action_id);
+		}
+	}
+
+	return false;
 }
 
 void NNDebuggerOverlay::_rebuild_root_items() {
@@ -403,6 +578,8 @@ void NNDebuggerOverlay::_refresh_selected_root_view() {
 	}
 
 	Node *root = _resolve_root_for_type(_current_type_selection, _selected_root_id);
+	_cache_agent_selections(root);
+
 	if (root == nullptr) {
 		if (_selected_root_id.is_valid()) {
 			_selected_root_id = ObjectID();
@@ -426,7 +603,9 @@ void NNDebuggerOverlay::_refresh_selected_root_view() {
 	root_item->set_custom_font_size(1, 10);
 	root_item->set_custom_font_size(2, 10);
 	root_item->set_text(0, root->get_name());
-	tree_add_child_nodes(_selected_tree, root_item, root);
+	root_item->set_text(1, _root_status_text(root));
+	NNHostedRoot *hosted_root = _hosted_root_of(root);
+	tree_add_child_nodes(_selected_tree, root_item, root, hosted_root == nullptr || hosted_root->is_active());
 }
 
 void NNDebuggerOverlay::on_root_item_selected(int item) {
@@ -530,7 +709,7 @@ void NNDebuggerOverlay::update_ui() {
 	_debug_messages->set_text(msg);
 }
 
-void NNDebuggerOverlay::tree_add_child_nodes(Tree *tree, TreeItem *parent_node, Node *parent_ai_node) {
+void NNDebuggerOverlay::tree_add_child_nodes(Tree *tree, TreeItem *parent_node, Node *parent_ai_node, bool p_path_open) {
 	if (tree == nullptr || parent_ai_node == nullptr || parent_node == nullptr) {
 		return;
 	}
@@ -580,7 +759,20 @@ void NNDebuggerOverlay::tree_add_child_nodes(Tree *tree, TreeItem *parent_node, 
 			score = stnode->get_score();
 		}
 
+		NoodleNodes *noodle = Object::cast_to<NoodleNodes>(next_ai_node);
+		bool child_path_open = false;
+		String status_text;
+		if (noodle != nullptr && noodle->is_root()) {
+			NNHostedRoot *hosted_root = _hosted_root_of(noodle);
+			child_path_open = p_path_open && hosted_root != nullptr && hosted_root->is_active();
+			status_text = _root_status_text(noodle);
+		} else if (p_path_open && _node_is_on_active_path(noodle)) {
+			child_path_open = true;
+			status_text = _active_path_status(noodle);
+		}
+
 		child_tree_item->set_text(0, next_ai_node->get_name());
+		child_tree_item->set_text(1, status_text);
 		child_tree_item->set_text(2, String::num((double)score, 2));
 		score = 0.7f * score;
 
@@ -598,7 +790,7 @@ void NNDebuggerOverlay::tree_add_child_nodes(Tree *tree, TreeItem *parent_node, 
 		child_tree_item->set_custom_color(0, Color(tick_color, tick_color, tick_color));
 		child_tree_item->set_custom_color(2, Color(eval_color * 0.8f, eval_color * 0.8f, eval_color));
 
-		tree_add_child_nodes(tree, child_tree_item, next_ai_node);
+		tree_add_child_nodes(tree, child_tree_item, next_ai_node, child_path_open);
 
 	} //endfor child nodes.
 }

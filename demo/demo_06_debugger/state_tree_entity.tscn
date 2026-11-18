@@ -1,4 +1,4 @@
-[gd_scene load_steps=13 format=3]
+[gd_scene load_steps=14 format=3]
 
 [ext_resource type="Texture2D" path="res://assets/Standard sprites upd.png" id="1_texture"]
 [ext_resource type="Script" path="res://demo_06_debugger/state_tree_entity.gd" id="2_entity"]
@@ -6,6 +6,7 @@
 [ext_resource type="Script" path="res://demo_06_debugger/st_moving_closer.gd" id="4_closer"]
 [ext_resource type="Script" path="res://demo_06_debugger/st_moving_away.gd" id="5_away"]
 [ext_resource type="Script" path="res://demo_06_debugger/st_waiting.gd" id="6_waiting"]
+[ext_resource type="Script" path="res://demo_06_debugger/bt_hosted_hover.gd" id="7_hosted"]
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_frame_1"]
 atlas = ExtResource("1_texture")
@@ -79,6 +80,13 @@ script = ExtResource("5_away")
 [node name="Too close to the cursor" type="NNConsideration" parent="NNSTRoot/Moving/Moving away" node_paths=PackedStringArray("input_sensor")]
 input_sensor = NodePath("../../../MouseSensor")
 activation_curve = SubResource("Curve_too_close")
+
+[node name="Hover" type="NNBTRoot" parent="NNSTRoot/Moving"]
+
+[node name="Maintain hover" type="NNBTSequence" parent="NNSTRoot/Moving/Hover"]
+
+[node name="Hold position" type="NNBTLeaf" parent="NNSTRoot/Moving/Hover/Maintain hover"]
+script = ExtResource("7_hosted")
 
 [node name="Waiting" type="NNSTNode" parent="NNSTRoot"]
 script = ExtResource("6_waiting")

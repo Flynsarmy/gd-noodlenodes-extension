@@ -860,6 +860,22 @@ NNAction *NNAgent::get_current_action_node() const {
 	return _resolve_action(_current_action_id);
 }
 
+#ifdef DEBUG_ENABLED
+NNBehaviour *NNAgent::peek_current_behaviour() const {
+	NNBehaviour *behaviour = _resolve_behaviour(_current_behaviour_id);
+	return _is_behaviour_available(behaviour) ? behaviour : nullptr;
+}
+
+NNAction *NNAgent::peek_current_action() const {
+	NNBehaviour *behaviour = peek_current_behaviour();
+	if (behaviour == nullptr) {
+		return nullptr;
+	}
+	NNAction *action = _resolve_action(_current_action_id);
+	return _is_action_available(action, behaviour) ? action : nullptr;
+}
+#endif
+
 void NNAgent::set_num_behaviours_to_select(int num_behaviours_to_select) {
 	ERR_FAIL_COND_MSG(num_behaviours_to_select < 1 || num_behaviours_to_select > UTILITYAIAGENT_MAX_TOP_SCORING_BEHAVIOURS,
 			"NNAgent::set_num_behaviours_to_select(): num_behaviours_to_select must be between 1 and 16.");
