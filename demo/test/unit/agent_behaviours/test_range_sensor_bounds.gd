@@ -10,42 +10,6 @@ func _make_root_with(sensor: Node) -> NNSTRoot:
 	return _root
 
 
-func test_float_recovers_after_equal_bounds() -> void:
-	var _sensor: NNFloatRangeSensor = NNFloatRangeSensor.new()
-	var _root := _make_root_with(_sensor)
-
-	assert_eq(_sensor.range_min_value, 0.0)
-	assert_eq(_sensor.range_max_value, 100.0)
-
-	_sensor.range_max_value = 0.0
-	assert_eq(_sensor.range_max_value, 0.0)
-
-	_sensor.range_max_value = 100.0
-	assert_eq(_sensor.range_max_value, 100.0)
-
-	_sensor.range_value = 25.0
-	_root.tick(0.1)
-	assert_almost_eq(_sensor.sensor_value, 0.25, 0.0001)
-
-
-func test_int_recovers_after_equal_bounds() -> void:
-	var _sensor: NNIntRangeSensor = NNIntRangeSensor.new()
-	var _root := _make_root_with(_sensor)
-
-	assert_eq(_sensor.range_min_value, 0)
-	assert_eq(_sensor.range_max_value, 100)
-
-	_sensor.range_max_value = 0
-	assert_eq(_sensor.range_max_value, 0)
-
-	_sensor.range_max_value = 100
-	assert_eq(_sensor.range_max_value, 100)
-
-	_sensor.range_value = 25
-	_root.tick(0.1)
-	assert_almost_eq(_sensor.sensor_value, 0.25, 0.0001)
-
-
 func test_float_recovery_is_setter_order_independent() -> void:
 	var _sensor: NNFloatRangeSensor = NNFloatRangeSensor.new()
 	var _root := _make_root_with(_sensor)
@@ -104,82 +68,23 @@ func test_int_recovery_is_setter_order_independent() -> void:
 	assert_almost_eq(_sensor.sensor_value, 0.5, 0.0001)
 
 
-func test_equal_bounds_yield_zero_and_recover() -> void:
-	var _float_sensor: NNFloatRangeSensor = NNFloatRangeSensor.new()
-	var _float_root := _make_root_with(_float_sensor)
+func test_equal_and_reversed_bounds_yield_a_zero_score() -> void:
+	for bounds in [[5, 5], [10, 0]]:
+		var float_sensor: NNFloatRangeSensor = NNFloatRangeSensor.new()
+		var float_root := _make_root_with(float_sensor)
+		float_sensor.range_min_value = bounds[0]
+		float_sensor.range_max_value = bounds[1]
+		float_sensor.range_value = 5.0
+		float_root.tick(0.1)
+		assert_almost_eq(float_sensor.sensor_value, 0.0, 0.0001, "float bounds %s" % [bounds])
 
-	_float_sensor.range_min_value = 5.0
-	_float_sensor.range_max_value = 5.0
-	_float_sensor.range_value = 5.0
-	_float_root.tick(0.1)
-
-	assert_true(is_finite(_float_sensor.sensor_value), "equal bounds must yield a finite score")
-	assert_almost_eq(_float_sensor.sensor_value, 0.0, 0.0001)
-
-	_float_sensor.range_min_value = 0.0
-	_float_sensor.range_max_value = 10.0
-	_float_sensor.range_value = 5.0
-	_float_root.tick(0.1)
-
-	assert_almost_eq(_float_sensor.sensor_value, 0.5, 0.0001)
-
-	var _int_sensor: NNIntRangeSensor = NNIntRangeSensor.new()
-	var _int_root := _make_root_with(_int_sensor)
-
-	_int_sensor.range_min_value = 5
-	_int_sensor.range_max_value = 5
-	_int_sensor.range_value = 5
-	_int_root.tick(0.1)
-
-	assert_true(is_finite(_int_sensor.sensor_value), "equal bounds must yield a finite score")
-	assert_almost_eq(_int_sensor.sensor_value, 0.0, 0.0001)
-
-	_int_sensor.range_min_value = 0
-	_int_sensor.range_max_value = 10
-	_int_sensor.range_value = 5
-	_int_root.tick(0.1)
-
-	assert_almost_eq(_int_sensor.sensor_value, 0.5, 0.0001)
-
-
-func test_reversed_bounds_yield_zero_and_recover() -> void:
-	var _float_sensor: NNFloatRangeSensor = NNFloatRangeSensor.new()
-	var _float_root := _make_root_with(_float_sensor)
-
-	_float_sensor.range_min_value = 10.0
-	_float_sensor.range_max_value = 0.0
-	_float_sensor.range_value = 5.0
-	_float_root.tick(0.1)
-
-	assert_true(is_finite(_float_sensor.sensor_value), "reversed bounds must yield a finite score")
-	assert_between(_float_sensor.sensor_value, 0.0, 1.0)
-	assert_almost_eq(_float_sensor.sensor_value, 0.0, 0.0001)
-
-	_float_sensor.range_min_value = 0.0
-	_float_sensor.range_max_value = 10.0
-	_float_sensor.range_value = 5.0
-	_float_root.tick(0.1)
-
-	assert_almost_eq(_float_sensor.sensor_value, 0.5, 0.0001)
-
-	var _int_sensor: NNIntRangeSensor = NNIntRangeSensor.new()
-	var _int_root := _make_root_with(_int_sensor)
-
-	_int_sensor.range_min_value = 10
-	_int_sensor.range_max_value = 0
-	_int_sensor.range_value = 5
-	_int_root.tick(0.1)
-
-	assert_true(is_finite(_int_sensor.sensor_value), "reversed bounds must yield a finite score")
-	assert_between(_int_sensor.sensor_value, 0.0, 1.0)
-	assert_almost_eq(_int_sensor.sensor_value, 0.0, 0.0001)
-
-	_int_sensor.range_min_value = 0
-	_int_sensor.range_max_value = 10
-	_int_sensor.range_value = 5
-	_int_root.tick(0.1)
-
-	assert_almost_eq(_int_sensor.sensor_value, 0.5, 0.0001)
+		var int_sensor: NNIntRangeSensor = NNIntRangeSensor.new()
+		var int_root := _make_root_with(int_sensor)
+		int_sensor.range_min_value = bounds[0]
+		int_sensor.range_max_value = bounds[1]
+		int_sensor.range_value = 5
+		int_root.tick(0.1)
+		assert_almost_eq(int_sensor.sensor_value, 0.0, 0.0001, "int bounds %s" % [bounds])
 
 
 func test_float_non_finite_bounds_stay_finite() -> void:

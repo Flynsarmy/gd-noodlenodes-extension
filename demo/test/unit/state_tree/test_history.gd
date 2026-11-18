@@ -1,4 +1,3 @@
-# GdUnit generated TestSuite
 extends GutTest
 @warning_ignore('unused_parameter')
 @warning_ignore('return_value_discarded')
@@ -10,7 +9,7 @@ func _add_manual_root(root: NNSTRoot) -> NNSTRoot:
 	return add_child_autofree(root)
 
 
-## Test helper: counts how often a state is entered and exited.
+# Test helper: counts how often a state is entered and exited.
 class CounterNode extends NNSTNode:
 	var enter_count: int = 0
 	var exit_count: int = 0
@@ -21,17 +20,17 @@ class CounterNode extends NNSTNode:
 	func on_exit_state() -> void:
 		exit_count += 1
 
-## Test helper: a compound region whose enter condition can be switched off.
+# Test helper: a compound region whose enter condition can be switched off.
 class ConditionalNode extends NNSTNode:
 	var allow: bool = true
 
 	func on_enter_condition() -> bool:
 		return allow
 
-## Builds Root -> [Compound -> [ParallelState -> [Region1, Region2], History], Outside].
-## Both regions are compounds with an initial leaf and a second leaf.
-## The first history is shallow unless deep = true; add_deep_sibling adds a
-## second, deep history with the same default state.
+# Builds Root -> [Compound -> [ParallelState -> [Region1, Region2], History], Outside].
+# Both regions are compounds with an initial leaf and a second leaf.
+# The first history is shallow unless deep = true; add_deep_sibling adds a
+# second, deep history with the same default state.
 func _build_parallel_history_tree(history_as_initial_state: bool = false, deep: bool = true, add_deep_sibling: bool = false) -> Dictionary:
 	var _root: NNSTRoot = NNSTRoot.new()
 	_root.name = "Root"
@@ -95,7 +94,7 @@ func _build_parallel_history_tree(history_as_initial_state: bool = false, deep: 
 		"deep_history": _deep_history,
 	}
 
-## Moves both parallel regions from their initial leaf to their second leaf.
+# Moves both parallel regions from their initial leaf to their second leaf.
 func _move_parallel_regions_to_b(nodes: Dictionary) -> void:
 	var _r1a: NNSTNode = nodes["r1a"]
 	var _r1b: NNSTNode = nodes["r1b"]
@@ -104,14 +103,14 @@ func _move_parallel_regions_to_b(nodes: Dictionary) -> void:
 	assert_true(_r1a.transition_to(_r1a.get_path_to(_r1b)))
 	assert_true(_r2a.transition_to(_r2a.get_path_to(_r2b)))
 
-## Leaves the compound from region 1's second leaf.
+# Leaves the compound from region 1's second leaf.
 func _leave_parallel_compound(nodes: Dictionary) -> void:
 	var _r1b: NNSTNode = nodes["r1b"]
 	var _outside: NNSTNode = nodes["outside"]
 	assert_true(_r1b.transition_to(_r1b.get_path_to(_outside)))
 
-## Builds Root -> [Compound, Outside] where Compound -> [A -> [A1, A2], B, History].
-## A is the compound's initial state and A1 is A's initial state.
+# Builds Root -> [Compound, Outside] where Compound -> [A -> [A1, A2], B, History].
+# A is the compound's initial state and A1 is A's initial state.
 func _build_nested_history_tree(deep: bool, history_as_initial_state: bool = false) -> Dictionary:
 	var _root: NNSTRoot = NNSTRoot.new()
 	_root.name = "Root"
@@ -154,8 +153,8 @@ func _build_nested_history_tree(deep: bool, history_as_initial_state: bool = fal
 		"history": _history,
 	}
 
-## Builds Root -> [Compound -> [Nested -> [A, B, C], History], Outside].
-## Nested selects A initially and the history is deep, defaulting to Nested.
+# Builds Root -> [Compound -> [Nested -> [A, B, C], History], Outside].
+# Nested selects A initially and the history is deep, defaulting to Nested.
 func _build_inner_redirect_tree(history_as_initial_state: bool = false) -> Dictionary:
 	var _root: NNSTRoot = NNSTRoot.new()
 	_root.name = "Root"
@@ -198,13 +197,13 @@ func _build_inner_redirect_tree(history_as_initial_state: bool = false) -> Dicti
 		"history": _history,
 	}
 
-## Test helper: connected to a state_entered signal, redirects `from` to its
-## sibling `to`.
+# Test helper: connected to a state_entered signal, redirects `from` to its
+# sibling `to`.
 func _redirect_to_sibling(from: NNSTNode, to: NNSTNode) -> void:
 	from.transition_to(from.get_path_to(to))
 
-## Builds Root -> [Compound -> [Upper -> [Lower -> [A, B]], History], Outside, Redirected].
-## Lower selects A initially and the history is deep, defaulting to Upper.
+# Builds Root -> [Compound -> [Upper -> [Lower -> [A, B]], History], Outside, Redirected].
+# Lower selects A initially and the history is deep, defaulting to Upper.
 func _build_exit_redirect_tree(history_as_initial_state: bool = false) -> Dictionary:
 	var _root: NNSTRoot = NNSTRoot.new()
 	_root.name = "Root"
@@ -252,8 +251,6 @@ func _build_exit_redirect_tree(history_as_initial_state: bool = false) -> Dictio
 		"history": _history,
 	}
 
-## A shallow history used as an explicit transition target restores the
-## compound's non-initial active child instead of restarting at Idle.
 func test_shallow_history_restores_non_initial_child() -> void:
 	var _root: NNSTRoot = NNSTRoot.new()
 	_root.name = "Root"
@@ -308,7 +305,6 @@ func test_shallow_history_restores_non_initial_child() -> void:
 	assert_false(_history.get_has_history())
 	assert_eq(_history.get_remembered_state(), NodePath())
 
-## Without a recorded snapshot the history's default state is entered.
 func test_default_state_is_used_when_no_history_exists() -> void:
 	var _root: NNSTRoot = NNSTRoot.new()
 	_root.name = "Root"
@@ -344,7 +340,6 @@ func test_default_state_is_used_when_no_history_exists() -> void:
 	assert_false(_active.get_is_active())
 	assert_eq(_idle.enter_count, 1)
 
-## A deep history restores the nested grandchild that was active on exit.
 func test_deep_history_restores_nested_grandchild() -> void:
 	var _nodes: Dictionary = _build_nested_history_tree(true)
 	var _root: NNSTRoot = _nodes["root"]
@@ -380,8 +375,6 @@ func test_deep_history_restores_nested_grandchild() -> void:
 	assert_true(_a2.get_is_active())
 	assert_false(_a1.get_is_active())
 
-## A shallow history on the same shape restores only the direct child, which
-## then selects its own initial state.
 func test_shallow_history_restores_only_the_direct_child() -> void:
 	var _nodes: Dictionary = _build_nested_history_tree(false)
 	var _root: NNSTRoot = _nodes["root"]
@@ -405,10 +398,6 @@ func test_shallow_history_restores_only_the_direct_child() -> void:
 	assert_true(_a1.get_is_active())
 	assert_false(_a2.get_is_active())
 
-## Transitioning to the history from a state inside the same compound restores
-## the remembered sibling. This is the reference addon's main use case and
-## exercises the path where from_state and the restore state share the compound
-## as their common ancestor.
 func test_transition_to_history_from_inside_the_compound() -> void:
 	var _root: NNSTRoot = NNSTRoot.new()
 	_root.name = "Root"
@@ -457,8 +446,6 @@ func test_transition_to_history_from_inside_the_compound() -> void:
 	assert_eq(_attack.enter_count, 2)
 	assert_eq(_attack.exit_count, 1)
 
-## A restored deep configuration is stable: ticking does not re-enter or
-## deactivate it, and repeated leave/restore cycles restore the same states.
 func test_deep_history_is_stable_across_ticks_and_cycles() -> void:
 	var _nodes: Dictionary = _build_nested_history_tree(true)
 	var _root: NNSTRoot = _nodes["root"]
@@ -502,8 +489,6 @@ func test_deep_history_is_stable_across_ticks_and_cycles() -> void:
 	assert_eq(_a1.enter_count, 1)
 	assert_eq(_a1.exit_count, 1)
 
-## A deep snapshot whose deeper entry went stale restores the longest valid
-## prefix instead of falling back to the default state.
 func test_partially_stale_deep_history_restores_valid_prefix() -> void:
 	var _nodes: Dictionary = _build_nested_history_tree(true)
 	var _root: NNSTRoot = _nodes["root"]
@@ -541,7 +526,6 @@ func test_partially_stale_deep_history_restores_valid_prefix() -> void:
 	assert_eq(_a1.enter_count, 2)
 	assert_eq(_a1.exit_count, 1)
 
-## A recorded state that was freed falls back to the default state.
 func test_stale_freed_state_falls_back_to_default_state() -> void:
 	var _root: NNSTRoot = NNSTRoot.new()
 	_root.name = "Root"
@@ -579,7 +563,6 @@ func test_stale_freed_state_falls_back_to_default_state() -> void:
 	assert_true(_b.get_is_active())
 	assert_eq(_b.enter_count, 1)
 
-## A recorded state that was reparented falls back to the default state too.
 func test_stale_reparented_state_falls_back_to_default_state() -> void:
 	var _elsewhere: Node = add_child_autofree(Node.new())
 	var _root: NNSTRoot = NNSTRoot.new()
@@ -615,8 +598,6 @@ func test_stale_reparented_state_falls_back_to_default_state() -> void:
 	assert_true(_compound.get_is_active())
 	assert_true(_b.get_is_active())
 
-## The history can be the compound's initial state. Shallow restore enters the
-## remembered direct child, which then selects its own initial state.
 func test_history_as_initial_state_restores_shallow() -> void:
 	var _nodes: Dictionary = _build_nested_history_tree(false, true)
 	var _root: NNSTRoot = _nodes["root"]
@@ -649,7 +630,6 @@ func test_history_as_initial_state_restores_shallow() -> void:
 	assert_true(_a1.get_is_active())
 	assert_false(_a2.get_is_active())
 
-## The history as initial state also restores a deep hierarchy.
 func test_history_as_initial_state_restores_deep() -> void:
 	var _nodes: Dictionary = _build_nested_history_tree(true, true)
 	var _root: NNSTRoot = _nodes["root"]
@@ -671,7 +651,6 @@ func test_history_as_initial_state_restores_deep() -> void:
 	assert_true(_a2.get_is_active())
 	assert_false(_a1.get_is_active())
 
-## An unusable history target is rejected without disturbing the tree.
 func test_unusable_history_target_fails_without_changing_the_tree() -> void:
 	var _root: NNSTRoot = NNSTRoot.new()
 	_root.name = "Root"
@@ -712,8 +691,6 @@ func test_unusable_history_target_fails_without_changing_the_tree() -> void:
 	assert_false(_compound.get_is_active())
 	assert_false(_idle.get_is_active())
 
-## A history child must not take part in normal child selection, child order or
-## the initial state handling of the compound.
 func test_history_child_does_not_disturb_normal_selection() -> void:
 	var _root: NNSTRoot = NNSTRoot.new()
 	_root.name = "Root"
@@ -754,8 +731,6 @@ func test_history_child_does_not_disturb_normal_selection() -> void:
 	assert_false(_a.get_is_active())
 	assert_true(_history.get_has_history())
 
-## When the history cannot resolve anything, a compound that uses it as its
-## initial state falls back to normal child selection.
 func test_history_as_initial_state_falls_back_to_normal_selection() -> void:
 	var _root: NNSTRoot = NNSTRoot.new()
 	_root.name = "Root"
@@ -780,8 +755,6 @@ func test_history_as_initial_state_falls_back_to_normal_selection() -> void:
 	assert_false(_second.get_is_active())
 	assert_false(_history.get_has_history())
 
-## Even a history child that comes before the states in child order is never
-## selected or treated as a state.
 func test_history_child_is_not_a_state_child() -> void:
 	var _root: NNSTRoot = _add_manual_root(NNSTRoot.new())
 	var _compound: NNSTNode = NNSTNode.new()
@@ -801,8 +774,6 @@ func test_history_child_is_not_a_state_child() -> void:
 	assert_eq(_state.enter_count, 1)
 	assert_false(_history.get_has_history())
 
-## Reproduction for the parallel-region defect: a deep snapshot records and
-## restores every active parallel region, not just the first one.
 func test_parallel_regions_are_restored_via_history_target() -> void:
 	var _nodes: Dictionary = _build_parallel_history_tree()
 	var _root: NNSTRoot = _nodes["root"]
@@ -859,8 +830,6 @@ func test_parallel_regions_are_restored_via_history_target() -> void:
 	assert_eq(_r2b.enter_count, 2)
 	assert_eq(_r2b.exit_count, 1)
 
-## The same parallel configuration is restored when the history is the
-## compound's initial state.
 func test_parallel_regions_are_restored_via_initial_state() -> void:
 	var _nodes: Dictionary = _build_parallel_history_tree(true)
 	var _root: NNSTRoot = _nodes["root"]
@@ -893,8 +862,6 @@ func test_parallel_regions_are_restored_via_initial_state() -> void:
 	assert_eq(_r1b.enter_count, 2)
 	assert_eq(_r2b.enter_count, 2)
 
-## A stale remembered state inside one parallel region only prunes that branch;
-## the other region still restores its remembered state.
 func test_stale_state_in_one_parallel_region_only_prunes_that_branch() -> void:
 	var _nodes: Dictionary = _build_parallel_history_tree()
 	var _root: NNSTRoot = _nodes["root"]
@@ -933,7 +900,6 @@ func test_stale_state_in_one_parallel_region_only_prunes_that_branch() -> void:
 	assert_eq(_r2a.enter_count, 2)
 	assert_eq(_r2a.exit_count, 1)
 
-## A stale whole region is pruned without wiping its sibling region.
 func test_stale_parallel_region_does_not_wipe_siblings() -> void:
 	var _nodes: Dictionary = _build_parallel_history_tree()
 	var _root: NNSTRoot = _nodes["root"]
@@ -967,7 +933,6 @@ func test_stale_parallel_region_does_not_wipe_siblings() -> void:
 	assert_false(_r1a.get_is_active())
 	assert_false(is_instance_valid(_region2))
 
-## A parallel nested inside a parallel region is restored recursively.
 func test_nested_parallel_configuration_is_restored() -> void:
 	var _root: NNSTRoot = NNSTRoot.new()
 	_root.name = "Root"
@@ -1055,8 +1020,6 @@ func test_nested_parallel_configuration_is_restored() -> void:
 	assert_false(_s1a.get_is_active())
 	assert_false(_s2a.get_is_active())
 
-## A restored parallel configuration is stable across ticks: nothing is
-## re-entered or deactivated.
 func test_parallel_history_configuration_is_stable_across_ticks() -> void:
 	var _nodes: Dictionary = _build_parallel_history_tree()
 	var _root: NNSTRoot = _nodes["root"]
@@ -1090,9 +1053,6 @@ func test_parallel_history_configuration_is_stable_across_ticks() -> void:
 	assert_eq(_r2b.enter_count, _r2b_enters)
 	assert_eq(_r1a.exit_count, _r1a_exits)
 
-## A parallel region that is not selected during a restore must not keep the
-## Phase A registrations, otherwise it can be entered later with a stale
-## active child.
 func test_unselected_parallel_region_does_not_keep_stale_registrations() -> void:
 	var _nodes: Dictionary = _build_parallel_history_tree()
 	var _root: NNSTRoot = _nodes["root"]
@@ -1127,9 +1087,6 @@ func test_unselected_parallel_region_does_not_keep_stale_registrations() -> void
 	assert_true(_r2a.get_is_active())
 	assert_false(_r2b.get_is_active())
 
-## Sibling shallow and deep histories on the same parallel compound: the
-## shallow one restores only the parallel, while the deep one restores every
-## region's remembered leaf.
 func test_shallow_and_deep_siblings_on_parallel_compound() -> void:
 	var _nodes: Dictionary = _build_parallel_history_tree(false, false, true)
 	var _root: NNSTRoot = _nodes["root"]
@@ -1195,8 +1152,6 @@ func test_shallow_and_deep_siblings_on_parallel_compound() -> void:
 		]
 	)
 
-## A callback that redirects the remembered child during the restore wins: the
-## remembered state must not be applied next to or over the replacement.
 func test_callback_redirect_wins_with_explicit_history_target() -> void:
 	var _nodes: Dictionary = _build_inner_redirect_tree()
 	var _root: NNSTRoot = _nodes["root"]
@@ -1233,8 +1188,6 @@ func test_callback_redirect_wins_with_explicit_history_target() -> void:
 	assert_false(_b.get_is_active())
 	assert_true(_c.get_is_active())
 
-## The same callback-redirect rule applies when the history is the compound's
-## initial_state.
 func test_callback_redirect_wins_with_history_as_initial_state() -> void:
 	var _nodes: Dictionary = _build_inner_redirect_tree(true)
 	var _root: NNSTRoot = _nodes["root"]
@@ -1269,8 +1222,6 @@ func test_callback_redirect_wins_with_history_as_initial_state() -> void:
 	assert_false(_b.get_is_active())
 	assert_true(_c.get_is_active())
 
-## A redirect from a deeper compound's own entry callback only replaces the
-## remembered child at that level; its ancestors stay consistent.
 func test_callback_redirect_at_deeper_level_wins() -> void:
 	var _root: NNSTRoot = NNSTRoot.new()
 	_root.name = "Root"
@@ -1331,8 +1282,6 @@ func test_callback_redirect_at_deeper_level_wins() -> void:
 	assert_false(_d2.get_is_active())
 	assert_true(_d3.get_is_active())
 
-## A redirect inside one parallel region wins there while the other region
-## still restores its remembered leaf.
 func test_callback_redirect_wins_inside_parallel_region() -> void:
 	var _nodes: Dictionary = _build_parallel_history_tree()
 	var _root: NNSTRoot = _nodes["root"]
@@ -1381,9 +1330,6 @@ func test_callback_redirect_wins_inside_parallel_region() -> void:
 	assert_true(_region2.get_is_active())
 	assert_true(_r2b.get_is_active())
 
-## A nested transition started from an exit callback must not re-record a
-## partially exited configuration. The snapshot taken at the start of the real
-## exit survives and still restores the remembered leaf.
 func test_exit_callback_redirect_keeps_snapshot_and_restores_via_history_target() -> void:
 	var _nodes: Dictionary = _build_exit_redirect_tree()
 	var _root: NNSTRoot = _nodes["root"]
@@ -1422,8 +1368,6 @@ func test_exit_callback_redirect_keeps_snapshot_and_restores_via_history_target(
 	assert_true(_b.get_is_active())
 	assert_false(_a.get_is_active())
 
-## The same exit-callback redirect with the history as the compound's
-## initial_state.
 func test_exit_callback_redirect_keeps_snapshot_and_restores_via_initial_state() -> void:
 	var _nodes: Dictionary = _build_exit_redirect_tree(true)
 	var _root: NNSTRoot = _nodes["root"]
@@ -1459,8 +1403,6 @@ func test_exit_callback_redirect_keeps_snapshot_and_restores_via_initial_state()
 	assert_true(_b.get_is_active())
 	assert_false(_a.get_is_active())
 
-## The redirect can start one level deeper (from the innermost exited state)
-## while the compound exit is still in progress. The snapshot must stay intact.
 func test_exit_callback_redirect_from_deeper_state_keeps_snapshot() -> void:
 	var _nodes: Dictionary = _build_exit_redirect_tree()
 	var _root: NNSTRoot = _nodes["root"]
@@ -1495,10 +1437,6 @@ func test_exit_callback_redirect_from_deeper_state_keeps_snapshot() -> void:
 	assert_true(_b.get_is_active())
 	assert_false(_a.get_is_active())
 
-## A delayed transition whose target is a history node restores the remembered
-## deep configuration once the delay elapses. This is the path used by
-## NNSTTransition::take(false) and must resolve the history target like any
-## other target.
 func test_delayed_transition_to_history_restores_deep_configuration() -> void:
 	var _nodes: Dictionary = _build_nested_history_tree(true)
 	var _root: NNSTRoot = _nodes["root"]
@@ -1529,7 +1467,6 @@ func test_delayed_transition_to_history_restores_deep_configuration() -> void:
 	assert_true(_a2.get_is_active())
 	assert_false(_a1.get_is_active())
 
-## The delayed path also restores every remembered parallel region.
 func test_delayed_transition_to_history_restores_parallel_regions() -> void:
 	var _nodes: Dictionary = _build_parallel_history_tree()
 	var _root: NNSTRoot = _nodes["root"]
@@ -1558,8 +1495,6 @@ func test_delayed_transition_to_history_restores_parallel_regions() -> void:
 	assert_false(_r1a.get_is_active())
 	assert_false(_r2a.get_is_active())
 
-## An event transition whose `to` is a history node restores the remembered
-## configuration through the queued event path.
 func test_event_transition_to_history_restores_configuration() -> void:
 	var _nodes: Dictionary = _build_nested_history_tree(true)
 	var _root: NNSTRoot = _nodes["root"]

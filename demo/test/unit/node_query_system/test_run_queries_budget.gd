@@ -1,11 +1,7 @@
 extends GutTest
 
-# Regression tests for NNNodeQuerySystem.run_queries() budget handling.
-#
-# High priority queries can overrun the per-frame run budget. The remaining
-# budget for regular priority queries is unsigned, so it must be checked
-# before subtracting the elapsed time; otherwise it wraps around and the
-# regular queries run with an effectively unlimited time allowance.
+# The regular-priority budget is unsigned, so a high-priority overrun must be
+# checked before subtracting or the remaining budget wraps to near-infinite.
 
 const NUM_CANDIDATES := 12
 

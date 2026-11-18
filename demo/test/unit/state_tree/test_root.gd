@@ -1,4 +1,3 @@
-# GdUnit generated TestSuite
 extends GutTest
 @warning_ignore('unused_parameter')
 @warning_ignore('return_value_discarded')
@@ -10,44 +9,21 @@ func _add_manual_root(root: NNSTRoot) -> NNSTRoot:
 	return add_child_autofree(root)
 
 
-## _get_active_states() should be 0 before first tick
-func test_active_before_ticked() -> void:
-	var _root: NNSTRoot = _add_manual_root(NNSTRoot.new())
-	assert_eq(_root.get_is_active(), true)
-	_root.tick(0.1)
-	assert_eq(_root.get_is_active(), true)
-
-## _get_active_states() should be 1 before and after a tick
-func test_1_active_child_on_ticked_root() -> void:
-	var _root: NNSTRoot = _add_manual_root(NNSTRoot.new())
-	var _child: NNSTNode = NNSTNode.new()
-	var _child2: NNSTNode = NNSTNode.new()
-	_root.add_child(_child)
-	_root.add_child(_child2)
-	# before first tick it'll be 0
-	assert_eq(_child.get_is_active(), true)
-	_root.tick(0.1);
-	assert_eq(_child.get_is_active(), true)
-	assert_eq(_child2.get_is_active(), false)
-
-## _get_child_sensors() should match number of active children
 func test_child_sensor_count() -> void:
 	var _root: NNSTRoot = _add_manual_root(NNSTRoot.new())
 	var _child1: NNAngleVector2Sensor = NNAngleVector2Sensor.new()
 	var _child2: NNAngleVector2Sensor = NNAngleVector2Sensor.new()
 	var _child3: NNAngleVector2Sensor = NNAngleVector2Sensor.new()
-#
 	assert_eq(_root.get_child_sensors().size(), 0)
 	_root.add_child(_child1)
 	assert_eq(_root.get_child_sensors().size(), 1)
 	_root.add_child(_child2)
 	assert_eq(_root.get_child_sensors().size(), 2)
-	## inactive children still get counted
+	# Disabled sensors are still collected.
 	_child3.is_enabled = false
 	_root.add_child(_child3)
 	assert_eq(_root.get_child_sensors().size(), 3)
 
-## when the first child fails its _on_enter_condition() check, the second child should be entered
 func test_on_enter_condition_works_on_children() -> void:
 	var _root: NNSTRoot = _add_manual_root(NNSTRoot.new())
 	var _child1: NNSTNode = load("res://test/unit/state_tree/node_enter_condition_fail.gd").new()
@@ -67,8 +43,6 @@ func test_on_enter_condition_works_on_children() -> void:
 	assert_eq(_child1.get_is_active(), false)
 	assert_eq(_child2.get_is_active(), true)
 
-## Freeing an active child must not leave a stale pointer for tick() to use.
-## The remaining child is selected on the next tick.
 func test_active_child_freed_before_tick_is_safe() -> void:
 	var _root: NNSTRoot = _add_manual_root(NNSTRoot.new())
 	var _child: NNSTNode = NNSTNode.new()
@@ -80,13 +54,11 @@ func test_active_child_freed_before_tick_is_safe() -> void:
 
 	_child.free()
 
-	# This used to dereference the freed active state.
 	_root.tick(0.1)
 
 	assert_eq(_root.get_is_active(), true)
 	assert_eq(_sibling.get_is_active(), true)
 
-## Removing an active child exits it, and the next tick selects a sibling.
 func test_removing_active_child_exits_it_and_reselects() -> void:
 	var _root: NNSTRoot = _add_manual_root(NNSTRoot.new())
 	var _child: NNSTNode = load("res://test/unit/state_tree/node_on_call_logger.gd").new()

@@ -2,16 +2,9 @@ extends GutTest
 @warning_ignore('unused_parameter')
 @warning_ignore('return_value_discarded')
 
-# Regression tests: a query completion may only release the scheduler
-# registration that it actually executed. If a "query_completed" callback
-# stops the query and re-posts it (possibly at the other priority, or into the
-# same slot), the old completion must not release the newer registration.
-#
-# The repro that originally failed: a regular priority query re-posts itself as
-# high priority while disabled. start_query() declines the disabled query, so
-# is_query_still_running stays false, and the regular completion path used that
-# flag to release the query's *new* high priority index as if it were the old
-# regular slot. The high priority count then never reached zero.
+# A "query_completed" callback may stop and re-post its query, possibly at the
+# other priority or into the same slot. The old completion must release only the
+# registration it executed, never the repost's.
 
 # A query budget that is large enough to finish the tiny test search spaces in
 # a single execute_query() call, keeping the tests independent of machine speed.
@@ -54,8 +47,8 @@ func _assert_no_phantom_queries(nqs: NNNodeQuerySystem, context: String) -> void
 	assert_eq(nqs.get_num_active_regular_priority_queries(), 0, "%s: phantom regular priority count." % context)
 
 
-# The audit scenario: regular priority completion disables the query and
-# re-posts it as high priority. Another high priority query has already been
+# Regular priority completion disables the query and re-posts it as high
+# priority. Another high priority query has already been
 # released in the same run, so the repost lands in the same index the old
 # completion is about to release.
 func test_regular_completion_disabled_repost_to_high_priority_keeps_high_registration() -> void:
@@ -197,8 +190,7 @@ func test_clear_from_completion_callback_does_not_invalidate_cross_priority_repo
 	assert_false(nqs.stop_query(target_query), "The completed post-clear target must be unregistered.")
 
 
-# A disabled same-priority repost is the original bug shape without a priority
-# change: the old completion sees is_query_still_running == false but the
+# Without a priority change, the old completion sees is_query_still_running == false but the
 # registration now belongs to the repost in the same slot.
 func test_disabled_same_priority_repost_is_released_by_its_own_completion() -> void:
 	for is_high_priority in [true, false]:

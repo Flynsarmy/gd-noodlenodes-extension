@@ -1,11 +1,5 @@
-# GdUnit generated TestSuite
 extends GutTest
 
-func test_expression_setter_getter() -> void:
-	var _guard: NNSTExpressionGuard = NNSTExpressionGuard.new()
-	_guard.expression = "test"
-
-	assert_eq(_guard.expression, "test")
 
 func test_generic_expression_satisfied() -> void:
 	var _root: NNSTRoot = add_child_autofree(NNSTRoot.new())

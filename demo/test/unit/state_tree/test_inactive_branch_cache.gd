@@ -2,11 +2,8 @@ extends GutTest
 @warning_ignore('unused_parameter')
 @warning_ignore('return_value_discarded')
 
-# Regression tests: a branch that is ready but not active must still refresh its
-# cached child states, child transitions and child considerations when its
-# children are added, removed or reordered. Previously the child order
-# notification was ignored entirely unless the branch was already active, so a
-# later transition into the branch saw a stale child list.
+# A ready but inactive branch must still refresh its cached children, or a later
+# transition into it sees a stale child list.
 
 
 # These tests tick the chart by hand, so automatic ticking is off.
@@ -35,8 +32,6 @@ func _make_consideration(value: float) -> NNConsideration:
 	return consideration
 
 
-## A state added below an inactive branch after _ready must be entered when the
-## branch itself is entered later. Nothing may be entered or exited early.
 func test_inactive_branch_sees_child_added_after_ready() -> void:
 	var _root: NNSTRoot = _add_manual_root(NNSTRoot.new())
 	var _active_sibling: NNSTNode = _make_logger("ActiveSibling")
@@ -77,9 +72,6 @@ func test_inactive_branch_sees_child_added_after_ready() -> void:
 	assert_true(_new_child.get_is_active())
 	assert_eq(_get_log(_root).count("NewChild on_enter_state"), 1)
 
-## Removing a child from an inactive branch after _ready must drop the stale
-## entry. A child added afterwards must be the one selected when the branch is
-## entered, and the removed child must never receive callbacks.
 func test_inactive_branch_sees_child_removed_after_ready() -> void:
 	var _root: NNSTRoot = NNSTRoot.new()
 	var _active_sibling: NNSTNode = _make_logger("ActiveSibling")
@@ -115,8 +107,6 @@ func test_inactive_branch_sees_child_removed_after_ready() -> void:
 	assert_eq(_get_log(_root).count("OldChild on_enter_state"), 0)
 	assert_eq(_get_log(_root).count("OldChild on_exit_state"), 0)
 
-## Reordering children of an inactive branch after _ready must update the cached
-## order, so selection after entering the branch follows the new order.
 func test_inactive_branch_sees_child_reorder_after_ready() -> void:
 	var _root: NNSTRoot = NNSTRoot.new()
 	var _active_sibling: NNSTNode = _make_logger("ActiveSibling")
@@ -149,8 +139,6 @@ func test_inactive_branch_sees_child_reorder_after_ready() -> void:
 	assert_eq(_get_log(_root).count("SecondChild on_enter_state"), 1)
 	assert_eq(_get_log(_root).count("FirstChild on_enter_state"), 0)
 
-## A transition added below an inactive branch after _ready must be cached, so
-## send_event() can use it once the branch is entered.
 func test_inactive_branch_sees_transition_added_after_ready() -> void:
 	var _root: NNSTRoot = _add_manual_root(NNSTRoot.new())
 	var _active_sibling: NNSTNode = _make_logger("ActiveSibling")
@@ -182,8 +170,6 @@ func test_inactive_branch_sees_transition_added_after_ready() -> void:
 	assert_eq(_get_log(_root).count("Branch on_exit_state"), 1)
 	assert_eq(_get_log(_root).count("Target on_enter_state"), 1)
 
-## A consideration added below an inactive branch after _ready must be cached,
-## so utility selection can score the branch when it is entered later.
 func test_inactive_branch_sees_consideration_added_after_ready() -> void:
 	var _root: NNSTRoot = NNSTRoot.new()
 	var _start: NNSTNode = _make_logger("Start")
@@ -225,9 +211,6 @@ func test_inactive_branch_sees_consideration_added_after_ready() -> void:
 	assert_eq(_get_log(_root).count("Branch on_enter_state"), 1)
 	assert_eq(_get_log(_root).count("Rival on_enter_state"), 0)
 
-## Reordering and removing children while the branch is active must keep the
-## existing behaviour: the reorder takes effect, the exit callback runs once and
-## reselection waits for the next tick.
 func test_active_branch_reorder_and_removal_still_works() -> void:
 	var _root: NNSTRoot = _add_manual_root(NNSTRoot.new())
 	var _child: NNSTNode = _make_logger("Child")

@@ -1,4 +1,3 @@
-# GdUnit generated TestSuite
 extends GutTest
 @warning_ignore('unused_parameter')
 @warning_ignore('return_value_discarded')
@@ -10,7 +9,7 @@ func _add_manual_root(root: NNSTRoot) -> NNSTRoot:
 	return add_child_autofree(root)
 
 
-## Test helper: optionally transitions to another state when entered.
+# Test helper: optionally transitions to another state when entered.
 class RedirectOnEnterNode extends NNSTNode:
 	var target_path: NodePath
 	var applied = null
@@ -25,7 +24,7 @@ class RedirectOnEnterNode extends NNSTNode:
 	func on_exit_state() -> void:
 		exit_count += 1
 
-## Test helper: optionally transitions to another state when exited.
+# Test helper: optionally transitions to another state when exited.
 class RedirectOnExitNode extends NNSTNode:
 	var target_path: NodePath
 	var applied = null
@@ -171,8 +170,6 @@ func test_transition_with_failing_guard() -> void:
 	assert_eq(_node1.get_is_active(), true)
 	assert_eq(_node2.get_is_active(), false)
 
-## A transition whose guard fails must not stop a later transition with the
-## same event name from being tried (a guarded priority chain).
 func test_failed_guard_falls_through_to_next_same_named_transition() -> void:
 	var _root: NNSTRoot = _add_manual_root(NNSTRoot.new())
 	var _node1: NNSTNode = NNSTNode.new()
@@ -203,8 +200,6 @@ func test_failed_guard_falls_through_to_next_same_named_transition() -> void:
 	assert_eq(_node2.get_is_active(), false)
 	assert_eq(_node3.get_is_active(), true)
 
-## A parent's inapplicable guarded transition must not mask an active child's
-## handler for the same event.
 func test_failed_parent_guard_falls_through_to_active_child() -> void:
 	var _root: NNSTRoot = _add_manual_root(NNSTRoot.new())
 	var _node1: NNSTNode = NNSTNode.new()
@@ -241,8 +236,6 @@ func test_failed_parent_guard_falls_through_to_active_child() -> void:
 	assert_eq(_node12.get_is_active(), true)
 	assert_eq(_node2.get_is_active(), false)
 
-## Once a matching transition applies, later same-named transitions must not
-## also run; child order is the priority order.
 func test_first_applicable_transition_wins() -> void:
 	var _root: NNSTRoot = _add_manual_root(NNSTRoot.new())
 	var _node1: NNSTNode = NNSTNode.new()
@@ -284,8 +277,6 @@ func test_transition_to_reports_whether_it_applied() -> void:
 	assert_eq(_node2.get_is_active(), true)
 	assert_eq(_node1.transition_to(_node1.get_path_to(_not_a_state)), false)
 
-## This test ensures active child counts don't screw up when transitioning in
-## and out of grandchild states repeatedly.
 func test_transition_into_and_out_of_grandchild_twice() -> void:
 	var _root: NNSTRoot = _add_manual_root(NNSTRoot.new())
 	var _node1: NNSTNode = NNSTNode.new()
@@ -347,8 +338,6 @@ func test_transition_from_on_enter_state() -> void:
 	assert_eq(_node1.get_is_active(), false)
 	assert_eq(_node2.get_is_active(), true)
 
-## A transition requested from a leaf's on_enter_state() must be honored even
-## though the transition that entered the leaf is still in progress.
 func test_nested_transition_from_leaf_on_enter_state() -> void:
 	var _root: NNSTRoot = NNSTRoot.new()
 	_root.name = "Root"
@@ -388,8 +377,6 @@ func test_nested_transition_from_leaf_on_enter_state() -> void:
 	assert_eq(_leaf.get_is_active(), false)
 	assert_eq(_end.get_is_active(), true)
 
-## An on_enter_state() redirect from an intermediate state must cancel the rest
-## of the outer transition's lineage instead of entering stale descendants.
 func test_ancestor_on_enter_state_redirect_skips_descendants() -> void:
 	var _root: NNSTRoot = NNSTRoot.new()
 	_root.name = "Root"
@@ -430,8 +417,6 @@ func test_ancestor_on_enter_state_redirect_skips_descendants() -> void:
 	assert_eq(_end.get_is_active(), true)
 	assert_eq(_leaf.enter_count, 0)
 
-## An on_exit_state() callback may free the state being transitioned to. The
-## transition must not keep using that pointer while entering the new lineage.
 func test_exit_callback_freeing_transition_target_is_safe() -> void:
 	var _root: NNSTRoot = _add_manual_root(NNSTRoot.new())
 	var _source: FreeTargetOnExitNode = FreeTargetOnExitNode.new()
@@ -444,7 +429,6 @@ func test_exit_callback_freeing_transition_target_is_safe() -> void:
 	assert_eq(_source.get_is_active(), true)
 	_source.target = _target
 
-	# This used to dereference Target after Source's exit callback freed it.
 	assert_eq(_source.transition_to(_source.get_path_to(_target)), true)
 
 	assert_eq(_source.exit_count, 1)
@@ -490,8 +474,6 @@ func test_exit_callback_reparenting_target_does_not_block_reselection() -> void:
 	assert_true(_source.get_is_active())
 	assert_false(_target.get_is_active())
 
-## A transition requested from on_exit_state() redirects to a sibling. The
-## transition that triggered the exit must not overwrite the redirect.
 func test_transition_from_on_exit_state_redirects_to_sibling() -> void:
 	var _root: NNSTRoot = NNSTRoot.new()
 	_root.name = "Root"
@@ -531,8 +513,6 @@ func test_transition_from_on_exit_state_redirects_to_sibling() -> void:
 	assert_eq(_node1.exit_count, 1)
 	assert_eq(_node3.enter_count, 1)
 
-## An on_exit_state() redirect requested by an active child is honored even
-## while its parent (and therefore the child) is exiting.
 func test_transition_from_child_on_exit_state_redirects() -> void:
 	var _root: NNSTRoot = NNSTRoot.new()
 	_root.name = "Root"
@@ -565,9 +545,6 @@ func test_transition_from_child_on_exit_state_redirects() -> void:
 	assert_eq(_parent.exit_count, 1)
 	assert_eq(_child.exit_count, 1)
 
-## A state entered by an on_exit_state() redirect may itself redirect from
-## on_enter_state(); the most nested transition wins and neither state is left
-## active or entered twice.
 func test_on_exit_redirect_target_can_redirect_on_enter() -> void:
 	var _root: NNSTRoot = NNSTRoot.new()
 	_root.name = "Root"
@@ -606,8 +583,6 @@ func test_on_exit_redirect_target_can_redirect_on_enter() -> void:
 	assert_eq(_node3.get_is_active(), false)
 	assert_eq(_node4.get_is_active(), true)
 
-## A transition requested before the tree has been entered remains a safe
-## no-op rather than activating a state without its ancestors.
 func test_transition_before_tree_entry_is_not_applied() -> void:
 	var _root: NNSTRoot = autofree(NNSTRoot.new())
 	var _node1: NNSTNode = NNSTNode.new()

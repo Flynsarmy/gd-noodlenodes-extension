@@ -1,9 +1,7 @@
 extends Node
 
 
-# Test fixture: an NNBTLeaf script whose on_tick returns an arbitrary Variant.
-# A typed "-> Status" override can only ever return ints, so this fixture is
-# needed to feed null/float/bool/string on_tick results into NNBTLeaf.tick().
+# Untyped so on_tick can return non-int Variants; a "-> Status" override can only return ints.
 var payload: Variant
 
 

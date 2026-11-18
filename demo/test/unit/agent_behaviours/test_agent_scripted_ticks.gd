@@ -1,11 +1,6 @@
 extends GutTest
 @warning_ignore('unused_parameter')
 
-# Regression tests: a script attached to an NNAgent with its own _process and
-# _physics_process callbacks must keep those callbacks and must not shadow the
-# agent's automatic thinking and frame_tick, which are driven by the SceneTree
-# frame signal selected with process_thread.
-
 const SCRIPTED_AGENT: Script = preload("res://test/unit/agent_behaviours/agent_scripted_process.gd")
 
 
@@ -42,15 +37,10 @@ func _await_physics_frames(count: int) -> void:
 		await get_tree().physics_frame
 
 
-# Waits for idle frames. GUT's wait_frames() is deprecated; awaiting the
-# SceneTree signal directly is the supported equivalent.
 func _await_process_frames(count: int) -> void:
 	for _index in range(count):
 		await get_tree().process_frame
 
-
-# A scripted agent must think and tick its action from the physics frame
-# without any manual call.
 
 func test_scripted_agent_thinks_and_ticks_from_the_physics_frame() -> void:
 	var behaviour := _make_behaviour(1.0)
@@ -67,8 +57,6 @@ func test_scripted_agent_thinks_and_ticks_from_the_physics_frame() -> void:
 	assert_eq(agent.get_current_behaviour_node(), behaviour, "the selection must survive frame ticks")
 
 
-# IDLE mode drives the same agent from the process frame.
-
 func test_scripted_agent_thinks_and_ticks_from_the_process_frame() -> void:
 	var behaviour := _make_behaviour(1.0)
 	var action := behaviour.get_child(1) as NNAction
@@ -83,8 +71,6 @@ func test_scripted_agent_thinks_and_ticks_from_the_process_frame() -> void:
 	assert_eq(agent.get_current_action_node(), action, "the agent must select its action without a manual call")
 	assert_eq(agent.get_current_behaviour_node(), behaviour, "the selection must survive frame ticks")
 
-
-# Frame-signal connections exist only while the agent is inside the tree.
 
 func test_scripted_agent_stops_ticking_after_leaving_the_tree() -> void:
 	var behaviour := _make_behaviour(1.0)

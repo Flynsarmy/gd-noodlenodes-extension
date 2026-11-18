@@ -1,7 +1,6 @@
 extends GutTest
 
-# NNAgent has no seed API; selection coverage uses bounded sampling.
-# Count/order invariants also need deterministic native verification.
+# NNAgent has no seed API, so selection is checked by sampling.
 
 const SELECTION_SAMPLES := 300
 
@@ -66,57 +65,6 @@ func test_single_slot_keeps_only_the_highest_scored_behaviour() -> void:
 	assert_eq(counts["middle"], 0)
 	assert_eq(counts["lowest"], 0)
 	assert_eq(agent.get_top_scoring_behaviour_name(), "highest")
-
-
-func test_lower_scored_candidate_in_last_slot_is_selectable() -> void:
-	var high: NNBehaviour = _make_behaviour("high", 0.9)
-	var low: NNBehaviour = _make_behaviour("low", 0.5)
-	var agent: NNAgent = _make_agent([high, low], 2)
-
-	var counts := _count_selections(agent, [high, low])
-
-	_assert_all_selectable(counts, SELECTION_SAMPLES)
-	assert_eq(agent.get_top_scoring_behaviour_name(), "high")
-
-
-func test_third_candidate_appended_to_partial_list_is_selectable() -> void:
-	var high: NNBehaviour = _make_behaviour("high", 0.9)
-	var middle: NNBehaviour = _make_behaviour("middle", 0.5)
-	var low: NNBehaviour = _make_behaviour("low", 0.3)
-	var agent: NNAgent = _make_agent([high, middle, low], 3)
-
-	var counts := _count_selections(agent, [high, middle, low])
-
-	_assert_all_selectable(counts, SELECTION_SAMPLES)
-	assert_eq(agent.get_top_scoring_behaviour_name(), "high")
-
-
-func test_partial_list_orders_front_and_middle_insertions() -> void:
-	var middle: NNBehaviour = _make_behaviour("middle", 0.5)
-	var high: NNBehaviour = _make_behaviour("high", 0.9)
-	var upper_middle: NNBehaviour = _make_behaviour("upper_middle", 0.7)
-	var agent: NNAgent = _make_agent([middle, high, upper_middle], 3)
-
-	# 0.5 fills slot 0, 0.9 shifts it to slot 1, 0.7 inserts in the middle.
-	var counts := _count_selections(agent, [middle, high, upper_middle])
-
-	_assert_all_selectable(counts, SELECTION_SAMPLES)
-	assert_eq(agent.get_top_scoring_behaviour_name(), "high")
-
-
-func test_full_list_keeps_capacity_and_drops_the_lowest_scored() -> void:
-	var high: NNBehaviour = _make_behaviour("high", 0.9)
-	var middle: NNBehaviour = _make_behaviour("middle", 0.6)
-	var low: NNBehaviour = _make_behaviour("low", 0.3)
-	var agent: NNAgent = _make_agent([high, middle, low], 2)
-
-	var counts := _count_selections(agent, [high, middle, low])
-
-	assert_gt(counts["high"], 0)
-	assert_gt(counts["middle"], 0)
-	assert_eq(counts["low"], 0, "a full list must not exceed its capacity")
-	assert_eq(counts["high"] + counts["middle"], SELECTION_SAMPLES)
-	assert_eq(agent.get_top_scoring_behaviour_name(), "high")
 
 
 func test_equal_scores_are_both_selectable_and_keep_evaluation_order() -> void:

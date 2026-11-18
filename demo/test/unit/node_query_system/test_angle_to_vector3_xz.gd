@@ -1,17 +1,8 @@
 extends GutTest
 @warning_ignore('return_value_discarded')
 
-# Regression tests for NNAngleToVector3XZSearchCriterion.
-#
-# The reference direction and the candidate's Node3D forward direction must use
-# the same signed XZ projection. Projecting only one of them with a different Z
-# sign made an aligned identity Node3D look like it was facing backwards.
-#
-# The criterion uses Godot's documented -Z forward convention:
-#   forward = -global_transform.basis.z
-# and projects both directions with (-z, x). That projection is signed: with
-# the default -Z reference, rotation.y = -PI/4 gives +45 degrees and
-# rotation.y = +PI/4 gives -45 degrees.
+# The criterion uses Godot's -Z forward convention and projects both directions
+# with (-z, x), so with the default -Z reference rotation.y = -PI/4 is +45 degrees.
 
 const GENEROUS_BUDGET_USEC := 100000
 const MAX_RUN_QUERIES_CALLS := 100

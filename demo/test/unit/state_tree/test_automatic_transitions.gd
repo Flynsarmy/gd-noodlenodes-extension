@@ -1,4 +1,3 @@
-# GdUnit generated TestSuite
 extends GutTest
 @warning_ignore('unused_parameter')
 @warning_ignore('return_value_discarded')
@@ -10,9 +9,9 @@ func _add_manual_root(root: NNSTRoot) -> NNSTRoot:
 	return add_child_autofree(root)
 
 
-## Counts guard evaluations. bump() increments count and succeeds once count
-## reaches threshold. Used to prove an automatic STATE_ENTER guard is evaluated
-## exactly once per activation of its state.
+# Counts guard evaluations. bump() increments count and succeeds once count
+# reaches threshold. Used to prove an automatic STATE_ENTER guard is evaluated
+# exactly once per activation of its state.
 class Counter extends RefCounted:
 	var count: int = 0
 	var threshold: int = 2
@@ -21,15 +20,15 @@ class Counter extends RefCounted:
 		return count >= threshold
 
 
-## A guard that only implements is_satisfied(), like a typical custom GDScript guard.
+# A guard that only implements is_satisfied(), like a typical custom GDScript guard.
 class CustomGuard extends NNSTGuard:
 	@warning_ignore('native_method_override')
 	func is_satisfied(_transition: NNSTTransition, _state: NNSTTickedNodes) -> bool:
 		return true
 
 
-## Counts how many times the engine enters this state. on_enter_state() is a
-## GDVIRTUAL dispatched from C++, so this observer is consulted on every entry.
+# Counts how many times the engine enters this state. on_enter_state() is a
+# GDVIRTUAL dispatched from C++, so this observer is consulted on every entry.
 class CountingState extends NNSTNode:
 	var enter_count: int = 0
 	@warning_ignore('native_method_override')
@@ -37,9 +36,9 @@ class CountingState extends NNSTNode:
 		enter_count += 1
 
 
-## Sets an expression property while it exits. Used to prove that a property
-## change raised from on_exit_state() is deferred until the active transition
-## has finished, so the exiting state's own automatic transition cannot fire.
+# Sets an expression property while it exits. Used to prove that a property
+# change raised from on_exit_state() is deferred until the active transition
+# has finished, so the exiting state's own automatic transition cannot fire.
 class ExitSetterState extends NNSTNode:
 	var chart_root: NNSTRoot
 	var prop_name: String
@@ -50,7 +49,7 @@ class ExitSetterState extends NNSTNode:
 			chart_root.set_expression_property(prop_name, prop_value)
 
 
-## Fires an event on the chart root as soon as it is entered.
+# Fires an event on the chart root as soon as it is entered.
 class EventOnEnterState extends NNSTNode:
 	var chart_root: NNSTRoot
 	var event_name: String
@@ -285,9 +284,8 @@ func test_custom_guard_defaults_to_no_trigger_types() -> void:
 
 
 func test_automatic_transition_cycle_terminates_without_crashing() -> void:
-	# A <-> B with two always-satisfied automatic transitions used to recurse the
-	# C stack until the process segfaulted (exit code 139). Entering the tree must
-	# now hit the bounded transition runner and return with a consistent chart.
+	# A <-> B with two always-satisfied automatic transitions must hit the bounded
+	# transition runner instead of recursing until the stack overflows.
 	var _root: NNSTRoot = NNSTRoot.new()
 	var _a: CountingState = CountingState.new()
 	var _b: CountingState = CountingState.new()
@@ -308,7 +306,6 @@ func test_automatic_transition_cycle_terminates_without_crashing() -> void:
 	_ta.to = _ta.get_path_to(_b)
 	_tb.to = _tb.get_path_to(_a)
 
-	# This call used to crash outright. It must return normally.
 	_add_manual_root(_root)
 
 	# The bounded runner emits a single engine error when it hits its cap. Mark
@@ -464,11 +461,8 @@ func test_property_set_from_on_exit_state_is_deferred_until_transition_completes
 
 
 func test_state_enter_evaluates_automatic_guard_once_per_entry() -> void:
-	# Regression for a duplicate STATE_ENTER dispatch. Entering Compound also
-	# enters its active child A, so both queued an entry request. The old runner
-	# broadcast STATE_ENTER from Compound down to A and then drained A's own
-	# request, evaluating A->B's guard twice during one real entry. With a guard
-	# that only passes at 2, that second evaluation wrongly moved A -> B.
+	# Entering Compound also enters A, so both queue an entry request. The guard
+	# only passes on its second evaluation, so a duplicate dispatch would move A -> B.
 	var _root: NNSTRoot = NNSTRoot.new()
 	var _outside: NNSTNode = NNSTNode.new()
 	var _compound: NNSTNode = NNSTNode.new()
@@ -547,15 +541,10 @@ func test_state_enter_reentry_evaluates_guard_once_per_activation() -> void:
 	assert_false(_b.get_is_active())
 
 
-## Builds the priority scenario shared by the regressions below.
-## Parallel Left(L1,L2) / Right(R1,R2,Bad,Good). "first" moves L1->L2; L2's
-## entry queues "later". R1 has an automatic empty-event transition to R2 that
-## only becomes valid once L2 is active (via the chosen guard). R1 --later-->
-## Bad and R2 --later--> Good. The automatic R1->R2 change must settle before
-## "later" is dispatched, otherwise the stale R1 --later--> Bad wins.
-## entrypoint selects how L1->L2 is started: "event" (send_event "first"),
-## "take" (first.take()) or "delayed" (0.1s delay via take(false), verify the
-## source is still active before expiry, then tick past the delay).
+# Parallel Left(L1,L2) / Right(R1,R2,Bad,Good). "first" moves L1->L2 and L2's
+# entry queues "later". R1's automatic transition to R2 becomes valid once L2 is
+# active, and must settle before "later" is dispatched or R1 --later--> Bad wins.
+# entrypoint starts L1->L2 via send_event ("event"), take() or a delayed take(false).
 func _build_change_before_queued_event_chart(property_trigger: bool, entrypoint: String = "event") -> Dictionary:
 	var _root: NNSTRoot = NNSTRoot.new()
 	_root.initial_expression_properties = {"ready": false}
@@ -630,74 +619,11 @@ func _build_change_before_queued_event_chart(property_trigger: bool, entrypoint:
 	return {"bad": _bad, "good": _good}
 
 
-func test_automatic_state_change_settles_before_event_queued_by_earlier_event() -> void:
-	# StateIsActiveGuard variant: R1->R2 is a STATE_CHANGE automatic change. It
-	# must settle before the "later" event queued by L2's entry is dispatched,
-	# so "later" reaches R2 (Good) instead of the stale R1 (Bad).
-	var _chart: Dictionary = _build_change_before_queued_event_chart(false)
-	var _bad: NNSTNode = _chart["bad"]
-	var _good: NNSTNode = _chart["good"]
+func test_automatic_change_settles_before_a_queued_event() -> void:
+	for property_trigger in [false, true]:
+		for entrypoint in ["event", "take", "delayed"]:
+			var _chart: Dictionary = _build_change_before_queued_event_chart(property_trigger, entrypoint)
+			var label := "%s trigger via %s" % ["property" if property_trigger else "state", entrypoint]
 
-	assert_false(_bad.get_is_active(), "Bad must not win from a stale R1 'later' event")
-	assert_true(_good.get_is_active(), "Good must win after the automatic R1->R2 change")
-
-
-func test_automatic_property_change_settles_before_event_queued_by_earlier_event() -> void:
-	# ExpressionGuard variant: setting ready=true from L2's entry is a
-	# PROPERTY_CHANGE automatic change. It must fire R1->R2 before the "later"
-	# event queued by that same entry is dispatched, so "later" reaches Good.
-	var _chart: Dictionary = _build_change_before_queued_event_chart(true)
-	var _bad: NNSTNode = _chart["bad"]
-	var _good: NNSTNode = _chart["good"]
-
-	assert_false(_bad.get_is_active(), "Bad must not win from a stale R1 'later' event")
-	assert_true(_good.get_is_active(), "Good must win after the automatic R1->R2 change")
-
-
-func test_automatic_state_change_settles_before_event_queued_by_take() -> void:
-	# StateIsActiveGuard variant started via NNSTTransition.take(). take() goes
-	# through _request_transition/_execute_transition (a bare TransitionTransaction
-	# with no outer ChangeScopeGuard), so the outermost transition boundary must
-	# settle the R1->R2 state change before the queued "later" event is dispatched.
-	var _chart: Dictionary = _build_change_before_queued_event_chart(false, "take")
-	var _bad: NNSTNode = _chart["bad"]
-	var _good: NNSTNode = _chart["good"]
-
-	assert_false(_bad.get_is_active(), "Bad must not win from a stale R1 'later' event after take()")
-	assert_true(_good.get_is_active(), "Good must win after take() and the automatic R1->R2 change")
-
-
-func test_automatic_property_change_settles_before_event_queued_by_take() -> void:
-	# ExpressionGuard variant via take(): the ready=true property change must
-	# fire R1->R2 before the "later" event queued by L2's entry is dispatched.
-	var _chart: Dictionary = _build_change_before_queued_event_chart(true, "take")
-	var _bad: NNSTNode = _chart["bad"]
-	var _good: NNSTNode = _chart["good"]
-
-	assert_false(_bad.get_is_active(), "Bad must not win from a stale R1 'later' event after take()")
-	assert_true(_good.get_is_active(), "Good must win after take() and the automatic R1->R2 change")
-
-
-func test_automatic_state_change_settles_before_event_queued_by_delayed_take() -> void:
-	# StateIsActiveGuard variant via a genuine delayed transition: take(false)
-	# schedules a 0.1s pending transition, and ticking past expiry executes it
-	# from on_tick. The resulting state change must settle before the queued
-	# "later" event is dispatched.
-	var _chart: Dictionary = _build_change_before_queued_event_chart(false, "delayed")
-	var _bad: NNSTNode = _chart["bad"]
-	var _good: NNSTNode = _chart["good"]
-
-	assert_false(_bad.get_is_active(), "Bad must not win from a stale R1 'later' event after delayed take()")
-	assert_true(_good.get_is_active(), "Good must win after delayed take() and the automatic R1->R2 change")
-
-
-func test_automatic_property_change_settles_before_event_queued_by_delayed_take() -> void:
-	# ExpressionGuard variant via a genuine delayed transition (take(false)):
-	# the ready=true property change raised on expiry must fire R1->R2 before
-	# the queued "later" event.
-	var _chart: Dictionary = _build_change_before_queued_event_chart(true, "delayed")
-	var _bad: NNSTNode = _chart["bad"]
-	var _good: NNSTNode = _chart["good"]
-
-	assert_false(_bad.get_is_active(), "Bad must not win from a stale R1 'later' event after delayed take()")
-	assert_true(_good.get_is_active(), "Good must win after delayed take() and the automatic R1->R2 change")
+			assert_false(_chart["bad"].get_is_active(), "a stale R1 'later' event must not win: " + label)
+			assert_true(_chart["good"].get_is_active(), "the automatic R1->R2 change settles first: " + label)

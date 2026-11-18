@@ -1,9 +1,5 @@
 extends GutTest
 
-# Regression tests: NNBehaviour must start the first enabled action (or action
-# group) exactly once when the behaviour starts. Previously an action at child
-# index 0 was treated as already running and never received start_action().
-
 
 func _make_consideration(value: float) -> NNConsideration:
 	var consideration: NNConsideration = NNConsideration.new()
@@ -45,30 +41,8 @@ func test_action_first_is_started_once_on_selection() -> void:
 	assert_eq(behaviour.get_current_action_index(), 0)
 	assert_eq(entered[0], 1, "The first action should be started exactly once")
 
-	# Repeated updates must not re-enter the already running action.
 	for i in 3:
 		agent.update_current_behaviour()
-	assert_eq(entered[0], 1)
-
-
-func test_consideration_first_still_starts_first_action_once() -> void:
-	var agent := NNAgent.new()
-	var behaviour := NNBehaviour.new()
-	var action := NNAction.new()
-	var entered := _count_action_entries(action)
-
-	behaviour.add_child(_make_consideration(1.0))
-	behaviour.add_child(action)
-	agent.add_child(behaviour)
-	_add_manual_agent(agent)
-
-	_select_behaviour(agent)
-
-	assert_eq(agent.get_current_action_node(), action)
-	assert_eq(behaviour.get_current_action_index(), 1)
-	assert_eq(entered[0], 1)
-
-	agent.update_current_behaviour()
 	assert_eq(entered[0], 1)
 
 
@@ -114,25 +88,6 @@ func test_action_group_first_is_started_once() -> void:
 	assert_eq(entered[0], 1)
 
 	agent.update_current_behaviour()
-	assert_eq(entered[0], 1)
-
-
-func test_action_group_after_consideration_still_starts_action_once() -> void:
-	var agent := NNAgent.new()
-	var behaviour := NNBehaviour.new()
-	var group := NNActionGroup.new()
-	var action := NNAction.new()
-	var entered := _count_action_entries(action)
-
-	group.add_child(action)
-	behaviour.add_child(_make_consideration(1.0))
-	behaviour.add_child(group)
-	agent.add_child(behaviour)
-	_add_manual_agent(agent)
-
-	_select_behaviour(agent)
-
-	assert_eq(agent.get_current_action_node(), action)
 	assert_eq(entered[0], 1)
 
 

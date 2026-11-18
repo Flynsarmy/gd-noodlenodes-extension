@@ -36,8 +36,6 @@ func test_defaults_auto_tick_on_the_physics_frame() -> void:
 	assert_eq(state.tick_count, count + 1, "one physics frame ticks the active state exactly once without a manual call")
 
 
-# MANUAL scheduling.
-
 func test_manual_mode_ticks_only_when_the_caller_ticks() -> void:
 	var chart_root: NNSTRoot = _make_root()
 	add_child_autofree(chart_root)
@@ -57,8 +55,6 @@ func test_manual_mode_ticks_only_when_the_caller_ticks() -> void:
 	assert_eq(state.tick_count, 1, "a custom scheduler drives tick() itself")
 
 
-# Tree exit.
-
 func test_leaving_the_tree_stops_ticking() -> void:
 	var chart_root: NNSTRoot = _make_root()
 	add_child_autofree(chart_root)
@@ -75,8 +71,6 @@ func test_leaving_the_tree_stops_ticking() -> void:
 
 	assert_eq(state.tick_count, count, "a root outside the tree does not auto-tick")
 
-
-# Inactive charts.
 
 func test_inactive_root_does_not_auto_tick() -> void:
 	var chart_root: NNSTRoot = _make_root()

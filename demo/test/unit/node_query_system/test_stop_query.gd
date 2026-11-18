@@ -2,9 +2,8 @@ extends GutTest
 @warning_ignore('unused_parameter')
 @warning_ignore('return_value_discarded')
 
-# Regression tests: stopping a posted query must release its scheduler slot and
-# decrement the matching active-query counter. Otherwise the scheduler keeps
-# spinning over empty slots and the phantom counts never reach zero.
+# Stopping a posted query must release its slot and active-query count, or the
+# scheduler keeps spinning over phantom entries.
 
 # A query budget that is large enough to finish the tiny test search spaces in
 # a single execute_query() call, keeping the tests independent of machine speed.

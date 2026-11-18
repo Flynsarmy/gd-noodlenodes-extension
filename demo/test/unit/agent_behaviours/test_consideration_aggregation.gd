@@ -1,9 +1,5 @@
 extends GutTest
 
-# Regression tests: NNBehaviour / NNBehaviourGroup Min/Mean aggregation must
-# skip disabled considerations and divide by the number of *evaluated* children.
-
-
 # These tests tick the agent by hand, so automatic ticking is off.
 func _add_manual_agent(agent: NNAgent) -> NNAgent:
 	agent.process_thread = NNAgent.MANUAL
@@ -54,7 +50,6 @@ func test_behaviour_mean_divides_by_evaluated_considerations() -> void:
 
 	_agent.evaluate_options(0.1)
 
-	# (0.5 + 0.8) / 2 == 0.65, not (0.5 + 0.8) / 3.
 	assert_almost_eq(_behaviour.score, 0.65, 0.0001)
 
 

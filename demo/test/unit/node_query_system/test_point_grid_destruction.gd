@@ -2,12 +2,9 @@ extends GutTest
 @warning_ignore('unused_parameter')
 @warning_ignore('return_value_discarded')
 
-# Regression tests: point grid search spaces generate real scene nodes as
-# children of the configured external point_grid_parent_node. Destroying them
-# used to memfree() the Godot objects, leaving dangling children in the parent
-# and crashing on parent teardown. The destructor must delete only the nodes it
-# generated, through Godot's object destruction, and must tolerate points and
-# parents that were already freed.
+# Point grid spaces create real nodes under point_grid_parent_node. Freeing the
+# space must free only the points it created and tolerate points or parents
+# that are already gone.
 
 const POINT_GRID_2D_SIZE := Vector2(10, 10)
 const POINT_GRID_3D_SIZE := Vector3(2, 0, 2)
@@ -52,9 +49,6 @@ func test_generated_points_are_parented_and_counted() -> void:
 	assert_eq(grid_3d["parent"].get_child_count(), EXPECTED_POINT_COUNT_3D + 1, "3D points and the search space are children of the parent.")
 
 
-# --- 2D -------------------------------------------------------------------
-
-
 func test_2d_space_free_removes_generated_points_before_parent_free() -> void:
 	var grid: Dictionary = _make_2d_grid()
 	var parent: Node2D = grid["parent"]
@@ -69,7 +63,6 @@ func test_2d_space_free_removes_generated_points_before_parent_free() -> void:
 	assert_eq(parent.get_child_count(), 0, "Freeing the search space first must leave no dangling children.")
 	assert_false(is_instance_valid(space))
 
-	# Parent teardown after the search space must not crash (the original repro).
 	parent.free()
 	assert_false(is_instance_valid(parent))
 
@@ -147,9 +140,6 @@ func test_2d_external_point_grid_entries_survive_space_free() -> void:
 	assert_eq(parent.get_child_count(), 0, "Only generated points are removed from the point grid parent.")
 
 
-# --- 3D -------------------------------------------------------------------
-
-
 func test_3d_space_free_removes_generated_points_before_parent_free() -> void:
 	var grid: Dictionary = _make_3d_grid()
 	var parent: Node3D = grid["parent"]
@@ -164,7 +154,6 @@ func test_3d_space_free_removes_generated_points_before_parent_free() -> void:
 	assert_eq(parent.get_child_count(), 0, "Freeing the search space first must leave no dangling children.")
 	assert_false(is_instance_valid(space))
 
-	# Parent teardown after the search space must not crash (the original repro).
 	parent.free()
 	assert_false(is_instance_valid(parent))
 

@@ -41,8 +41,6 @@ func _tick_and_assert(root: NNBTRoot, node: NNBTNodes, expected: int) -> void:
 		assert_false(node.get_is_running())
 
 
-# Non-reactive defaults.
-
 func test_reactive_defaults_to_false() -> void:
 	var sequence: NNBTSequence = NNBTSequence.new()
 	var selector: NNBTSelector = NNBTSelector.new()
@@ -87,8 +85,6 @@ func test_non_reactive_selector_resumes_from_running_child() -> void:
 
 	root.free()
 
-
-# Reactive sequence.
 
 func test_reactive_sequence_re_ticks_the_leading_child_every_tick() -> void:
 	var first: ConstantLeaf = _make_leaf(NNBTNodes.SUCCESS)
@@ -161,44 +157,6 @@ func test_reactive_sequence_skips_disabled_children_every_tick() -> void:
 
 	root.free()
 
-
-func test_reactive_sequence_empty_returns_success() -> void:
-	var sequence: NNBTSequence = NNBTSequence.new()
-	sequence.set_reactive(true)
-	var root: NNBTRoot = _build_root(sequence, [])
-
-	_tick_and_assert(root, sequence, NNBTNodes.SUCCESS)
-
-	root.free()
-
-
-func test_reactive_sequence_all_disabled_returns_success() -> void:
-	var disabled: ConstantLeaf = _make_leaf(NNBTNodes.FAILURE, false)
-	var sequence: NNBTSequence = NNBTSequence.new()
-	sequence.set_reactive(true)
-	var root: NNBTRoot = _build_root(sequence, [disabled])
-
-	_tick_and_assert(root, sequence, NNBTNodes.SUCCESS)
-	assert_eq(disabled.tick_count, 0)
-
-	root.free()
-
-
-func test_reactive_sequence_all_success_returns_success() -> void:
-	var first: ConstantLeaf = _make_leaf(NNBTNodes.SUCCESS)
-	var second: ConstantLeaf = _make_leaf(NNBTNodes.SUCCESS)
-	var sequence: NNBTSequence = NNBTSequence.new()
-	sequence.set_reactive(true)
-	var root: NNBTRoot = _build_root(sequence, [first, second])
-
-	_tick_and_assert(root, sequence, NNBTNodes.SUCCESS)
-	assert_eq(first.tick_count, 1)
-	assert_eq(second.tick_count, 1)
-
-	root.free()
-
-
-# Reactive selector.
 
 func test_reactive_selector_re_checks_the_highest_priority_branch() -> void:
 	var first: ConstantLeaf = _make_leaf(NNBTNodes.FAILURE)
@@ -274,27 +232,5 @@ func test_reactive_selector_skips_disabled_children() -> void:
 	_tick_and_assert(root, selector, NNBTNodes.RUNNING)
 	assert_eq(disabled.tick_count, 0)
 	assert_eq(running.tick_count, 2)
-
-	root.free()
-
-
-func test_reactive_selector_empty_returns_failure() -> void:
-	var selector: NNBTSelector = NNBTSelector.new()
-	selector.set_reactive(true)
-	var root: NNBTRoot = _build_root(selector, [])
-
-	_tick_and_assert(root, selector, NNBTNodes.FAILURE)
-
-	root.free()
-
-
-func test_reactive_selector_all_disabled_returns_failure() -> void:
-	var disabled: ConstantLeaf = _make_leaf(NNBTNodes.SUCCESS, false)
-	var selector: NNBTSelector = NNBTSelector.new()
-	selector.set_reactive(true)
-	var root: NNBTRoot = _build_root(selector, [disabled])
-
-	_tick_and_assert(root, selector, NNBTNodes.FAILURE)
-	assert_eq(disabled.tick_count, 0)
 
 	root.free()

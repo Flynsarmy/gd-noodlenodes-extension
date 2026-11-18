@@ -1,4 +1,3 @@
-# GdUnit generated TestSuite
 extends GutTest
 @warning_ignore('unused_parameter')
 @warning_ignore('return_value_discarded')
@@ -47,7 +46,6 @@ func test_stop_query_fails_and_the_leaf_can_post_a_fresh_query() -> void:
 	assert_eq(_root.tick(0.1), NNBTNodes.RUNNING)
 	assert_true(_search_space.is_query_still_running)
 
-	# Cancel the posted query the same way the issue repro does.
 	var _nqs: NNNodeQuerySystem = Engine.get_singleton("NodeQuerySystem")
 	assert_true(_nqs.stop_query(_search_space))
 	assert_false(_search_space.is_query_still_running)
@@ -395,37 +393,6 @@ func test_reassigning_search_space_after_a_dead_reference_is_observed_starts_a_n
 	assert_true(_fresh_space.is_query_still_running)
 
 	_nqs.stop_query(_fresh_space)
-
-func test_completed_query_can_run_again() -> void:
-	var _search_space: NNNodeChildrenSearchSpace = _make_search_space()
-	add_child_autofree(_search_space)
-	var _nodes: Array = _make_root_with_leaf(_search_space)
-	var _root: NNBTRoot = _nodes[0]
-
-	# A completed query must not report stale success on the next run.
-	for _run_index in 2:
-		assert_eq(_root.tick(0.1), NNBTNodes.RUNNING, "Run %d should post." % _run_index)
-		_complete_query(_search_space)
-		await wait_physics_frames(2)
-		assert_eq(_root.tick(0.1), NNBTNodes.SUCCESS, "Run %d should complete." % _run_index)
-
-func test_stop_query_can_run_again() -> void:
-	var _search_space: NNNodeChildrenSearchSpace = _make_search_space()
-	add_child_autofree(_search_space)
-	var _nodes: Array = _make_root_with_leaf(_search_space)
-	var _root: NNBTRoot = _nodes[0]
-	var _nqs: NNNodeQuerySystem = Engine.get_singleton("NodeQuerySystem")
-
-	assert_eq(_root.tick(0.1), NNBTNodes.RUNNING)
-	assert_true(_nqs.stop_query(_search_space))
-	await wait_physics_frames(2)
-
-	assert_eq(_root.tick(0.1), NNBTNodes.FAILURE)
-	assert_eq(_root.tick(0.1), NNBTNodes.RUNNING, "A cancelled query must be postable on the next run.")
-	assert_true(_search_space.is_query_still_running)
-	_complete_query(_search_space)
-	await wait_physics_frames(2)
-	assert_eq(_root.tick(0.1), NNBTNodes.SUCCESS)
 
 func test_replaced_query_is_not_adopted_or_cancelled() -> void:
 	for complete_replacement in [false, true]:

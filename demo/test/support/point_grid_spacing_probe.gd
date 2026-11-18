@@ -1,14 +1,8 @@
 extends SceneTree
 
-# Bounded hang probe for the point grid spacing validation regression.
-#
-# Performs the exact audit sequence (assign zero spacing, then the corrective
-# ONE spacing) for both dimensions and generates a tiny grid from the retained
-# spacing.  The marker is only written after everything completed, so a GUT
-# test can distinguish "finished" from "hung in generation".
-#
-# This script must not be named with the test_ prefix so GUT does not collect
-# it as a test script.
+# Runs in a subprocess so a generation hang can be detected: assigns zero then ONE
+# spacing, generates a grid and only then writes the marker. No test_ prefix, so
+# GUT does not collect it.
 
 const DEFAULT_MARKER_PATH := "user://point_grid_spacing_probe_ok.txt"
 

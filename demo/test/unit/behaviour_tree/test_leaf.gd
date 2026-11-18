@@ -2,6 +2,9 @@ extends GutTest
 @warning_ignore('unused_parameter')
 @warning_ignore('return_value_discarded')
 
+const CUSTOM_STATUS_SCRIPT := "res://test/unit/behaviour_tree/leaf_custom_status.gd"
+const LEAF_NAME := "StatusLeaf"
+
 
 class ResultLeaf extends NNBTLeaf:
 	var result: int = NNBTNodes.SUCCESS
@@ -14,100 +17,104 @@ class ResultLeaf extends NNBTLeaf:
 
 func _make_result_leaf(result := NNBTNodes.SUCCESS) -> ResultLeaf:
 	var leaf: ResultLeaf = ResultLeaf.new()
+	leaf.name = LEAF_NAME
 	leaf.result = result
 	return leaf
 
 
-func _make_bare_leaf(node_name: String) -> NNBTLeaf:
+func _make_custom_leaf(payload: Variant) -> NNBTLeaf:
 	var leaf: NNBTLeaf = NNBTLeaf.new()
-	leaf.name = node_name
+	leaf.name = LEAF_NAME
+	leaf.set_script(load(CUSTOM_STATUS_SCRIPT))
+	leaf.set("payload", payload)
 	return leaf
 
 
-func _consume_missing_on_tick_error(node_name: String) -> void:
-	var errors: Array = get_errors()
-	assert_eq(errors.size(), 1, "a leaf without on_tick reports exactly one error")
+func _build_root(node: NNBTNodes) -> NNBTRoot:
+	var root: NNBTRoot = NNBTRoot.new()
+	root.add_child(node)
+	return root
+
+
+func _consume_single_error(fragments: Array) -> void:
+	var errors: Array = get_errors().filter(func(error) -> bool: return not error.handled)
+	assert_eq(errors.size(), 1, "exactly one engine error is reported")
 	for error in errors:
 		var text := str(error.code)
-		assert_string_contains(text, "on_tick", "the error must name the missing on_tick override")
-		assert_string_contains(text, "NNBTLeaf", "the error must name the node class")
-		assert_string_contains(text, node_name, "the error must identify the node")
+		for fragment in fragments:
+			assert_string_contains(text, fragment)
 		error.handled = true
 
 
-func test_bare_leaf_fails_instead_of_running() -> void:
-	var bt_root: NNBTRoot = NNBTRoot.new()
-	var leaf: NNBTLeaf = _make_bare_leaf("BareLeaf")
-	bt_root.add_child(leaf)
+# Asserting a single error also catches an unguarded get_path(), which errors for nodes outside a SceneTree.
+func test_missing_on_tick_override_fails_and_reports_once() -> void:
+	var leaf: NNBTLeaf = NNBTLeaf.new()
+	leaf.name = LEAF_NAME
+	var root: NNBTRoot = _build_root(leaf)
 
-	# A leaf without an on_tick override must fail every time. Before the fix
-	# the missing return value became RUNNING and the leaf never completed.
 	for tick_index in range(3):
-		assert_eq(bt_root.tick(0.1), NNBTNodes.FAILURE, "bare leaf tick %d must fail" % tick_index)
+		assert_eq(root.tick(0.1), NNBTNodes.FAILURE, "missing override tick %d must fail" % tick_index)
 		assert_false(leaf.get_is_running())
 
-	_consume_missing_on_tick_error("BareLeaf")
-	bt_root.free()
+	_consume_single_error(["on_tick", "NNBTLeaf", LEAF_NAME])
+	root.free()
 
 
-func test_bare_leaf_reports_missing_on_tick_once() -> void:
-	var bt_root: NNBTRoot = NNBTRoot.new()
-	var leaf: NNBTLeaf = _make_bare_leaf("ErrorLeaf")
-	bt_root.add_child(leaf)
+# Raw Variants reach the leaf without GDScript coercing them to Status.
+func test_invalid_statuses_fail_with_one_error_naming_the_value() -> void:
+	var cases: Array = [
+		[_make_result_leaf(42), "42"],
+		[_make_result_leaf(2), "'2'"],
+		[_make_result_leaf(-3), "'-3'"],
+		[_make_custom_leaf(null), "nil"],
+		[_make_custom_leaf(1.0), "float"],
+		[_make_custom_leaf(true), "bool"],
+		[_make_custom_leaf("success"), "string"],
+	]
 
-	assert_eq(bt_root.tick(0.1), NNBTNodes.FAILURE)
-	assert_eq(bt_root.tick(0.1), NNBTNodes.FAILURE)
-	assert_eq(bt_root.tick(0.1), NNBTNodes.FAILURE)
+	for case in cases:
+		var leaf: NNBTLeaf = case[0]
+		var root: NNBTRoot = _build_root(leaf)
 
-	# This asserts exactly one error, so an unguarded get_path() (which prints
-	# its own error for nodes outside a SceneTree) would fail this test.
-	_consume_missing_on_tick_error("ErrorLeaf")
-	bt_root.free()
+		assert_eq(root.tick(0.1), NNBTNodes.FAILURE, "%s must be rejected" % case[1])
+		assert_eq(leaf.tick_result, NNBTNodes.FAILURE)
+		assert_false(leaf.get_is_running())
+		_consume_single_error(["on_tick", LEAF_NAME, case[1]])
+
+		root.free()
 
 
-func test_bare_leaf_fails_its_sequence_and_stops_traversal() -> void:
-	var bt_root: NNBTRoot = NNBTRoot.new()
-	var sequence: NNBTSequence = NNBTSequence.new()
-	var bare_leaf: NNBTLeaf = _make_bare_leaf("BareLeaf")
+func test_valid_statuses_pass_through_unchanged() -> void:
+	var expected_is_running := {
+		NNBTNodes.SKIP: true,
+		NNBTNodes.FAILURE: false,
+		NNBTNodes.RUNNING: true,
+		NNBTNodes.SUCCESS: false,
+	}
+
+	for status: int in expected_is_running:
+		var leaf: ResultLeaf = _make_result_leaf(status)
+		var root: NNBTRoot = _build_root(leaf)
+
+		assert_eq(root.tick(0.1), status)
+		assert_eq(leaf.tick_result, status)
+		assert_eq(leaf.get_is_running(), expected_is_running[status])
+		root.free()
+
+	assert_engine_error_count(0)
+
+
+func test_sequence_stops_at_invalid_leaf() -> void:
+	var bad_leaf: ResultLeaf = _make_result_leaf(42)
 	var following_leaf: ResultLeaf = _make_result_leaf(NNBTNodes.SUCCESS)
-
-	bt_root.add_child(sequence)
-	sequence.add_child(bare_leaf)
+	var sequence: NNBTSequence = NNBTSequence.new()
+	sequence.add_child(bad_leaf)
 	sequence.add_child(following_leaf)
+	var root: NNBTRoot = _build_root(sequence)
 
-	assert_eq(bt_root.tick(0.1), NNBTNodes.FAILURE)
+	assert_eq(root.tick(0.1), NNBTNodes.FAILURE)
 	assert_false(sequence.get_is_running())
 	assert_eq(following_leaf.tick_count, 0, "the sequence must stop at the failing leaf")
+	_consume_single_error(["on_tick", "42"])
 
-	_consume_missing_on_tick_error("BareLeaf")
-	bt_root.free()
-
-
-func test_overriding_leaf_returns_script_statuses() -> void:
-	var bt_root: NNBTRoot = NNBTRoot.new()
-	var leaf: ResultLeaf = _make_result_leaf(NNBTNodes.RUNNING)
-	bt_root.add_child(leaf)
-
-	assert_eq(bt_root.tick(0.1), NNBTNodes.RUNNING)
-
-	leaf.result = NNBTNodes.SUCCESS
-	assert_eq(bt_root.tick(0.1), NNBTNodes.SUCCESS)
-
-	leaf.result = NNBTNodes.FAILURE
-	assert_eq(bt_root.tick(0.1), NNBTNodes.FAILURE)
-
-	assert_eq(leaf.tick_count, 3, "every tick must reach the script override")
-	assert_engine_error_count(0)
-	bt_root.free()
-
-
-func test_running_override_stays_ticked() -> void:
-	var bt_root: NNBTRoot = NNBTRoot.new()
-	var leaf: ResultLeaf = _make_result_leaf(NNBTNodes.RUNNING)
-	bt_root.add_child(leaf)
-
-	assert_eq(bt_root.tick(0.1), NNBTNodes.RUNNING)
-	assert_true(leaf.get_is_running(), "a running leaf must not complete")
-
-	assert_engine_error_count(0)
-	bt_root.free()
+	root.free()

@@ -1,7 +1,7 @@
-# GdUnit generated TestSuite
 extends GutTest
 @warning_ignore('unused_parameter')
 @warning_ignore('return_value_discarded')
+
 
 func test_state_check_enter_condition_affects_entering() -> void:
 	var _root: NNSTRoot = add_child_autofree(NNSTRoot.new())

@@ -1,12 +1,7 @@
 extends GutTest
 
-# Regression tests: independently instantiated agents and action groups must not
-# share a random stream. Their constructors used to seed with time(0), so every
-# instance created in the same second made identical random decisions.
-#
-# The batches below are constructed back-to-back with no other work between
-# constructors, and only then configured and sampled, so the regression does
-# not depend on reading the wall clock.
+# Instances are constructed back-to-back before any configuration: a time-based
+# constructor seed would give every one of them the same random stream.
 
 const INSTANCE_COUNT := 12
 const DRAWS_PER_INSTANCE := 10
@@ -33,7 +28,6 @@ func _make_behaviour(node_name: String) -> NNBehaviour:
 
 
 func _make_behaviour_agents() -> Array[NNAgent]:
-	# Construct every agent first: the seeding bug is about construction time.
 	var agents: Array[NNAgent] = []
 	for _i in INSTANCE_COUNT:
 		agents.append(NNAgent.new())
@@ -119,7 +113,6 @@ func test_agents_created_in_one_batch_select_independently() -> void:
 			covered[behaviour_name] = true
 		sequences.append(picks)
 
-	# The old time(0) seed made every sequence in the batch identical.
 	assert_gt(_distinct_sequences(sequences), 1, "Same-batch agents selected identical sequences: %s" % [sequences])
 	for i in BEHAVIOUR_COUNT:
 		assert_true(covered.has("Behaviour%d" % i), "behaviour 'Behaviour%d' was never selected" % i)
@@ -135,5 +128,4 @@ func test_action_groups_created_in_one_batch_pick_independently() -> void:
 		assert_eq(picks.size(), DRAWS_PER_INSTANCE)
 		sequences.append(picks)
 
-	# The old time(0) seed made every sequence in the batch identical.
 	assert_gt(_distinct_sequences(sequences), 1, "Same-batch action groups picked identical sequences: %s" % [sequences])

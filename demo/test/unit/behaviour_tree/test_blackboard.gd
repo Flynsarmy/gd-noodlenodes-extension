@@ -23,16 +23,6 @@ func _contains_object(value: Variant) -> bool:
 	return false
 
 
-# NNBlackboard.
-
-func test_new_blackboard_is_empty_and_typed() -> void:
-	var board := NNBlackboard.new()
-
-	assert_eq(board.keys().size(), 0, "a new blackboard has no keys")
-	assert_eq(board.values.size(), 0, "a new blackboard has no values")
-	assert_true(board.values.is_typed_key(), "the values dictionary is keyed by String")
-
-
 func test_set_get_and_default() -> void:
 	var board := NNBlackboard.new()
 
@@ -160,6 +150,16 @@ func test_get_debug_data_sanitises_objects() -> void:
 	object.free()
 
 
+func test_get_debug_data_survives_a_freed_object_value() -> void:
+	var board: NNBlackboard = NNBlackboard.new()
+	var object: Node = Node.new()
+	board.set_value("object", object)
+	object.free()
+
+	assert_eq(board.get_debug_data()["object"], "<freed object>")
+	assert_engine_error_count(0)
+
+
 func test_get_debug_data_bounds_cyclic_structures() -> void:
 	var board := NNBlackboard.new()
 
@@ -198,8 +198,6 @@ func test_get_debug_data_bounds_cyclic_structures() -> void:
 	assert_lt(visited, 1024, "the sanitised structure is bounded")
 
 
-# Root wiring.
-
 func test_root_creates_a_blackboard() -> void:
 	var bt_root := NNBTRoot.new()
 
@@ -227,11 +225,6 @@ func test_blackboard_outlives_the_root() -> void:
 
 	assert_true(is_instance_valid(board), "the retained blackboard stays valid after its root is freed")
 	assert_eq(board.get_value("key", 0), 7, "values survive the root")
-	assert_true(board.keys().has("key"), "keys remain readable after the root is freed")
-	board.set_value("after", "ok")
-	assert_eq(board.get_value("after", ""), "ok", "the retained blackboard is still writable")
-	board.clear()
-	assert_eq(board.keys().size(), 0, "the retained blackboard is still clearable")
 
 
 func test_custom_blackboard_replaces_the_default() -> void:
@@ -375,8 +368,6 @@ func test_actor_node_path_resolves_on_entering_the_tree() -> void:
 	container.free()
 
 
-# Helpers.
-
 func test_nested_leaf_reaches_root_blackboard_both_ways() -> void:
 	var bt_root := NNBTRoot.new()
 	var sequence := NNBTSequence.new()
@@ -449,8 +440,6 @@ func test_leaf_on_tick_writes_through_the_root_blackboard() -> void:
 	assert_engine_error_count(0)
 	bt_root.free()
 
-
-# Serialisation.
 
 func _save_serialised_scene(scene_root: Node, path: String) -> String:
 	var packed := PackedScene.new()

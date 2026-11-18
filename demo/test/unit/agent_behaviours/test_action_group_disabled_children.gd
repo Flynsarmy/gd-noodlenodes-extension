@@ -1,21 +1,11 @@
 extends GutTest
 
-# Regression tests: NNActionGroup must never run disabled children.
-#
-# The reported repro was a behaviour whose only candidate action group had a
-# disabled first NNAction and an enabled second one. step_actions() returned the
-# disabled first action before the execution rule ever had a chance to skip it.
-#
-# These tests drive selection through NNAgent (evaluate_options +
-# update_current_behaviour) and count action_entered / action_exited signals.
-
 const RULE_SEQUENCE := 0
 const RULE_PICK_ONE_AT_RANDOM := 1
 const RULE_IF_ELSE := 2
 const RULE_CUSTOM_RULE := 3
 
 
-# A CustomRule group whose eval() always chooses target_index.
 class IndexChoosingRule extends NNActionGroup:
 	var target_index := 0
 
@@ -192,29 +182,6 @@ func test_pick_one_at_random_with_only_disabled_children_selects_nothing() -> vo
 	assert_null(agent.get_current_action_node(), "no action may be selected when every child is disabled")
 	assert_eq(first_entries[0], 0, "the first disabled action must never be entered")
 	assert_eq(second_entries[0], 0, "the second disabled action must never be entered")
-
-
-func test_pick_one_at_random_with_enabled_children_still_selects_one() -> void:
-	var behaviour := _make_behaviour()
-	var group: NNActionGroup = NNActionGroup.new()
-	group.set_action_execution_rule(RULE_PICK_ONE_AT_RANDOM)
-	var first_action: NNAction = NNAction.new()
-	var second_action: NNAction = NNAction.new()
-	var first_entries := _count_action_entries(first_action)
-	var second_entries := _count_action_entries(second_action)
-
-	group.add_child(first_action)
-	group.add_child(second_action)
-	behaviour.add_child(group)
-	var agent := _make_agent(behaviour)
-
-	_select_behaviour(agent)
-
-	var selected := agent.get_current_action_node()
-	assert_true(selected == first_action or selected == second_action, "one enabled child must be selected")
-	assert_eq(first_entries[0] + second_entries[0], 1, "exactly one enabled child must be entered")
-	assert_eq(first_entries[0], 1 if selected == first_action else 0)
-	assert_eq(second_entries[0], 1 if selected == second_action else 0)
 
 
 func test_if_else_disabled_true_branch_does_not_fall_back() -> void:

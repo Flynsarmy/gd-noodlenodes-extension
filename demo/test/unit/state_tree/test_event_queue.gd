@@ -5,8 +5,8 @@ extends GutTest
 @warning_ignore('unused_parameter')
 @warning_ignore('return_value_discarded')
 
-## Logs enter/exit calls and optionally sends events from on_enter_state().
-## Events sent from a callback must be queued, not processed recursively.
+# Logs enter/exit calls and optionally sends events from on_enter_state().
+# Events sent from a callback must be queued, not processed recursively.
 class EventSenderNode extends NNSTNode:
 	var events_to_send: Array[String] = []
 	var exit_events_to_send: Array[String] = []
@@ -27,7 +27,7 @@ class EventSenderNode extends NNSTNode:
 			get_root().get_blackboard('log').push_back("%s send_event %s" % [name, event_name])
 			get_root().send_event(event_name)
 
-## Logs enter/exit calls without sending anything.
+# Logs enter/exit calls without sending anything.
 class LoggerNode extends NNSTNode:
 	var enter_count: int = 0
 	var exit_count: int = 0
@@ -40,9 +40,9 @@ class LoggerNode extends NNSTNode:
 		exit_count += 1
 		get_root().get_blackboard('log').push_back("%s on_exit_state" % name)
 
-## Sends an event in the middle of on_enter_state() and logs on both sides of
-## the call, so a test can tell whether the enter callback ran to completion
-## before the event was processed.
+# Sends an event in the middle of on_enter_state() and logs on both sides of
+# the call, so a test can tell whether the enter callback ran to completion
+# before the event was processed.
 class EnterMidCallbackNode extends NNSTNode:
 	var event_to_send: String = ""
 
@@ -57,8 +57,8 @@ class EnterMidCallbackNode extends NNSTNode:
 		get_root().get_blackboard('log').push_back("%s on_exit_state" % name)
 
 
-## Transitions to `target_path` when entered, so leaving a state can
-## synchronously re-enter the state the event started from.
+# Transitions to `target_path` when entered, so leaving a state can
+# synchronously re-enter the state the event started from.
 class RedirectOnEnterNode extends NNSTNode:
 	var target_path: NodePath
 	var enter_count: int = 0
@@ -73,9 +73,9 @@ class RedirectOnEnterNode extends NNSTNode:
 		get_root().get_blackboard('log').push_back("%s on_exit_state" % name)
 
 
-## Transitions `state` away from itself inside the guard callback. The native
-## base class explicitly dispatches this GDScript override, so the guard truly
-## runs user code in the middle of event handling.
+# Transitions `state` away from itself inside the guard callback. The native
+# base class explicitly dispatches this GDScript override, so the guard truly
+# runs user code in the middle of event handling.
 class StateTransitioningGuard extends NNSTGuard:
 	var ran: bool = false
 	var state: NNSTTickedNodes
@@ -101,8 +101,8 @@ func _make_sender(node_name: String, events: Array[String]) -> EventSenderNode:
 	return node
 
 
-## Adds a transition as a child of `branch`. `target` must already be in the
-## same tree so the transition can author its path relative to itself.
+# Adds a transition as a child of `branch`. `target` must already be in the
+# same tree so the transition can author its path relative to itself.
 func _make_transition(branch: NNSTBranchNodes, event_name: String, target: Node) -> NNSTTransition:
 	var transition: NNSTTransition = NNSTTransition.new()
 	branch.add_child(transition)
@@ -115,8 +115,6 @@ func _get_log(root: NNSTRoot) -> Array:
 	return root.get_blackboard('log')
 
 
-## The innermost active state handles an event before its ancestors: when the
-## child and the parent both declare the same event, only the child transitions.
 func test_child_transition_wins_over_parent_for_same_event() -> void:
 	var _root: NNSTRoot = NNSTRoot.new()
 	var board := NNBlackboard.new()
@@ -147,8 +145,6 @@ func test_child_transition_wins_over_parent_for_same_event() -> void:
 	assert_false(_parent_sibling.get_is_active())
 
 
-## A child with no matching transition leaves the event unconsumed so it
-## bubbles up to the parent, which then transitions.
 func test_unhandled_event_bubbles_to_parent() -> void:
 	var _root: NNSTRoot = NNSTRoot.new()
 	var board := NNBlackboard.new()
@@ -174,8 +170,6 @@ func test_unhandled_event_bubbles_to_parent() -> void:
 	assert_true(_parent_sibling.get_is_active())
 
 
-## A failing guard at the child does not consume the event. The parent still
-## gets its chance and its transition applies.
 func test_failed_child_guard_does_not_consume_event() -> void:
 	var _root: NNSTRoot = NNSTRoot.new()
 	var board := NNBlackboard.new()
@@ -208,9 +202,6 @@ func test_failed_child_guard_does_not_consume_event() -> void:
 	assert_true(_parent_sibling.get_is_active())
 
 
-## Every active parallel region receives the event, even after another region
-## consumed it. The event counts as consumed, so the root's own transition does
-## not fire.
 func test_parallel_event_reaches_all_regions() -> void:
 	var _root: NNSTRoot = NNSTRoot.new()
 	var board := NNBlackboard.new()
@@ -254,8 +245,6 @@ func test_parallel_event_reaches_all_regions() -> void:
 	assert_false(_root_sibling.get_is_active())
 
 
-## send_event() from on_enter_state() is queued. The transition that entered
-## the state completes, then the queued events are processed in FIFO order.
 func test_reentrant_send_event_is_queued_and_processed_in_fifo_order() -> void:
 	var _root: NNSTRoot = NNSTRoot.new()
 	var board := NNBlackboard.new()
@@ -299,9 +288,6 @@ func test_reentrant_send_event_is_queued_and_processed_in_fifo_order() -> void:
 	])
 
 
-## Several consecutive send_event() calls from outside the chart are processed
-## in FIFO order, and each event's transition completes (including all of its
-## callbacks) before the next event is delivered.
 func test_consecutive_external_send_events_are_processed_in_fifo_order() -> void:
 	var _root: NNSTRoot = NNSTRoot.new()
 	var board := NNBlackboard.new()
@@ -345,10 +331,6 @@ func test_consecutive_external_send_events_are_processed_in_fifo_order() -> void
 	])
 
 
-## An event sent from on_enter_state() must not be processed inside the
-## transition that is still entering the state, even when that transition was
-## requested directly with transition_to() instead of by an event. The enter
-## callback finishes first, then the queued event is processed.
 func test_event_sent_from_enter_during_direct_transition_is_deferred() -> void:
 	var _root: NNSTRoot = NNSTRoot.new()
 	var board := NNBlackboard.new()
@@ -384,9 +366,6 @@ func test_event_sent_from_enter_during_direct_transition_is_deferred() -> void:
 	])
 
 
-## send_event() from on_exit_state() is queued too. The transition that is
-## exiting the state completes (including entering its target) before the
-## queued event is processed.
 func test_send_event_from_on_exit_state_is_queued() -> void:
 	var _root: NNSTRoot = NNSTRoot.new()
 	var board := NNBlackboard.new()
@@ -421,8 +400,6 @@ func test_send_event_from_on_exit_state_is_queued() -> void:
 	])
 
 
-## A transition attached directly to the root fires when no active child
-## consumed the event.
 func test_root_level_transition_fires() -> void:
 	var _root: NNSTRoot = NNSTRoot.new()
 	var board := NNBlackboard.new()
@@ -444,8 +421,6 @@ func test_root_level_transition_fires() -> void:
 	assert_true(_node_b.get_is_active())
 
 
-## The root is the last state to see an event: an active child's transition
-## consumes it first and the root's own transition does not fire.
 func test_root_transition_only_fires_after_active_child_declines() -> void:
 	var _root: NNSTRoot = NNSTRoot.new()
 	var board := NNBlackboard.new()
@@ -471,8 +446,6 @@ func test_root_transition_only_fires_after_active_child_declines() -> void:
 	assert_true(_node_c.get_is_active())
 
 
-## Sending an event from a state routes it through the chart's queue instead of
-## dispatching a second, independent traversal.
 func test_send_event_on_a_state_routes_through_the_chart() -> void:
 	var _root: NNSTRoot = NNSTRoot.new()
 	var board := NNBlackboard.new()
@@ -497,8 +470,6 @@ func test_send_event_on_a_state_routes_through_the_chart() -> void:
 	assert_true(_child_b.get_is_active())
 
 
-## Guards on root transitions are evaluated with the active child as their
-## state context. A failing guard falls through to the next root transition.
 func test_root_transition_guards_are_evaluated() -> void:
 	var _root: NNSTRoot = NNSTRoot.new()
 	var board := NNBlackboard.new()
@@ -531,8 +502,6 @@ func test_root_transition_guards_are_evaluated() -> void:
 	assert_true(_node_c.get_is_active())
 
 
-## event_received is emitted by the root for every processed event and by each
-## state the event is delivered to. Inactive states do not see it.
 func test_event_received_is_emitted_for_delivered_states() -> void:
 	var _root: NNSTRoot = NNSTRoot.new()
 	var board := NNBlackboard.new()
@@ -559,8 +528,6 @@ func test_event_received_is_emitted_for_delivered_states() -> void:
 	assert_signal_not_emitted(_inactive, "event_received")
 
 
-## Two states whose enter callbacks ping-pong an event must be stopped by the
-## root's transition budget instead of recursing until the stack overflows.
 func test_infinite_loop_guard_aborts_processing() -> void:
 	var _root: NNSTRoot = NNSTRoot.new()
 	var board := NNBlackboard.new()
@@ -597,9 +564,6 @@ func test_infinite_loop_guard_aborts_processing() -> void:
 	assert_eq(_node_b.enter_count, 50)
 
 
-## A callback that transitions the state during event_received must stop the
-## dispatch from that exited activation. A's own "go" transition must not fire
-## afterwards and move the chart on to C.
 func test_event_received_callback_transition_cancels_state_dispatch() -> void:
 	var _root: NNSTRoot = NNSTRoot.new()
 	var board := NNBlackboard.new()
@@ -630,8 +594,6 @@ func test_event_received_callback_transition_cancels_state_dispatch() -> void:
 	assert_eq(_node_c.enter_count, 0)
 
 
-## The parent compound state declares "go" too, but the child's callback
-## consumed the event by transitioning away. The parent must not handle it.
 func test_event_received_callback_transition_cancels_parent_dispatch() -> void:
 	var _root: NNSTRoot = NNSTRoot.new()
 	var board := NNBlackboard.new()
@@ -671,8 +633,6 @@ func test_event_received_callback_transition_cancels_parent_dispatch() -> void:
 	assert_eq(_parent_sibling.enter_count, 0)
 
 
-## A guard callback can transition the state too. When it does, the transition
-## it guarded must not be applied from the stale activation.
 func test_guard_callback_transition_cancels_state_dispatch() -> void:
 	var _root: NNSTRoot = NNSTRoot.new()
 	var board := NNBlackboard.new()
@@ -704,10 +664,6 @@ func test_guard_callback_transition_cancels_state_dispatch() -> void:
 	assert_eq(_node_c.enter_count, 0)
 
 
-## A callback can exit A and synchronously re-enter it (A -> B -> A is one
-## dispatch). A is active again but it is a new activation, so the stale "go"
-## transition from the old activation must not fire. An "is active" flag alone
-## would let C be entered here.
 func test_exit_and_reentry_does_not_fire_stale_transition() -> void:
 	var _root: NNSTRoot = NNSTRoot.new()
 	var board := NNBlackboard.new()

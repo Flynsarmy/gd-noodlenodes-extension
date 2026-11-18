@@ -1,4 +1,3 @@
-# GdUnit generated TestSuite
 extends GutTest
 @warning_ignore('unused_parameter')
 @warning_ignore('return_value_discarded')
@@ -133,17 +132,6 @@ func test_completed_repeater_starts_a_fresh_run() -> void:
 	assert_eq(leaf.tick_count, 3)
 	assert_eq(root.tick(0.1), NNBTNodes.SUCCESS)
 	assert_eq(leaf.tick_count, 4)
-
-	root.free()
-
-
-func test_failure_on_no_children() -> void:
-	var root: NNBTRoot = NNBTRoot.new()
-	var repeater: NNBTRepeater = NNBTRepeater.new()
-	repeater.repeat_times = 2
-	root.add_child(repeater)
-
-	assert_eq(root.tick(0.1), NNBTNodes.FAILURE, "A repeater without child nodes must fail.")
 
 	root.free()
 

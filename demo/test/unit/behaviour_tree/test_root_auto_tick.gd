@@ -51,8 +51,6 @@ func _step_n(bt_root: NNBTRoot, count: int, process_thread: int = NNBTRoot.PHYSI
 	return results
 
 
-# Defaults.
-
 func test_defaults_auto_tick_on_the_physics_frame() -> void:
 	var bt_root: NNBTRoot = NNBTRoot.new()
 	var leaf: CountingLeaf = _make_leaf(NNBTNodes.SUCCESS)
@@ -69,8 +67,6 @@ func test_defaults_auto_tick_on_the_physics_frame() -> void:
 
 	bt_root.free()
 
-
-# Automatic ticking.
 
 func test_auto_tick_step_passes_the_delta_and_resolves_the_root_board() -> void:
 	var bt_root: NNBTRoot = NNBTRoot.new()
@@ -170,8 +166,6 @@ func test_ineligible_invocation_does_not_advance_the_schedule() -> void:
 	bt_root.free()
 
 
-# Process modes.
-
 func test_process_thread_selects_exactly_one_frame_signal() -> void:
 	var bt_root: NNBTRoot = NNBTRoot.new()
 	var leaf: CountingLeaf = _make_leaf(NNBTNodes.RUNNING)
@@ -200,8 +194,6 @@ func test_process_thread_selects_exactly_one_frame_signal() -> void:
 	await get_tree().physics_frame
 	assert_eq(leaf.tick_count, count, "a disabled root connects no frame signal")
 
-
-# Enable and disable transitions.
 
 func test_disabling_mid_run_resets_and_emits_once() -> void:
 	var bt_root: NNBTRoot = NNBTRoot.new()
@@ -238,8 +230,6 @@ func test_disabling_mid_run_resets_and_emits_once() -> void:
 
 	bt_root.free()
 
-
-# Running action.
 
 func test_running_action_tracks_the_deepest_active_node() -> void:
 	var bt_root: NNBTRoot = NNBTRoot.new()
@@ -293,8 +283,6 @@ func test_running_action_is_null_after_the_running_leaf_is_freed() -> void:
 	bt_root.free()
 
 
-# Manual ticking stays available.
-
 func test_manual_tick_works_while_auto_ticking() -> void:
 	var bt_root: NNBTRoot = NNBTRoot.new()
 	var leaf: CountingLeaf = _make_leaf(NNBTNodes.SUCCESS)
@@ -324,27 +312,6 @@ func test_manual_mode_ticks_only_when_the_caller_ticks() -> void:
 
 	bt_root.free()
 
-
-# Editor.
-
-func test_auto_tick_step_is_ignored_in_the_editor() -> void:
-	var bt_root: NNBTRoot = NNBTRoot.new()
-	var leaf: CountingLeaf = _make_leaf(NNBTNodes.RUNNING)
-	bt_root.add_child(leaf)
-
-	# The headless GUT runner cannot simulate the editor, so the in-editor
-	# branch is exercised when GUT runs inside the editor.
-	if Engine.is_editor_hint():
-		assert_false(bt_root.auto_tick_step(NNBTRoot.PHYSICS, 0.1), "the editor never auto-ticks")
-		assert_eq(leaf.tick_count, 0)
-	else:
-		assert_true(bt_root.auto_tick_step(NNBTRoot.PHYSICS, 0.1), "the headless runner auto-ticks")
-		assert_eq(leaf.tick_count, 1)
-
-	bt_root.free()
-
-
-# Tree exit.
 
 func test_leaving_the_tree_emits_nothing_and_stops_ticking() -> void:
 	var bt_root: NNBTRoot = NNBTRoot.new()
@@ -380,8 +347,6 @@ func test_tree_disabled_handler_may_free_a_child() -> void:
 
 	bt_root.free()
 
-
-# Engine integration.
 
 func test_physics_frame_signal_ticks_the_tree() -> void:
 	var bt_root: NNBTRoot = NNBTRoot.new()

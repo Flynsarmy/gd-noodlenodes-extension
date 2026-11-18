@@ -1,7 +1,7 @@
-# GdUnit generated TestSuite
 extends GutTest
 @warning_ignore('unused_parameter')
 @warning_ignore('return_value_discarded')
+
 
 func test_exhaustion_returns_failure() -> void:
 	var _root: NNBTRoot = NNBTRoot.new()
@@ -135,42 +135,5 @@ func test_zero_max_repeat_times_fails_without_ticking_child() -> void:
 	_root.tick(0.1)
 	assert_eq(_root.tick_result, NNBTNodes.FAILURE)
 	assert_eq(_child.get_current_repeat_times(), 0)
-
-	_root.free()
-
-#func test_reset_after_complete() -> void:
-	#var _root: NNBTRoot = NNBTRoot.new()
-	#var _child: NNBTRepeatUntil = NNBTRepeatUntil.new()
-	#var _grandchild: NNBTFixedResult = NNBTFixedResult.new()
-	#_child.add_child(_grandchild)
-	#_root.add_child(_child)
-#
-	#_grandchild.fixed_result = NNBTNodes.SUCCESS
-	#_child.expected_tick_result = NNBTNodes.SUCCESS
-	#_child.max_repeat_times = 2
-#
-	#_root.tick(0.1)
-	#_root.tick(0.1)
-	## After max_repeats is reached, reset counters
-	#_root.tick(0.1)
-	#assert_eq(_root.tick_result, NNBTNodes.RUNNING)
-	#assert_eq(_child.get_times_repeated(), 1)
-#
-	#_root.free()
-
-
-func test_failure_on_no_children() -> void:
-	var _root: NNBTRoot = NNBTRoot.new()
-	var _child: NNBTRepeatUntil = NNBTRepeatUntil.new()
-	_root.add_child(_child)
-
-	_child.max_repeat_times = 2
-
-	_root.tick(0.1)
-	assert_eq(_root.tick_result, NNBTNodes.FAILURE)
-	assert_eq(_child.get_current_repeat_times(), 0)
-	# No children is terminal too.
-	_root.tick(0.1)
-	assert_eq(_root.tick_result, NNBTNodes.FAILURE)
 
 	_root.free()

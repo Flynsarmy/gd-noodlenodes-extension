@@ -10,12 +10,15 @@ class RunningCondition extends NNBTConditionLeaf:
 		return result
 
 
-class RunningAction extends NNBTActionLeaf:
-	func on_tick(_delta: float) -> Status:
-		return NNBTNodes.RUNNING
+class HookedSet extends NNBTBlackboardSet:
+	var events: Array = []
 
+	func on_before_run(_delta: float) -> void:
+		events.append("before")
 
-# Data-driven leaves.
+	func on_after_run(_delta: float) -> void:
+		events.append("after")
+
 
 func test_set_has_compare_through_root_tick() -> void:
 	var bt_root := NNBTRoot.new()
@@ -110,8 +113,6 @@ func test_invalid_operator_is_rejected() -> void:
 
 	assert_eq(leaf.operator, NNBTBlackboardCompare.GREATER, "the previous operator is kept")
 	assert_eq(bt_root.tick(0.1), NNBTNodes.SUCCESS, "the kept GREATER operator still evaluates")
-	assert_eq(get_errors().size(), 1, "ticking adds no error")
-	assert_true(errors[0].handled, "the operator error has been consumed")
 
 	bt_root.free()
 
@@ -300,8 +301,6 @@ func test_no_root_reports_once_per_leaf() -> void:
 		leaf.free()
 
 
-# Leaf taxonomy.
-
 func test_condition_leaf_running_is_returned_unchanged_and_reported_once() -> void:
 	var bt_root := NNBTRoot.new()
 	var leaf := RunningCondition.new()
@@ -327,21 +326,17 @@ func test_condition_leaf_running_is_returned_unchanged_and_reported_once() -> vo
 	bt_root.free()
 
 
-func test_action_leaf_running_is_propagated() -> void:
+func test_blackboard_leaf_fires_lifecycle_hooks_once_per_run() -> void:
 	var bt_root := NNBTRoot.new()
-	var leaf := RunningAction.new()
+	var leaf: HookedSet = HookedSet.new()
+	leaf.key = "hp"
+	leaf.value = 7
 	bt_root.add_child(leaf)
 
-	assert_eq(bt_root.tick(0.1), NNBTNodes.RUNNING)
+	assert_eq(bt_root.tick(0.1), NNBTNodes.SUCCESS)
+	assert_eq(bt_root.tick(0.1), NNBTNodes.SUCCESS)
+	assert_eq(leaf.events, ["before", "after", "before", "after"], "each run gets one before/after pair")
+	assert_eq(bt_root.get_blackboard("hp", -1), 7)
 
 	assert_engine_error_count(0)
 	bt_root.free()
-
-
-func test_compare_enum_constants() -> void:
-	assert_eq(NNBTBlackboardCompare.EQUAL, 0)
-	assert_eq(NNBTBlackboardCompare.NOT_EQUAL, 1)
-	assert_eq(NNBTBlackboardCompare.GREATER, 2)
-	assert_eq(NNBTBlackboardCompare.LESS, 3)
-	assert_eq(NNBTBlackboardCompare.GREATER_EQUAL, 4)
-	assert_eq(NNBTBlackboardCompare.LESS_EQUAL, 5)

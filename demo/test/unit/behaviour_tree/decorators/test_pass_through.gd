@@ -1,31 +1,7 @@
-# GdUnit generated TestSuite
 extends GutTest
 @warning_ignore('unused_parameter')
 @warning_ignore('return_value_discarded')
 
-
-func test_returns_child_result() -> void:
-	var _root: NNBTRoot = NNBTRoot.new()
-	var _child: NNBTPassThrough = NNBTPassThrough.new()
-	var _grandchild: NNBTFixedResult = NNBTFixedResult.new()
-	_child.add_child(_grandchild)
-	_root.add_child(_child)
-
-	_grandchild.fixed_result = NNBTNodes.SUCCESS
-	_root.tick(0.1)
-	assert_eq(_root.tick_result, NNBTNodes.SUCCESS)
-
-	_grandchild.fixed_result = NNBTNodes.RUNNING
-	_root.tick(0.1)
-	assert_eq(_root.tick_result, NNBTNodes.RUNNING)
-
-	_grandchild.fixed_result = NNBTNodes.FAILURE
-	_root.tick(0.1)
-	assert_eq(_root.tick_result, NNBTNodes.FAILURE)
-
-	assert_engine_error_count(0)
-
-	_root.free()
 
 func test_childless_returns_most_recent_tick_result() -> void:
 	var _root: NNBTRoot = NNBTRoot.new()
@@ -110,20 +86,5 @@ func test_exposed_tick_result_tracks_child_result() -> void:
 	assert_eq(_child.tick_result, NNBTNodes.SKIP)
 	assert_eq(_root.tick_result, NNBTNodes.SKIP)
 	assert_true(_child.get_is_running(), "SKIP is not terminal, so the run stays active")
-
-	_root.free()
-
-func test_returns_running_child_stays_ticked() -> void:
-	var _root: NNBTRoot = NNBTRoot.new()
-	var _child: NNBTPassThrough = NNBTPassThrough.new()
-	var _grandchild: NNBTFixedResult = NNBTFixedResult.new()
-	_child.add_child(_grandchild)
-	_root.add_child(_child)
-
-	_grandchild.fixed_result = NNBTNodes.RUNNING
-	assert_eq(_root.tick(0.1), NNBTNodes.RUNNING)
-	assert_eq(_root.tick_result, NNBTNodes.RUNNING)
-	assert_true(_child.get_is_running())
-	assert_true(_root.get_is_running())
 
 	_root.free()

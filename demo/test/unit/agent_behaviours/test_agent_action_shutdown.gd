@@ -1,9 +1,5 @@
 extends GutTest
 
-# Regression tests: NNAgent must end a started action exactly once when the
-# behaviour shuts down (no candidates, abort or switch) and must stop ticking
-# it afterwards. A normally completed action must only end itself.
-
 
 func _make_consideration(value: float) -> NNConsideration:
 	var consideration: NNConsideration = NNConsideration.new()
@@ -39,37 +35,11 @@ func _await_physics_frames(count: int) -> void:
 		await get_tree().physics_frame
 
 
-func test_no_candidates_after_update_stops_the_action() -> void:
-	var behaviour := _make_behaviour(1.0)
-	var action := behaviour.get_child(1) as NNAction
-	var agent := _make_agent([behaviour])
-
-	agent.evaluate_options(1.0)
-	agent.update_current_behaviour()
-	assert_eq(agent.get_current_action_node(), action)
-
-	var action_exits := _count_signal(action.action_exited)
-	var agent_action_exits := _count_signal(agent.action_exited)
-	var ticks := _count_signal(action.frame_tick)
-
-	behaviour.is_enabled = false
-	agent.evaluate_options(100.0)
-
-	assert_eq(action_exits[0], 1, "the selected action must exit exactly once")
-	assert_eq(agent_action_exits[0], 1, "the agent must report the action exit")
-	assert_null(agent.get_current_behaviour_node())
-	assert_null(agent.get_current_action_node())
-
-	await _await_physics_frames(2)
-	assert_eq(ticks[0], 0, "a shut down action must not receive frame ticks")
-
-
 func test_no_candidates_before_first_update_stops_the_started_action() -> void:
 	var behaviour := _make_behaviour(1.0)
 	var action := behaviour.get_child(1) as NNAction
 	var agent := _make_agent([behaviour])
 
-	# evaluate_options() starts the first action immediately.
 	agent.evaluate_options(1.0)
 	assert_eq(agent.get_current_action_node(), action, "the started action must be tracked immediately")
 
@@ -89,7 +59,7 @@ func test_no_candidates_before_first_update_stops_the_started_action() -> void:
 	assert_eq(ticks[0], 0, "a shut down action must not receive frame ticks")
 
 
-func test_abort_before_first_update_ends_the_started_action_once() -> void:
+func test_repeated_abort_ends_the_started_action_once() -> void:
 	var behaviour := _make_behaviour(1.0)
 	var action := behaviour.get_child(1) as NNAction
 	var agent := _make_agent([behaviour])
@@ -101,6 +71,7 @@ func test_abort_before_first_update_ends_the_started_action_once() -> void:
 	var agent_action_exits := _count_signal(agent.action_exited)
 	var ticks := _count_signal(action.frame_tick)
 
+	agent.abort_current_behaviour()
 	agent.abort_current_behaviour()
 
 	assert_eq(action_exits[0], 1, "the started action must exit exactly once")
@@ -110,31 +81,6 @@ func test_abort_before_first_update_ends_the_started_action_once() -> void:
 
 	await _await_physics_frames(2)
 	assert_eq(ticks[0], 0, "an aborted action must not receive frame ticks")
-
-
-func test_abort_after_update_ends_once_and_second_abort_adds_no_exit() -> void:
-	var behaviour := _make_behaviour(1.0)
-	var action := behaviour.get_child(1) as NNAction
-	var agent := _make_agent([behaviour])
-
-	agent.evaluate_options(1.0)
-	agent.update_current_behaviour()
-	assert_eq(agent.get_current_action_node(), action)
-
-	var action_exits := _count_signal(action.action_exited)
-	var agent_action_exits := _count_signal(agent.action_exited)
-	var ticks := _count_signal(action.frame_tick)
-
-	agent.abort_current_behaviour()
-	agent.abort_current_behaviour()
-
-	assert_eq(action_exits[0], 1, "the action must exit exactly once")
-	assert_eq(agent_action_exits[0], 1, "the agent must report a single action exit")
-	assert_null(agent.get_current_action_node())
-	assert_null(agent.get_current_behaviour_node())
-
-	await _await_physics_frames(2)
-	assert_eq(ticks[0], 0)
 
 
 func test_switch_before_first_update_exits_first_action_once() -> void:

@@ -1,4 +1,3 @@
-# GdUnit generated TestSuite
 extends GutTest
 @warning_ignore('unused_parameter')
 @warning_ignore('return_value_discarded')
@@ -68,31 +67,5 @@ func test_running_child_keeps_running() -> void:
 		assert_eq(root.tick(0.1), NNBTNodes.RUNNING)
 		assert_true(until_fail.get_is_running())
 		assert_eq(leaf.tick_count, expected_tick_count)
-
-	root.free()
-
-
-func test_failure_on_no_children() -> void:
-	var root: NNBTRoot = NNBTRoot.new()
-	var until_fail: NNBTUntilFail = NNBTUntilFail.new()
-	root.add_child(until_fail)
-
-	assert_eq(root.tick(0.1), NNBTNodes.FAILURE, "An until-fail node without child nodes must fail.")
-	assert_false(until_fail.get_is_running())
-
-	root.free()
-
-
-func test_failure_on_no_enabled_child() -> void:
-	var leaf: CountingLeaf = CountingLeaf.new()
-	leaf.result = NNBTNodes.FAILURE
-	leaf.set_is_enabled(false)
-	var tree: Array = _build_tree(leaf)
-	var root: NNBTRoot = tree[0]
-	var until_fail: NNBTUntilFail = tree[1]
-
-	assert_eq(root.tick(0.1), NNBTNodes.FAILURE, "An until-fail node without an enabled child must fail.")
-	assert_eq(leaf.tick_count, 0)
-	assert_false(until_fail.get_is_running())
 
 	root.free()

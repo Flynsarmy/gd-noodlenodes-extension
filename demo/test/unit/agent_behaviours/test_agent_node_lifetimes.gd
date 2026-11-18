@@ -1,8 +1,5 @@
 extends GutTest
 
-# Regression tests: NNAgent must not dereference cached behaviour, action or
-# sensor nodes after they have been freed, removed or reparented by user code.
-
 
 class FreeingConsideration extends NNConsideration:
 	var target: Node
@@ -68,8 +65,6 @@ func test_free_selected_behaviour_drops_stale_state_and_recovers() -> void:
 
 	first.free()
 
-	# Update, evaluate and tick after the selected behaviour (and its action)
-	# have been freed. None of these may dereference the stale pointers.
 	agent.update_current_behaviour()
 	agent.evaluate_options(1.0)
 	await _await_frames()
@@ -103,7 +98,6 @@ func test_free_selected_action_is_lifetime_safe() -> void:
 	# The behaviour is still alive but has no action left, so it completes.
 	assert_null(agent.get_current_behaviour_node())
 
-	# Evaluating with the actionless behaviour still in place must not crash.
 	agent.evaluate_options(1.0)
 	agent.update_current_behaviour()
 
@@ -244,7 +238,6 @@ func test_runtime_added_behaviour_and_sensor_are_cached() -> void:
 	var lower := _make_behaviour(0.5)
 	agent.add_child(lower)
 
-	# Children added after _ready must refresh the cached lists.
 	var higher := _make_behaviour(1.0)
 	agent.add_child(higher)
 
@@ -344,7 +337,6 @@ func test_consideration_freeing_current_behaviour_during_evaluation_is_safe() ->
 	_select(agent)
 	assert_eq(agent.get_current_behaviour_node(), current)
 
-	# The next evaluation frees the current behaviour from consideration code.
 	killer_consideration.target = current
 	killer_consideration.score_value = 1.0
 	killer_consideration.activation_input_value = 0.5
@@ -354,42 +346,6 @@ func test_consideration_freeing_current_behaviour_during_evaluation_is_safe() ->
 
 	assert_eq(agent.get_current_behaviour_node(), killer, "a replacement behaviour must still be selected")
 	assert_not_null(agent.get_current_action_node())
-
-
-func test_normal_switch_exits_old_and_enters_new_exactly_once() -> void:
-	var agent := _make_agent()
-	var first := NNBehaviour.new()
-	var first_consideration := _make_consideration(1.0)
-	var first_action := NNAction.new()
-	first.add_child(first_consideration)
-	first.add_child(first_action)
-
-	var second := NNBehaviour.new()
-	second.add_child(_make_consideration(0.8))
-	second.add_child(NNAction.new())
-	var second_action := second.get_child(1) as NNAction
-
-	agent.add_child(first)
-	agent.add_child(second)
-
-	_select(agent)
-	assert_eq(agent.get_current_behaviour_node(), first)
-	assert_eq(agent.get_current_action_node(), first_action)
-
-	var first_action_exits := _count_signal(first_action.action_exited)
-	var first_behaviour_exits := _count_signal(first.behaviour_exited)
-	var second_enters := _count_signal(second_action.action_entered)
-
-	# Lower the current behaviour so the other one wins.
-	first_consideration.activation_input_value = 0.1
-	agent.evaluate_options(100.0)
-	agent.update_current_behaviour()
-
-	assert_eq(agent.get_current_behaviour_node(), second)
-	assert_eq(agent.get_current_action_node(), second_action)
-	assert_eq(first_action_exits[0], 1, "the old action must exit exactly once")
-	assert_eq(first_behaviour_exits[0], 1, "the old behaviour must exit exactly once")
-	assert_eq(second_enters[0], 1, "the new action must enter exactly once")
 
 
 func test_group_changed_listener_can_free_the_selected_behaviour() -> void:

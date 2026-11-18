@@ -23,14 +23,10 @@ func _state_of(chart_root: NNSTRoot) -> CountingState:
 	return chart_root.get_node("CountingState") as CountingState
 
 
-# Waits for idle frames. GUT's wait_frames() is deprecated; awaiting the
-# SceneTree signal directly is the supported equivalent.
 func _wait_process_frames(count: int) -> void:
 	for _index in range(count):
 		await get_tree().process_frame
 
-
-# A root script with its own process callbacks must not shadow auto-ticking.
 
 func test_scripted_root_auto_ticks_in_physics_mode() -> void:
 	var chart_root: NNSTRoot = _make_scripted_root()

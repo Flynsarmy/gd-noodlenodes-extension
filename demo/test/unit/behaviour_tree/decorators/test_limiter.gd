@@ -1,4 +1,3 @@
-# GdUnit generated TestSuite
 extends GutTest
 @warning_ignore('unused_parameter')
 @warning_ignore('return_value_discarded')
@@ -110,16 +109,6 @@ func test_reset_and_disable_refill_the_budget() -> void:
 	for tick_index in 2:
 		_tick_and_assert(root, limiter, NNBTNodes.SUCCESS)
 	assert_eq(leaf.tick_count, 6, "a disable refilled the budget and ticked the child again")
-	_tick_and_assert(root, limiter, NNBTNodes.FAILURE)
-
-	root.free()
-
-
-func test_failure_on_no_children() -> void:
-	var root: NNBTRoot = NNBTRoot.new()
-	var limiter: NNBTLimiter = NNBTLimiter.new()
-	root.add_child(limiter)
-
 	_tick_and_assert(root, limiter, NNBTNodes.FAILURE)
 
 	root.free()

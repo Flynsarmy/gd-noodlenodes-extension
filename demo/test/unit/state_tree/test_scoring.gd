@@ -1,50 +1,32 @@
-# GdUnit generated TestSuite
 extends GutTest
 @warning_ignore('unused_parameter')
 @warning_ignore('return_value_discarded')
 
-func test_highest_scoring_child_of_root_is_entered() -> void:
+const UTILITY_SCORING := 1
+
+
+func test_highest_scoring_child_is_entered_at_every_level() -> void:
 	var _root: NNSTRoot = NNSTRoot.new()
-	var _child1: NNSTNode = NNSTNode.new()
-	var _child2: NNSTNode = NNSTNode.new()
-	var _consideration: NNConsideration = NNConsideration.new()
+	var _low: NNSTNode = NNSTNode.new()
+	var _high: NNSTNode = NNSTNode.new()
+	var _grandchild_low: NNSTNode = NNSTNode.new()
+	var _grandchild_high: NNSTNode = NNSTNode.new()
 
-	_root.child_state_selection_rule = 1
-	_consideration.activation_input_value = 0.5
-
-	assert_eq(_child2.score, 0)
-
-	# Hierarchy needs to be set up before adding to the tree or this
-	# test won't work correctly.
-	_root.add_child(_child1)
-	_root.add_child(_child2)
-	_child2.add_child(_consideration)
+	_root.child_state_selection_rule = UTILITY_SCORING
+	_high.child_state_selection_rule = UTILITY_SCORING
+	_root.add_child(_low)
+	_root.add_child(_high)
+	_high.add_child(_grandchild_low)
+	_high.add_child(_grandchild_high)
+	for node in [_high, _grandchild_high]:
+		var consideration: NNConsideration = NNConsideration.new()
+		consideration.activation_input_value = 0.5
+		node.add_child(consideration)
+	# Selection happens on entering the tree, so the hierarchy must be complete first.
 	add_child_autofree(_root)
 
-	assert_eq(_child1.get_is_active(), false)
-	assert_eq(_child2.get_is_active(), true)
-	assert_eq(_child2.score, 0.5)
-
-func test_highest_scoring_child_of_node_is_entered() -> void:
-	var _root: NNSTRoot = NNSTRoot.new()
-	var _child: NNSTNode = NNSTNode.new()
-	var _grandchild1: NNSTNode = NNSTNode.new()
-	var _grandchild2: NNSTNode = NNSTNode.new()
-	var _consideration: NNConsideration = NNConsideration.new()
-
-	_child.child_state_selection_rule = 1
-	_consideration.activation_input_value = 0.5
-
-	assert_eq(_grandchild2.score, 0)
-
-	# Hierarchy needs to be set up before adding to the tree or this
-	# test won't work correctly.
-	_root.add_child(_child)
-	_child.add_child(_grandchild1)
-	_child.add_child(_grandchild2)
-	_grandchild2.add_child(_consideration)
-	add_child_autofree(_root)
-
-	assert_eq(_grandchild1.get_is_active(), false)
-	assert_eq(_grandchild2.get_is_active(), true)
-	assert_eq(_grandchild2.score, 0.5)
+	assert_false(_low.get_is_active())
+	assert_true(_high.get_is_active())
+	assert_eq(_high.score, 0.5)
+	assert_false(_grandchild_low.get_is_active())
+	assert_true(_grandchild_high.get_is_active())

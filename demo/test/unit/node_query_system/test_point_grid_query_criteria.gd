@@ -1,14 +1,7 @@
 extends GutTest
 @warning_ignore('unused_parameter')
 
-# Regression tests for search criteria on the point grid search spaces.
-#
-# NNPointGrid2DSearchSpace and NNPointGrid3DSearchSpace used to override
-# _ready() and only call initialize_search_space(). That skipped the criteria
-# cache setup in NNNQSSearchSpaces::_ready(), so generated grid queries never
-# applied any child search criteria: filtering and scoring were silently
-# ignored. Both grid classes now use the inherited NNNQSSearchSpaces::_ready()
-# lifecycle, which initializes the grid and then caches the criteria once.
+# Point grid search spaces must still apply their child search criteria.
 
 const MAX_RUN_FRAMES := 100
 const EPSILON := 0.0001
@@ -39,14 +32,8 @@ func _run_query_to_completion(nqs: NNNodeQuerySystem, space: NNNQSSearchSpaces) 
 	fail_test("grid query did not complete within %d frames" % MAX_RUN_FRAMES)
 
 
-# The grid destructor memfree()s nodes that are still in the scene tree. That
-# bug is out of scope for this fix, so avoid it here instead of working around
-# it in production code: clear the query, empty the grid so the destructor has
-# nothing to free, then free the parent (which frees the point nodes and the
-# search space) in a valid order.
-func _cleanup(nqs: NNNodeQuerySystem, space, parent: Node) -> void:
+func _cleanup(nqs: NNNodeQuerySystem, parent: Node) -> void:
 	nqs.clear_queries()
-	space.point_grid = []
 	parent.free()
 	nqs.free()
 
@@ -65,8 +52,7 @@ func _assert_scores_almost_eq(space: NNNQSSearchSpaces, expected: Array) -> void
 				"score %d should be %s" % [i, expected[i]])
 
 
-# Audit repro: all four generated 2D grid points are further away than
-# max_distance, so filtering must produce zero results.
+# All four generated 2D grid points are further away than max_distance.
 func test_2d_point_grid_applies_filtering_criterion() -> void:
 	var nqs: NNNodeQuerySystem = _make_nqs()
 	var parent: Node2D = Node2D.new()
@@ -91,7 +77,7 @@ func test_2d_point_grid_applies_filtering_criterion() -> void:
 	assert_false(space.is_query_still_running, "the query should have completed")
 	assert_eq(space.query_results.size(), 0, "every grid point is outside max_distance and must be filtered out")
 
-	_cleanup(nqs, space, parent)
+	_cleanup(nqs, parent)
 
 
 func test_2d_point_grid_applies_scoring_criterion() -> void:
@@ -123,7 +109,7 @@ func test_2d_point_grid_applies_scoring_criterion() -> void:
 	_assert_scores_descending(space)
 	_assert_scores_almost_eq(space, [0.5, 0.25, 0.25, 0.0])
 
-	_cleanup(nqs, space, parent)
+	_cleanup(nqs, parent)
 
 
 func test_3d_point_grid_applies_filtering_criterion() -> void:
@@ -152,7 +138,7 @@ func test_3d_point_grid_applies_filtering_criterion() -> void:
 	assert_false(space.is_query_still_running, "the query should have completed")
 	assert_eq(space.query_results.size(), 0, "the offset grid points are outside max_distance and must be filtered out")
 
-	_cleanup(nqs, space, parent)
+	_cleanup(nqs, parent)
 
 
 func test_3d_point_grid_applies_scoring_criterion() -> void:
@@ -184,7 +170,7 @@ func test_3d_point_grid_applies_scoring_criterion() -> void:
 	_assert_scores_descending(space)
 	_assert_scores_almost_eq(space, [0.04, 0.01, 0.01, 0.0])
 
-	_cleanup(nqs, space, parent)
+	_cleanup(nqs, parent)
 
 
 # Criteria must be cached exactly once and the grid must be generated exactly
@@ -212,7 +198,7 @@ func test_2d_point_grid_applies_criteria_exactly_once() -> void:
 			"the criterion should be applied exactly once per grid point")
 	assert_eq(space.point_grid.size(), 4, "running a query must not regenerate the grid")
 
-	_cleanup(nqs, space, parent)
+	_cleanup(nqs, parent)
 
 
 func test_3d_point_grid_applies_criteria_exactly_once() -> void:
@@ -238,4 +224,4 @@ func test_3d_point_grid_applies_criteria_exactly_once() -> void:
 			"the criterion should be applied exactly once per grid point")
 	assert_eq(space.point_grid.size(), 4, "running a query must not regenerate the grid")
 
-	_cleanup(nqs, space, parent)
+	_cleanup(nqs, parent)

@@ -39,7 +39,7 @@ func _make_agent(group: NNBehaviourGroup) -> NNAgent:
 	return agent
 
 
-func test_disabled_grouped_behaviour_is_not_evaluated() -> void:
+func test_disabled_grouped_behaviour_is_neither_evaluated_nor_selected() -> void:
 	var group: NNBehaviourGroup = NNBehaviourGroup.new()
 	var disabled: NNBehaviour = _make_behaviour(1.0, false)
 	var enabled: NNBehaviour = _make_behaviour(0.5)
@@ -54,19 +54,6 @@ func test_disabled_grouped_behaviour_is_not_evaluated() -> void:
 
 	assert_eq(disabled_consideration.evaluation_count, 0, "disabled grouped behaviour must not be evaluated")
 	assert_eq(enabled_consideration.evaluation_count, 1, "enabled sibling must still be evaluated")
-
-
-func test_disabled_grouped_behaviour_is_not_selected() -> void:
-	var group: NNBehaviourGroup = NNBehaviourGroup.new()
-	var disabled: NNBehaviour = _make_behaviour(1.0, false)
-	var enabled: NNBehaviour = _make_behaviour(0.5)
-
-	group.add_child(disabled)
-	group.add_child(enabled)
-	var agent: NNAgent = _make_agent(group)
-
-	agent.evaluate_options(0.1)
-
 	assert_eq(agent.get_current_behaviour_node(), enabled, "enabled sibling must remain eligible")
 	assert_eq(agent.get_current_behaviour_group_node(), group, "enabled sibling must activate its group")
 
@@ -101,26 +88,15 @@ func test_enabled_current_grouped_behaviour_still_receives_bias() -> void:
 	assert_eq(agent.get_current_behaviour_node(), current, "enabled current grouped behaviour keeps its bias")
 
 
-func test_disabled_current_grouped_behaviour_matches_direct_candidate() -> void:
-	var grouped_group: NNBehaviourGroup = NNBehaviourGroup.new()
-	var grouped_disabled: NNBehaviour = _make_behaviour(1.0, false)
-	var grouped_enabled: NNBehaviour = _make_behaviour(0.5)
-	grouped_group.add_child(grouped_disabled)
-	grouped_group.add_child(grouped_enabled)
-	var grouped_agent: NNAgent = _make_agent(grouped_group)
-	grouped_agent.set_current_behaviour_node(grouped_disabled)
+func test_disabled_current_grouped_behaviour_is_replaced() -> void:
+	var group: NNBehaviourGroup = NNBehaviourGroup.new()
+	var disabled: NNBehaviour = _make_behaviour(1.0, false)
+	var enabled: NNBehaviour = _make_behaviour(0.5)
+	group.add_child(disabled)
+	group.add_child(enabled)
+	var agent: NNAgent = _make_agent(group)
+	agent.set_current_behaviour_node(disabled)
 
-	grouped_agent.evaluate_options(0.1)
+	agent.evaluate_options(0.1)
 
-	var direct_agent: NNAgent = NNAgent.new()
-	var direct_disabled: NNBehaviour = _make_behaviour(1.0, false)
-	var direct_enabled: NNBehaviour = _make_behaviour(0.5)
-	direct_agent.add_child(direct_disabled)
-	direct_agent.add_child(direct_enabled)
-	_add_manual_agent(direct_agent)
-	direct_agent.set_current_behaviour_node(direct_disabled)
-
-	direct_agent.evaluate_options(0.1)
-
-	assert_eq(grouped_agent.get_current_behaviour_node(), grouped_enabled, "grouped enabled sibling must replace a disabled current behaviour")
-	assert_eq(direct_agent.get_current_behaviour_node(), direct_enabled, "direct enabled sibling must replace a disabled current behaviour")
+	assert_eq(agent.get_current_behaviour_node(), enabled)

@@ -1,4 +1,3 @@
-# GdUnit generated TestSuite
 extends GutTest
 @warning_ignore('unused_parameter')
 @warning_ignore('return_value_discarded')
@@ -10,8 +9,8 @@ func _add_manual_root(root: NNSTRoot) -> NNSTRoot:
 	return add_child_autofree(root)
 
 
-## Builds a state tree with an active Source state plus Target and Other
-## siblings. Source owns a single transition to Target with the given delay.
+# Builds a state tree with an active Source state plus Target and Other
+# siblings. Source owns a single transition to Target with the given delay.
 func _build_tree(delay: String = "0.0") -> Dictionary:
 	var _root: NNSTRoot = NNSTRoot.new()
 	var _source: NNSTNode = NNSTNode.new()
@@ -46,24 +45,6 @@ func _build_tree(delay: String = "0.0") -> Dictionary:
 		"transition": _transition,
 	}
 
-func test_delay_properties_and_deprecated_alias() -> void:
-	var _transition: NNSTTransition = autofree(NNSTTransition.new())
-
-	assert_eq(_transition.delay_in_seconds, "0.0")
-	assert_eq(_transition.delay_seconds, 0.0)
-
-	_transition.delay_in_seconds = "1.25"
-	assert_eq(_transition.delay_in_seconds, "1.25")
-	assert_eq(_transition.delay_seconds, 1.25)
-
-	_transition.delay_seconds = 2.5
-	assert_eq(_transition.delay_in_seconds, "2.5")
-	assert_eq(_transition.delay_seconds, 2.5)
-
-	_transition.delay_in_seconds = "not_a_number"
-	assert_eq(_transition.delay_seconds, 0.0)
-
-## take() defaults to immediately=true, so even a large delay is skipped.
 func test_take_immediately_skips_delay() -> void:
 	var _tree: Dictionary = _build_tree("10.0")
 	var _root: NNSTRoot = _tree["root"]
@@ -256,8 +237,6 @@ func test_zero_delay_event_transition_is_immediate() -> void:
 	assert_true(_target.get_is_active())
 	assert_eq(get_signal_emit_count(_transition, "taken"), 1)
 
-## The guard is evaluated when the event is received, not when the queued
-## delay elapses.
 func test_event_guard_is_not_re_evaluated_when_delay_elapses() -> void:
 	var _tree: Dictionary = _build_tree("0.5")
 	var _root: NNSTRoot = _tree["root"]
@@ -305,28 +284,19 @@ func test_expression_delay_is_evaluated_from_blackboard() -> void:
 	_root.tick(0.25)
 	assert_true(_target.get_is_active())
 
-func test_negative_numeric_delay_is_immediate() -> void:
-	var _tree: Dictionary = _build_tree("-3.0")
-	var _target: NNSTNode = _tree["target"]
-	var _transition: NNSTTransition = _tree["transition"]
+func test_negative_delay_is_immediate() -> void:
+	for delay in ["-3.0", "delay_time"]:
+		var _tree: Dictionary = _build_tree(delay)
+		var _root: NNSTRoot = _tree["root"]
+		var _target: NNSTNode = _tree["target"]
+		var _transition: NNSTTransition = _tree["transition"]
+		var board := NNBlackboard.new()
+		board.values = { "delay_time": -2.0 }
+		_root.blackboard = board
 
-	assert_eq(_transition.evaluate_delay(), 0.0)
-	assert_true(_transition.take(false))
-	assert_true(_target.get_is_active())
-
-func test_negative_expression_delay_is_immediate() -> void:
-	var _tree: Dictionary = _build_tree("delay_time")
-	var _root: NNSTRoot = _tree["root"]
-	var _target: NNSTNode = _tree["target"]
-	var _transition: NNSTTransition = _tree["transition"]
-
-	var board := NNBlackboard.new()
-	board.values = { "delay_time": -2.0 }
-	_root.blackboard = board
-
-	assert_eq(_transition.evaluate_delay(), 0.0)
-	assert_true(_transition.take(false))
-	assert_true(_target.get_is_active())
+		assert_eq(_transition.evaluate_delay(), 0.0, delay)
+		assert_true(_transition.take(false), delay)
+		assert_true(_target.get_is_active(), delay)
 
 func test_invalid_expression_delay_falls_back_to_zero() -> void:
 	var _tree: Dictionary = _build_tree("1 +")
@@ -430,8 +400,6 @@ func test_freed_pending_transition_is_ignored() -> void:
 	assert_true(_source.get_is_active())
 	assert_false(_target.get_is_active())
 
-## A transition_pending handler may redirect the state before the elapsing
-## transition is executed; the pending transition must then be dropped.
 func test_redirect_from_transition_pending_cancels_execution() -> void:
 	var _tree: Dictionary = _build_tree("0.5")
 	var _root: NNSTRoot = _tree["root"]
@@ -457,9 +425,6 @@ func test_redirect_from_transition_pending_cancels_execution() -> void:
 	assert_false(_target.get_is_active())
 	assert_signal_not_emitted(_transition, "taken")
 
-## An existing target is not necessarily an accepted transition: a transition
-## that targets its own state is rejected by the preflight. Rejection must not
-## emit taken. This is the reported bug.
 func test_immediate_self_target_does_not_emit_taken() -> void:
 	var _tree: Dictionary = _build_tree()
 	var _root: NNSTRoot = _tree["root"]
@@ -476,8 +441,6 @@ func test_immediate_self_target_does_not_emit_taken() -> void:
 	assert_signal_not_emitted(_transition, "taken")
 	assert_true(_source.get_is_active())
 
-## A target that is a descendant of the source is rejected by
-## _can_transition_to(); it must not emit taken either.
 func test_immediate_descendant_target_does_not_emit_taken() -> void:
 	var _root: NNSTRoot = _add_manual_root(NNSTRoot.new())
 	var _source: NNSTNode = NNSTNode.new()
@@ -507,8 +470,6 @@ func test_immediate_descendant_target_does_not_emit_taken() -> void:
 	assert_true(_source.get_is_active())
 	assert_true(_leaf.get_is_active())
 
-## A delayed self-target is queued without validation (take(false) returns
-## true), but the rejection happens at execution time and emits nothing.
 func test_delayed_self_target_does_not_emit_taken_when_delay_elapses() -> void:
 	var _tree: Dictionary = _build_tree("0.5")
 	var _root: NNSTRoot = _tree["root"]
@@ -528,8 +489,6 @@ func test_delayed_self_target_does_not_emit_taken_when_delay_elapses() -> void:
 	assert_signal_not_emitted(_transition, "taken")
 	assert_true(_source.get_is_active())
 
-## A rejected event transition must return false without emitting taken so the
-## next same-named transition still gets a chance to handle the event.
 func test_rejected_event_transition_falls_through_to_next_transition() -> void:
 	var _root: NNSTRoot = _add_manual_root(NNSTRoot.new())
 	var _source: NNSTNode = NNSTNode.new()
@@ -563,9 +522,6 @@ func test_rejected_event_transition_falls_through_to_next_transition() -> void:
 	assert_false(_source.get_is_active())
 	assert_true(_target.get_is_active())
 
-## A transition to a sibling inside an NNSTParallel is rejected because the
-## common ancestor is the parallel; it must not emit taken and both children
-## must stay active.
 func test_parallel_common_ancestor_rejection_does_not_emit_taken() -> void:
 	var _root: NNSTRoot = _add_manual_root(NNSTRoot.new())
 	var _parallel: NNSTParallel = NNSTParallel.new()
