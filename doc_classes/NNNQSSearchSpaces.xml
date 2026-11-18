@@ -16,7 +16,7 @@
 			<return type="bool" />
 			<param index="0" name="time_budget_usec" type="int" />
 			<description>
-				The [method execute_query] method fetches the search space nodes based on its configuration and then applies the search criteria in top-down order. A time_budget_usec, which is the time budget in microseconds, must be set to limit the time the method uses for the query. Returns [code]false[/code] if the query hasn't finished (time has run out) and [code]true[/code] otherwise.
+				The [method execute_query] method fetches the search space nodes based on its configuration and then applies the search criteria in top-down order. [param time_budget_usec] limits the time, in microseconds, this call spends on the query; a query that runs out of time resumes where it left off on the next call. A budget of [code]0[/code] runs the query to completion in this call. Returns [code]false[/code] if the query hasn't finished (time has run out) and [code]true[/code] otherwise.
 			</description>
 		</method>
 		<method name="initialize_search_space">

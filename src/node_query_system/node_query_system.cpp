@@ -101,6 +101,8 @@ float NNNodeQuerySystem::get_time_allocation_pct_to_high_priority_queries() cons
 }
 
 void NNNodeQuerySystem::set_high_priority_query_per_frame_execute_query_time_budget_usec(int high_priority_query_per_frame_execute_query_time_budget_usec) {
+	// execute_query() treats 0 as unlimited, which would let one query starve the frame budget.
+	ERR_FAIL_COND_MSG(high_priority_query_per_frame_execute_query_time_budget_usec < 1, "NNNodeQuerySystem::set_high_priority_query_per_frame_execute_query_time_budget_usec(): high_priority_query_per_frame_execute_query_time_budget_usec must be at least 1.");
 	_high_priority_query_per_frame_execute_query_time_budget_usec = high_priority_query_per_frame_execute_query_time_budget_usec;
 }
 
@@ -109,6 +111,8 @@ int NNNodeQuerySystem::get_high_priority_query_per_frame_execute_query_time_budg
 }
 
 void NNNodeQuerySystem::set_regular_query_per_frame_execute_query_time_budget_usec(int regular_query_per_frame_execute_query_time_budget_usec) {
+	// execute_query() treats 0 as unlimited, which would let one query starve the frame budget.
+	ERR_FAIL_COND_MSG(regular_query_per_frame_execute_query_time_budget_usec < 1, "NNNodeQuerySystem::set_regular_query_per_frame_execute_query_time_budget_usec(): regular_query_per_frame_execute_query_time_budget_usec must be at least 1.");
 	_regular_query_per_frame_execute_query_time_budget_usec = regular_query_per_frame_execute_query_time_budget_usec;
 }
 

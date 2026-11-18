@@ -66,7 +66,7 @@ protected:
 
 	bool apply_criterion_with_time_budget(NNNQSSearchCriteria *criterion,
 			uint64_t start_time_usec,
-			uint64_t time_budget_usec);
+			uint64_t deadline_usec);
 	virtual bool preprocess_search_space(uint64_t time_limit_timestamp_usec) {
 		_is_preprocessing_completed = true;
 		return true;

@@ -97,3 +97,13 @@ func test_regular_query_runs_when_high_priority_leaves_budget() -> void:
 	nqs.stop_query(high_query)
 	nqs.stop_query(regular_query)
 	nqs.free()
+
+
+# A zero budget means no limit, so a direct execute_query() call must finish.
+func test_zero_budget_execute_query_completes_in_one_call() -> void:
+	var criterion: CountingCriterion = CountingCriterion.new()
+	var query: NNNodeChildrenSearchSpace = _make_query(_make_candidates(NUM_CANDIDATES), criterion)
+
+	assert_true(query.execute_query(0), "an unlimited query should complete in a single call")
+	assert_eq(criterion.apply_count, NUM_CANDIDATES)
+	assert_eq(query.query_results.size(), query.top_n_to_find)

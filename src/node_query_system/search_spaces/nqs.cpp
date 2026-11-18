@@ -3,6 +3,8 @@
 #include <godot_cpp/classes/engine.hpp>
 #include <godot_cpp/classes/time.hpp>
 
+#include <cstdint>
+
 using namespace godot;
 
 NNNQSSearchSpaces::NNNQSSearchSpaces() {
@@ -286,8 +288,7 @@ void NNNQSSearchSpaces::start_query() {
 
 bool NNNQSSearchSpaces::execute_query(uint64_t time_budget_usec) {
 	uint64_t method_start_time_usec = godot::Time::get_singleton()->get_ticks_usec();
-	uint64_t method_time_limit_timestamp_usec = method_start_time_usec + time_budget_usec;
-	uint64_t time_budget_remaining_usec = time_budget_usec;
+	const uint64_t deadline_usec = time_budget_usec > 0 ? method_start_time_usec + time_budget_usec : UINT64_MAX;
 
 	if (!get_is_enabled()) {
 		_is_query_still_running = false;
@@ -330,25 +331,23 @@ bool NNNQSSearchSpaces::execute_query(uint64_t time_budget_usec) {
 
 		uint64_t search_space_fetch_end_timestamp_usec = godot::Time::get_singleton()->get_ticks_usec();
 		_search_space_fetch_time_usec = search_space_fetch_end_timestamp_usec - method_start_time_usec;
-		if (time_budget_usec > 0 && search_space_fetch_end_timestamp_usec >= method_time_limit_timestamp_usec) {
+		if (search_space_fetch_end_timestamp_usec >= deadline_usec) {
 			// Update the debug counters before exiting.
 			_current_call_runtime_usec = _search_space_fetch_time_usec;
 			_average_call_runtime_usec = _average_call_runtime_usec * 0.5 + 0.5 * _current_call_runtime_usec;
 			_current_query_runtime_usec += _current_call_runtime_usec;
 			return false; // Search space fetching used the time budget.
 		}
-		time_budget_remaining_usec -= _search_space_fetch_time_usec;
 
 	} //endif is searchspace fetched
 
 	// Do any preprocessing that's needed.
 	if (!_is_preprocessing_completed) {
 		uint64_t preprocessing_start_timestamp_usec = godot::Time::get_singleton()->get_ticks_usec();
-		_is_preprocessing_completed = preprocess_search_space(method_time_limit_timestamp_usec);
+		_is_preprocessing_completed = preprocess_search_space(deadline_usec);
 		uint64_t preprocessing_end_timestamp_usec = godot::Time::get_singleton()->get_ticks_usec();
 		_preprocessing_time_usec += (preprocessing_end_timestamp_usec - preprocessing_start_timestamp_usec);
-		time_budget_remaining_usec -= _preprocessing_time_usec;
-		if (time_budget_usec > 0 && preprocessing_end_timestamp_usec >= method_time_limit_timestamp_usec) {
+		if (preprocessing_end_timestamp_usec >= deadline_usec) {
 			// Update the debug counters before exiting.
 			_current_call_runtime_usec = preprocessing_end_timestamp_usec - method_start_time_usec;
 			_average_call_runtime_usec = _average_call_runtime_usec * 0.5 + 0.5 * _current_call_runtime_usec;
@@ -368,7 +367,7 @@ bool NNNQSSearchSpaces::execute_query(uint64_t time_budget_usec) {
 			}
 			bool is_criterion_complete = apply_criterion_with_time_budget(criterion,
 					method_start_time_usec,
-					time_budget_remaining_usec);
+					deadline_usec);
 			if (!is_criterion_complete) {
 				// Note: the runtime is already updated in the apply_criterion_with_time_budget() method.
 				return false; // The criterion did not complete, so it timed out.
@@ -379,14 +378,11 @@ bool NNNQSSearchSpaces::execute_query(uint64_t time_budget_usec) {
 		_current_query_results.clear();
 		_current_query_result_scores.clear();
 	} //endif is criteria handled
-	uint64_t copy_start_time_usec = godot::Time::get_singleton()->get_ticks_usec();
-	uint64_t copy_end_time_usec = copy_start_time_usec + time_budget_usec - (copy_start_time_usec - method_start_time_usec);
-
 	// Put all the remaining scores to the search results in order.
 	if (!_is_results_copied) {
 		while (_current_result_index < _num_search_space_nodes) {
 			uint64_t current_time_usec = godot::Time::get_singleton()->get_ticks_usec();
-			if (current_time_usec >= copy_end_time_usec) {
+			if (current_time_usec >= deadline_usec) {
 				_current_call_runtime_usec = (current_time_usec - method_start_time_usec);
 				_average_call_runtime_usec = _average_call_runtime_usec * 0.5 + 0.5 * _current_call_runtime_usec;
 				_current_query_runtime_usec += _current_call_runtime_usec;
@@ -429,17 +425,14 @@ bool NNNQSSearchSpaces::execute_query(uint64_t time_budget_usec) {
 
 bool NNNQSSearchSpaces::apply_criterion_with_time_budget(NNNQSSearchCriteria *criterion,
 		uint64_t start_time_usec,
-		uint64_t time_budget_usec) {
-	uint64_t end_time_usec = start_time_usec + time_budget_usec;
+		uint64_t deadline_usec) {
 	while (_current_node_index < _num_search_space_nodes) {
 		uint64_t current_time_usec = godot::Time::get_singleton()->get_ticks_usec();
-		if (time_budget_usec > 0) {
-			if (current_time_usec >= end_time_usec) {
-				_current_call_runtime_usec = current_time_usec - start_time_usec;
-				_average_call_runtime_usec = _average_call_runtime_usec * 0.5 + 0.5 * _current_call_runtime_usec;
-				return false;
-			} //endif time budget reached.
-		} //endif timebudget is applied
+		if (current_time_usec >= deadline_usec) {
+			_current_call_runtime_usec = current_time_usec - start_time_usec;
+			_average_call_runtime_usec = _average_call_runtime_usec * 0.5 + 0.5 * _current_call_runtime_usec;
+			return false;
+		}
 
 		Node *node = godot::Object::cast_to<Node>((*_ptr_current_search_space)[_current_node_index]);
 		if (node == nullptr) {
