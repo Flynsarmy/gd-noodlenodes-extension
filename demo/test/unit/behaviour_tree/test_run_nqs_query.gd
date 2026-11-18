@@ -117,6 +117,133 @@ func test_genuine_completion_with_empty_results_is_success() -> void:
 	assert_eq(_root.tick(0.1), NNBTNodes.SUCCESS,
 			"Zero results are a valid completion, not a cancellation.")
 
+func test_completion_writes_the_best_result_to_the_default_key() -> void:
+	var _container: Node2D = add_child_autofree(Node2D.new())
+	var _near: Node2D = Node2D.new()
+	_near.position = Vector2(10.0, 0.0)
+	_container.add_child(_near)
+	var _far: Node2D = Node2D.new()
+	_far.position = Vector2(20.0, 0.0)
+	_container.add_child(_far)
+	var _search_space: NNNodeChildrenSearchSpace = _make_search_space()
+	_search_space.parent_node = _container
+	add_child_autofree(_search_space)
+	var _nodes: Array = _make_root_with_leaf(_search_space)
+	var _root: NNBTRoot = _nodes[0]
+
+	assert_eq(_root.tick(0.1), NNBTNodes.RUNNING)
+	_complete_query(_search_space)
+
+	# The completion signal alone writes the result, before the next tick.
+	assert_eq(_search_space.query_results.size(), 1)
+	assert_eq(_root.get_blackboard("nqs_result"), _search_space.query_results[0])
+
+	assert_eq(_root.tick(0.1), NNBTNodes.SUCCESS)
+
+func test_completion_writes_all_results_and_scores() -> void:
+	var _container: Node2D = add_child_autofree(Node2D.new())
+	var _near: Node2D = Node2D.new()
+	_near.position = Vector2(10.0, 0.0)
+	_container.add_child(_near)
+	var _far: Node2D = Node2D.new()
+	_far.position = Vector2(20.0, 0.0)
+	_container.add_child(_far)
+	var _search_space: NNNodeChildrenSearchSpace = _make_search_space()
+	_search_space.parent_node = _container
+	add_child_autofree(_search_space)
+	var _nodes: Array = _make_root_with_leaf(_search_space)
+	var _root: NNBTRoot = _nodes[0]
+	var _child: NNBTRunNQSQuery = _nodes[1]
+	_child.top_n_to_find = 2
+	_child.results_key = "nqs_results"
+	_child.result_scores_key = "nqs_scores"
+
+	assert_eq(_root.tick(0.1), NNBTNodes.RUNNING)
+	_complete_query(_search_space)
+
+	assert_eq(_search_space.query_results.size(), 2)
+	assert_eq(_root.get_blackboard("nqs_results"), _search_space.query_results)
+	assert_eq(_root.get_blackboard("nqs_scores"), _search_space.query_result_scores)
+
+func test_empty_keys_are_not_written() -> void:
+	var _container: Node2D = add_child_autofree(Node2D.new())
+	_container.add_child(Node2D.new())
+	var _search_space: NNNodeChildrenSearchSpace = _make_search_space()
+	_search_space.parent_node = _container
+	add_child_autofree(_search_space)
+	var _nodes: Array = _make_root_with_leaf(_search_space)
+	var _root: NNBTRoot = _nodes[0]
+	var _child: NNBTRunNQSQuery = _nodes[1]
+	_child.best_result_key = ""
+	_child.result_scores_key = ""
+	_child.results_key = "nqs_results"
+
+	assert_eq(_root.tick(0.1), NNBTNodes.RUNNING)
+	_complete_query(_search_space)
+
+	assert_eq(_root.get_blackboard_resource().keys(), ["nqs_results"])
+
+func test_no_result_erases_the_keys_and_still_succeeds() -> void:
+	var _search_space: NNNodeChildrenSearchSpace = _make_search_space()
+	add_child_autofree(_search_space)
+	var _nodes: Array = _make_root_with_leaf(_search_space)
+	var _root: NNBTRoot = _nodes[0]
+	var _child: NNBTRunNQSQuery = _nodes[1]
+	_child.results_key = "nqs_results"
+	_child.result_scores_key = "nqs_scores"
+	for _key in ["nqs_result", "nqs_results", "nqs_scores"]:
+		_root.set_blackboard(_key, "stale")
+
+	assert_eq(_root.tick(0.1), NNBTNodes.RUNNING)
+	_complete_query(_search_space)
+
+	assert_eq(_search_space.query_results.size(), 0)
+	assert_eq(_root.get_blackboard_resource().keys(), [],
+			"A query that found nothing must not leave a stale target behind.")
+	assert_eq(_root.tick(0.1), NNBTNodes.SUCCESS)
+
+func test_cancelled_query_writes_nothing() -> void:
+	var _container: Node2D = add_child_autofree(Node2D.new())
+	_container.add_child(Node2D.new())
+	var _search_space: NNNodeChildrenSearchSpace = _make_search_space()
+	_search_space.parent_node = _container
+	add_child_autofree(_search_space)
+	var _nodes: Array = _make_root_with_leaf(_search_space)
+	var _root: NNBTRoot = _nodes[0]
+
+	assert_eq(_root.tick(0.1), NNBTNodes.RUNNING)
+	var _nqs: NNNodeQuerySystem = Engine.get_singleton("NodeQuerySystem")
+	assert_true(_nqs.stop_query(_search_space))
+	await wait_physics_frames(2)
+
+	assert_eq(_root.tick(0.1), NNBTNodes.FAILURE)
+	assert_eq(_root.get_blackboard_resource().keys(), [])
+
+func test_freed_result_node_reads_back_as_null() -> void:
+	var _container: Node2D = add_child_autofree(Node2D.new())
+	var _target: Node2D = Node2D.new()
+	_container.add_child(_target)
+	var _search_space: NNNodeChildrenSearchSpace = _make_search_space()
+	_search_space.parent_node = _container
+	add_child_autofree(_search_space)
+	var _nodes: Array = _make_root_with_leaf(_search_space)
+	var _root: NNBTRoot = _nodes[0]
+	var _child: NNBTRunNQSQuery = _nodes[1]
+	_child.results_key = "nqs_results"
+
+	assert_eq(_root.tick(0.1), NNBTNodes.RUNNING)
+	_complete_query(_search_space)
+	assert_eq(_root.get_blackboard("nqs_result"), _target)
+
+	_target.free()
+
+	assert_null(_root.get_blackboard("nqs_result"))
+	assert_null(_root.get_blackboard("nqs_results")[0], "The results array keeps a null entry.")
+	assert_true(_root.get_blackboard_resource().keys().has("nqs_result"),
+			"The key stays until the next write or erase, so it reads back as null, not as missing.")
+
+	assert_eq(_root.tick(0.1), NNBTNodes.SUCCESS)
+
 func test_completed_query_runs_again_after_reset() -> void:
 	var _search_space: NNNodeChildrenSearchSpace = _make_search_space()
 	add_child_autofree(_search_space)
@@ -410,6 +537,8 @@ func test_replaced_query_is_not_adopted_or_cancelled() -> void:
 
 		assert_eq(root.tick(0.1), NNBTNodes.FAILURE,
 				"The replacement query belongs to another poster, even if it completes.")
+		assert_eq(root.get_blackboard_resource().keys(), [],
+				"Another poster's completion must not write results.")
 		assert_eq(space.is_query_still_running, not complete_replacement)
 		assert_eq(nqs.get_num_active_regular_priority_queries(), 0 if complete_replacement else 1)
 		nqs.clear_queries()

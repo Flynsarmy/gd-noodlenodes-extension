@@ -36,6 +36,7 @@
 #include "agent_behaviours/sensors/distance_vector3.h"
 #include "agent_behaviours/sensors/float_range.h"
 #include "agent_behaviours/sensors/int_range.h"
+#include "agent_behaviours/sensors/nqs_query.h"
 
 // Special considerations
 #include "agent_behaviours/considerations/boolean.h"
@@ -192,6 +193,7 @@ void register_scene_classes() {
 	GDREGISTER_CLASS(NNDistanceVector3Sensor);
 	GDREGISTER_CLASS(NNArea2DVisibilitySensor);
 	GDREGISTER_CLASS(NNArea3DVisibilitySensor);
+	GDREGISTER_CLASS(NNNQSQuerySensor);
 
 	// Special considerations.
 	GDREGISTER_CLASS(NNBooleanConsideration);

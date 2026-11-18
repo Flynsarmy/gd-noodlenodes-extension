@@ -5,6 +5,7 @@
 #include "task_nodes.h"
 #include <godot_cpp/classes/node.hpp>
 #include <godot_cpp/core/object.hpp>
+#include <godot_cpp/variant/string.hpp>
 
 namespace godot {
 
@@ -22,6 +23,10 @@ private:
 	int _time_budget_usec;
 	int _top_n_to_find;
 	bool _is_high_priority;
+
+	String _best_result_key;
+	String _results_key;
+	String _result_scores_key;
 
 	QueryState _query_state;
 	// A nonzero token identifies the registration this leaf posted.
@@ -56,6 +61,15 @@ public:
 
 	void set_is_high_priority(bool is_high_priority);
 	bool get_is_high_priority() const;
+
+	void set_best_result_key(const String &best_result_key);
+	String get_best_result_key() const;
+
+	void set_results_key(const String &results_key);
+	String get_results_key() const;
+
+	void set_result_scores_key(const String &result_scores_key);
+	String get_result_scores_key() const;
 
 	// Handling functions.
 	virtual Status _tick(float delta) override;

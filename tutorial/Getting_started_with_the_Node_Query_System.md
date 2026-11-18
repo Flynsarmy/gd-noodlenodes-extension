@@ -402,6 +402,34 @@ func _on_utility_ai_node_group_search_space_query_completed(search_space):
 
 This code is called when ever the NQS query completes. It first checks if the query returned any results. Then it assings the `movement_target_point` as the global position of the first point grid node found by the query. Finally, it calculates the *direction vector* towards the target point from the AI entity's position in the final row `dir_to_target = (movement_target_point - global_position).normalized()`.
 
+
+### 7.1. Writing the query results to the blackboard
+
+The signal handler above is one way to read the query results. The **NNBTRunNQSQuery** leaf can also write them to the behaviour tree blackboard, so the rest of the tree can use them without any script:
+
+ * **Best Result Key**, `nqs_result` by default, receives the best result node.
+ * **Results Key** receives every result as an array of nodes. Leave it empty to skip it.
+ * **Result Scores Key** receives the matching scores as a packed float array. Leave it empty to skip it.
+
+Set **Top N To Find** to the number of results you want: the results and scores arrays hold at most that many entries, best first. An empty key is never written.
+
+The keys are written when the leaf's own query completes, before the next tree tick, and only for that query. A cancelled, interrupted or replaced query writes nothing. When a completed query finds no results the keys are erased and the leaf still returns `SUCCESS`, so the tree can test for a target with an **NNBTBlackboardHas** leaf and fall back to another behaviour. Erasing the keys instead of leaving them alone means a target from an earlier tick never lingers.
+
+The blackboard stores plain values and does not keep nodes alive. A node that is freed after it was written reads back as `null`; the key remains until it is erased or overwritten and the results array keeps a `null` entry. Check a target before you use it.
+
+
+### 7.2. Running a query from an agent
+
+Utility AI agents can run NQS queries as well, through the **NNNQSQuerySensor**. Add it as a child of an **NNAgent** and set its **Nqs Search Space** property:
+
+ * The sensor posts a query on its search space and reports the best result's score as its **sensor_value**, or `0` when a completed query found nothing. Set the sensor as a consideration's **Input Sensor** to score a behaviour with it.
+ * The best result node is written to the agent's blackboard under **Best Result Key**, `nqs_result` by default, and the key is erased when a completed query finds nothing. Read it with `get_blackboard("nqs_result")` from any node below the agent.
+ * The query runs asynchronously inside the Node Query System's time budget, so the sensor never blocks a frame. It keeps reporting its last completed result until a new query completes, then posts a new query on its next evaluation.
+ * Cancelling, disabling or freeing the sensor stops only the query it posted. Another caller's query is left untouched.
+
+An agent shares one blackboard and actor with the behaviour trees and state trees below it, so the sensor's key is visible to them without any extra wiring.
+
+
 The AI entity scene is now completed. It is time to run the **tutorial_scene** and see the results.
 
 

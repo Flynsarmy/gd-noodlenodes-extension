@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="NNNQSQuerySensor" inherits="NNSensor" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
+	<brief_description>
+		Runs a Node Query System query asynchronously and reports the score of its best result.
+	</brief_description>
+	<description>
+		The query advances inside the Node Query System's per-frame time budget, so the sensor never blocks and never executes the query itself.
+		[member NNSensors.sensor_value] is the score of the best result once a query completes, and [code]0.0[/code] before the first completion or when a completed query found nothing.
+		The best result node is written to the nearest ancestor root's blackboard under [member best_result_key] on completion, and erased when a completed query found nothing. An empty [member best_result_key] writes and erases nothing. Blackboard nodes are not kept alive: if the best result is freed, the key remains and reads back as [code]null[/code].
+		The last completed result is reported until a new query completes. While enabled, a fresh query is posted after each completion, so the sensor keeps refreshing.
+		Cancelling, disabling or freeing the sensor stops only the query it posted itself and leaves the blackboard untouched. A query posted by another caller is never stopped.
+	</description>
+	<tutorials>
+	</tutorials>
+	<members>
+		<member name="best_result_key" type="String" setter="set_best_result_key" getter="get_best_result_key" default="&quot;nqs_result&quot;">
+			Blackboard key the best result node is written to. Empty means nothing is written or erased.
+		</member>
+		<member name="is_high_priority" type="bool" setter="set_is_high_priority" getter="get_is_high_priority" default="true">
+			Whether the posted query runs in the Node Query System's high priority queue.
+		</member>
+		<member name="nqs_search_space" type="NNNQSSearchSpaces" setter="set_nqs_search_space" getter="get_nqs_search_space">
+			The search space to query. Assigning a different search space cancels the query this sensor posted, and assigning [code]null[/code] stops querying.
+		</member>
+	</members>
+</class>

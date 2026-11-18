@@ -1,8 +1,12 @@
 #include "run_nqs_query.h"
 
+#include "../blackboard.h"
+
 #include <godot_cpp/classes/engine.hpp>
 #include <godot_cpp/core/class_db.hpp>
 #include <godot_cpp/core/object.hpp>
+#include <godot_cpp/variant/packed_float64_array.hpp>
+#include <godot_cpp/variant/typed_array.hpp>
 
 using namespace godot;
 
@@ -18,6 +22,18 @@ void NNBTRunNQSQuery::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("set_is_high_priority", "is_high_priority"), &NNBTRunNQSQuery::set_is_high_priority);
 	ClassDB::bind_method(D_METHOD("get_is_high_priority"), &NNBTRunNQSQuery::get_is_high_priority);
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "is_high_priority", PROPERTY_HINT_NONE), "set_is_high_priority", "get_is_high_priority");
+
+	ClassDB::bind_method(D_METHOD("set_best_result_key", "best_result_key"), &NNBTRunNQSQuery::set_best_result_key);
+	ClassDB::bind_method(D_METHOD("get_best_result_key"), &NNBTRunNQSQuery::get_best_result_key);
+	ADD_PROPERTY(PropertyInfo(Variant::STRING, "best_result_key"), "set_best_result_key", "get_best_result_key");
+
+	ClassDB::bind_method(D_METHOD("set_results_key", "results_key"), &NNBTRunNQSQuery::set_results_key);
+	ClassDB::bind_method(D_METHOD("get_results_key"), &NNBTRunNQSQuery::get_results_key);
+	ADD_PROPERTY(PropertyInfo(Variant::STRING, "results_key"), "set_results_key", "get_results_key");
+
+	ClassDB::bind_method(D_METHOD("set_result_scores_key", "result_scores_key"), &NNBTRunNQSQuery::set_result_scores_key);
+	ClassDB::bind_method(D_METHOD("get_result_scores_key"), &NNBTRunNQSQuery::get_result_scores_key);
+	ADD_PROPERTY(PropertyInfo(Variant::STRING, "result_scores_key"), "set_result_scores_key", "get_result_scores_key");
 }
 
 NNBTRunNQSQuery::NNBTRunNQSQuery() {
@@ -26,6 +42,9 @@ NNBTRunNQSQuery::NNBTRunNQSQuery() {
 	_query_state = QueryState::IDLE;
 	_posted_query_registration = 0;
 	_is_high_priority = true;
+	_best_result_key = "nqs_result";
+	_results_key = "";
+	_result_scores_key = "";
 }
 
 NNBTRunNQSQuery::~NNBTRunNQSQuery() {
@@ -73,6 +92,30 @@ bool NNBTRunNQSQuery::get_is_high_priority() const {
 	return _is_high_priority;
 }
 
+void NNBTRunNQSQuery::set_best_result_key(const String &best_result_key) {
+	_best_result_key = best_result_key;
+}
+
+String NNBTRunNQSQuery::get_best_result_key() const {
+	return _best_result_key;
+}
+
+void NNBTRunNQSQuery::set_results_key(const String &results_key) {
+	_results_key = results_key;
+}
+
+String NNBTRunNQSQuery::get_results_key() const {
+	return _results_key;
+}
+
+void NNBTRunNQSQuery::set_result_scores_key(const String &result_scores_key) {
+	_result_scores_key = result_scores_key;
+}
+
+String NNBTRunNQSQuery::get_result_scores_key() const {
+	return _result_scores_key;
+}
+
 void NNBTRunNQSQuery::_cancel_posted_query() {
 	NNNQSSearchSpaces *search_space = _resolve_nqs_search_space();
 	if (search_space != nullptr) {
@@ -104,9 +147,52 @@ void NNBTRunNQSQuery::_on_query_completed(Object *p_search_space, int64_t p_quer
 	if (search_space == nullptr || search_space != p_search_space || _query_state != QueryState::RUNNING) {
 		return;
 	}
-	if (static_cast<uint64_t>(p_query_registration) == _posted_query_registration &&
-			search_space->get_nqs_query_registration() == _posted_query_registration) {
-		_query_state = QueryState::COMPLETED;
+	if (static_cast<uint64_t>(p_query_registration) != _posted_query_registration ||
+			search_space->get_nqs_query_registration() != _posted_query_registration) {
+		return;
+	}
+
+	// Copied before any board write: a value_changed listener may free this
+	// leaf, its root or the search space, so nothing is read from those after
+	// the first write.
+	TypedArray<Node> results = search_space->get_query_results();
+	PackedFloat64Array scores = search_space->get_query_result_scores();
+	String best_result_key = _best_result_key;
+	String results_key = _results_key;
+	String result_scores_key = _result_scores_key;
+	Ref<NNBlackboard> board = get_blackboard_resource_ref();
+
+	_query_state = QueryState::COMPLETED;
+
+	if (board.is_null()) {
+		return;
+	}
+
+	if (results.is_empty()) {
+		// A completed query with no results is still a success, so stale keys
+		// from an earlier run are erased instead of left behind.
+		if (!best_result_key.is_empty()) {
+			board->erase_value(best_result_key);
+		}
+		if (!results_key.is_empty()) {
+			board->erase_value(results_key);
+		}
+		if (!result_scores_key.is_empty()) {
+			board->erase_value(result_scores_key);
+		}
+		return;
+	}
+
+	if (!results_key.is_empty()) {
+		board->set_value(results_key, results);
+	}
+	if (!result_scores_key.is_empty()) {
+		board->set_value(result_scores_key, scores);
+	}
+	// The best result goes last so a value_changed listener always sees the
+	// arrays it came from.
+	if (!best_result_key.is_empty()) {
+		board->set_value(best_result_key, results[0]);
 	}
 }
 

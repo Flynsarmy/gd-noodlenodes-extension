@@ -5,15 +5,27 @@
 	</brief_description>
 	<description>
 		Returns [constant NNBTNodes.RUNNING] until its query completes, then [constant NNBTNodes.SUCCESS], including when no results match. Returns [constant NNBTNodes.FAILURE] if the search space is missing, posting is rejected, or its query is cancelled or replaced.
+		Results are written to the blackboard that this leaf resolves through its nearest ancestor root when this leaf's own query completes, before its next tick. [member best_result_key] receives the best result node, [member results_key] receives all results as an [Array] of nodes, and [member result_scores_key] receives their scores as a [PackedFloat64Array], all sorted best first. Results and scores hold at most [member top_n_to_find] entries. An empty key disables that value. Writes go results, then scores, then the best result, so a [signal NNBlackboard.value_changed] listener for [member best_result_key] always sees the arrays the best node came from.
+		When the query completes with no results, the configured keys are erased and the leaf still returns [constant NNBTNodes.SUCCESS]. This keeps a completed query a success while removing a stale target from an earlier run, so a tree can branch on [NNBTBlackboardHas]. Cancelled or replaced queries, and completions belonging to another poster, write nothing.
+		Blackboard values do not keep nodes alive. A node freed after it was written reads back as [code]null[/code], and the results array keeps a [code]null[/code] entry in its place.
 		Resetting, reassigning, or removing the leaf stops only the query registration it posted. Queries posted by another caller are left untouched. A reset does not start a new query until the leaf is ticked again.
 	</description>
 	<tutorials>
 	</tutorials>
 	<members>
+		<member name="best_result_key" type="String" setter="set_best_result_key" getter="get_best_result_key" default="&quot;nqs_result&quot;">
+			The blackboard key that receives the best result node. Written last on completion. An empty key writes nothing.
+		</member>
 		<member name="is_high_priority" type="bool" setter="set_is_high_priority" getter="get_is_high_priority" default="true">
 		</member>
 		<member name="nqs_search_space" type="NNNQSSearchSpaces" setter="set_nqs_search_space" getter="get_nqs_search_space">
-			A node reference to a NQS Search Space node. (Changed from v1.4 node path).
+			A node reference to a NQS Search Space node.
+		</member>
+		<member name="result_scores_key" type="String" setter="set_result_scores_key" getter="get_result_scores_key" default="&quot;&quot;">
+			The blackboard key that receives the result scores as a [PackedFloat64Array], sorted best first. An empty key writes nothing.
+		</member>
+		<member name="results_key" type="String" setter="set_results_key" getter="get_results_key" default="&quot;&quot;">
+			The blackboard key that receives all results as an [Array] of nodes, sorted best first. An empty key writes nothing.
 		</member>
 		<member name="top_n_to_find" type="int" setter="set_top_n_to_find" getter="get_top_n_to_find" default="1">
 			The number of results the search should return. Overrides the setting on the search space.
