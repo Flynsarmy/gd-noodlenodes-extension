@@ -225,3 +225,31 @@ func test_3d_point_grid_applies_criteria_exactly_once() -> void:
 	assert_eq(space.point_grid.size(), 4, "running a query must not regenerate the grid")
 
 	_cleanup(nqs, parent)
+
+
+# point_grid is assignable, so navmesh snapping must stay within the shorter of
+# the assigned points and the generated positions.
+func test_2d_navmesh_snapping_tolerates_a_shorter_assigned_point_grid() -> void:
+	var nqs: NNNodeQuerySystem = _make_nqs()
+	var parent: Node2D = Node2D.new()
+	add_child(parent)
+
+	var space: NNPointGrid2DSearchSpace = NNPointGrid2DSearchSpace.new()
+	space.grid_size = Vector2(10, 10)
+	space.point_grid_parent_node = parent
+	space.use_navigation_mesh_positions = true
+	var criterion: CountingCriterion = CountingCriterion.new()
+	space.add_child(criterion)
+	parent.add_child(space)
+
+	var kept_point: Node2D = space.point_grid[0]
+	space.point_grid = [kept_point]
+	# Navigation maps only answer queries after their first synchronization.
+	var map_rid: RID = parent.get_world_2d().navigation_map
+	await wait_until(func() -> bool: return NavigationServer2D.map_get_iteration_id(map_rid) > 0, 2.0)
+
+	_run_query_to_completion(nqs, space)
+
+	assert_eq(criterion.apply_count, 1, "only the assigned point should be scored")
+
+	_cleanup(nqs, parent)

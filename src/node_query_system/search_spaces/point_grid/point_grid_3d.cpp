@@ -312,10 +312,13 @@ bool NNPointGrid3DSearchSpace::preprocess_search_space(uint64_t time_limit_times
 		return true;
 	}
 	NavigationServer3D *nav_srv = godot::NavigationServer3D::get_singleton();
-	while (_current_preprocessing_node_index < _point_grid_default_positions.size()) {
+	// point_grid is assignable, so it may not match the generated positions one to one.
+	const unsigned int num_points = MIN((unsigned int)_point_grid.size(), (unsigned int)_point_grid_default_positions.size());
+	while (_current_preprocessing_node_index < num_points) {
 		Node3D *node = godot::Object::cast_to<Node3D>(_point_grid[_current_preprocessing_node_index]);
 		if (node != nullptr) {
-			node->set_global_position(nav_srv->map_get_closest_point(_navigation_map_rid, _point_grid_parent_node->get_global_transform().xform(_point_grid_default_positions[_current_preprocessing_node_index])) + _offset_vector);
+			const Vector3 local_position = _point_grid_default_positions[_current_preprocessing_node_index] + _offset_vector;
+			node->set_global_position(nav_srv->map_get_closest_point(_navigation_map_rid, _point_grid_parent_node->get_global_transform().xform(local_position)));
 		}
 		++_current_preprocessing_node_index;
 		if (godot::Time::get_singleton()->get_ticks_usec() >= time_limit_timestamp_usec) {

@@ -26,7 +26,7 @@
 			See the description of the [member use_navigation_mesh_positions] property.
 		</member>
 		<member name="offset_vector" type="Vector3" setter="set_offset_vector" getter="get_offset_vector" default="Vector3(0, 0, 0)">
-			Optional offset you can apply to the points after they are positioned.
+			Offset added to the local position of every point in the grid. With [member use_navigation_mesh_positions], the offset point is the one snapped to the navigation mesh.
 		</member>
 		<member name="point_grid" type="Node3D[]" setter="set_point_grid" getter="get_point_grid" default="[]">
 			The grid of points as [Node3D] nodes.
