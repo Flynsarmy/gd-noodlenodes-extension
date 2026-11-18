@@ -10,12 +10,15 @@ class NNBTRepeatUntil : public NNBTDecoratorNodes {
 
 private:
 	int _max_repeat_times;
-	int _current_max_repeat_times;
+	int _times_repeated;
 	Status _expected_tick_result;
-	bool _is_expected_tick_result_reached;
 
 protected:
 	static void _bind_methods();
+
+	virtual void _on_before_run(float delta) override;
+	virtual void _on_after_run(float delta) override;
+	virtual void _on_interrupt(float delta) override;
 
 public:
 	NNBTRepeatUntil();
@@ -25,14 +28,11 @@ public:
 
 	int get_max_repeat_times() const;
 	void set_max_repeat_times(int max_repeat_times);
-	int get_current_max_repeat_times() const;
-	void set_current_max_repeat_times(int current_max_repeat_times);
+	int get_times_repeated() const;
 	Status get_expected_tick_result() const;
 	void set_expected_tick_result(Status expected_tick_result);
 
 	// Handling functions.
-
-	virtual void reset() override;
 
 	virtual Status _tick(float delta) override;
 };

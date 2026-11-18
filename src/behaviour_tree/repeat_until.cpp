@@ -18,15 +18,14 @@ void NNBTRepeatUntil::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_expected_tick_result"), &NNBTRepeatUntil::get_expected_tick_result);
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "expected_tick_result", PROPERTY_HINT_ENUM, "Running:0,Success:1,Failure:-1"), "set_expected_tick_result", "get_expected_tick_result");
 
-	ClassDB::bind_method(D_METHOD("get_current_repeat_times"), &NNBTRepeatUntil::get_current_max_repeat_times);
+	ClassDB::bind_method(D_METHOD("get_times_repeated"), &NNBTRepeatUntil::get_times_repeated);
 }
 
 // Constructor and destructor.
 
 NNBTRepeatUntil::NNBTRepeatUntil() {
 	_max_repeat_times = -1;
-	_current_max_repeat_times = _max_repeat_times;
-	_is_expected_tick_result_reached = false;
+	_times_repeated = 0;
 	_expected_tick_result = Status::SUCCESS;
 }
 
@@ -37,20 +36,14 @@ NNBTRepeatUntil::~NNBTRepeatUntil() {
 
 void NNBTRepeatUntil::set_max_repeat_times(int max_repeat_times) {
 	_max_repeat_times = max_repeat_times;
-	// Refill the cross-run budget so a newly configured maximum applies to the next run.
-	_current_max_repeat_times = max_repeat_times;
 }
 
 int NNBTRepeatUntil::get_max_repeat_times() const {
 	return _max_repeat_times;
 }
 
-void NNBTRepeatUntil::set_current_max_repeat_times(int current_max_repeat_times) {
-	_current_max_repeat_times = get_max_repeat_times() - current_max_repeat_times;
-}
-
-int NNBTRepeatUntil::get_current_max_repeat_times() const {
-	return get_max_repeat_times() - _current_max_repeat_times;
+int NNBTRepeatUntil::get_times_repeated() const {
+	return _times_repeated;
 }
 
 void NNBTRepeatUntil::set_expected_tick_result(Status expected_tick_result) {
@@ -63,10 +56,19 @@ NNBTNodes::Status NNBTRepeatUntil::get_expected_tick_result() const {
 
 // Handling functions.
 
-void NNBTRepeatUntil::reset() {
-	_current_max_repeat_times = _max_repeat_times;
-	_is_expected_tick_result_reached = false;
-	NNBTDecoratorNodes::reset();
+void NNBTRepeatUntil::_on_before_run(float delta) {
+	_times_repeated = 0;
+	NNBTDecoratorNodes::_on_before_run(delta);
+}
+
+void NNBTRepeatUntil::_on_after_run(float delta) {
+	_times_repeated = 0;
+	NNBTDecoratorNodes::_on_after_run(delta);
+}
+
+void NNBTRepeatUntil::_on_interrupt(float delta) {
+	_times_repeated = 0;
+	NNBTDecoratorNodes::_on_interrupt(delta);
 }
 
 NNBTNodes::Status NNBTRepeatUntil::_tick(float delta) {
@@ -75,31 +77,26 @@ NNBTNodes::Status NNBTRepeatUntil::_tick(float delta) {
 
 	_report_extra_enabled_child_btnodes();
 
-	if (_is_expected_tick_result_reached) {
-		return Status::SUCCESS;
-	}
-
-	if (_current_max_repeat_times == 0) {
+	if (_max_repeat_times == 0) {
 		return Status::FAILURE;
 	}
+
 	for (unsigned int i = 0; i < _num_child_btnodes; i++) {
 		NNBTNodes *btnode = _child_btnodes[i];
 		if (!btnode->get_is_enabled()) {
 			continue;
 		}
-		if (_current_max_repeat_times > 0) {
-			--_current_max_repeat_times;
-		}
+
+		++_times_repeated;
 		Status result = btnode->tick(delta);
 		if (result == _expected_tick_result) {
-			_is_expected_tick_result_reached = true;
 			return Status::SUCCESS;
 		}
-		if (_current_max_repeat_times > 0 || _current_max_repeat_times < 0) {
+		if (_max_repeat_times < 0 || _times_repeated < _max_repeat_times) {
 			return Status::RUNNING;
-		} else if (_current_max_repeat_times == 0) {
-			return Status::FAILURE;
 		}
+		return Status::FAILURE;
 	}
+
 	return Status::FAILURE;
 }

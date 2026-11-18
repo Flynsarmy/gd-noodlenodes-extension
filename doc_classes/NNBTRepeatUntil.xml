@@ -5,14 +5,17 @@
 	</brief_description>
 	<description>
 		The RepeatUntil node ticks its child until the [member expected_tick_result] is returned by its child, or until [member max_repeat_times] ticks are exhausted. If [member max_repeat_times] is set to [code]-1[/code], only the [member expected_tick_result] will end the loop.
-		Reaching [member expected_tick_result] completes the node with [code]SUCCESS[/code] and exhausting [member max_repeat_times] without a match completes it with [code]FAILURE[/code]. The completed result stays stable until the node is explicitly reset (or the node is disabled).
+		Reaching [member expected_tick_result] completes the node with [code]SUCCESS[/code] and exhausting [member max_repeat_times] without a match completes it with [code]FAILURE[/code].
+
+		A terminal result completes the run. The next tick starts a fresh run with a new repeat budget, so a RepeatUntil that finishes starts over instead of holding its result. Wrap the RepeatUntil in [NNBTRunOnce] to hold the completed result instead.
 	</description>
 	<tutorials>
 	</tutorials>
 	<methods>
-		<method name="get_current_repeat_times" qualifiers="const">
+		<method name="get_times_repeated" qualifiers="const">
 			<return type="int" />
 			<description>
+				Returns the number of times the child node has been ticked in the current run.
 			</description>
 		</method>
 	</methods>
@@ -21,7 +24,7 @@
 			The result that the child node should return to end the loop. Can be either [code]-1[/code]=[code]FAILURE[/code], [code]0[/code]=[code]RUNNING[/code] or [code]1[/code]=[code]SUCCESS[/code]. When it is returned the node completes with [code]SUCCESS[/code].
 		</member>
 		<member name="max_repeat_times" type="int" setter="set_max_repeat_times" getter="get_max_repeat_times" default="-1">
-			The maximum number of times the child node can be ticked. Exhausting the budget without getting [member expected_tick_result] completes the node with [code]FAILURE[/code]. Set to [code]-1[/code] to repeat without a budget.
+			The maximum number of times the child node can be ticked in a run. Exhausting the budget without getting [member expected_tick_result] completes the run with [code]FAILURE[/code]. Set to [code]-1[/code] to repeat without a budget.
 		</member>
 	</members>
 </class>

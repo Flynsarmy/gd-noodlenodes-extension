@@ -75,7 +75,7 @@
 		<method name="reset">
 			<return type="void" />
 			<description>
-				Interrupts the active run of this node and its whole subtree, propagates the reset to every behaviour tree child, and clears node-lifetime state, such as a memory sequence's stored child, a repeat-until or limiter budget and latch, or a run-once held result. Per-run state is initialised again when the next run starts. Disabling the node, or an ancestor, triggers the same reset.
+				Interrupts the active run of this node and its whole subtree, propagates the reset to every behaviour tree child, and clears node-lifetime state, such as a memory sequence's stored child, a limiter budget, or a run-once held result. Per-run state is initialised again when the next run starts. Disabling the node, or an ancestor, triggers the same reset.
 			</description>
 		</method>
 	</methods>
