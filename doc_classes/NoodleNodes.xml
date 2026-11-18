@@ -54,6 +54,7 @@
 	</methods>
 	<members>
 		<member name="is_enabled" type="bool" setter="set_is_enabled" getter="get_is_enabled" default="true">
+			If [code]false[/code], the node is disabled and is skipped when its parent evaluates, ticks or runs its children. A disabled root stops ticking.
 		</member>
 	</members>
 </class>

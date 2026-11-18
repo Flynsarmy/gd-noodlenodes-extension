@@ -1,8 +1,10 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <class name="NNPerformanceMonitorSingleton" inherits="NoodleNodes" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
 	<brief_description>
+		Collects per-frame timings for agents, trees and HTN roots and exposes them as custom performance monitors.
 	</brief_description>
 	<description>
+		Available as the [code]AIPerformanceMonitor[/code] singleton. Call [method initialize_performance_counters] once at startup and [method update_performance_counters] once per physics frame, then read the values in the editor's Debugger &gt; Monitors tab.
 	</description>
 	<tutorials>
 	</tutorials>
@@ -10,16 +12,19 @@
 		<method name="get_total_time_elapsed_ai_agents_update_behaviour_usec" qualifiers="const">
 			<return type="int" />
 			<description>
+				Returns the microseconds [NNAgent] behaviour updates took during the last counted frame. This is the [code]NN/AI Agent update behaviour time usec[/code] monitor.
 			</description>
 		</method>
 		<method name="get_total_time_elapsed_ai_agents_usec" qualifiers="const">
 			<return type="int" />
 			<description>
+				Returns the microseconds [NNAgent] option evaluation took during the last counted frame. This is the [code]NN/AI Agent evaluate options time usec[/code] monitor.
 			</description>
 		</method>
 		<method name="get_total_time_elapsed_behaviour_trees_usec" qualifiers="const">
 			<return type="int" />
 			<description>
+				Returns the microseconds [NNBTRoot] ticks took during the last counted frame. This is the [code]NN/Behaviour Tree tick time usec[/code] monitor.
 			</description>
 		</method>
 		<method name="get_total_time_elapsed_htn_usec" qualifiers="const">
@@ -31,24 +36,28 @@
 		<method name="get_total_time_elapsed_state_trees_usec" qualifiers="const">
 			<return type="int" />
 			<description>
+				Returns the microseconds [NNSTRoot] ticks took during the last counted frame. This is the [code]NN/State Tree tick time usec[/code] monitor.
 			</description>
 		</method>
 		<method name="increment_total_time_elapsed_ai_agents_update_behaviour_usec">
 			<return type="void" />
 			<param index="0" name="time_usec" type="int" />
 			<description>
+				Adds [param time_usec] to the agent behaviour update time of the current frame. Called by [NNAgent] in debug builds.
 			</description>
 		</method>
 		<method name="increment_total_time_elapsed_ai_agents_usec">
 			<return type="void" />
 			<param index="0" name="time_usec" type="int" />
 			<description>
+				Adds [param time_usec] to the agent option evaluation time of the current frame. Called by [NNAgent] in debug builds.
 			</description>
 		</method>
 		<method name="increment_total_time_elapsed_behaviour_trees_usec">
 			<return type="void" />
 			<param index="0" name="time_usec" type="int" />
 			<description>
+				Adds [param time_usec] to the behaviour tree tick time of the current frame. Called by [NNBTRoot] in debug builds.
 			</description>
 		</method>
 		<method name="increment_total_time_elapsed_htn_usec">
@@ -62,16 +71,19 @@
 			<return type="void" />
 			<param index="0" name="time_usec" type="int" />
 			<description>
+				Adds [param time_usec] to the state tree tick time of the current frame. Called by [NNSTRoot] in debug builds.
 			</description>
 		</method>
 		<method name="initialize_performance_counters">
 			<return type="void" />
 			<description>
+				Adds the [code]NN/*[/code] custom monitors to the [Performance] singleton and enables the monitor. Call it once at startup. Does nothing in release builds or when already initialized.
 			</description>
 		</method>
 		<method name="update_performance_counters">
 			<return type="void" />
 			<description>
+				Publishes the times accumulated since the previous call to the monitors and starts counting a new frame. Call it once per physics frame.
 			</description>
 		</method>
 	</methods>

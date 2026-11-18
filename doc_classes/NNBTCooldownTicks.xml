@@ -16,6 +16,7 @@
 			The cooldown period in ticks after the cooldown node is ticked.
 		</member>
 		<member name="current_cooldown_ticks" type="int" setter="set_current_cooldown_ticks" getter="get_current_cooldown_ticks" default="0">
+			How many ticks of the current cooldown have passed. Equals [member cooldown_ticks] when the node is not cooling down and its child can run.
 		</member>
 	</members>
 </class>

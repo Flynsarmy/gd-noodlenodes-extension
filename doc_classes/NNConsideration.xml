@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <class name="NNConsideration" inherits="NNConsiderations" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
 	<brief_description>
+		Scores a behaviour from an input value and an optional activation curve.
 	</brief_description>
 	<description>
 		These two node types should be added as child nodes of the NNBehaviour node. They are used when a behaviour is being scored by the AI agent.
@@ -28,6 +29,7 @@
 			<return type="float" />
 			<param index="0" name="input_value" type="float" />
 			<description>
+				Returns the y-value of the activation curve at [param input_value], or [code]0.0[/code] when no curve is set.
 			</description>
 		</method>
 	</methods>
@@ -39,6 +41,7 @@
 			A floating point value in the range of 0..1.
 		</member>
 		<member name="input_sensor" type="NNSensors" setter="set_input_sensor" getter="get_input_sensor">
+			The sensor or sensor group whose [member NNSensors.sensor_value] is used as the [member activation_input_value]. When not set, [member activation_input_value] is used as assigned.
 		</member>
 	</members>
 </class>

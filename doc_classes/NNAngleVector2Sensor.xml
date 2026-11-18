@@ -9,8 +9,10 @@
 	</tutorials>
 	<members>
 		<member name="angle_degrees" type="float" setter="set_angle_degrees" getter="get_angle_degrees" default="0.0">
+			The angle from [member from_vector] to [member to_vector] in degrees, clamped to [member min_angle_degrees] and [member max_angle_degrees]. Updated when the sensor is evaluated.
 		</member>
 		<member name="angle_radian" type="float" setter="set_angle_radian" getter="get_angle_radian" default="0.0">
+			The angle from [member from_vector] to [member to_vector] in radians, clamped to [member min_angle_radian] and [member max_angle_radian]. Updated when the sensor is evaluated.
 		</member>
 		<member name="from_vector" type="Vector2" setter="set_from_vector" getter="get_from_vector" default="Vector2(0, 0)">
 			Input value for the sensor. Base value for the angle calculation, for example the direction of an AI entity.

@@ -41,6 +41,7 @@
 			The "additional point" which defines the shape of the grid.
 		</member>
 		<member name="point_grid_parent_node" type="Node3D" setter="set_point_grid_parent_node" getter="get_point_grid_parent_node">
+			The node the generated point nodes are added to. The grid is positioned relative to this node, so moving it moves the grid. No grid is created when this is not set.
 		</member>
 		<member name="point_grid_type" type="int" setter="set_point_grid_type" getter="get_point_grid_type" default="0">
 			The type of the grid, currently only RECTANGULAR is supported.

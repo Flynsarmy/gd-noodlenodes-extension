@@ -30,6 +30,7 @@
 			If [code]true[/code], calculates [member distance].
 		</member>
 		<member name="max_distance" type="float" setter="set_max_distance" getter="get_max_distance" default="100.0">
+			The distance that maps to a sensor value of [code]1.0[/code]. The sensor value is the squared distance divided by the squared [member max_distance].
 		</member>
 		<member name="to_vector" type="Vector3" setter="set_to_vector" getter="get_to_vector" default="Vector3(0, 0, 0)">
 			The end point of the distance vector.

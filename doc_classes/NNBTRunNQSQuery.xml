@@ -17,6 +17,7 @@
 			The blackboard key that receives the best result node. Written last on completion. An empty key writes nothing.
 		</member>
 		<member name="is_high_priority" type="bool" setter="set_is_high_priority" getter="get_is_high_priority" default="true">
+			If [code]true[/code], the query is posted to the [NNNodeQuerySystem] as a high priority query, which gets the larger share of the per-frame time budget.
 		</member>
 		<member name="nqs_search_space" type="NNNQSSearchSpaces" setter="set_nqs_search_space" getter="get_nqs_search_space">
 			A node reference to a NQS Search Space node.

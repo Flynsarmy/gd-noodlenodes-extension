@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <class name="NNBooleanConsideration" inherits="NNConsideration" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
 	<brief_description>
+		Scores a boolean input with one of two fixed values.
 	</brief_description>
 	<description>
 	</description>
@@ -11,13 +12,16 @@
 			<return type="float" />
 			<param index="0" name="input_value" type="float" />
 			<description>
+				Returns [member false_score_value] when [param input_value] is below [code]0.5[/code] and [member true_score_value] otherwise. The activation curve is not used.
 			</description>
 		</method>
 	</methods>
 	<members>
 		<member name="false_score_value" type="float" setter="set_false_score_value" getter="get_false_score_value" default="0.0">
+			The score when the input value is below [code]0.5[/code].
 		</member>
 		<member name="true_score_value" type="float" setter="set_true_score_value" getter="get_true_score_value" default="1.0">
+			The score when the input value is [code]0.5[/code] or above.
 		</member>
 	</members>
 </class>

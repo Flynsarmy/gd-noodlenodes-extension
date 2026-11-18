@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <class name="NNCustomPropertyConsideration" inherits="NNConsiderations" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
 	<brief_description>
+		Scores a behaviour from a numeric property of any node.
 	</brief_description>
 	<description>
 	</description>
@@ -11,15 +12,19 @@
 			<return type="float" />
 			<param index="0" name="input_value" type="float" />
 			<description>
+				Returns the y-value of the activation curve at [param input_value], or [code]0.0[/code] when no curve is set.
 			</description>
 		</method>
 	</methods>
 	<members>
 		<member name="node_with_property" type="Node" setter="set_node_with_property" getter="get_node_with_property">
+			The node whose [member property_name] property is read. The consideration scores [code]0.0[/code] when this is not set.
 		</member>
 		<member name="property_max_value" type="float" setter="set_property_max_value" getter="get_property_max_value" default="1.0">
+			The value [member property_name] is divided by to normalise it to the [code]0..1[/code] range before the activation curve is sampled. Must be finite and non-zero.
 		</member>
 		<member name="property_name" type="StringName" setter="set_property_name" getter="get_property_name" default="&amp;&quot;&quot;">
+			The name of the numeric property read from [member node_with_property].
 		</member>
 	</members>
 </class>

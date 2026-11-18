@@ -70,16 +70,19 @@
 		<method name="get_current_action_node" qualifiers="const">
 			<return type="NNAction" />
 			<description>
+				Returns the action the agent is currently running, or [code]null[/code] when no action is running or it was freed.
 			</description>
 		</method>
 		<method name="get_current_behaviour_group_node" qualifiers="const">
 			<return type="NNBehaviourGroup" />
 			<description>
+				Returns the behaviour group of the currently selected behaviour, or [code]null[/code] when the behaviour is not in a group or none is selected.
 			</description>
 		</method>
 		<method name="get_current_behaviour_node" qualifiers="const">
 			<return type="NNBehaviour" />
 			<description>
+				Returns the currently selected behaviour, or [code]null[/code] when none is selected or it was freed.
 			</description>
 		</method>
 		<method name="get_random_seed" qualifiers="const">
@@ -183,6 +186,7 @@
 			This property shows how many microseconds (usec) the latest [method evaluate_options] method call required to complete.
 		</member>
 		<member name="total_update_behaviour_usec" type="int" setter="set_total_update_behaviour_usec" getter="get_total_update_behaviour_usec" default="0">
+			Microseconds the last [method update_current_behaviour] call took. Debugging information.
 		</member>
 	</members>
 	<signals>

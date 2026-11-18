@@ -27,6 +27,7 @@
 			If &gt; 0, after the behaviour is chosen it will a score of 0 during the [member NNAgent.evaluate_options] until the given number of calls to the evaluation function has been done.
 		</member>
 		<member name="current_action_index" type="int" setter="set_current_action_index" getter="get_current_action_index" default="0">
+			The child index of the action the behaviour is running, or [code]-1[/code] when no action is running.
 		</member>
 		<member name="on_selected_event" type="String" setter="set_on_selected_event" getter="get_on_selected_event" default="&quot;&quot;">
 			The name of the event sent to the [NNSTRoot] at [member on_selected_event_path] when this behaviour becomes selected. Empty sends nothing.

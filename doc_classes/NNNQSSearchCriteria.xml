@@ -11,6 +11,7 @@
 	</tutorials>
 	<members>
 		<member name="activation_curve" type="Curve" setter="set_activation_curve" getter="get_activation_curve">
+			Optional curve that maps the criterion's raw [code]0..1[/code] score to the final score when the criterion is used for scoring.
 		</member>
 		<member name="is_filtered" type="bool" setter="set_is_filtered" getter="get_is_filtered" default="true">
 			Used in [code]apply_criterion()[/code]. If set to [code]true[/code], the will be filtered out.

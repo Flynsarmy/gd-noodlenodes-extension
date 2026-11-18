@@ -50,12 +50,16 @@
 	</members>
 	<constants>
 		<constant name="RUNNING" value="0" enum="Status">
+			The node has not finished yet and will be ticked again.
 		</constant>
 		<constant name="FAILURE" value="-1" enum="Status">
+			The node finished and failed.
 		</constant>
 		<constant name="SUCCESS" value="1" enum="Status">
+			The node finished and succeeded.
 		</constant>
 		<constant name="SKIP" value="-2" enum="Status">
+			The node did not run. [NNBTSequence] and [NNBTSelector] move on to their next child, and [NNBTParallel] counts it as a success. The result is not terminal, so the node's run stays active.
 		</constant>
 		<constant name="Sum" value="0" enum="NNBTNodesEvaluationMethod">
 			Adds the scores of the enabled considerations.
