@@ -18,7 +18,7 @@
 				Guards are used to determine if a transition can be taken or not. If the guard is satisfied, the transition can be taken.
 			</description>
 		</method>
-		<method name="get_supported_trigger_types">
+		<method name="get_supported_trigger_types" qualifiers="const">
 			<return type="int" />
 			<description>
 				Returns a bit mask of [enum NNSTRoot.TriggerType] values describing which changes can affect this guard's result. Automatic transitions use this to decide when they need to be re-evaluated.

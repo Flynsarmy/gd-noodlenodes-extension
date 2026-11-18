@@ -17,7 +17,7 @@
 				Returns [code]true[/code] if all of the [member guards] are satisfied, [code]false[/code] otherwise.
 			</description>
 		</method>
-		<method name="get_supported_trigger_types">
+		<method name="get_supported_trigger_types" qualifiers="const">
 			<return type="int" />
 			<description>
 				Returns the bitwise OR of the trigger types reported by all of [member guards].

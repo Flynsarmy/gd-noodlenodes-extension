@@ -23,19 +23,19 @@
 				Triggers this transition from code. The parent state must be active, otherwise an error is pushed and nothing happens. When [param immediately] is [code]true[/code] the delay is skipped; when it is [code]false[/code] the delay is honored and the transition is taken once it elapses. Returns [code]true[/code] if the transition was taken or queued, and [code]false[/code] if it cannot currently be applied, for example because the [member to] target is invalid, the target is the parent state itself, or the transition is rejected because of a parallel common ancestor or an exiting lineage. The guard is not evaluated by this method.
 			</description>
 		</method>
-		<method name="is_automatic">
+		<method name="is_automatic" qualifiers="const">
 			<return type="bool" />
 			<description>
 				Returns [code]true[/code] when [member event_name] is empty.
 			</description>
 		</method>
-		<method name="get_supported_trigger_types">
+		<method name="get_supported_trigger_types" qualifiers="const">
 			<return type="int" />
 			<description>
 				Returns a bit mask of [enum NNSTRoot.TriggerType] values that can trigger this transition. Non-automatic transitions support only [constant NNSTRoot.EVENT]. Automatic transitions always support [constant NNSTRoot.STATE_ENTER] and additionally the trigger types reported by their guard.
 			</description>
 		</method>
-		<method name="is_triggered_by">
+		<method name="is_triggered_by" qualifiers="const">
 			<return type="bool" />
 			<param index="0" name="trigger_type" type="int" />
 			<description>

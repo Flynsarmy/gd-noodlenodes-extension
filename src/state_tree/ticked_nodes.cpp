@@ -109,7 +109,7 @@ void NNSTTickedNodes::_bind_methods() {
 			PropertyInfo(Variant::FLOAT, "initial_delay"),
 			PropertyInfo(Variant::FLOAT, "remaining_delay")));
 	ADD_SIGNAL(MethodInfo("hosted_root_finished",
-			PropertyInfo(Variant::OBJECT, "root", PROPERTY_HINT_NODE_TYPE, "Node"),
+			PropertyInfo(Variant::OBJECT, "root", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_DEFAULT, "Node"),
 			PropertyInfo(Variant::BOOL, "succeeded")));
 }
 

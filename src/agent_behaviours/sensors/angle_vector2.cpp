@@ -15,7 +15,7 @@ void NNAngleVector2Sensor::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_to_vector"), &NNAngleVector2Sensor::get_to_vector2);
 	ADD_PROPERTY(PropertyInfo(Variant::VECTOR2, "to_vector", PROPERTY_HINT_NONE), "set_to_vector", "get_to_vector");
 
-	ClassDB::bind_method(D_METHOD("set_min_angle_degrees", "max_angle_degrees"), &NNAngleVector2Sensor::set_min_angle_degrees);
+	ClassDB::bind_method(D_METHOD("set_min_angle_degrees", "min_angle_degrees"), &NNAngleVector2Sensor::set_min_angle_degrees);
 	ClassDB::bind_method(D_METHOD("get_min_angle_degrees"), &NNAngleVector2Sensor::get_min_angle_degrees);
 	ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "min_angle_degrees", PROPERTY_HINT_RANGE, "-180.0,0.0"), "set_min_angle_degrees", "get_min_angle_degrees");
 

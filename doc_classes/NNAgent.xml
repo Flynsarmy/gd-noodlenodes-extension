@@ -111,20 +111,23 @@
 		</method>
 		<method name="set_current_action_node">
 			<return type="void" />
-			<param index="0" name="_unnamed_arg0" type="NNAction" />
+			<param index="0" name="action" type="NNAction" />
 			<description>
+				Records [param action] as the current action without starting it or ending the previous one. Pass [code]null[/code] to clear it. Use [method update_current_behaviour] for normal selection.
 			</description>
 		</method>
 		<method name="set_current_behaviour_group_node">
 			<return type="void" />
-			<param index="0" name="_unnamed_arg0" type="NNBehaviourGroup" />
+			<param index="0" name="behaviour_group" type="NNBehaviourGroup" />
 			<description>
+				Records [param behaviour_group] as the current behaviour group without running any enter or exit callbacks. Pass [code]null[/code] to clear it.
 			</description>
 		</method>
 		<method name="set_current_behaviour_node">
 			<return type="void" />
-			<param index="0" name="_unnamed_arg0" type="NNBehaviour" />
+			<param index="0" name="behaviour" type="NNBehaviour" />
 			<description>
+				Records [param behaviour] as the current behaviour without running any enter or exit callbacks or starting its actions. Pass [code]null[/code] to clear it. Use [method evaluate_options] and [method update_current_behaviour] for normal selection.
 			</description>
 		</method>
 		<method name="set_random_seed">
@@ -152,7 +155,7 @@
 		<member name="actor" type="Node" setter="set_actor" getter="get_assigned_actor">
 			The explicitly assigned actor, or [code]null[/code] when none is assigned. No resolved fallback is ever stored here. To read the resolved actor use [method get_actor], which resolves the explicit actor, then [member actor_node_path], then the actor of the nearest ancestor root of any Noodle Nodes system, then the agent's parent on demand.
 		</member>
-		<member name="actor_node_path" type="NodePath" setter="set_actor_node_path" getter="get_actor_node_path">
+		<member name="actor_node_path" type="NodePath" setter="set_actor_node_path" getter="get_actor_node_path" default="NodePath(&quot;&quot;)">
 			Fallback actor path, used when no live explicit [member actor] is set. The path is resolved relative to this agent and wins over the actor inherited from an ancestor root.
 		</member>
 		<member name="blackboard" type="NNBlackboard" setter="set_blackboard_resource" getter="get_assigned_blackboard">

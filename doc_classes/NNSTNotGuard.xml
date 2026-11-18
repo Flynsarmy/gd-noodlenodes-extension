@@ -17,7 +17,7 @@
 				Evaluates the [member guard] and returns the opposite of its result. If the [member guard] is satisfied, this method returns [code]false[/code], and vice versa.
 			</description>
 		</method>
-		<method name="get_supported_trigger_types">
+		<method name="get_supported_trigger_types" qualifiers="const">
 			<return type="int" />
 			<description>
 				Returns the trigger types reported by [member guard], or [constant NNSTRoot.NONE] when no guard is set.

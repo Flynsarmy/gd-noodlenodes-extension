@@ -22,7 +22,7 @@ void NNAction::_bind_methods() {
 	ADD_SIGNAL(MethodInfo("frame_tick", PropertyInfo(Variant::FLOAT, "delta")));
 	ADD_SIGNAL(MethodInfo("action_exited"));
 	ADD_SIGNAL(MethodInfo("hosted_root_finished",
-			PropertyInfo(Variant::OBJECT, "root", PROPERTY_HINT_NODE_TYPE, "Node"),
+			PropertyInfo(Variant::OBJECT, "root", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_DEFAULT, "Node"),
 			PropertyInfo(Variant::BOOL, "succeeded")));
 }
 

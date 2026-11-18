@@ -17,7 +17,7 @@
 				Checks if the [member state] is active. Returns [code]true[/code] if the state is active, [code]false[/code] otherwise.
 			</description>
 		</method>
-		<method name="get_supported_trigger_types">
+		<method name="get_supported_trigger_types" qualifiers="const">
 			<return type="int" />
 			<description>
 				Returns [constant NNSTRoot.STATE_CHANGE], because this guard's result can change when another state becomes active or inactive.

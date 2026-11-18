@@ -26,19 +26,19 @@
 		<constant name="MANUAL" value="2" enum="ProcessThread">
 			Neither signal is connected and the root never ticks automatically, so a custom scheduler calls [method tick] or [method auto_tick_step] itself.
 		</constant>
-		<constant name="NONE" value="0">
+		<constant name="NONE" value="0" enum="TriggerType">
 			No trigger type. Used as a default value.
 		</constant>
-		<constant name="EVENT" value="1">
+		<constant name="EVENT" value="1" enum="TriggerType">
 			The transition is triggered by an event sent with [method send_event].
 		</constant>
-		<constant name="STATE_ENTER" value="2">
+		<constant name="STATE_ENTER" value="2" enum="TriggerType">
 			The transition is automatic and is triggered when its state is entered. Supported by every automatic transition.
 		</constant>
-		<constant name="PROPERTY_CHANGE" value="4">
+		<constant name="PROPERTY_CHANGE" value="4" enum="TriggerType">
 			The transition is automatic and is triggered by a change to an expression property. Reported by [NNSTExpressionGuard].
 		</constant>
-		<constant name="STATE_CHANGE" value="8">
+		<constant name="STATE_CHANGE" value="8" enum="TriggerType">
 			The transition is automatic and is triggered by a change of which states are active. Reported by [NNSTStateIsActiveGuard].
 		</constant>
 	</constants>
@@ -123,7 +123,7 @@
 				Sets a property that expression guards can reference by name (for example [code]flag[/code] can be used as [code]flag == true[/code] in an expression). The value is stored in [member blackboard]. Setting the property marks a property change pending and re-evaluates automatic transitions that support [constant PROPERTY_CHANGE].
 			</description>
 		</method>
-		<method name="get_expression_property">
+		<method name="get_expression_property" qualifiers="const">
 			<return type="Variant" />
 			<param index="0" name="name" type="StringName" />
 			<param index="1" name="default" type="Variant" default="null" />
@@ -136,7 +136,7 @@
 		<member name="actor" type="Node" setter="set_actor" getter="get_assigned_actor">
 			The explicitly assigned actor, or [code]null[/code] when none is assigned. No resolved fallback is ever stored here. To read the resolved actor use [method get_actor], which resolves the explicit actor, then [member actor_node_path], then the actor of the nearest ancestor root of any Noodle Nodes system, then the root's parent on demand.
 		</member>
-		<member name="actor_node_path" type="NodePath" setter="set_actor_node_path" getter="get_actor_node_path">
+		<member name="actor_node_path" type="NodePath" setter="set_actor_node_path" getter="get_actor_node_path" default="NodePath(&quot;&quot;)">
 			Fallback actor path, used when no live explicit [member actor] is set. The path is resolved relative to this root and wins over the actor inherited from an ancestor root.
 		</member>
 		<member name="blackboard" type="NNBlackboard" setter="set_blackboard_resource" getter="get_assigned_blackboard">

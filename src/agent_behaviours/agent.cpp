@@ -34,13 +34,13 @@ void NNAgent::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_actor_node_path"), &NNAgent::get_actor_node_path);
 	ADD_PROPERTY(PropertyInfo(Variant::NODE_PATH, "actor_node_path"), "set_actor_node_path", "get_actor_node_path");
 
-	ClassDB::bind_method(D_METHOD("set_current_behaviour_group_node"), &NNAgent::set_current_behaviour_group_node);
+	ClassDB::bind_method(D_METHOD("set_current_behaviour_group_node", "behaviour_group"), &NNAgent::set_current_behaviour_group_node);
 	ClassDB::bind_method(D_METHOD("get_current_behaviour_group_node"), &NNAgent::get_current_behaviour_group_node);
 
-	ClassDB::bind_method(D_METHOD("set_current_behaviour_node"), &NNAgent::set_current_behaviour_node);
+	ClassDB::bind_method(D_METHOD("set_current_behaviour_node", "behaviour"), &NNAgent::set_current_behaviour_node);
 	ClassDB::bind_method(D_METHOD("get_current_behaviour_node"), &NNAgent::get_current_behaviour_node);
 
-	ClassDB::bind_method(D_METHOD("set_current_action_node"), &NNAgent::set_current_action_node);
+	ClassDB::bind_method(D_METHOD("set_current_action_node", "action"), &NNAgent::set_current_action_node);
 	ClassDB::bind_method(D_METHOD("get_current_action_node"), &NNAgent::get_current_action_node);
 
 	ClassDB::bind_method(D_METHOD("evaluate_options", "delta"), &NNAgent::evaluate_options);

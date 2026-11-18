@@ -18,7 +18,7 @@
 				Returns [code]false[/code] and reports an error when [param p_state] is [code]null[/code] or its state chart root cannot be found. [param p_transition] may be [code]null[/code]; it is only used to identify the guard in diagnostic messages.
 			</description>
 		</method>
-		<method name="get_supported_trigger_types">
+		<method name="get_supported_trigger_types" qualifiers="const">
 			<return type="int" />
 			<description>
 				Returns [constant NNSTRoot.PROPERTY_CHANGE], because this guard's result can change when an expression property changes.

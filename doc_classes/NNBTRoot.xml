@@ -86,7 +86,7 @@
 		<member name="actor" type="Node" setter="set_actor" getter="get_assigned_actor">
 			The explicitly assigned actor, or [code]null[/code] when none is assigned. No resolved fallback is ever stored here. To read the resolved actor use [method get_actor], which resolves the explicit actor, then [member actor_node_path], then the actor of the nearest ancestor root of any Noodle Nodes system, then the root's parent on demand.
 		</member>
-		<member name="actor_node_path" type="NodePath" setter="set_actor_node_path" getter="get_actor_node_path">
+		<member name="actor_node_path" type="NodePath" setter="set_actor_node_path" getter="get_actor_node_path" default="NodePath(&quot;&quot;)">
 			Fallback actor path, used when no live explicit [member actor] is set. The path is resolved relative to this root and wins over the actor inherited from an ancestor root.
 		</member>
 		<member name="blackboard" type="NNBlackboard" setter="set_blackboard_resource" getter="get_assigned_blackboard">

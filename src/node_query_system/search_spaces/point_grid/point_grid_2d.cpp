@@ -82,7 +82,7 @@ void NNPointGrid2DSearchSpace::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_offset_vector"), &NNPointGrid2DSearchSpace::get_offset_vector2);
 	ADD_PROPERTY(PropertyInfo(Variant::VECTOR2, "offset_vector", PROPERTY_HINT_NONE), "set_offset_vector", "get_offset_vector");
 
-	ClassDB::bind_method(D_METHOD("set_use_navigation_mesh_positions", "navigation_map_rid"), &NNPointGrid2DSearchSpace::set_use_navigation_mesh_positions);
+	ClassDB::bind_method(D_METHOD("set_use_navigation_mesh_positions", "use_navigation_mesh_positions"), &NNPointGrid2DSearchSpace::set_use_navigation_mesh_positions);
 	ClassDB::bind_method(D_METHOD("get_use_navigation_mesh_positions"), &NNPointGrid2DSearchSpace::get_use_navigation_mesh_positions);
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "use_navigation_mesh_positions", PROPERTY_HINT_NONE), "set_use_navigation_mesh_positions", "get_use_navigation_mesh_positions");
 
@@ -94,7 +94,7 @@ void NNPointGrid2DSearchSpace::_bind_methods() {
 
 	ClassDB::bind_method(D_METHOD("set_point_grid", "point_grid"), &NNPointGrid2DSearchSpace::set_point_grid);
 	ClassDB::bind_method(D_METHOD("get_point_grid"), &NNPointGrid2DSearchSpace::get_point_grid);
-	ADD_PROPERTY(PropertyInfo(Variant::ARRAY, "point_grid", PROPERTY_HINT_ARRAY_TYPE, vformat("%s/%s:%s", Variant::OBJECT, PROPERTY_HINT_RESOURCE_TYPE, "Node2D")), "set_point_grid", "get_point_grid");
+	ADD_PROPERTY(PropertyInfo(Variant::ARRAY, "point_grid", PROPERTY_HINT_ARRAY_TYPE, vformat("%s/%s:%s", Variant::OBJECT, PROPERTY_HINT_NODE_TYPE, "Node2D")), "set_point_grid", "get_point_grid");
 }
 
 // Getters and setters.
@@ -237,9 +237,9 @@ void NNPointGrid2DSearchSpace::create_point_grid() {
 			}
 		} //endif node3d
 	} //endfor childnodes
-	if (template_node == nullptr) {
+	const bool owns_template_node = template_node == nullptr;
+	if (owns_template_node) {
 		template_node = memnew(Node2D);
-		template_node->set_name("___UTILITYAI_DELETE___");
 	}
 
 	// Ensure that score and is_filtered are available for debug.
@@ -248,9 +248,8 @@ void NNPointGrid2DSearchSpace::create_point_grid() {
 
 	create_point_grid_nodes(template_node);
 
-	if (template_node->get_name() == StringName("___UTILITYAI_DELETE___")) {
+	if (owns_template_node) {
 		memdelete(template_node);
-		template_node = nullptr;
 	}
 }
 

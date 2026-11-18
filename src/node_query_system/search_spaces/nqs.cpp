@@ -62,7 +62,7 @@ void NNNQSSearchSpaces::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_average_call_runtime_usec"), &NNNQSSearchSpaces::get_average_call_runtime_usec);
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "average_call_runtime_usec", PROPERTY_HINT_NONE), "set_average_call_runtime_usec", "get_average_call_runtime_usec");
 
-	ClassDB::bind_method(D_METHOD("set_search_space_fetch_time_usec", "average_call_runtime_usec"), &NNNQSSearchSpaces::set_search_space_fetch_time_usec);
+	ClassDB::bind_method(D_METHOD("set_search_space_fetch_time_usec", "search_space_fetch_time_usec"), &NNNQSSearchSpaces::set_search_space_fetch_time_usec);
 	ClassDB::bind_method(D_METHOD("get_search_space_fetch_time_usec"), &NNNQSSearchSpaces::get_search_space_fetch_time_usec);
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "search_space_fetch_time_usec", PROPERTY_HINT_NONE), "set_search_space_fetch_time_usec", "get_search_space_fetch_time_usec");
 
@@ -70,7 +70,7 @@ void NNNQSSearchSpaces::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_total_query_runtime_usec"), &NNNQSSearchSpaces::get_total_query_runtime_usec);
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "total_query_runtime_usec", PROPERTY_HINT_NONE), "set_total_query_runtime_usec", "get_total_query_runtime_usec");
 
-	ClassDB::bind_method(D_METHOD("set_completed_signal_time_usec", "total_query_runtime_usec"), &NNNQSSearchSpaces::set_completed_signal_time_usec);
+	ClassDB::bind_method(D_METHOD("set_completed_signal_time_usec", "completed_signal_time_usec"), &NNNQSSearchSpaces::set_completed_signal_time_usec);
 	ClassDB::bind_method(D_METHOD("get_completed_signal_time_usec"), &NNNQSSearchSpaces::get_completed_signal_time_usec);
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "completed_signal_time_usec", PROPERTY_HINT_NONE), "set_completed_signal_time_usec", "get_completed_signal_time_usec");
 
