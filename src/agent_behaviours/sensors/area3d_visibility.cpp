@@ -5,6 +5,7 @@
 #include <godot_cpp/classes/physics_ray_query_parameters3d.hpp>
 #include <godot_cpp/classes/physics_server3d.hpp>
 #include <godot_cpp/core/class_db.hpp>
+#include <godot_cpp/variant/callable_method_pointer.hpp>
 #include <godot_cpp/variant/utility_functions.hpp>
 
 using namespace godot;
@@ -43,11 +44,6 @@ void NNArea3DVisibilitySensor::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("set_occlusion_test_exclusion_list", "occlusion_test_exclusion_list"), &NNArea3DVisibilitySensor::set_occlusion_test_exclusion_list);
 	ClassDB::bind_method(D_METHOD("get_occlusion_test_exclusion_list"), &NNArea3DVisibilitySensor::get_occlusion_test_exclusion_list);
 	ADD_PROPERTY(PropertyInfo(Variant::ARRAY, "occlusion_test_exclusion_list", PROPERTY_HINT_ARRAY_TYPE, vformat("%s/%s:%s", Variant::OBJECT, PROPERTY_HINT_RESOURCE_TYPE, "RID")), "set_occlusion_test_exclusion_list", "get_occlusion_test_exclusion_list");
-
-	ClassDB::bind_method(D_METHOD("on_area_entered", "area"), &NNArea3DVisibilitySensor::on_area_entered);
-	ClassDB::bind_method(D_METHOD("on_area_exited", "area"), &NNArea3DVisibilitySensor::on_area_exited);
-	ClassDB::bind_method(D_METHOD("on_body_entered", "body"), &NNArea3DVisibilitySensor::on_body_entered);
-	ClassDB::bind_method(D_METHOD("on_body_exited", "body"), &NNArea3DVisibilitySensor::on_body_exited);
 
 	ADD_GROUP("Debugging", "");
 
@@ -156,20 +152,20 @@ void NNArea3DVisibilitySensor::initialize_sensor() {
 	ERR_FAIL_COND_MSG(_visibility_volume == nullptr, "NNArea3DVisibilitySensor::initialize_sensor() - Error, the visibility volume is not set.");
 
 	// Connect to the area entered and exited signals.
-	Error error_visibility_volume_on_area_entered = _visibility_volume->connect("area_entered", Callable(this, "on_area_entered"));
-	Error error_visibility_volume_on_area_exited = _visibility_volume->connect("area_exited", Callable(this, "on_area_exited"));
-	Error error_visibility_volume_on_body_entered = _visibility_volume->connect("body_entered", Callable(this, "on_body_entered"));
-	Error error_visibility_volume_on_body_exited = _visibility_volume->connect("body_exited", Callable(this, "on_body_exited"));
+	Error error_visibility_volume_on_area_entered = _visibility_volume->connect("area_entered", callable_mp(this, &NNArea3DVisibilitySensor::on_area_entered));
+	Error error_visibility_volume_on_area_exited = _visibility_volume->connect("area_exited", callable_mp(this, &NNArea3DVisibilitySensor::on_area_exited));
+	Error error_visibility_volume_on_body_entered = _visibility_volume->connect("body_entered", callable_mp(this, &NNArea3DVisibilitySensor::on_body_entered));
+	Error error_visibility_volume_on_body_exited = _visibility_volume->connect("body_exited", callable_mp(this, &NNArea3DVisibilitySensor::on_body_exited));
 }
 
 void NNArea3DVisibilitySensor::uninitialize_sensor() {
 	if (Engine::get_singleton()->is_editor_hint())
 		return;
 	if (_visibility_volume != nullptr) {
-		_visibility_volume->disconnect("area_entered", Callable(this, "on_area_entered"));
-		_visibility_volume->disconnect("area_exited", Callable(this, "on_area_exited"));
-		_visibility_volume->disconnect("body_entered", Callable(this, "on_body_entered"));
-		_visibility_volume->disconnect("body_exited", Callable(this, "on_body_exited"));
+		_visibility_volume->disconnect("area_entered", callable_mp(this, &NNArea3DVisibilitySensor::on_area_entered));
+		_visibility_volume->disconnect("area_exited", callable_mp(this, &NNArea3DVisibilitySensor::on_area_exited));
+		_visibility_volume->disconnect("body_entered", callable_mp(this, &NNArea3DVisibilitySensor::on_body_entered));
+		_visibility_volume->disconnect("body_exited", callable_mp(this, &NNArea3DVisibilitySensor::on_body_exited));
 		_visibility_volume = nullptr;
 	}
 }

@@ -1,4 +1,5 @@
 #include "area3d.h"
+#include <godot_cpp/variant/callable_method_pointer.hpp>
 #include <godot_cpp/variant/utility_functions.hpp>
 
 using namespace godot;
@@ -16,9 +17,6 @@ void NNArea3DSearchSpace::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("set_area3d", "area3d"), &NNArea3DSearchSpace::set_area3d);
 	ClassDB::bind_method(D_METHOD("get_area3d"), &NNArea3DSearchSpace::get_area3d);
 	ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "area3d", PROPERTY_HINT_NODE_TYPE, "Area3D"), "set_area3d", "get_area3d");
-
-	ClassDB::bind_method(D_METHOD("on_area_entered", "area"), &NNArea3DSearchSpace::on_area_entered);
-	ClassDB::bind_method(D_METHOD("on_area_exited", "area"), &NNArea3DSearchSpace::on_area_exited);
 
 	ADD_SUBGROUP("Debugging", "");
 
@@ -79,14 +77,14 @@ void NNArea3DSearchSpace::_initialize_search_space() {
 	ERR_FAIL_COND_MSG(_area3d == nullptr || !UtilityFunctions::is_instance_id_valid(_area3d->get_instance_id()), "NNArea3DSearchSpace::_initialize_search_space() - Error, the node for the Area3D has not been set.");
 
 	// Connect to the area entered and exited signals.
-	Error error_visibility_volume_on_entered = _area3d->connect("area_entered", Callable(this, "on_area_entered"));
-	Error error_visibility_volume_on_exited = _area3d->connect("area_exited", Callable(this, "on_area_exited"));
+	Error error_visibility_volume_on_entered = _area3d->connect("area_entered", callable_mp(this, &NNArea3DSearchSpace::on_area_entered));
+	Error error_visibility_volume_on_exited = _area3d->connect("area_exited", callable_mp(this, &NNArea3DSearchSpace::on_area_exited));
 }
 
 void NNArea3DSearchSpace::_uninitialize_search_space() {
 	if (_area3d != nullptr) {
-		_area3d->disconnect("area_entered", Callable(this, "on_area_entered"));
-		_area3d->disconnect("area_exited", Callable(this, "on_area_exited"));
+		_area3d->disconnect("area_entered", callable_mp(this, &NNArea3DSearchSpace::on_area_entered));
+		_area3d->disconnect("area_exited", callable_mp(this, &NNArea3DSearchSpace::on_area_exited));
 	}
 	_area3d = nullptr;
 }

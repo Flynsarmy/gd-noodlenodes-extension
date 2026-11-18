@@ -9,32 +9,6 @@
 	</description>
 	<tutorials>
 	</tutorials>
-	<methods>
-		<method name="on_area_entered">
-			<return type="void" />
-			<param index="0" name="area" type="Area2D" />
-			<description>
-			</description>
-		</method>
-		<method name="on_area_exited">
-			<return type="void" />
-			<param index="0" name="area" type="Area2D" />
-			<description>
-			</description>
-		</method>
-		<method name="on_body_entered">
-			<return type="void" />
-			<param index="0" name="body" type="Node2D" />
-			<description>
-			</description>
-		</method>
-		<method name="on_body_exited">
-			<return type="void" />
-			<param index="0" name="body" type="Node2D" />
-			<description>
-			</description>
-		</method>
-	</methods>
 	<members>
 		<member name="closest_intersecting_area_index" type="int" setter="set_closest_intersecting_area_index" getter="get_closest_intersecting_area_index" default="-1">
 			Index of the closest area to [member from_vector] within the intersecting_areas array.

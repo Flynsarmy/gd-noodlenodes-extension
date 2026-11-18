@@ -1,4 +1,5 @@
 #include "area2d.h"
+#include <godot_cpp/variant/callable_method_pointer.hpp>
 #include <godot_cpp/variant/utility_functions.hpp>
 
 using namespace godot;
@@ -16,9 +17,6 @@ void NNArea2DSearchSpace::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("set_area2d", "area2D"), &NNArea2DSearchSpace::set_area2d);
 	ClassDB::bind_method(D_METHOD("get_area2d"), &NNArea2DSearchSpace::get_area2d);
 	ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "area2d", PROPERTY_HINT_NODE_TYPE, "Area2D"), "set_area2d", "get_area2d");
-
-	ClassDB::bind_method(D_METHOD("on_area_entered", "area"), &NNArea2DSearchSpace::on_area_entered);
-	ClassDB::bind_method(D_METHOD("on_area_exited", "area"), &NNArea2DSearchSpace::on_area_exited);
 
 	ADD_SUBGROUP("Debugging", "");
 
@@ -79,14 +77,14 @@ void NNArea2DSearchSpace::_initialize_search_space() {
 	ERR_FAIL_COND_MSG(_area2d == nullptr || !UtilityFunctions::is_instance_id_valid(_area2d->get_instance_id()), "NNArea2DSearchSpace::_initialize_search_space() - Error, the node for the Area2D has not been set.");
 
 	// Connect to the area entered and exited signals.
-	Error error_visibility_volume_on_entered = _area2d->connect("area_entered", Callable(this, "on_area_entered"));
-	Error error_visibility_volume_on_exited = _area2d->connect("area_exited", Callable(this, "on_area_exited"));
+	Error error_visibility_volume_on_entered = _area2d->connect("area_entered", callable_mp(this, &NNArea2DSearchSpace::on_area_entered));
+	Error error_visibility_volume_on_exited = _area2d->connect("area_exited", callable_mp(this, &NNArea2DSearchSpace::on_area_exited));
 }
 
 void NNArea2DSearchSpace::_uninitialize_search_space() {
 	if (_area2d != nullptr) {
-		_area2d->disconnect("area_entered", Callable(this, "on_area_entered"));
-		_area2d->disconnect("area_exited", Callable(this, "on_area_exited"));
+		_area2d->disconnect("area_entered", callable_mp(this, &NNArea2DSearchSpace::on_area_entered));
+		_area2d->disconnect("area_exited", callable_mp(this, &NNArea2DSearchSpace::on_area_exited));
 	}
 	_area2d = nullptr;
 }
