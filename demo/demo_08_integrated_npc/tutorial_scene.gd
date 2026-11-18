@@ -84,7 +84,7 @@ func _update_status() -> void:
 	status_label.text = "Goal: %s  |  Movement: %s  |  Goal tree: %s  |  Alert: %.2f  |  F1 debugger (%s)  |  Esc quit" % [
 		_behaviour_name(),
 		_movement_state(),
-		"running" if _goal_tree_running() else "idle",
+		_goal_tree_status(),
 		movement.get_blackboard("threat_alert", 0.0),
 		"open" if overlay_open else "closed",
 	]
@@ -103,9 +103,13 @@ func _movement_state() -> String:
 	return "-"
 
 
-func _goal_tree_running() -> bool:
+func _goal_tree_status() -> String:
 	var action := agent.get_current_action_node()
 	if action == null:
-		return false
+		return "idle"
+	var planner := action.get_node_or_null("NNHTNRoot") as NNHTNRoot
+	if planner != null:
+		var step := planner.get_current_step()
+		return "plan step %s" % step.task.name if step != null else "planning"
 	var tree := action.get_node_or_null("NNBTRoot") as NNBTRoot
-	return tree != null and tree.get_running_action() != null
+	return "running" if tree != null and tree.get_running_action() != null else "idle"

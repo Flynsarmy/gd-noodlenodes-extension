@@ -282,6 +282,8 @@ An HTN root works with the other Noodle Nodes systems in both directions.
 
 Either way, nested roots share blackboards and actors: a root without its own **Blackboard** or **Actor** uses the nearest ancestor root's. An HTN root nested under a behaviour tree therefore plans on that tree's board and replans when its relevant keys change, and a behaviour tree under an HTN task reads and writes the HTN world state.
 
+[Combining the systems](Combining_the_systems.md#5-a-goal-that-plans-with-htn) puts both directions in one scene: a utility agent's Investigate goal hosts an HTN root whose world state is the board shared with a movement state tree, and each task of its plan hosts a behaviour tree that queries the Node Query System and sends events to the chart.
+
 
 ## 12. Next steps
 

@@ -29,7 +29,7 @@ These getting started tutorials create the same AI using AI Agent Behaviours, a 
 
 |Tutorial|Description|
 |--|--|
-|[Combining the systems](Combining_the_systems.md)|How Agent Behaviours, Behaviour Trees, State Trees and the Node Query System work together in one AI entity.|
+|[Combining the systems](Combining_the_systems.md)|How Agent Behaviours, Behaviour Trees, State Trees, HTN planning and the Node Query System work together in one AI entity.|
 
 
 ### Advanced tutorials

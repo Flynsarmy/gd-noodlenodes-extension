@@ -1,4 +1,4 @@
-[gd_scene load_steps=18 format=3]
+[gd_scene load_steps=19 format=3]
 
 [ext_resource type="Script" path="res://demo_08_integrated_npc/tutorial_scene.gd" id="1_scene"]
 [ext_resource type="Script" path="res://demo_08_integrated_npc/integrated_npc.gd" id="2_npc"]
@@ -65,6 +65,9 @@ point_count = 2
 _data = [Vector2(0, 1), 0.0, 0.0, 0, 0, Vector2(1, 0), 0.0, 0.0, 0, 0]
 point_count = 2
 
+[sub_resource type="NNHTNCondition" id="NNHTNCondition_wary"]
+expression = "threat_wary"
+
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_status"]
 bg_color = Color(0.04, 0.05, 0.08, 0.88)
 corner_radius_top_left = 6
@@ -117,7 +120,7 @@ theme_override_colors/font_color = Color(0.62, 0.7, 0.85, 1)
 theme_override_colors/font_outline_color = Color(0.02, 0.03, 0.06, 1)
 theme_override_constants/outline_size = 6
 theme_override_font_sizes/font_size = 13
-text = "The NPC picks Patrol, Investigate or Flee from its threat alert and nearby cover  -  press F1 to toggle the debugger overlay"
+text = "The NPC picks Patrol, Investigate or Flee from its threat alert and nearby cover; Investigate plans its steps with HTN  -  press F1 to toggle the debugger overlay"
 horizontal_alignment = 1
 
 [node name="Threat" type="Sprite2D" parent="." node_paths=PackedStringArray("target")]
@@ -313,24 +316,76 @@ activation_curve = SubResource("Curve_curious")
 
 [node name="InvestigateAction" type="NNAction" parent="Npc/Movement/NNAgent/Investigate"]
 
-[node name="NNBTRoot" type="NNBTRoot" parent="Npc/Movement/NNAgent/Investigate/InvestigateAction"]
+[node name="NNHTNRoot" type="NNHTNRoot" parent="Npc/Movement/NNAgent/Investigate/InvestigateAction"]
 
-[node name="NNBTSequence" type="NNBTSequence" parent="Npc/Movement/NNAgent/Investigate/InvestigateAction/NNBTRoot"]
+[node name="Investigate" type="NNHTNCompoundTask" parent="Npc/Movement/NNAgent/Investigate/InvestigateAction/NNHTNRoot"]
 
-[node name="FindPoint" type="NNBTRunNQSQuery" parent="Npc/Movement/NNAgent/Investigate/InvestigateAction/NNBTRoot/NNBTSequence" node_paths=PackedStringArray("nqs_search_space")]
-nqs_search_space = NodePath("../../../../../../SearchSpaces/ClueSpace")
+[node name="ObserveFromCover" type="NNHTNMethod" parent="Npc/Movement/NNAgent/Investigate/InvestigateAction/NNHTNRoot/Investigate"]
+conditions = Array[NNHTNCondition]([SubResource("NNHTNCondition_wary")])
+
+[node name="SneakToCover" type="NNHTNTask" parent="Npc/Movement/NNAgent/Investigate/InvestigateAction/NNHTNRoot/Investigate/ObserveFromCover"]
+
+[node name="NNBTRoot" type="NNBTRoot" parent="Npc/Movement/NNAgent/Investigate/InvestigateAction/NNHTNRoot/Investigate/ObserveFromCover/SneakToCover"]
+
+[node name="NNBTSequence" type="NNBTSequence" parent="Npc/Movement/NNAgent/Investigate/InvestigateAction/NNHTNRoot/Investigate/ObserveFromCover/SneakToCover/NNBTRoot"]
+
+[node name="FindCover" type="NNBTRunNQSQuery" parent="Npc/Movement/NNAgent/Investigate/InvestigateAction/NNHTNRoot/Investigate/ObserveFromCover/SneakToCover/NNBTRoot/NNBTSequence" node_paths=PackedStringArray("nqs_search_space")]
+nqs_search_space = NodePath("../../../../../../../../../../SearchSpaces/CoverSpace")
 best_result_key = "move_target"
 
-[node name="HasPoint" type="NNBTBlackboardHas" parent="Npc/Movement/NNAgent/Investigate/InvestigateAction/NNBTRoot/NNBTSequence"]
+[node name="HasCover" type="NNBTBlackboardHas" parent="Npc/Movement/NNAgent/Investigate/InvestigateAction/NNHTNRoot/Investigate/ObserveFromCover/SneakToCover/NNBTRoot/NNBTSequence"]
 key = "move_target"
 
-[node name="StartWalk" type="NNBTSendEvent" parent="Npc/Movement/NNAgent/Investigate/InvestigateAction/NNBTRoot/NNBTSequence"]
+[node name="StartWalk" type="NNBTSendEvent" parent="Npc/Movement/NNAgent/Investigate/InvestigateAction/NNHTNRoot/Investigate/ObserveFromCover/SneakToCover/NNBTRoot/NNBTSequence"]
 event_name = "walk"
 
-[node name="WaitForArrival" type="NNBTUntilFail" parent="Npc/Movement/NNAgent/Investigate/InvestigateAction/NNBTRoot/NNBTSequence"]
+[node name="WaitForArrival" type="NNBTUntilFail" parent="Npc/Movement/NNAgent/Investigate/InvestigateAction/NNHTNRoot/Investigate/ObserveFromCover/SneakToCover/NNBTRoot/NNBTSequence"]
 
-[node name="Walker" type="NNBTIsStateActive" parent="Npc/Movement/NNAgent/Investigate/InvestigateAction/NNBTRoot/NNBTSequence/WaitForArrival"]
-state = NodePath("../../../../../../../Walk")
+[node name="Walker" type="NNBTIsStateActive" parent="Npc/Movement/NNAgent/Investigate/InvestigateAction/NNHTNRoot/Investigate/ObserveFromCover/SneakToCover/NNBTRoot/NNBTSequence/WaitForArrival"]
+state = NodePath("../../../../../../../../../../../Walk")
+
+[node name="Watch" type="NNHTNTask" parent="Npc/Movement/NNAgent/Investigate/InvestigateAction/NNHTNRoot/Investigate/ObserveFromCover"]
+
+[node name="NNBTRoot" type="NNBTRoot" parent="Npc/Movement/NNAgent/Investigate/InvestigateAction/NNHTNRoot/Investigate/ObserveFromCover/Watch"]
+
+[node name="NNBTDelayer" type="NNBTDelayer" parent="Npc/Movement/NNAgent/Investigate/InvestigateAction/NNHTNRoot/Investigate/ObserveFromCover/Watch/NNBTRoot"]
+wait_time = 1.5
+
+[node name="Done" type="NNBTFixedResult" parent="Npc/Movement/NNAgent/Investigate/InvestigateAction/NNHTNRoot/Investigate/ObserveFromCover/Watch/NNBTRoot/NNBTDelayer"]
+fixed_result = 1
+
+[node name="InspectClue" type="NNHTNMethod" parent="Npc/Movement/NNAgent/Investigate/InvestigateAction/NNHTNRoot/Investigate"]
+
+[node name="GoToClue" type="NNHTNTask" parent="Npc/Movement/NNAgent/Investigate/InvestigateAction/NNHTNRoot/Investigate/InspectClue"]
+
+[node name="NNBTRoot" type="NNBTRoot" parent="Npc/Movement/NNAgent/Investigate/InvestigateAction/NNHTNRoot/Investigate/InspectClue/GoToClue"]
+
+[node name="NNBTSequence" type="NNBTSequence" parent="Npc/Movement/NNAgent/Investigate/InvestigateAction/NNHTNRoot/Investigate/InspectClue/GoToClue/NNBTRoot"]
+
+[node name="FindClue" type="NNBTRunNQSQuery" parent="Npc/Movement/NNAgent/Investigate/InvestigateAction/NNHTNRoot/Investigate/InspectClue/GoToClue/NNBTRoot/NNBTSequence" node_paths=PackedStringArray("nqs_search_space")]
+nqs_search_space = NodePath("../../../../../../../../../../SearchSpaces/ClueSpace")
+best_result_key = "move_target"
+
+[node name="HasClue" type="NNBTBlackboardHas" parent="Npc/Movement/NNAgent/Investigate/InvestigateAction/NNHTNRoot/Investigate/InspectClue/GoToClue/NNBTRoot/NNBTSequence"]
+key = "move_target"
+
+[node name="StartWalk" type="NNBTSendEvent" parent="Npc/Movement/NNAgent/Investigate/InvestigateAction/NNHTNRoot/Investigate/InspectClue/GoToClue/NNBTRoot/NNBTSequence"]
+event_name = "walk"
+
+[node name="WaitForArrival" type="NNBTUntilFail" parent="Npc/Movement/NNAgent/Investigate/InvestigateAction/NNHTNRoot/Investigate/InspectClue/GoToClue/NNBTRoot/NNBTSequence"]
+
+[node name="Walker" type="NNBTIsStateActive" parent="Npc/Movement/NNAgent/Investigate/InvestigateAction/NNHTNRoot/Investigate/InspectClue/GoToClue/NNBTRoot/NNBTSequence/WaitForArrival"]
+state = NodePath("../../../../../../../../../../../Walk")
+
+[node name="Search" type="NNHTNTask" parent="Npc/Movement/NNAgent/Investigate/InvestigateAction/NNHTNRoot/Investigate/InspectClue"]
+
+[node name="NNBTRoot" type="NNBTRoot" parent="Npc/Movement/NNAgent/Investigate/InvestigateAction/NNHTNRoot/Investigate/InspectClue/Search"]
+
+[node name="NNBTDelayer" type="NNBTDelayer" parent="Npc/Movement/NNAgent/Investigate/InvestigateAction/NNHTNRoot/Investigate/InspectClue/Search/NNBTRoot"]
+wait_time = 1.0
+
+[node name="Done" type="NNBTFixedResult" parent="Npc/Movement/NNAgent/Investigate/InvestigateAction/NNHTNRoot/Investigate/InspectClue/Search/NNBTRoot/NNBTDelayer"]
+fixed_result = 1
 
 [node name="Flee" type="NNBehaviour" parent="Npc/Movement/NNAgent"]
 on_selected_event = "stop"
@@ -363,6 +418,9 @@ event_name = "run"
 
 [node name="Runner" type="NNBTIsStateActive" parent="Npc/Movement/NNAgent/Flee/FleeAction/NNBTRoot/NNBTSequence/WaitForArrival"]
 state = NodePath("../../../../../../../Run")
+
+[node name="HideInCover" type="NNBTFixedResult" parent="Npc/Movement/NNAgent/Flee/FleeAction/NNBTRoot/NNBTSequence"]
+fixed_result = 0
 
 [node name="DebuggerLayer" type="CanvasLayer" parent="."]
 
