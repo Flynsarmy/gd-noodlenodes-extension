@@ -110,7 +110,7 @@ public:
 	virtual void reset() override;
 
 	// Godot virtuals.
-	virtual void _notification(int p_what);
+	void _notification(int p_what) override;
 	virtual PackedStringArray _get_configuration_warnings() const override;
 };
 
