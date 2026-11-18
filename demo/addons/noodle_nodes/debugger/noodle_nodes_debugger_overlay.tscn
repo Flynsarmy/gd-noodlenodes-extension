@@ -28,7 +28,7 @@ theme_override_constants/separation = 4
 [node name="SelectType" type="OptionButton" parent="HBoxContainer/VBoxContainer"]
 custom_minimum_size = Vector2(240, 0)
 layout_mode = 2
-item_count = 4
+item_count = 5
 selected = 0
 popup/item_0/text = "Select type"
 popup/item_0/id = 0
@@ -38,6 +38,8 @@ popup/item_2/text = "Behaviour Trees"
 popup/item_2/id = 2
 popup/item_3/text = "State Trees"
 popup/item_3/id = 3
+popup/item_4/text = "HTN Planners"
+popup/item_4/id = 4
 
 [node name="SelectTree" type="OptionButton" parent="HBoxContainer/VBoxContainer"]
 custom_minimum_size = Vector2(240, 0)

@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="NNHTNCondition" inherits="Resource" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
+	<brief_description>
+		A Boolean expression over the HTN world state and the occurrence arguments.
+	</brief_description>
+	<description>
+		Add conditions to [member NNHTNNodes.conditions]; all of a node's conditions must hold for it to be available. [member expression] is a Godot [Expression] in which board keys are variables and [code]args[/code] is the [Dictionary] of the occurrence's arguments:
+		[codeblock]
+		is_scared and not is_tired
+		health &lt; args.get("limit", 25)
+		[/codeblock]
+		A key that is absent from the state reads as [code]null[/code]. A board key literally named [code]args[/code] is shadowed by the arguments and cannot be read. [Array] and [Dictionary] values are deep-copied for each evaluation; [Object] values keep their identity, so expressions are trusted project code.
+		The expression must return a [bool]. A parse error, an execution error (for example comparing an absent key with a number) or any other result is reported as an error and evaluates to [code]false[/code], so a broken condition makes its node unavailable. A parse error is reported once per expression; execution errors are reported every time.
+		The keys an expression reads are inferred from its text (see [method get_read_keys]), so changes to them trigger replanning without being listed in [member NNHTNNodes.dependency_keys]. The parsed expression is cached and parsed again only when [member expression] changes.
+	</description>
+	<tutorials>
+	</tutorials>
+	<methods>
+		<method name="evaluate">
+			<return type="bool" />
+			<param index="0" name="state" type="Dictionary" />
+			<param index="1" name="args" type="Dictionary" default="{}" />
+			<description>
+				Evaluates [member expression] with the keys of [param state] and the arguments [param args]. Returns [code]false[/code] after reporting an error when the expression cannot be parsed or executed, or does not return a [bool].
+			</description>
+		</method>
+		<method name="get_parse_error" qualifiers="const">
+			<return type="String" />
+			<description>
+				Returns why [member expression] does not parse, or an empty string when it parses. An empty expression does not parse.
+			</description>
+		</method>
+		<method name="get_read_keys" qualifiers="const">
+			<return type="PackedStringArray" />
+			<description>
+				Returns the state keys [member expression] reads, in order of first use: its free identifiers, leaving out string literals, [code]args[/code], keywords such as [code]and[/code] and [code]true[/code], type names, member names after a [code].[/code] and called functions. For [code]health &lt; args.get("limit", 25) and pos.x &gt; 0[/code] they are [code]health[/code] and [code]pos[/code].
+			</description>
+		</method>
+	</methods>
+	<members>
+		<member name="expression" type="String" setter="set_expression" getter="get_expression" default="&quot;&quot;">
+			The Boolean expression to evaluate.
+		</member>
+	</members>
+</class>

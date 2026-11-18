@@ -22,6 +22,12 @@
 			<description>
 			</description>
 		</method>
+		<method name="get_total_time_elapsed_htn_usec" qualifiers="const">
+			<return type="int" />
+			<description>
+				Returns the microseconds [NNHTNRoot] ticks took during the last counted frame. This is the [code]NN/HTN tick time usec[/code] monitor.
+			</description>
+		</method>
 		<method name="get_total_time_elapsed_state_trees_usec" qualifiers="const">
 			<return type="int" />
 			<description>
@@ -43,6 +49,13 @@
 			<return type="void" />
 			<param index="0" name="time_usec" type="int" />
 			<description>
+			</description>
+		</method>
+		<method name="increment_total_time_elapsed_htn_usec">
+			<return type="void" />
+			<param index="0" name="time_usec" type="int" />
+			<description>
+				Adds [param time_usec] to the HTN tick time of the current frame. Called by [NNHTNRoot] in debug builds.
 			</description>
 		</method>
 		<method name="increment_total_time_elapsed_state_trees_usec">

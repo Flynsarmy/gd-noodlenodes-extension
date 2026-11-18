@@ -73,6 +73,10 @@ void NNRootHost::unregister_root(Node *p_root) {
 	}
 }
 
+bool NNRootHost::has_roots() const {
+	return !_root_ids.empty();
+}
+
 bool NNRootHost::is_active() const {
 	return _is_active;
 }

@@ -24,6 +24,7 @@ private:
 	std::vector<ObjectID> _behaviour_trees;
 	std::vector<ObjectID> _state_trees;
 	std::vector<ObjectID> _agents;
+	std::vector<ObjectID> _htn_roots;
 
 	struct AgentSelection {
 		ObjectID agent_id;
@@ -67,6 +68,7 @@ private:
 	static bool _is_on_path_to(Node *node, const ObjectID &target_id);
 	void _cache_agent_selections(Node *root);
 	bool _node_is_on_active_path(Node *node);
+	static void _apply_htn_step_state(TreeItem *item, Node *node);
 
 	void _rebuild_root_items();
 	void _ensure_root_items();
@@ -89,10 +91,12 @@ public:
 	int register_behaviour_tree(uint64_t instance_id);
 	int register_state_tree(uint64_t instance_id);
 	int register_ai_agent(uint64_t instance_id);
+	int register_htn_root(uint64_t instance_id);
 
 	void deregister_behaviour_tree(uint64_t instance_id);
 	void deregister_state_tree(uint64_t instance_id);
 	void deregister_ai_agent(uint64_t instance_id);
+	void deregister_htn_root(uint64_t instance_id);
 
 	void add_as_child_of(Node *debugger_parent_node);
 

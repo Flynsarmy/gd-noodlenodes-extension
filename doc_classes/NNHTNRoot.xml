@@ -1,0 +1,301 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="NNHTNRoot" inherits="NoodleNodes" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
+	<brief_description>
+		Plans with a hierarchical task network and executes the resulting plan.
+	</brief_description>
+	<description>
+		The root of a hierarchical task network (HTN). Its domain is an [NNHTNCompoundTask] whose [NNHTNMethod] children describe alternative ways to achieve it, down to primitive [NNHTNTask] nodes that the root executes. Reusable templates can live anywhere under the root, for example under a plain [Node] sibling of the domain, and are referenced with [NNHTNSubtaskCall].
+		[b]World state.[/b] The world state is the root's effective [NNBlackboard], resolved exactly like [NNBTRoot]'s: [member blackboard] when one is assigned, otherwise the effective board of the nearest ancestor root of any Noodle Nodes system, otherwise a private per-root board. Read it with [method NoodleNodes.get_blackboard_resource]. The actor resolves the same way; see [member actor]. Both follow the root's current position in the scene tree, so an HTN root nested under an [NNBTRoot], an [NNSTRoot] or an [NNAgent] plans on that root's board, and the roots nested under its own tasks share its board in turn. A key whose value is [code]null[/code] is absent. Planning never touches the board. Each search works on a private deep copy of [method NNBlackboard.get_values] and applies predicted effects to that copy only.
+		[b]Each tick[/b] calls [method on_sense] first, so a script can refresh the board from the world, then plans if a replan is pending, then advances the current plan. A plan found in a tick starts executing in that same tick.
+		[b]Planning[/b] is a depth-first decomposition with backtracking. Methods are tried in the order [member NNHTNSearchSettings.policy] gives them, each method's argument candidates (see [method NNHTNMethod.on_resolve_arguments]) in the order returned, each candidate's [member NNHTNMethod.bindings] combinations in order, and, for a [constant NNHTNMethod.PARTIAL_ORDER] method, each allowed order of its children. When a later sibling cannot be decomposed, the search revisits these alternatives, latest first, rolling back their predicted effects and arguments. Under [constant NNHTNSearchSettings.ORDERED] and [constant NNHTNSearchSettings.RANKED] the first complete, non-empty plan wins; [constant NNHTNSearchSettings.LOWEST_COST] keeps searching for the cheapest one. A method with no enabled children never decomposes, so an empty plan is a failure. A compound that is already being decomposed is rejected, which rules out recursive template calls, as is any decomposition more than 64 compounds deep. A sibling may reuse a compound once its earlier decomposition has finished. [member search_settings] bounds the search; see [NNHTNSearchSettings].
+		[b]Execution[/b] runs the plan one [NNHTNPlanStep] at a time. Before every tick of the current step, including its first, the root checks that the step's template still exists, is enabled and is not queued for deletion, that every [Object] in its arguments is still alive and not queued for deletion, and that its conditions and [method NNHTNNodes.on_check_preconditions] still hold against the live board with the step's arguments. A step that fails this check invalidates the plan. A started step is executed with [method NNHTNTask.on_execute] each tick until it returns [code]SUCCESS[/code] or [code]FAILURE[/code]. A [constant NNHTNTask.VERIFY] step then waits for verification instead of these checks; see [b]Verification[/b] in [NNHTNTask]. On success the captured [member NNHTNPlanStep.effects] that its [member NNHTNTask.runtime_effect_commit_mode] allows are written to the board in one [method NNBlackboard.apply_values] batch and the next step starts in the same tick; if the board rejects the batch, nothing is written, [signal effect_commit_failed] is emitted and the step fails. These writes never trigger this root's own replanning. The branches of an [NNHTNParallelTask] are the exception to one step at a time: they advance together and commit as one batch, see its description.
+		[method NNHTNTask.on_cancel] is called exactly once for a started occurrence, running or verifying, that is abandoned before it finishes: when a new plan replaces it, when it is invalidated, or when the root is disabled. An occurrence that succeeded or failed on its own, one a new plan kept (see [member NNHTNTask.resumable]), and one that never started, is never cancelled. The plan is never replaced while a hook or signal handler is running; replacements happen between ticks. Every failure sets [member NNHTNPlanStep.failure_reason]. Leaving the tree keeps the plan and freeing the root drops it, in both cases without calling [method NNHTNTask.on_cancel] or emitting a signal, like [NNBTRoot]. A hosted root that leaves the tree is instead deactivated, as its host would deactivate it, which cancels the started occurrence.
+		[b]Freeing from callbacks.[/b] [signal plan_finished] and [signal finished] are emitted last in a tick, so their handlers may free the root, its domain or its actor immediately. Every other signal, and every script hook, runs while the tick is still using the root and its domain nodes: from those, free the root, a domain node or a node that owns them with [method Node.queue_free], never [method Object.free].
+		[b]Replanning.[/b] Every search records the keys it may read: keys read by expression conditions (see [method NNHTNCondition.get_read_keys]) and the [member NNHTNNodes.dependency_keys] of every node it visits, including rejected alternatives. The keys read by [member NNHTNMethod.bindings] and by [constant NNHTNArgumentReference.WORLD_STATE] references in [member NNHTNSubtaskCall.argument_bindings] are included too. A planning hook ([method NNHTNNodes.on_check_preconditions], [method NNHTNTask.on_get_effects], [method NNHTNTask.on_get_estimated_cost], [method NNHTNMethod.on_get_priority] or [method NNHTNMethod.on_resolve_arguments]) can read anything, so a search that calls one makes every key relevant unless its node sets [member NNHTNNodes.dependencies_complete]. Only hooks the search actually calls count, so a hook the active policy never consults does not. A change to the effective board ([signal NNBlackboard.value_changed], [signal NNBlackboard.value_erased] or [signal NNBlackboard.cleared]), including one inherited from an ancestor root, schedules a search on the next tick only when it touches a relevant key. Several changes before a tick coalesce into one search. The root also replans on the next tick after a plan completes, fails or is invalidated, after [method request_replan], when it is enabled, and when its effective board or domain changes. While a plan waits under [constant NNHTNExecutionSettings.FINISH_CURRENT_STEP], relevant changes are held until it is installed. When the last search found no plan, the root retries every 0.5 seconds of tick delta, so a board written without signals is still noticed; relevant changes and [method request_replan] skip that wait. Changes to keys in [member replan_ignored_keys] never schedule a search.
+		[b]Replacing a running plan.[/b] A search that ends with [constant NO_PLAN] abandons the running plan. A search that ends with [constant BUDGET_EXHAUSTED] and no plan proves nothing, so a running plan keeps running. A search that returns a plan, including a [constant NNHTNSearchSettings.LOWEST_COST] search cut short by a budget, which returns its cheapest plan so far with [constant BUDGET_EXHAUSTED], replaces the running plan unless [member execution_settings] holds it back:
+		- With [member NNHTNExecutionSettings.switch_hysteresis] under [constant NNHTNSearchSettings.RANKED], a plan whose utility is not enough better than the running plan's is ignored while the running plan's current step is available.
+		- With [constant NNHTNExecutionSettings.FINISH_CURRENT_STEP], a plan found while a step is started and available waits for that step to finish. A parallel group under way counts as one started step and is waited for as a whole.
+		[method request_replan] with [code]urgent[/code] skips both. When a plan is ignored or waits, the running plan keeps running and the keys of both searches trigger replans. When a plan replaces the running one, its first step keeps the started occurrence if that is [member NNHTNTask.resumable] and the same occurrence; otherwise the started occurrence is cancelled. A parallel group's branches are never kept, so replacing a group under way cancels all of its started, unfinished branches.
+		[b]Local repair.[/b] With [member NNHTNExecutionSettings.local_repair], the search after a step fails or is invalidated first tries to repair the plan from the live board, using the failed step's [method NNHTNPlanStep.get_provenance]. The boundary is the innermost method decomposition that produced the failed step. When no step of that decomposition has succeeded, its compound is decomposed again, so any of its methods may be used. Otherwise only the failed child of that method is decomposed again. The steps after the boundary are kept, but only if, in order, each is still valid, its conditions still hold on the predicted state and its effects still satisfy the schema; a local solution they do not fit is rejected like any other dead end, so the search tries the boundary's other alternatives. A found repair is installed after the steps that already succeeded, which are never run again and stay in [method get_completed_steps]. A repair is not attempted when the failed step belongs to an [NNHTNParallelTask], concurrent or serialized, or carries a serialized group's deferred effects, and is rejected when a kept step or a step of the local solution does; [code]reason[/code] in [method get_last_repair_result] names the cause and the search from the domain follows. A repair makes one attempt per failure and uses the [member search_settings] budgets. When it fails, or cannot be attempted safely, a normal search from the domain follows; that search has no record of completed work, so model it with board state if it must not run twice. [signal repair_finished] and [method get_last_repair_result] report each attempt. A successful repair emits [signal search_finished] with its own search's results.
+		[b]Search tracing.[/b] With [member track_search] on, every search records an attempt: a [Dictionary] with the keys of [method get_last_search_result] plus:
+		- [code]id[/code]: [int], increasing per root.
+		- [code]timestamp[/code]: [String], UTC ISO 8601 time the attempt finished.
+		- [code]elapsed_usec[/code]: [int], microseconds from the start of the search to the end of the attempt.
+		- [code]installed[/code]: [bool], whether the attempt's plan replaced the running one when it was found. A plan that waited under [constant NNHTNExecutionSettings.FINISH_CURRENT_STEP] is [code]false[/code].
+		- [code]local_repair[/code]: [bool], whether the attempt was a local repair search. A repair that is attempted records its own attempt before any search from the domain.
+		- [code]truncated[/code]: [bool], whether a limit dropped events, the initial state or plan entries. A truncated attempt is not a complete account of the search.
+		- [code]initial_state[/code]: [Dictionary], the board the search started from.
+		- [code]plan[/code]: [Array] of the returned plan's steps, each with [code]index[/code], [code]task[/code] (the template's name), [code]call_path[/code], [code]args[/code], [code]cost[/code], [code]occurrence_id[/code] (see [member NNHTNPlanStep.occurrence_id]) and [code]event_id[/code] (the event that accepted it, or [code]-1[/code]).
+		- [code]events[/code]: [Array] of decision events in the order they happened, each with [code]id[/code] (an [int] from 1, unique in the attempt), [code]parent_id[/code] (the decision it was made under, or [code]-1[/code]), [code]kind[/code], [code]path[/code] (the decomposition path), [code]outcome[/code], [code]reason[/code] and [code]final[/code] ([code]true[/code] when the event leads to a step of the returned plan). Optional keys are [code]detail[/code] (a readable explanation), [code]args[/code], [code]condition[/code] and [code]condition_index[/code] (the failing entry of [member NNHTNNodes.conditions], or [code]"on_check_preconditions()"[/code] and [code]-1[/code]), [code]state[/code] (the predicted world state, on rejected, pruned and cutoff events) and [code]occurrence_id[/code] (on accepted tasks).
+		[code]kind[/code] is one of [code]"compound"[/code], [code]"method"[/code], [code]"task"[/code], [code]"call"[/code], [code]"binding"[/code], [code]"order"[/code] (a [constant NNHTNMethod.PARTIAL_ORDER] choice), [code]"parallel"[/code] (an [NNHTNParallelTask] and its conflicts), [code]"plan"[/code] (a complete plan was found, or a repair's kept steps did not fit it) and [code]"search"[/code] (the search was cut off). [code]outcome[/code] is one of [code]"considered"[/code], [code]"accepted"[/code], [code]"rejected"[/code], [code]"pruned"[/code], [code]"truncated"[/code], [code]"cutoff"[/code] and [code]"serialized"[/code] (a parallel group planned in scene order). [code]reason[/code] is a stable code: [code]CONSIDERED[/code], [code]ACCEPTED[/code], [code]ORDER_CHOICE[/code], [code]PLAN_FOUND[/code], [code]PRECONDITION_FALSE[/code], [code]DISABLED[/code], [code]RECURSION_LIMIT[/code], [code]NO_METHODS[/code], [code]INVALID_PRIORITY[/code], [code]INVALID_CHILDREN[/code], [code]EMPTY_METHOD[/code], [code]INVALID_ORDERING[/code], [code]INVALID_BINDING[/code], [code]NO_ARGUMENT_CANDIDATES[/code], [code]CANDIDATE_CAP[/code], [code]BINDING_NO_VALUES[/code], [code]MISSING_TEMPLATE[/code], [code]INVALID_ARGUMENT_REFERENCE[/code], [code]INVALID_EFFECTS[/code], [code]INVALID_COST[/code], [code]INVALID_EXECUTION_SETTINGS[/code] (the task's verification or commit settings are invalid), [code]INVALID_REFERENCE[/code] (an [Object] argument was freed), [code]SUFFIX_REJECTED[/code] (a repair's kept steps do not fit), [code]INVALID_GROUP[/code] (a parallel group's branches or [member NNHTNParallelTask.unsafe_policy] are invalid), [code]BRANCH_UNAVAILABLE[/code], [code]PARALLEL_CONFLICT[/code] (on the group), [code]CONTRACT_INCOMPLETE[/code], [code]RESOURCE_CONFLICT[/code], [code]WRITE_CONFLICT[/code], [code]READ_WRITE_CONFLICT[/code], [code]GROUP_EFFECT_CONFLICT[/code] (one event per conflict), [code]COST_PRUNE[/code] or [code]BUDGET_EXHAUSTED[/code].
+		Values in attempts are sanitised like [method NNBlackboard.get_debug_data], so they hold no [Object]. [member NNHTNSearchSettings.max_trace_events], [member NNHTNSearchSettings.max_history_attempts] and [member NNHTNSearchSettings.max_history_bytes] bound what is kept. With [member track_search] off, nothing is recorded and the search does no tracing work.
+		[b]Configuration.[/b] The domain is [member domain] when assigned, otherwise the only direct [NNHTNCompoundTask] child. A missing or ambiguous domain, or invalid [member search_settings] or [member execution_settings], makes the root do nothing: each tick it neither senses, plans nor executes, the running plan is abandoned, and the problem is reported once as an error, with [signal search_finished] emitting [constant INVALID_DOMAIN]. The editor shows the same problems as configuration warnings. Fixing the configuration resumes planning on the next tick.
+		[b]Finishing.[/b] [signal finished] reports the outcome of each run to a host, like [signal NNBTRoot.finished]. A run is one plan: [param succeeded] is [code]true[/code] when a plan completes, and [code]false[/code] when a plan fails or is invalidated, when a search proves there is no plan ([constant NO_PLAN]), and on every tick an invalid configuration blocks. A search that ends with [constant BUDGET_EXHAUSTED] and no plan proves nothing and reports nothing. A failed plan is reported at once, before any local repair or replanning the next tick would do. After reporting, the root keeps planning on its next tick, so a host that should stop must end the run itself, as an [NNAction] or [NNHTNTask] host does.
+		[b]Hosting.[/b] The root can be hosted, like [NNBTRoot] and [NNSTRoot]. A host is the nearest host ancestor: an active state ([NNSTTickedNodes]), an agent action ([NNAction]) that is the agent's current action, an [NNBTRunHostedRoot] leaf that is running, or an [NNHTNTask] whose step is running. A root nested inside another root's subtree is not hosted across that root. A host activates the root, ticks it with the host's own delta on the host's schedule, and deactivates it; a hosted root never ticks from the SceneTree frame signals, so its [member process_thread] and [member tick_rate] are ignored and the editor shows a configuration warning. Activation and deactivation both abandon the current plan, cancelling its started step once, so each activation plans afresh on its first host tick.
+		[b]Ticking[/b] follows [NNBTRoot]: [member process_thread] selects the SceneTree frame signal that drives automatic ticks, [constant MANUAL] leaves ticking to [method tick] or [method auto_tick_step], and [member tick_rate] spaces ticks out. In debug builds the root appears in the [NNDebuggerOverlay] with the state of each task and parallel group in the current plan, and its tick time is added to the [code]NN/HTN tick time usec[/code] performance monitor (see [NNPerformanceMonitorSingleton]).
+	</description>
+	<tutorials>
+	</tutorials>
+	<methods>
+		<method name="are_replan_dependencies_complete" qualifiers="const">
+			<return type="bool" />
+			<description>
+				Returns [code]false[/code] when the last search called a planning hook on a node without [member NNHTNNodes.dependencies_complete], so every board change is relevant. See [method get_replan_dependency_keys].
+			</description>
+		</method>
+		<method name="auto_tick_step">
+			<return type="bool" />
+			<param index="0" name="process_thread" type="int" />
+			<param index="1" name="delta" type="float" />
+			<description>
+				The shared body of the frame-signal handlers, and the deterministic driver for custom schedulers. Ticks the root when the call is due and returns [code]true[/code] only when it actually ticked. The tick receives [param delta] plus the deltas of the non-due calls since the previous tick.
+				The call is ignored, returning [code]false[/code], when [param process_thread] is not the selected [member process_thread], when the selected thread is [constant MANUAL], when the root is disabled, in the editor, or when [member tick_rate] makes this call not due. It works outside the tree too.
+			</description>
+		</method>
+		<method name="get_completed_steps" qualifiers="const">
+			<return type="NNHTNPlanStep[]" />
+			<description>
+				Returns the steps of the current plan that already succeeded, in plan order. Empty once the plan has ended. A plan installed by a local repair starts with the steps that succeeded before the failure, and one installed after waiting under [constant NNHTNExecutionSettings.FINISH_CURRENT_STEP] starts with the step it waited for.
+			</description>
+		</method>
+		<method name="get_current_step" qualifiers="const">
+			<return type="NNHTNPlanStep" />
+			<description>
+				Returns the step that runs next or is running, or [code]null[/code] without a plan.
+			</description>
+		</method>
+		<method name="get_last_cutoff_reason" qualifiers="const">
+			<return type="String" />
+			<description>
+				Returns why the last search stopped early or was incomplete, for example [code]"expansion budget of 10000 reached"[/code], or [code]"binding candidate cap of 256 reached"[/code] when [member NNHTNSearchSettings.max_binding_candidates] left candidates out, even if a plan was found. Empty when the search ran to completion.
+			</description>
+		</method>
+		<method name="get_last_expansion_count" qualifiers="const">
+			<return type="int" />
+			<description>
+				Returns the expansions the last search used. See [member NNHTNSearchSettings.max_expansions].
+			</description>
+		</method>
+		<method name="get_last_repair_result" qualifiers="const">
+			<return type="Dictionary" />
+			<description>
+				Returns the outcome of the most recent local repair attempt, or an empty [Dictionary] before the first. The keys are [code]succeeded[/code] ([bool], whether the repaired plan was installed), [code]attempts[/code] ([int], [code]1[/code] when a boundary was searched, [code]0[/code] when none could be), [code]boundary[/code] (the method path of the boundary, when known), [code]reason[/code] (empty on success, otherwise why the root searched from the domain instead), [code]repaired_count[/code] (the new steps that replace the boundary) and [code]suffix_count[/code] (the steps kept after it). See [b]Local repair[/b] in the class description.
+			</description>
+		</method>
+		<method name="get_last_replan_trigger_keys" qualifiers="const">
+			<return type="PackedStringArray" />
+			<description>
+				Returns the board keys whose changes caused the last search, in the order they changed. Empty when it was caused by something else, such as a finished plan or [method request_replan].
+			</description>
+		</method>
+		<method name="get_last_search_result" qualifiers="const">
+			<return type="Dictionary" />
+			<description>
+				Returns the last search's metadata with the keys [code]status[/code] ([enum SearchStatus]), [code]expansions[/code], [code]cost[/code] (the plan's total [member NNHTNPlanStep.cost]), [code]optimal[/code] (whether the plan is proven cheapest), [code]utility[/code] (the sum of the [member NNHTNMethod.priority] of the methods that produced the plan), [code]cutoff_reason[/code] and [code]trigger_keys[/code]. Only [constant NNHTNSearchSettings.LOWEST_COST] evaluates costs, and its [code]optimal[/code] is [code]true[/code] only after a complete search that no budget or candidate cap cut short; under the other policies [code]cost[/code] is [code]0.0[/code] and [code]optimal[/code] is [code]false[/code]. Under [constant NNHTNSearchSettings.ORDERED] [code]utility[/code] is [code]0.0[/code].
+			</description>
+		</method>
+		<method name="get_last_search_status" qualifiers="const">
+			<return type="int" enum="NNHTNRoot.SearchStatus" />
+			<description>
+				Returns the outcome of the last search. Before the first search it is [constant NO_PLAN].
+			</description>
+		</method>
+		<method name="get_last_search_trace" qualifiers="const">
+			<return type="Dictionary" />
+			<description>
+				Returns a copy of the most recent attempt in [method get_search_history], or an empty [Dictionary] when there is none. See [b]Search tracing[/b] in the class description for the format.
+			</description>
+		</method>
+		<method name="get_plan" qualifiers="const">
+			<return type="NNHTNPlanStep[]" />
+			<description>
+				Returns the steps of the current plan that have not finished, starting with [method get_current_step]. Empty without a plan.
+			</description>
+		</method>
+		<method name="get_replan_dependency_keys" qualifiers="const">
+			<return type="PackedStringArray" />
+			<description>
+				Returns, sorted, the board keys whose changes can trigger a replan: every key the last search may have read. When a running plan was kept, because a search hit its budget, its plan was ignored or it waits, or a local repair re-searched only part of it, the new search's keys are added to the running plan's.
+			</description>
+		</method>
+		<method name="get_search_history" qualifiers="const">
+			<return type="Dictionary[]" />
+			<description>
+				Returns copies of the recorded search attempts, oldest first. Empty unless [member track_search] is on. See [b]Search tracing[/b] in the class description for the format.
+			</description>
+		</method>
+		<method name="on_sense" qualifiers="virtual">
+			<return type="void" />
+			<param index="0" name="delta" type="float" />
+			<description>
+				Optional hook called at the start of every tick, before planning and execution, so a script can write fresh observations to the board. Writes to relevant keys replan in the same tick.
+			</description>
+		</method>
+		<method name="request_replan">
+			<return type="void" />
+			<param index="0" name="urgent" type="bool" default="false" />
+			<description>
+				Schedules a search for the next tick, skipping the no-plan retry wait. Use it after a change the root cannot see, such as editing the domain or writing the board without signals. It also searches while a plan waits under [constant NNHTNExecutionSettings.FINISH_CURRENT_STEP], replacing the waiting plan with the new result.
+				When [param urgent] is [code]true[/code], the result is installed without [member NNHTNExecutionSettings.switch_hysteresis] or waiting for the current step, any waiting plan is dropped at once, and a failed step is not locally repaired. A matching [member NNHTNTask.resumable] occurrence is still kept.
+			</description>
+		</method>
+		<method name="tick">
+			<return type="void" />
+			<param index="0" name="delta" type="float" />
+			<description>
+				Runs one tick: [method on_sense], then a search if one is pending, then the current plan. Does nothing while the root is disabled, in the editor, or misconfigured.
+			</description>
+		</method>
+	</methods>
+	<members>
+		<member name="actor" type="Node" setter="set_actor" getter="get_assigned_actor">
+			The explicitly assigned actor, or [code]null[/code] when none is assigned or it was freed. Read the resolved actor with [method NoodleNodes.get_actor], which resolves the live explicit actor, then [member actor_node_path], then the actor of the nearest ancestor root of any Noodle Nodes system, then the root's parent, on every call.
+		</member>
+		<member name="actor_node_path" type="NodePath" setter="set_actor_node_path" getter="get_actor_node_path" default="NodePath(&quot;&quot;)">
+			A path, relative to the root, to the actor used when [member actor] is not set. It wins over the actor inherited from an ancestor root.
+		</member>
+		<member name="blackboard" type="NNBlackboard" setter="set_blackboard_resource" getter="get_assigned_blackboard">
+			The explicitly assigned world state, or [code]null[/code]. When it is [code]null[/code] the root inherits the effective board of the nearest ancestor root, or uses a private per-instance board when it has none; read the effective board with [method NoodleNodes.get_blackboard_resource]. Whenever the effective board changes, because of an assignment, a reparent or an ancestor's own board changing, the root watches the new board instead and replans on the next tick. Its [member NNBlackboard.schema], if any, also validates predicted effects during planning.
+		</member>
+		<member name="domain" type="NNHTNCompoundTask" setter="set_domain" getter="get_domain">
+			The compound task to plan for. Leave it empty to use the only direct [NNHTNCompoundTask] child; assign it when the root has several. Setting it replans on the next tick.
+		</member>
+		<member name="execution_settings" type="NNHTNExecutionSettings" setter="set_execution_settings" getter="get_execution_settings">
+			How new plans replace the running one and how failed steps are repaired. When [code]null[/code], a default [NNHTNExecutionSettings] is used. Assigning it drops a plan waiting under [constant NNHTNExecutionSettings.FINISH_CURRENT_STEP]. Invalid settings make the root do nothing until they are fixed.
+		</member>
+		<member name="process_thread" type="int" setter="set_process_thread" getter="get_process_thread" default="1">
+			Selects the SceneTree frame signal that drives automatic ticking. Defaults to [constant PHYSICS]. [constant MANUAL] connects neither signal so a custom scheduler ticks the root. Setting this property re-arms the [member tick_rate] schedule.
+		</member>
+		<member name="search_settings" type="NNHTNSearchSettings" setter="set_search_settings" getter="get_search_settings">
+			Bounds and policy for planning. When [code]null[/code], a default [NNHTNSearchSettings] is used. Invalid settings make the root do nothing until they are fixed.
+		</member>
+		<member name="tick_rate" type="int" setter="set_tick_rate" getter="get_tick_rate" default="1">
+			The number of eligible frame signal emissions between automatic ticks. A tick receives the delta accumulated since the previous one. Values below 1 are clamped to 1.
+		</member>
+		<member name="replan_ignored_keys" type="PackedStringArray" setter="set_replan_ignored_keys" getter="get_replan_ignored_keys" default="PackedStringArray()">
+			Board keys whose changes never schedule a search, even when a search reads them or the dependencies are a wildcard. Use it for values that are sensed continuously, such as the actor's position: planning still reads their current value, and the next search triggered by anything else sees it. Without it, a key like that read by a condition, a [member NNHTNMethod.bindings] origin or a hook would replan every tick.
+		</member>
+		<member name="track_search" type="bool" setter="set_track_search" getter="get_track_search" default="false">
+			Records a bounded trace of every search, readable with [method get_search_history] and [method get_last_search_trace] and announced by [signal trace_attempt_recorded]. Turning it off drops the recorded history. Leave it off outside debugging, as recording copies the predicted state at every rejection.
+		</member>
+	</members>
+	<signals>
+		<signal name="effect_commit_failed">
+			<param index="0" name="step" type="NNHTNPlanStep" />
+			<description>
+				Emitted when the board rejected [param step]'s effect batch, so none of it was written. [param step] fails with [code]"effect_commit_failed"[/code] and the plan ends.
+			</description>
+		</signal>
+		<signal name="finished">
+			<param index="0" name="succeeded" type="bool" />
+			<description>
+				Emitted at the end of a tick that ended a run: [code]true[/code] when a plan completed, [code]false[/code] when a plan failed or was invalidated, a search proved there is no plan, or an invalid configuration blocked the tick. Hosts use it to end their own step or action; see [b]Finishing[/b] above. It is emitted whether the root is hosted or ticks itself.
+			</description>
+		</signal>
+		<signal name="parallel_branch_staged">
+			<param index="0" name="group" type="NNHTNParallelTask" />
+			<param index="1" name="step" type="NNHTNPlanStep" />
+			<description>
+				Emitted when a branch [param step] of [param group] finished successfully and waits, [constant NNHTNPlanStep.STAGED], for its siblings. Its effects are not yet written. [param group] is [code]null[/code] once freed.
+			</description>
+		</signal>
+		<signal name="parallel_group_finished">
+			<param index="0" name="group" type="NNHTNParallelTask" />
+			<param index="1" name="succeeded" type="bool" />
+			<description>
+				Emitted once for every [signal parallel_group_started]: with [param succeeded] [code]true[/code] after the group's effects were committed and every branch succeeded, and [code]false[/code] when the group failed or was replaced, after its started branches were cancelled. [param group] is [code]null[/code] once freed.
+			</description>
+		</signal>
+		<signal name="parallel_group_started">
+			<param index="0" name="group" type="NNHTNParallelTask" />
+			<param index="1" name="steps" type="NNHTNPlanStep[]" />
+			<description>
+				Emitted when the plan reaches a concurrent [param group], before its branches [param steps] are first checked and ticked. [param group] is [code]null[/code] once freed.
+			</description>
+		</signal>
+		<signal name="plan_finished">
+			<param index="0" name="succeeded" type="bool" />
+			<description>
+				Emitted at the end of the tick in which a plan ends on its own: [param succeeded] is [code]true[/code] when every step succeeded and [code]false[/code] when a step failed or was invalidated. Not emitted when a plan is replaced or abandoned, including when a plan waiting under [constant NNHTNExecutionSettings.FINISH_CURRENT_STEP] replaces the rest of it.
+			</description>
+		</signal>
+		<signal name="plan_invalidated">
+			<param index="0" name="step" type="NNHTNPlanStep" />
+			<description>
+				Emitted when [param step] no longer passes the checks made before each tick, which ends the plan. Emitted after [method NNHTNTask.on_cancel] when the step had started.
+			</description>
+		</signal>
+		<signal name="plan_set">
+			<param index="0" name="steps" type="NNHTNPlanStep[]" />
+			<description>
+				Emitted when a search installs a new plan, after any replaced occurrence was cancelled and before the first step runs.
+			</description>
+		</signal>
+		<signal name="repair_finished">
+			<param index="0" name="succeeded" type="bool" />
+			<param index="1" name="attempts" type="int" />
+			<param index="2" name="reason" type="String" />
+			<description>
+				Emitted after each local repair attempt, before any search from the domain that follows a failed one. The parameters match the [code]succeeded[/code], [code]attempts[/code] and [code]reason[/code] of [method get_last_repair_result].
+			</description>
+		</signal>
+		<signal name="search_finished">
+			<param index="0" name="status" type="int" enum="NNHTNRoot.SearchStatus" />
+			<param index="1" name="expansions" type="int" />
+			<param index="2" name="cost" type="float" />
+			<param index="3" name="cost_optimal" type="bool" />
+			<description>
+				Emitted after every search from the domain and every successful local repair, and once when the configuration becomes invalid. [param cost] and [param cost_optimal] are the [code]cost[/code] and [code]optimal[/code] values of [method get_last_search_result].
+			</description>
+		</signal>
+		<signal name="step_state_changed">
+			<param index="0" name="step" type="NNHTNPlanStep" />
+			<param index="1" name="status" type="int" enum="NNHTNTask.Status" />
+			<description>
+				Emitted when a step starts ([constant NNHTNTask.RUNNING]), succeeds after its effects were committed ([constant NNHTNTask.SUCCESS]), or fails or is invalidated ([constant NNHTNTask.FAILURE]). Each transition is emitted once per occurrence. Cancellation by replacement emits nothing.
+			</description>
+		</signal>
+		<signal name="trace_attempt_recorded">
+			<param index="0" name="attempt" type="Dictionary" />
+			<description>
+				Emitted after each search while [member track_search] is on, after [signal search_finished], with a copy of the recorded [param attempt]. See [b]Search tracing[/b] in the class description for the format.
+			</description>
+		</signal>
+		<signal name="verification_failed">
+			<param index="0" name="step" type="NNHTNPlanStep" />
+			<param index="1" name="reason" type="String" />
+			<description>
+				Emitted when [param step]'s verification failed, with [param reason] [code]"verification_failed"[/code] or [code]"verification_timeout"[/code], also set as its [member NNHTNPlanStep.failure_reason]. None of its effects were written, and the plan ends.
+			</description>
+		</signal>
+		<signal name="verification_started">
+			<param index="0" name="step" type="NNHTNPlanStep" />
+			<description>
+				Emitted once when [param step]'s [method NNHTNTask.on_execute] returned [constant NNHTNTask.SUCCESS] and it begins verifying. See [member NNHTNTask.verification_mode].
+			</description>
+		</signal>
+	</signals>
+	<constants>
+		<constant name="IDLE" value="0" enum="ProcessThread">
+			The root is ticked automatically from the SceneTree's [code]process_frame[/code] signal.
+		</constant>
+		<constant name="PHYSICS" value="1" enum="ProcessThread">
+			The root is ticked automatically from the SceneTree's [code]physics_frame[/code] signal. This is the default.
+		</constant>
+		<constant name="MANUAL" value="2" enum="ProcessThread">
+			The root never ticks automatically; call [method tick] or [method auto_tick_step].
+		</constant>
+		<constant name="FOUND" value="0" enum="SearchStatus">
+			The search found a complete plan.
+		</constant>
+		<constant name="NO_PLAN" value="1" enum="SearchStatus">
+			The search tried every alternative and none decomposed.
+		</constant>
+		<constant name="BUDGET_EXHAUSTED" value="2" enum="SearchStatus">
+			A budget in [NNHTNSearchSettings] stopped the search early, or [member NNHTNSearchSettings.max_binding_candidates] left candidates out and no plan was found. This is not proof that no plan exists. Usually no plan is returned; under [constant NNHTNSearchSettings.LOWEST_COST] the cheapest plan found so far is returned, but not proven optimal. See [method get_last_cutoff_reason].
+		</constant>
+		<constant name="INVALID_DOMAIN" value="3" enum="SearchStatus">
+			The root could not search because its domain or search settings are invalid.
+		</constant>
+	</constants>
+</class>

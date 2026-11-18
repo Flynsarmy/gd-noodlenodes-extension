@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="NNHTNArgumentReference" inherits="Resource" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
+	<brief_description>
+		A computed argument for an [NNHTNSubtaskCall], read from the arguments or the world state.
+	</brief_description>
+	<description>
+		Used as a value of [member NNHTNSubtaskCall.argument_bindings]. While planning, the reference reads [member key] from the call's arguments ([constant ARGUMENT]) or from the predicted world state ([constant WORLD_STATE]), then follows [member field_path] through nested dictionaries:
+		[codeblock]
+		var reference := NNHTNArgumentReference.new()
+		reference.source = NNHTNArgumentReference.WORLD_STATE
+		reference.key = "selected_coin"
+		reference.field_path = "target.name"
+		call.argument_bindings["target"] = reference
+		[/codeblock]
+		A missing argument or key, a missing field, a path through a value that is not a [Dictionary], or an invalid configuration reports an error and rejects the branch; it never falls back to [code]null[/code]. A world state key whose value is [code]null[/code] is absent, so it counts as missing; an argument whose value is [code]null[/code] resolves to [code]null[/code]. The [member key] of a [constant WORLD_STATE] reference is a replanning trigger. [member field_path] uses the same syntax as [member NNHTNBinding.entry_field].
+	</description>
+	<tutorials>
+	</tutorials>
+	<methods>
+		<method name="get_validation_errors" qualifiers="const">
+			<return type="PackedStringArray" />
+			<description>
+				Returns one message per configuration problem: an invalid [member source], an empty [member key], or a [member field_path] with an empty segment. Empty when the reference is valid. The owning [NNHTNSubtaskCall] shows these as configuration warnings.
+			</description>
+		</method>
+	</methods>
+	<members>
+		<member name="field_path" type="String" setter="set_field_path" getter="get_field_path" default="&quot;&quot;">
+			An optional dot-separated path of [Dictionary] keys applied to the value of [member key], such as [code]"target.position"[/code]. Empty reads the value itself. Leading, trailing or doubled dots are invalid.
+		</member>
+		<member name="key" type="String" setter="set_key" getter="get_key" default="&quot;&quot;">
+			The argument name or world state key to read. Must not be empty.
+		</member>
+		<member name="source" type="int" setter="set_source" getter="get_source" enum="NNHTNArgumentReference.Source" default="0">
+			Where [member key] is read from.
+		</member>
+	</members>
+	<constants>
+		<constant name="ARGUMENT" value="0" enum="Source">
+			Reads the call's arguments: the inherited ones merged with [member NNHTNSubtaskCall.args], plus any [member NNHTNSubtaskCall.argument_bindings] entries already applied, which come earlier in sorted key order.
+		</constant>
+		<constant name="WORLD_STATE" value="1" enum="Source">
+			Reads the predicted world state at the point the call is planned.
+		</constant>
+	</constants>
+</class>

@@ -1,0 +1,78 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://demo_07_htn/objects/player.gd" id="1_ffboj"]
+[ext_resource type="PackedScene" path="res://demo_07_htn/objects/character.tscn" id="2_nero3"]
+[ext_resource type="AudioStream" path="res://demo_07_htn/sounds/jump.ogg" id="6_jump"]
+[ext_resource type="AudioStream" path="res://demo_07_htn/sounds/land.ogg" id="7_land"]
+[ext_resource type="AudioStream" path="res://demo_07_htn/sounds/coin.ogg" id="8_coin"]
+[ext_resource type="ArrayMesh" path="res://demo_07_htn/meshes/dust.tres" id="4_mvhqy"]
+[ext_resource type="AudioStream" path="res://demo_07_htn/sounds/walking.ogg" id="5_ics1s"]
+
+[sub_resource type="CapsuleShape3D" id="CapsuleShape3D_gdq8c"]
+radius = 0.3
+height = 1.0
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_q7stj"]
+diffuse_mode = 2
+specular_mode = 2
+metallic_specular = 0.0
+backlight = Color(0, 0.521569, 0.709804, 1)
+billboard_keep_scale = true
+grow_amount = 1.882
+proximity_fade_distance = 0.25
+
+[sub_resource type="Curve" id="Curve_xh1e2"]
+_data = [Vector2(0, 0), 0.0, 0.0, 0, 0, Vector2(0.249284, 1), 0.0, 0.0, 0, 0, Vector2(1, 0), 0.0, 0.0, 0, 0]
+point_count = 3
+
+[node name="Player" type="CharacterBody3D"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.5, 0)
+collision_layer = 9
+script = ExtResource("1_ffboj")
+
+[node name="Collider" type="CollisionShape3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.55, 0)
+shape = SubResource("CapsuleShape3D_gdq8c")
+
+[node name="Character" parent="." instance=ExtResource("2_nero3")]
+
+[node name="arm-left" parent="Character/character2/root/torso" index="0"]
+transform = Transform3D(0.707107, 0.707107, 0, -0.707107, 0.707107, 0, 0, 0, 1, 0.3, 0.2, 0)
+
+[node name="arm-right" parent="Character/character2/root/torso" index="1"]
+transform = Transform3D(0.707107, -0.707107, 0, 0.707107, 0.707107, 0, 0, 0, 1, -0.3, 0.1445, 0)
+
+[node name="ParticlesTrail" type="CPUParticles3D" parent="."]
+material_override = SubResource("StandardMaterial3D_q7stj")
+cast_shadow = 0
+amount = 60
+mesh = ExtResource("4_mvhqy")
+emission_shape = 1
+emission_sphere_radius = 0.2
+particle_flag_align_y = true
+direction = Vector3(0, 0, 0)
+gravity = Vector3(0, 0.1, 0)
+scale_amount_min = 0.75
+scale_amount_curve = SubResource("Curve_xh1e2")
+
+[node name="SoundFootsteps" type="AudioStreamPlayer" parent="."]
+stream = ExtResource("5_ics1s")
+volume_db = -5.0
+pitch_scale = 1.25
+
+[node name="SoundJump" type="AudioStreamPlayer" parent="."]
+stream = ExtResource("6_jump")
+volume_db = -10.0
+
+[node name="SoundLand" type="AudioStreamPlayer" parent="."]
+stream = ExtResource("7_land")
+volume_db = -10.0
+
+[node name="SoundCoin" type="AudioStreamPlayer" parent="."]
+stream = ExtResource("8_coin")
+volume_db = -10.0
+
+[node name="AudioListener3D" type="AudioListener3D" parent="."]
+current = true
+
+[editable path="Character"]

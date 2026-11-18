@@ -198,6 +198,126 @@ func test_get_debug_data_bounds_cyclic_structures() -> void:
 	assert_lt(visited, 1024, "the sanitised structure is bounded")
 
 
+# Each declaration is name -> [type] or [type, default].
+func _make_schema(declarations: Dictionary, allow_unknown_keys := true) -> NNBlackboardSchema:
+	var schema := NNBlackboardSchema.new()
+	schema.allow_unknown_keys = allow_unknown_keys
+	for key_name in declarations:
+		var declaration: Array = declarations[key_name]
+		var entry := NNBlackboardKey.new()
+		entry.key = key_name
+		entry.value_type = declaration[0]
+		if declaration.size() > 1:
+			entry.has_default = true
+			entry.default_value = declaration[1]
+		schema.keys.append(entry)
+	return schema
+
+
+func _consume_errors(expected: int, msg: String) -> void:
+	var errors: Array = get_errors().filter(func(error) -> bool: return not error.handled)
+	assert_eq(errors.size(), expected, msg)
+	for error in errors:
+		error.handled = true
+
+
+func test_schema_rejected_write_changes_nothing() -> void:
+	var board := NNBlackboard.new()
+	board.schema = _make_schema({ "hp": [TYPE_INT] })
+	assert_true(board.set_value("hp", 5))
+	watch_signals(board)
+
+	assert_false(board.set_value("hp", 5.0), "a float is not an int")
+	board.values = { "hp": "full", "other": 1 }
+	_consume_errors(2, "each rejected write reports one error")
+
+	assert_eq(board.values, { "hp": 5 }, "rejected writes leave the stored values untouched")
+	assert_signal_not_emitted(board, "value_changed")
+
+	assert_true(board.set_value("hp", null), "null means absent and is always allowed")
+	assert_false(board.has_value("hp"))
+
+
+func test_apply_values_is_atomic() -> void:
+	var board := NNBlackboard.new()
+	board.schema = _make_schema({ "hp": [TYPE_INT] })
+	board.set_value("a", 1)
+	watch_signals(board)
+
+	assert_false(board.apply_values({ "a": 2, "hp": "bad" }))
+	_consume_errors(1, "the rejected batch reports one error")
+	assert_eq(board.values, { "a": 1 }, "a rejected batch writes nothing")
+	assert_signal_not_emitted(board, "value_changed", "a rejected batch emits nothing")
+
+	var observed: Array = []
+	var observe := func(key: String, value: Variant) -> void:
+		observed.append([key, value, board.get_value("b"), board.get_value("hp")])
+	board.value_changed.connect(observe)
+	assert_true(board.apply_values({ "a": 1, "b": 2, "hp": 3 }))
+	# The callable captures the board, so leaving it connected would leak the board.
+	board.value_changed.disconnect(observe)
+
+	assert_eq(board.values, { "a": 1, "b": 2, "hp": 3 })
+	assert_eq(observed, [["b", 2, 2, 3], ["hp", 3, 2, 3]], "one signal per changed key, emitted after the whole batch is written")
+
+
+func test_schema_defaults_fill_only_absent_keys_silently() -> void:
+	var schema := _make_schema({ "hp": [TYPE_INT, 100], "items": [TYPE_ARRAY, []], "name": [TYPE_STRING, "npc"] })
+	var board := NNBlackboard.new()
+	board.set_value("hp", 50)
+	board.set_value("name", null)
+	watch_signals(board)
+
+	board.schema = schema
+
+	assert_eq(board.get_value("hp"), 50, "a stored value is not overwritten")
+	assert_eq(board.get_value("name"), "npc", "a null value counts as absent and is filled")
+	assert_eq(board.get_value("items"), [])
+	assert_signal_not_emitted(board, "value_changed", "installing defaults is not a gameplay change")
+
+	var other := NNBlackboard.new()
+	other.schema = schema
+	board.get_value("items").append("sword")
+	assert_eq(other.get_value("items"), [], "array defaults are deep-copied per board")
+
+	board.values = {}
+	assert_eq(board.values, { "hp": 100, "items": [], "name": "npc" }, "replacing the values reinstalls defaults")
+
+
+func test_schema_refuses_incompatible_state_or_invalid_schema() -> void:
+	var board := NNBlackboard.new()
+	board.set_value("hp", "full")
+
+	board.schema = _make_schema({ "hp": [TYPE_INT] })
+	_consume_errors(1, "an incompatible stored value is reported")
+	assert_null(board.schema, "the schema is refused")
+
+	var valid := _make_schema({ "hp": [TYPE_STRING] })
+	board.schema = valid
+	assert_eq(board.schema, valid)
+
+	board.schema = _make_schema({ "hp": [TYPE_INT], "": [TYPE_INT] })
+	board.schema = _make_schema({ "a": [TYPE_INT, "zero"] })
+	var duplicate_names := _make_schema({ "b": [TYPE_INT] })
+	duplicate_names.keys.append(duplicate_names.keys[0].duplicate())
+	assert_eq(duplicate_names.get_validation_errors().size(), 1, "duplicate names are a validation error")
+	board.schema = duplicate_names
+	_consume_errors(3, "each invalid schema is reported")
+	assert_eq(board.schema, valid, "an invalid schema keeps the previous one")
+
+
+func test_schema_unknown_keys_and_any_type() -> void:
+	var board := NNBlackboard.new()
+	board.schema = _make_schema({ "anything": [TYPE_NIL] }, false)
+
+	assert_true(board.set_value("anything", "text"))
+	assert_true(board.set_value("anything", 3), "TYPE_NIL accepts every type")
+	assert_true(board.set_value("unknown", null), "null is allowed even for undeclared keys")
+	assert_false(board.set_value("unknown", 1))
+	_consume_errors(1, "the undeclared write is reported")
+	assert_false(board.has_value("unknown"))
+
+
 func test_root_creates_a_blackboard() -> void:
 	var bt_root := NNBTRoot.new()
 
@@ -683,6 +803,8 @@ func test_assigned_blackboard_is_local_to_scene_by_default() -> void:
 	var path := "user://gut_bt_serialise_2.tscn"
 	var board := NNBlackboard.new()
 	assert_true(board.is_local_to_scene(), "NNBlackboard defaults to resource_local_to_scene")
+	board.schema = _make_schema({ "hp": [TYPE_INT, 10] })
+	board.set_value("hp", 7)
 
 	var world := Node.new()
 	world.name = "World"
@@ -702,8 +824,12 @@ func test_assigned_blackboard_is_local_to_scene_by_default() -> void:
 	var second_root: NNBTRoot = second.get_node("BT")
 
 	assert_ne(first_root.get_blackboard_resource(), second_root.get_blackboard_resource(), "local-to-scene boards are duplicated per instance")
+	assert_not_null(first_root.get_blackboard_resource().schema, "the duplicated board keeps its schema")
+	assert_eq(first_root.get_blackboard("hp", -1), 7, "the stored value survives loading alongside its schema")
+	assert_false(first_root.set_blackboard("hp", "full"), "the duplicated board still validates writes")
+	_consume_errors(1, "the rejected write is reported")
 	first_root.set_blackboard("hp", 5)
-	assert_eq(second_root.get_blackboard("hp", -1), -1, "a write does not leak to the other instance")
+	assert_eq(second_root.get_blackboard("hp", -1), 7, "a write does not leak to the other instance")
 
 	world.free()
 	first.free()

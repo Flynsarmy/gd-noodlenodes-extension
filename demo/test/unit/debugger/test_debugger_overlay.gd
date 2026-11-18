@@ -156,6 +156,15 @@ func _selector_item(selector: OptionButton, text: String) -> int:
 	return -1
 
 
+func _add_htn_root(node_name: String) -> NNHTNRoot:
+	var root: NNHTNRoot = NNHTNRoot.new()
+	root.name = node_name
+	# The overlay tests read the hierarchy only, so automatic ticking is off.
+	root.process_thread = NNHTNRoot.MANUAL
+	_host.add_child(root)
+	return root
+
+
 func _assert_lists_and_selects_root(type_index: int, expected_name: String) -> void:
 	_select_type(type_index)
 
@@ -262,16 +271,56 @@ func test_all_root_categories_are_listed() -> void:
 	var agent := _add_agent("AgentRoot")
 	var behaviour_tree := _add_behaviour_tree("BehaviourTreeRoot")
 	var state_tree := _add_state_tree("StateTreeRoot")
+	var htn_root := _add_htn_root("HTNRoot")
 
 	agent.owner = _host
 	behaviour_tree.owner = _host
 	state_tree.owner = _host
+	htn_root.owner = _host
 
 	_open_overlay()
 
 	_assert_lists_and_selects_root(1, "AgentRoot")
 	_assert_lists_and_selects_root(2, "BehaviourTreeRoot")
 	_assert_lists_and_selects_root(3, "StateTreeRoot")
+	_assert_lists_and_selects_root(4, "HTNRoot")
+
+
+func test_htn_tasks_show_their_plan_state() -> void:
+	var htn_root := _add_htn_root("HTNRoot")
+	var method := NNHTNMethod.new()
+	method.name = "Main"
+	var domain := NNHTNCompoundTask.new()
+	domain.name = "Domain"
+	domain.add_child(method)
+	htn_root.add_child(domain)
+	var running := NNHTNTask.new()
+	running.name = "Running"
+	running.set_script(load("res://test/unit/htn/support/scripted_task.gd"))
+	running.results = [NNHTNTask.RUNNING]
+	method.add_child(running)
+	var next := NNHTNTask.new()
+	next.name = "Next"
+	next.set_script(load("res://test/unit/htn/support/scripted_task.gd"))
+	method.add_child(next)
+	var unused := NNHTNMethod.new()
+	unused.name = "Unused"
+	domain.add_child(unused)
+	htn_root.tick(0.1)
+
+	_open_overlay()
+	_select_type(4)
+	_select_root_item(1)
+	_debugger.update_ui()
+
+	var tree := _selected_tree()
+	assert_eq(tree.get_root().get_text(1), "HTN")
+	assert_eq(_row_status(tree, "Domain"), "running", "the current step's ancestors are on the active path")
+	assert_eq(_row_status(tree, "Main"), "running")
+	assert_eq(_row_status(tree, "Running"), "running")
+	assert_eq(_row_status(tree, "Next"), "planned", "a later step shows its plan state off the active path")
+	assert_eq(_row_status(tree, "Unused"), "")
+	assert_string_contains(_debug_text().text, "Last search: FOUND")
 
 
 func test_child_order_changes_do_not_duplicate_rows() -> void:

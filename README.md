@@ -18,6 +18,7 @@ Godot 4.7 or newer.
 * *Behaviour Tree with utility support*
 * *State Tree with utility support*
 * *Node Query System*
+* *Hierarchical Task Network planner*
 
 
 ## How to use the nodes

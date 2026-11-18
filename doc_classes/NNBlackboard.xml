@@ -4,15 +4,23 @@
 		A typed key/value store used as the behaviour tree and state tree blackboard.
 	</brief_description>
 	<description>
-		[NNBlackboard] stores values in a typed [Dictionary] with [String] keys and [Variant] values. It is the effective blackboard for the [NNBTNodes] and [NNSTBranchNodes] blackboard helpers, either assigned to an [NNBTRoot] or [NNSTRoot] through its [code]blackboard[/code] property, or created privately by that root.
+		[NNBlackboard] stores values in a typed [Dictionary] with [String] keys and [Variant] values. It is the effective blackboard for the [NNBTNodes] and [NNSTBranchNodes] blackboard helpers and the world state of an [NNHTNRoot], either assigned to an [NNBTRoot], [NNSTRoot] or [NNHTNRoot] through its [code]blackboard[/code] property, or created privately by that root.
 		[code]resource_local_to_scene[/code] defaults to [code]true[/code] for every [NNBlackboard]. When a board is embedded in a scene or assigned in the inspector, each scene instance gets its own copy of it. Untick [code]resource_local_to_scene[/code] deliberately to share one board across all instances of the scene.
 		A key whose stored value is [code]null[/code] counts as absent for [method has_value] and [method get_value], but the key is still reported by [method keys] and is removed normally by [method erase_value] and [method clear].
 		[signal value_changed] is emitted exactly once per actual change. Setting a value that is already stored emits nothing. [signal value_erased] is only emitted when an existing key is erased, and [signal cleared] only when the dictionary was non-empty.
 		[method get_debug_data] returns a copy in which every [Object] value is replaced by its class name (or [code]&lt;null&gt;[/code]) and nested [Array] and [Dictionary] values are sanitised recursively, so the result never contains a raw [Object]. Values nested deeper than 16 levels are replaced by [code]&lt;max depth&gt;[/code], so cyclic or very deeply nested containers cannot recurse indefinitely.
+		An optional [member schema] type-checks writes. [method set_value], [method set_values] and [method apply_values] report an error and change nothing when the schema rejects a value. Writing [code]null[/code] is always allowed, and [method erase_value] and [method clear] are never restricted.
 	</description>
 	<tutorials>
 	</tutorials>
 	<methods>
+		<method name="apply_values">
+			<return type="bool" />
+			<param index="0" name="values" type="Dictionary" />
+			<description>
+				Merges [param values] into the blackboard as one transaction. Every entry is checked first: when any key is not a non-empty [String] or the [member schema] rejects any value, an error is reported, nothing is written, no signal is emitted and [code]false[/code] is returned. Otherwise entries whose value is already stored are skipped, the rest are written, and only then [signal value_changed] is emitted once per written key, in [param values] order, so listeners always observe the whole batch. Keys not in [param values] are left untouched. Returns [code]true[/code] when the batch was accepted, including when every value was already stored.
+			</description>
+		</method>
 		<method name="clear">
 			<return type="void" />
 			<description>
@@ -64,18 +72,24 @@
 			<param index="0" name="key" type="String" />
 			<param index="1" name="value" type="Variant" />
 			<description>
-				Stores [param value] under [param key] and emits [signal value_changed]. Returns [code]false[/code] and does nothing when [param key] is empty. When the same value is already stored, nothing is written and no signal is emitted, but the call still returns [code]true[/code].
+				Stores [param value] under [param key] and emits [signal value_changed]. Returns [code]false[/code] and does nothing when [param key] is empty or when the [member schema] rejects [param value], which also reports an error. When the same value is already stored, nothing is written and no signal is emitted, but the call still returns [code]true[/code].
 			</description>
 		</method>
 		<method name="set_values">
 			<return type="void" />
 			<param index="0" name="values" type="Dictionary" />
 			<description>
-				Replaces the stored values. The assigned dictionary is validated against the [String] key type; non-[String] keys are rejected with an engine error and the previous contents are kept.
+				Replaces the stored values. The assigned dictionary is validated against the [String] key type; non-[String] keys are rejected with an engine error and the previous contents are kept. When a [member schema] is attached, every value is checked first; a rejected value reports an error and keeps the previous contents. After a successful replace, schema defaults are installed silently for absent keys. Emits no signals.
 			</description>
 		</method>
 	</methods>
 	<members>
+		<member name="resource_local_to_scene" type="bool" setter="set_local_to_scene" getter="is_local_to_scene" overrides="Resource" default="true" />
+		<member name="schema" type="NNBlackboardSchema" setter="set_schema" getter="get_schema">
+			Optional typed key declarations that every write is checked against. [code]null[/code] removes all constraints.
+			Attaching a schema first validates it with [method NNBlackboardSchema.get_validation_errors] and checks every stored value with [method NNBlackboardSchema.accepts]. If either fails, an error is reported and the previous schema is kept. On success, the schema's defaults are installed for keys that are absent (missing or [code]null[/code]); stored values are never overwritten. Installing defaults does not emit [signal value_changed]: like assigning [member values], it sets up the board's contents rather than recording a change. [method erase_value] and [method clear] remove defaulted keys like any other.
+			The schema is shared, not copied, when the board is duplicated for [member Resource.resource_local_to_scene].
+		</member>
 		<member name="values" type="Dictionary[String, Variant]" setter="set_values" getter="get_values" default="{}">
 			The typed key/value store. Keys are always [String]s and values are [Variant]s.
 		</member>
@@ -90,7 +104,7 @@
 			<param index="0" name="key" type="String" />
 			<param index="1" name="value" type="Variant" />
 			<description>
-				Emitted exactly once when [param key] is set to a new or changed value. Setting an equal value emits nothing.
+				Emitted exactly once when [param key] is set to a new or changed value. Setting an equal value emits nothing. Rejected writes, [member values] assignments and installed schema defaults never emit it.
 			</description>
 		</signal>
 		<signal name="value_erased">

@@ -19,6 +19,7 @@ public:
 
 	void register_root(Node *p_root);
 	void unregister_root(Node *p_root);
+	bool has_roots() const;
 
 	bool is_active() const;
 	void activate();

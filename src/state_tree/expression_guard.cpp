@@ -1,5 +1,6 @@
 #include "expression_guard.h"
-#include "expression_util.h"
+#include "../blackboard.h"
+#include "../expression_util.h"
 #include "root.h"
 
 using namespace godot;
@@ -33,10 +34,10 @@ bool NNSTExpressionGuard::is_satisfied(NNSTTransition *p_transition, NNSTTickedN
 		return false;
 	}
 
-	Variant result = NNSTExpressionUtil::evaluate_expression(
-			String("guard in ") + NNSTExpressionUtil::path_of(p_transition),
-			p_root,
+	Variant result = NNExpressionUtil::evaluate_expression(
+			String("guard in ") + NNExpressionUtil::path_of(p_transition),
 			expression,
+			p_root->get_blackboard_resource()->get_values(),
 			false);
 
 	if (result.get_type() != Variant::BOOL) {

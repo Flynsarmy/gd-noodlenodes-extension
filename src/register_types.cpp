@@ -4,6 +4,7 @@
 // Classes to include in to the gdextension module.
 
 #include "blackboard.h"
+#include "blackboard_schema.h"
 
 // Performance monitor singleton.
 #include "performance_monitor_singleton.h"
@@ -106,6 +107,21 @@
 #include "state_tree/ticked_nodes.h"
 #include "state_tree/transition.h"
 
+// HTN
+#include "htn/argument_reference.h"
+#include "htn/binding.h"
+#include "htn/compound_task.h"
+#include "htn/condition.h"
+#include "htn/execution_settings.h"
+#include "htn/method.h"
+#include "htn/nodes.h"
+#include "htn/parallel_task.h"
+#include "htn/plan_step.h"
+#include "htn/root.h"
+#include "htn/search_settings.h"
+#include "htn/subtask_call.h"
+#include "htn/task.h"
+
 // NODE QUERY SYSTEM
 #include "node_query_system/node_query_system.h"
 
@@ -203,6 +219,8 @@ void register_scene_classes() {
 
 	// Behaviour tree.
 	GDREGISTER_VIRTUAL_CLASS(NNBTNodes);
+	GDREGISTER_CLASS(NNBlackboardKey);
+	GDREGISTER_CLASS(NNBlackboardSchema);
 	GDREGISTER_CLASS(NNBlackboard);
 	GDREGISTER_CLASS(NNBTRoot);
 
@@ -261,6 +279,21 @@ void register_scene_classes() {
 	GDREGISTER_CLASS(NNSTHistory);
 	GDREGISTER_CLASS(NNSTParallel);
 	GDREGISTER_CLASS(NNSTTransition);
+
+	// HTN.
+	GDREGISTER_CLASS(NNHTNCondition);
+	GDREGISTER_CLASS(NNHTNBinding);
+	GDREGISTER_CLASS(NNHTNArgumentReference);
+	GDREGISTER_CLASS(NNHTNSearchSettings);
+	GDREGISTER_CLASS(NNHTNExecutionSettings);
+	GDREGISTER_CLASS(NNHTNPlanStep);
+	GDREGISTER_VIRTUAL_CLASS(NNHTNNodes);
+	GDREGISTER_CLASS(NNHTNTask);
+	GDREGISTER_CLASS(NNHTNCompoundTask);
+	GDREGISTER_CLASS(NNHTNMethod);
+	GDREGISTER_CLASS(NNHTNSubtaskCall);
+	GDREGISTER_CLASS(NNHTNParallelTask);
+	GDREGISTER_CLASS(NNHTNRoot);
 
 	// Node Query System.
 	GDREGISTER_CLASS(NNNodeQuerySystem);

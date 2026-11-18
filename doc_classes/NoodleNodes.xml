@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <class name="NoodleNodes" inherits="Node" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
 	<brief_description>
-		Base class for every Noodle Nodes behaviour tree, state tree and agent node.
+		Base class for every Noodle Nodes behaviour tree, state tree, HTN and agent node.
 	</brief_description>
 	<description>
-		Every Noodle Nodes node resolves its blackboard and actor through the nearest ancestor root of any Noodle Nodes system, so a behaviour tree [NNBTRoot], a state tree [NNSTRoot] or an [NNAgent] can provide the data for the nodes below it, whichever system they belong to. An ancestor root may itself resolve further up when it has no explicit board or actor of its own, and an explicit assignment always wins over inheritance. With no root ancestor the blackboard helpers return their default value, [code]false[/code] or [code]null[/code], and [method get_actor] returns [code]null[/code], without reporting errors.
+		Every Noodle Nodes node resolves its blackboard and actor through the nearest ancestor root of any Noodle Nodes system, so a behaviour tree [NNBTRoot], a state tree [NNSTRoot], an HTN [NNHTNRoot] or an [NNAgent] can provide the data for the nodes below it, whichever system they belong to. An ancestor root may itself resolve further up when it has no explicit board or actor of its own, and an explicit assignment always wins over inheritance. With no root ancestor the blackboard helpers return their default value, [code]false[/code] or [code]null[/code], and [method get_actor] returns [code]null[/code], without reporting errors.
 	</description>
 	<tutorials>
 	</tutorials>

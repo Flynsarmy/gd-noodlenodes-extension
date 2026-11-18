@@ -4,7 +4,7 @@
 		Runs a root nested below the leaf as its own hosted root.
 	</brief_description>
 	<description>
-		Activates every root child when its run starts and deactivates them when the run ends or is interrupted, so a nested [NNBTRoot], [NNSTRoot] or [NNAgent] is driven by this leaf instead of by its own scheduler. The roots are ticked with this leaf's tick delta.
+		Activates every root child when its run starts and deactivates them when the run ends or is interrupted, so a nested [NNBTRoot], [NNSTRoot], [NNHTNRoot] or [NNAgent] is driven by this leaf instead of by its own scheduler. The roots are ticked with this leaf's tick delta.
 		Returns [constant NNBTNodes.RUNNING] until a hosted root reports finished, then matches that report with [constant NNBTNodes.SUCCESS] or [constant NNBTNodes.FAILURE]. A completion that happens inside the same tick is reported by that tick. Only the first completion of a run is recorded; later ones are ignored.
 		A hosted [NNAgent] never reports finished, so the leaf keeps returning [constant NNBTNodes.RUNNING] until it is interrupted or reset.
 		This leaf is fully data-driven: it is configured by its root children and does not call an [code]on_tick[/code] override in an attached script.

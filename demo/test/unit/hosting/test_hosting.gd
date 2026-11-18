@@ -2,6 +2,8 @@ extends GutTest
 @warning_ignore('unused_parameter')
 @warning_ignore('return_value_discarded')
 
+const HTNDomain = preload("res://test/unit/htn/support/htn_domain.gd")
+
 
 class CountingLeaf extends NNBTLeaf:
 	var result: int = NNBTNodes.RUNNING
@@ -966,3 +968,191 @@ func test_selected_behaviour_event_without_a_path_targets_the_host_chart() -> vo
 
 	chart.tick(0.1)
 	assert_eq(events, ["Go"], "the hosted behaviour signals its nearest ancestor chart")
+
+
+# A manually ticked HTN root whose domain plans a single task under method "Main".
+# The task is a ScriptedTask unless `scripted` is false, which leaves it without on_execute.
+func _make_htn_root(task_name: String, scripted := true) -> Dictionary:
+	var htn := HTNDomain.make_root()
+	var method := HTNDomain.method(HTNDomain.compound(htn, "Domain"), "Main")
+	var task: NNHTNTask
+	if scripted:
+		task = HTNDomain.task(method, task_name)
+	else:
+		task = NNHTNTask.new()
+		task.name = task_name
+		method.add_child(task)
+	return {"htn": htn, "method": method, "task": task}
+
+
+func test_htn_root_nested_under_a_bt_root_shares_its_board_and_replans_on_it() -> void:
+	var board := NNBlackboard.new()
+	board.set_value("alarm", false)
+	var actor := Node.new()
+	add_child_autofree(actor)
+	var bt_root := _make_bt_root(_make_leaf(NNBTNodes.RUNNING))
+	bt_root.process_thread = NNBTRoot.MANUAL
+	bt_root.blackboard = board
+	bt_root.actor = actor
+	var htn := HTNDomain.make_root()
+	var domain := HTNDomain.compound(htn, "Domain")
+	var patrol: NNHTNTask = HTNDomain.task(HTNDomain.method(domain, "Calm", ["not alarm"]), "Patrol")
+	patrol.results = [NNHTNTask.RUNNING, NNHTNTask.RUNNING, NNHTNTask.RUNNING]
+	var flee: NNHTNTask = HTNDomain.task(HTNDomain.method(domain, "Alarmed"), "Flee")
+	flee.results = [NNHTNTask.RUNNING]
+	bt_root.add_child(htn)
+	add_child_autofree(bt_root)
+
+	assert_same(htn.get_blackboard_resource(), board, "the HTN root inherits the enclosing root's board")
+	assert_same(patrol.get_actor(), actor, "HTN nodes inherit the enclosing root's actor")
+
+	assert_eq(HTNDomain.step_names(HTNDomain.tick_and_capture_plan(htn)), ["Patrol"])
+
+	board.set_value("alarm", true)
+	assert_eq(HTNDomain.step_names(HTNDomain.tick_and_capture_plan(htn)), ["Flee"], "a change to the inherited board replans")
+	assert_eq(htn.get_last_replan_trigger_keys(), PackedStringArray(["alarm"]))
+	assert_eq(patrol.cancelled_steps.size(), 1)
+
+
+func test_action_drives_a_hosted_htn_root_and_finishes_from_its_plan() -> void:
+	var parts := _make_htn_root("Work")
+	var htn: NNHTNRoot = parts["htn"]
+	var task: NNHTNTask = parts["task"]
+	task.results = [NNHTNTask.RUNNING]
+	htn.process_thread = NNHTNRoot.PHYSICS
+	var action := NNAction.new()
+	action.add_child(htn)
+	var behaviour := _make_behaviour(1.0, action)
+	var next_action := NNAction.new()
+	behaviour.add_child(next_action)
+	var agent := NNAgent.new()
+	agent.process_thread = NNAgent.MANUAL
+	agent.add_child(behaviour)
+	var results: Array = []
+	htn.finished.connect(func(succeeded: bool) -> void: results.append(succeeded))
+	add_child_autofree(agent)
+
+	await get_tree().physics_frame
+	assert_eq(task.executed_steps.size(), 0, "a hosted HTN root does not tick itself")
+	assert_false(htn.auto_tick_step(NNHTNRoot.PHYSICS, 0.1))
+
+	agent.tick(0.1)
+	assert_same(agent.get_current_action_node(), action)
+	assert_eq(task.executed_steps.size(), 1, "the action's tick plans and starts the step")
+	assert_eq(results, [])
+
+	agent.tick(0.1)
+	assert_eq(results, [true], "a completed plan reports success")
+	assert_true(action.get_is_finished(), "the completed plan finishes the action")
+	assert_false(action.get_has_failed())
+
+	agent.tick(0.1)
+	assert_same(agent.get_current_action_node(), next_action)
+	assert_eq(task.executed_steps.size(), 2, "the released action no longer ticks its HTN root")
+
+
+func test_hosted_htn_root_reports_failure_when_no_plan_exists() -> void:
+	var parts := _make_htn_root("Work")
+	var method: NNHTNMethod = parts["method"]
+	method.conditions = HTNDomain.conditions(["false"])
+	var action := NNAction.new()
+	action.add_child(parts["htn"])
+	var agent := NNAgent.new()
+	agent.process_thread = NNAgent.MANUAL
+	agent.add_child(_make_behaviour(1.0, action))
+	add_child_autofree(agent)
+
+	agent.tick(0.1)
+	assert_true(action.get_has_failed(), "a search that proves there is no plan fails the action")
+
+
+func test_deactivating_the_host_cancels_the_hosted_htn_step_once() -> void:
+	var parts := _make_chart_with_active_host()
+	var chart: NNSTRoot = parts["chart"]
+	var host_state: NNSTNode = parts["host_state"]
+	var other_state: NNSTNode = parts["other_state"]
+	var htn_parts := _make_htn_root("Work")
+	var htn: NNHTNRoot = htn_parts["htn"]
+	var task: NNHTNTask = htn_parts["task"]
+	task.results = [NNHTNTask.RUNNING, NNHTNTask.RUNNING, NNHTNTask.RUNNING]
+	host_state.add_child(htn)
+	add_child_autofree(chart)
+
+	chart.tick(0.1)
+	assert_eq(task.executed_steps.size(), 1)
+
+	assert_true(host_state.transition_to(host_state.get_path_to(other_state)))
+	assert_eq(task.cancelled_steps.size(), 1, "deactivation abandons the plan and cancels its started step")
+	assert_eq(htn.get_plan().size(), 0)
+
+	chart.tick(0.1)
+	assert_eq(task.executed_steps.size(), 1, "an inactive host no longer ticks the HTN root")
+	assert_eq(task.cancelled_steps.size(), 1)
+
+	assert_true(other_state.transition_to(other_state.get_path_to(host_state)))
+	chart.tick(0.1)
+	assert_eq(task.executed_steps.size(), 2, "reactivation plans afresh")
+	assert_ne(task.executed_steps[1], task.executed_steps[0])
+
+
+func test_htn_task_succeeds_and_fails_with_its_hosted_bt_root() -> void:
+	var parts := _make_htn_root("RunTree", false)
+	var htn: NNHTNRoot = parts["htn"]
+	var task: NNHTNTask = parts["task"]
+	var leaf := _make_leaf(NNBTNodes.RUNNING)
+	var bt_root := _make_bt_root(leaf)
+	task.add_child(bt_root)
+	var finished: Array = []
+	htn.plan_finished.connect(func(succeeded: bool) -> void: finished.append(succeeded))
+	add_child_autofree(htn)
+
+	await get_tree().physics_frame
+	assert_eq(leaf.tick_count, 0, "the hosted tree waits for its step")
+
+	htn.tick(0.1)
+	assert_eq(leaf.tick_count, 1, "the started step ticks its hosted tree")
+	assert_eq(htn.get_current_step().state, NNHTNPlanStep.RUNNING)
+
+	leaf.result = NNBTNodes.SUCCESS
+	htn.tick(0.1)
+	assert_eq(finished, [true], "the tree's success succeeds the step")
+
+	leaf.result = NNBTNodes.FAILURE
+	var failed_step: NNHTNPlanStep = HTNDomain.tick_and_capture_plan(htn)[0]
+	assert_eq(finished, [true, false], "the tree's failure fails the step")
+	assert_eq(failed_step.failure_reason, "execution_failed")
+
+
+func test_htn_task_deactivates_its_hosted_bt_root_on_cancel() -> void:
+	var parts := _make_htn_root("RunTree", false)
+	var htn: NNHTNRoot = parts["htn"]
+	var leaf := _make_leaf(NNBTNodes.RUNNING)
+	var bt_root := _make_bt_root(leaf)
+	parts["task"].add_child(bt_root)
+	add_child_autofree(htn)
+
+	htn.tick(0.1)
+	assert_same(bt_root.get_running_action(), leaf)
+
+	htn.is_enabled = false
+	assert_eq(leaf.interrupt_count, 1, "cancelling the step interrupts its hosted tree")
+	assert_null(bt_root.get_running_action())
+
+
+func test_htn_task_on_execute_result_wins_over_its_hosted_root() -> void:
+	var parts := _make_htn_root("Scripted")
+	var htn: NNHTNRoot = parts["htn"]
+	var task: NNHTNTask = parts["task"]
+	task.results = [NNHTNTask.RUNNING, NNHTNTask.SUCCESS]
+	var leaf := _make_leaf(NNBTNodes.RUNNING)
+	task.add_child(_make_bt_root(leaf))
+	watch_signals(htn)
+	add_child_autofree(htn)
+
+	htn.tick(0.1)
+	assert_eq(leaf.tick_count, 1, "a running on_execute lets the hosted tree tick")
+
+	htn.tick(0.1)
+	assert_signal_emitted_with_parameters(htn, "plan_finished", [true])
+	assert_eq(leaf.tick_count, 1, "a finished on_execute ends the step before the tree ticks")
+	assert_eq(leaf.interrupt_count, 1)

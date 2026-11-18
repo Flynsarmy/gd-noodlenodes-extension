@@ -1,5 +1,6 @@
 #include "transition.h"
-#include "expression_util.h"
+#include "../blackboard.h"
+#include "../expression_util.h"
 #include "root.h"
 #include "ticked_nodes.h"
 
@@ -134,20 +135,20 @@ float NNSTTransition::evaluate_delay() const {
 
 	NNSTTickedNodes *parent_state = Object::cast_to<NNSTTickedNodes>(get_parent());
 	if (parent_state == nullptr) {
-		ERR_PRINT(vformat("Transition '%s' must be a child of a state to evaluate its delay.", NNSTExpressionUtil::path_of(this)));
+		ERR_PRINT(vformat("Transition '%s' must be a child of a state to evaluate its delay.", NNExpressionUtil::path_of(this)));
 		return 0.0f;
 	}
 
 	NNSTRoot *state_chart = parent_state->get_root();
 	if (state_chart == nullptr) {
-		ERR_PRINT(vformat("Could not find root state chart node for transition '%s', cannot evaluate delay.", NNSTExpressionUtil::path_of(this)));
+		ERR_PRINT(vformat("Could not find root state chart node for transition '%s', cannot evaluate delay.", NNExpressionUtil::path_of(this)));
 		return 0.0f;
 	}
 
-	Variant result = NNSTExpressionUtil::evaluate_expression(
-			String("delay of ") + NNSTExpressionUtil::path_of(this),
-			state_chart,
+	Variant result = NNExpressionUtil::evaluate_expression(
+			String("delay of ") + NNExpressionUtil::path_of(this),
 			delay_expression,
+			state_chart->get_blackboard_resource()->get_values(),
 			0.0);
 
 	const Variant::Type result_type = result.get_type();
@@ -163,12 +164,12 @@ float NNSTTransition::evaluate_delay() const {
 bool NNSTTransition::take(bool immediately) {
 	NNSTTickedNodes *parent_state = Object::cast_to<NNSTTickedNodes>(get_parent());
 	if (parent_state == nullptr) {
-		ERR_PRINT(vformat("Transition '%s' must be a child of a state to be taken.", NNSTExpressionUtil::path_of(this)));
+		ERR_PRINT(vformat("Transition '%s' must be a child of a state to be taken.", NNExpressionUtil::path_of(this)));
 		return false;
 	}
 
 	if (!parent_state->get_is_active()) {
-		ERR_PRINT(vformat("Cannot take transition '%s': state '%s' is not active.", NNSTExpressionUtil::path_of(this), NNSTExpressionUtil::path_of(parent_state)));
+		ERR_PRINT(vformat("Cannot take transition '%s': state '%s' is not active.", NNExpressionUtil::path_of(this), NNExpressionUtil::path_of(parent_state)));
 		return false;
 	}
 

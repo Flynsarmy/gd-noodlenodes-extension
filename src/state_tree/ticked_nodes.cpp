@@ -1,5 +1,5 @@
 #include "ticked_nodes.h"
-#include "expression_util.h"
+#include "../expression_util.h"
 #include "history.h"
 #include "parallel.h"
 #include "transition.h"
@@ -593,7 +593,7 @@ bool NNSTTickedNodes::_execute_transition(NNSTTransition *transition) {
 	NNSTHistoryStateSnapshot history_entry;
 	NNSTTickedNodes *target_state = _resolve_transition_target(transition, history_id, history_entry);
 	if (target_state == nullptr) {
-		ERR_PRINT(vformat("Transition '%s' has an invalid target '%s'.", NNSTExpressionUtil::path_of(transition), transition->get_to()));
+		ERR_PRINT(vformat("Transition '%s' has an invalid target '%s'.", NNExpressionUtil::path_of(transition), transition->get_to()));
 		return false;
 	}
 

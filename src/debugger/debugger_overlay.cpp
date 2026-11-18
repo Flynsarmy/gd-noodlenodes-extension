@@ -16,6 +16,9 @@
 #include "../agent_behaviours/sensors.h"
 #include "../behaviour_tree/root.h"
 #include "../host.h"
+#include "../htn/parallel_task.h"
+#include "../htn/root.h"
+#include "../htn/task.h"
 #include "../noodle_nodes.h"
 #include "../state_tree/root.h"
 #include "../state_tree/ticked_nodes.h"
@@ -104,6 +107,10 @@ int NNDebuggerOverlay::register_ai_agent(uint64_t instance_id) {
 	return _register_object(_agents, instance_id);
 }
 
+int NNDebuggerOverlay::register_htn_root(uint64_t instance_id) {
+	return _register_object(_htn_roots, instance_id);
+}
+
 void NNDebuggerOverlay::deregister_behaviour_tree(uint64_t instance_id) {
 	_deregister_object(_behaviour_trees, instance_id);
 }
@@ -114,6 +121,10 @@ void NNDebuggerOverlay::deregister_state_tree(uint64_t instance_id) {
 
 void NNDebuggerOverlay::deregister_ai_agent(uint64_t instance_id) {
 	_deregister_object(_agents, instance_id);
+}
+
+void NNDebuggerOverlay::deregister_htn_root(uint64_t instance_id) {
+	_deregister_object(_htn_roots, instance_id);
 }
 
 Control *NNDebuggerOverlay::_get_overlay_scene() const {
@@ -274,6 +285,9 @@ const std::vector<ObjectID> *NNDebuggerOverlay::_get_registry_for_type(int type)
 		case 3: {
 			return &_state_trees;
 		} break;
+		case 4: {
+			return &_htn_roots;
+		} break;
 		default: {
 		} break;
 	}
@@ -299,6 +313,9 @@ Node *NNDebuggerOverlay::_resolve_root_for_type(int type, ObjectID instance_id) 
 		} break;
 		case 3: {
 			return Object::cast_to<NNSTRoot>(object);
+		} break;
+		case 4: {
+			return Object::cast_to<NNHTNRoot>(object);
 		} break;
 		default: {
 		} break;
@@ -351,6 +368,8 @@ String NNDebuggerOverlay::_root_status_text(Node *root) {
 		type_name = "Behaviour Tree";
 	} else if (Object::cast_to<NNSTRoot>(root) != nullptr) {
 		type_name = "State Tree";
+	} else if (Object::cast_to<NNHTNRoot>(root) != nullptr) {
+		type_name = "HTN";
 	}
 
 	if (type_name.is_empty()) {
@@ -369,7 +388,7 @@ String NNDebuggerOverlay::_active_path_status(Node *node) {
 	}
 
 	NoodleNodes *ancestor_root = noodle->get_ancestor_root();
-	if (Object::cast_to<NNBTRoot>(ancestor_root) != nullptr) {
+	if (Object::cast_to<NNBTRoot>(ancestor_root) != nullptr || Object::cast_to<NNHTNRoot>(ancestor_root) != nullptr) {
 		return "running";
 	}
 	if (Object::cast_to<NNSTRoot>(ancestor_root) != nullptr) {
@@ -474,6 +493,23 @@ bool NNDebuggerOverlay::_node_is_on_active_path(Node *node) {
 		return ticked_node != nullptr && ticked_node->get_is_active();
 	}
 
+	if (NNHTNRoot *htn_root = Object::cast_to<NNHTNRoot>(ancestor_root)) {
+		const TypedArray<NNHTNPlanStep> plan = htn_root->get_plan();
+		for (int i = 0; i < plan.size(); i++) {
+			const Ref<NNHTNPlanStep> step = plan[i];
+			const int state = step->get_state();
+			if (state != NNHTNPlanStep::RUNNING && state != NNHTNPlanStep::VERIFYING && state != NNHTNPlanStep::STAGED) {
+				continue;
+			}
+			NNHTNTask *task = step->get_task();
+			NNHTNParallelTask *group = step->get_parallel_group();
+			if ((task != nullptr && (node == task || node->is_ancestor_of(task))) || (group != nullptr && (node == group || node->is_ancestor_of(group)))) {
+				return true;
+			}
+		}
+		return false;
+	}
+
 	if (Object::cast_to<NNAgent>(ancestor_root) != nullptr) {
 		ObjectID agent_id(ancestor_root->get_instance_id());
 		for (unsigned int i = 0; i < _agent_selections.size(); i++) {
@@ -486,6 +522,24 @@ bool NNDebuggerOverlay::_node_is_on_active_path(Node *node) {
 	}
 
 	return false;
+}
+
+void NNDebuggerOverlay::_apply_htn_step_state(TreeItem *item, Node *node) {
+	NNHTNNodes *htn_node = Object::cast_to<NNHTNNodes>(node);
+	if (htn_node == nullptr || (Object::cast_to<NNHTNTask>(htn_node) == nullptr && Object::cast_to<NNHTNParallelTask>(htn_node) == nullptr)) {
+		return;
+	}
+	NNHTNRoot *htn_root = htn_node->get_htn_root();
+	const int state = htn_root != nullptr ? htn_root->get_debug_node_state(htn_node) : -1;
+	if (state < 0) {
+		item->set_custom_color(0, Color(0.5f, 0.5f, 0.5f));
+		return;
+	}
+	const char *const state_names[] = { "planned", "running", "verifying", "staged", "succeeded", "failed", "cancelled" };
+	const Color state_colors[] = { Color(1.0f, 1.0f, 1.0f), Color(1.0f, 0.85f, 0.2f), Color(0.4f, 0.7f, 1.0f), Color(0.6f, 0.9f, 0.6f), Color(0.3f, 0.9f, 0.3f), Color(1.0f, 0.3f, 0.3f), Color(0.6f, 0.6f, 0.6f) };
+	item->set_text(1, state_names[state]);
+	item->set_custom_color(0, state_colors[state]);
+	item->set_custom_color(1, state_colors[state]);
 }
 
 void NNDebuggerOverlay::_rebuild_root_items() {
@@ -694,7 +748,14 @@ void NNDebuggerOverlay::update_ui() {
 		}
 	}
 
-	godot::String msg = godot::String("Agents: ") + godot::String::num_int64(agent_count) + godot::String(" | BTrees: ") + godot::String::num_int64(behaviour_tree_count) + godot::String(" | STrees: ") + godot::String::num_int64(state_tree_count) + godot::String(".\n");
+	int htn_root_count = 0;
+	for (unsigned int i = 0; i < _htn_roots.size(); i++) {
+		if (_resolve_root_for_type(4, _htn_roots[i]) != nullptr) {
+			htn_root_count++;
+		}
+	}
+
+	godot::String msg = godot::String("Agents: ") + godot::String::num_int64(agent_count) + godot::String(" | BTrees: ") + godot::String::num_int64(behaviour_tree_count) + godot::String(" | STrees: ") + godot::String::num_int64(state_tree_count) + godot::String(" | HTNs: ") + godot::String::num_int64(htn_root_count) + godot::String(".\n");
 
 	Node *selected_root = _resolve_root_for_type(_current_type_selection, _selected_root_id);
 	if (selected_root != nullptr) {
@@ -703,6 +764,10 @@ void NNDebuggerOverlay::update_ui() {
 			msg = msg + godot::String("Currently inspecting: [b][color=green]") + root_owner->get_name() + godot::String("[/color][/b]\n");
 		} else {
 			msg = msg + godot::String("Currently inspecting: [b][color=gray]No owner[/color][/b] ") + selected_root->get_name() + godot::String("\n");
+		}
+		if (NNHTNRoot *htn_root = Object::cast_to<NNHTNRoot>(selected_root)) {
+			static const char *const status_names[] = { "FOUND", "NO_PLAN", "BUDGET_EXHAUSTED", "INVALID_DOMAIN" };
+			msg += vformat("Last search: %s, %d expansions. Plan: %d steps left, %d done.\n", status_names[htn_root->get_last_search_status()], htn_root->get_last_expansion_count(), htn_root->get_plan().size(), htn_root->get_completed_steps().size());
 		}
 	}
 
@@ -789,6 +854,10 @@ void NNDebuggerOverlay::tree_add_child_nodes(Tree *tree, TreeItem *parent_node, 
 
 		child_tree_item->set_custom_color(0, Color(tick_color, tick_color, tick_color));
 		child_tree_item->set_custom_color(2, Color(eval_color * 0.8f, eval_color * 0.8f, eval_color));
+
+		if (p_path_open) {
+			_apply_htn_step_state(child_tree_item, next_ai_node);
+		}
 
 		tree_add_child_nodes(tree, child_tree_item, next_ai_node, child_path_open);
 

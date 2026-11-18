@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="NNHTNCompoundTask" inherits="NNHTNNodes" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
+	<brief_description>
+		An HTN task that is achieved by one of its methods.
+	</brief_description>
+	<description>
+		A compound task decomposes into the children of one of its [NNHTNMethod] children. When it is available (see [NNHTNNodes]), planning tries its enabled methods in scene order and backtracks into the next one whenever the current method, or anything planned after it, cannot be decomposed. Children that are not methods are ignored.
+		The compound passes the arguments it was called with to its methods. A compound that is already being decomposed cannot be entered again, which rejects recursive template calls.
+		The editor warns when a compound has no method child, and names any child that is not a method.
+	</description>
+	<tutorials>
+	</tutorials>
+</class>
