@@ -5,6 +5,7 @@
 	</brief_description>
 	<description>
 		This guard negates the result of the [member guard]. If the [member guard] is satisfied, this guard will return [code]false[/code], and vice versa. This is useful for creating guards that are the opposite of another guard.
+		It reports the trigger types of [member guard] from [method NNSTGuard.get_supported_trigger_types], or [constant NNSTRoot.NONE] when no guard is set.
 	</description>
 	<tutorials>
 	</tutorials>
@@ -15,12 +16,6 @@
 			<param index="1" name="p_state" type="NNSTTickedNodes" />
 			<description>
 				Evaluates the [member guard] and returns the opposite of its result. If the [member guard] is satisfied, this method returns [code]false[/code], and vice versa.
-			</description>
-		</method>
-		<method name="get_supported_trigger_types" qualifiers="const">
-			<return type="int" />
-			<description>
-				Returns the trigger types reported by [member guard], or [constant NNSTRoot.NONE] when no guard is set.
 			</description>
 		</method>
 	</methods>

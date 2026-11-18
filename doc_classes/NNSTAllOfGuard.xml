@@ -5,6 +5,7 @@
 	</brief_description>
 	<description>
 		This guard returns [code]true[/code] if all of the [member guards] are satisfied. This is useful for creating guards that can be satisfied by multiple conditions.
+		It reports the bitwise OR of the trigger types of all of [member guards] from [method NNSTGuard.get_supported_trigger_types].
 	</description>
 	<tutorials>
 	</tutorials>
@@ -15,12 +16,6 @@
 			<param index="1" name="p_state" type="NNSTTickedNodes" />
 			<description>
 				Returns [code]true[/code] if all of the [member guards] are satisfied, [code]false[/code] otherwise.
-			</description>
-		</method>
-		<method name="get_supported_trigger_types" qualifiers="const">
-			<return type="int" />
-			<description>
-				Returns the bitwise OR of the trigger types reported by all of [member guards].
 			</description>
 		</method>
 	</methods>

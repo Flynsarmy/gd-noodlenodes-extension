@@ -22,5 +22,6 @@
 		<member name="nqs_search_space" type="NNNQSSearchSpaces" setter="set_nqs_search_space" getter="get_nqs_search_space">
 			The search space to query. Assigning a different search space cancels the query this sensor posted, and assigning [code]null[/code] stops querying.
 		</member>
+		<member name="sensor_value" type="float" setter="set_sensor_value" getter="get_sensor_value" overrides="NNSensors" default="0.0" />
 	</members>
 </class>

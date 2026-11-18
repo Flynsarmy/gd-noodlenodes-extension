@@ -48,12 +48,6 @@
 				Returns the stored value for [param key]. Returns [param default_value] when the key does not exist or when its stored value is [code]null[/code].
 			</description>
 		</method>
-		<method name="get_values" qualifiers="const">
-			<return type="Dictionary" />
-			<description>
-				Returns the typed [Dictionary] backing this blackboard. Keys are always [String]s and values are [Variant]s.
-			</description>
-		</method>
 		<method name="has_value" qualifiers="const">
 			<return type="bool" />
 			<param index="0" name="key" type="String" />
@@ -75,13 +69,6 @@
 				Stores [param value] under [param key] and emits [signal value_changed]. Returns [code]false[/code] and does nothing when [param key] is empty or when the [member schema] rejects [param value], which also reports an error. When the same value is already stored, nothing is written and no signal is emitted, but the call still returns [code]true[/code].
 			</description>
 		</method>
-		<method name="set_values">
-			<return type="void" />
-			<param index="0" name="values" type="Dictionary" />
-			<description>
-				Replaces the stored values. The assigned dictionary is validated against the [String] key type; non-[String] keys are rejected with an engine error and the previous contents are kept. When a [member schema] is attached, every value is checked first; a rejected value reports an error and keeps the previous contents. After a successful replace, schema defaults are installed silently for absent keys. Emits no signals.
-			</description>
-		</method>
 	</methods>
 	<members>
 		<member name="resource_local_to_scene" type="bool" setter="set_local_to_scene" getter="is_local_to_scene" overrides="Resource" default="true" />
@@ -91,7 +78,7 @@
 			The schema is shared, not copied, when the board is duplicated for [member Resource.resource_local_to_scene].
 		</member>
 		<member name="values" type="Dictionary[String, Variant]" setter="set_values" getter="get_values" default="{}">
-			The typed key/value store. Keys are always [String]s and values are [Variant]s.
+			The typed key/value store. Keys are always [String]s and values are [Variant]s. Assigning a dictionary replaces the stored values: non-[String] keys are rejected with an engine error and the previous contents are kept. When a [member schema] is attached, every value is checked first; a rejected value reports an error and keeps the previous contents. After a successful replace, schema defaults are installed silently for absent keys. Emits no signals.
 		</member>
 	</members>
 	<signals>

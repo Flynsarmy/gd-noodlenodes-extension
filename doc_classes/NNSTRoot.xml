@@ -9,7 +9,7 @@
 		An inactive chart is never ticked automatically. A root that was transitioned out stays dormant until its owner re-enters it, because [method tick] on a root with no active states transitions the chart in again; its owner decides when that should happen. A root placed in a scene becomes active on [constant NOTIFICATION_READY], so the normal flow ticks from the first frame. Call [method tick] directly to re-enter an inactive root by hand.
 		[member tick_rate] counts eligible frame signal emissions, starting with the first one. A rate of 2 ticks on emissions 1, 3, 5 and so on. The schedule counts emissions, not time, but each tick receives the delta accumulated since the previous tick. Re-arming the schedule (changing [member tick_rate], [member process_thread] or [member is_enabled], and entering or leaving the tree) restarts the count and discards any accumulated delta, so the next eligible emission is due.
 		The root can be hosted. A host is an ancestor state ([NNSTTickedNodes]) that is active, an ancestor agent action ([NNAction]) that is the agent's current action, or an ancestor HTN task ([NNHTNTask]) whose step is running, and the nearest host ancestor is the one that drives the root. A root nested inside another root's subtree is not hosted across that root; the nearest ancestor root owns its subtree. A host starts the chart when it activates and ticks it with the host's own delta on the host's schedule, so a hosted root never ticks from the SceneTree frame signals and never enters the chart on [constant NOTIFICATION_READY]: the first host tick transitions it in. The host owns the timing, so the root's [member process_thread] and [member tick_rate] are ignored and the editor shows a configuration warning when either would be. Deactivating the host exits the active states and leaves the root inactive, so a later activation starts a fresh chart.
-		Events sent with [method send_event] are queued and processed one at a time in FIFO order. The root is the last state to see an event: the event is delivered to the innermost active state first and bubbles up to its ancestors until a state consumes it. Only when no active child consumed the event are transitions attached directly to the root tried.
+		Events sent with [method NNSTBranchNodes.send_event] are queued and processed one at a time in FIFO order. The root is the last state to see an event: the event is delivered to the innermost active state first and bubbles up to its ancestors until a state consumes it. Only when no active child consumed the event are transitions attached directly to the root tried.
 		A transition attached directly to the root can only leave the root's current active child: when its target is the child that is already active, the transition does nothing. Re-entering a state directly is not supported either, because [method NNSTTickedNodes.transition_to] rejects a transition whose source and target are the same state. Transition to a different state first and then back to re-enter a state.
 		The root also owns the change pipeline used by automatic transitions. Pending state changes and property changes are processed before queued events, under a reentrancy lock, so a transition caused by a change is fully applied before the next change is handled.
 		[member blackboard] is the explicitly assigned [NNBlackboard], and an explicit assignment always wins. When it is null the root inherits the effective board of the nearest ancestor root of any Noodle Nodes system, and falls back to its own private per-instance board only when it has no root ancestor. The private board is never a property, so it is never serialised. [member actor] is the explicitly assigned actor; read the resolved actor with [method get_actor], which resolves the live explicit actor, then [member actor_node_path], then the actor of the nearest ancestor root, then the root's parent. Both are resolved from the root's current position in the scene tree on demand, so reparenting re-resolves them, and a freed explicit actor falls through to the path, the inherited actor or the parent.
@@ -30,7 +30,7 @@
 			No trigger type. Used as a default value.
 		</constant>
 		<constant name="EVENT" value="1" enum="TriggerType">
-			The transition is triggered by an event sent with [method send_event].
+			The transition is triggered by an event sent with [method NNSTBranchNodes.send_event].
 		</constant>
 		<constant name="STATE_ENTER" value="2" enum="TriggerType">
 			The transition is automatic and is triggered when its state is entered. Supported by every automatic transition.
@@ -59,60 +59,12 @@
 				Returns a list of child sensors.
 			</description>
 		</method>
-		<method name="send_event">
-			<return type="void" />
-			<param index="0" name="name" type="String" />
-			<description>
-				Queues an event for processing and emits [signal event_received]. Events are processed in FIFO order, one at a time. Calling this method from a callback (for example [method NNSTTickedNodes.on_enter_state], [method NNSTTickedNodes.on_exit_state] or a guard) queues the event instead of processing it recursively. The event is handled only after the transition that is running and all of its callbacks have completed, whether that transition came from an event or from a direct [method NNSTTickedNodes.transition_to] call.
-				Each event is delivered to the innermost active state first and then bubbles up through its ancestors until a state consumes it, so a compound state only handles the event when its active child did not. Transitions attached directly to the root are tried last; a root-level transition whose target is the currently active root child does nothing.
-				A processing pass that applies more than 100 transitions is treated as an infinite loop: an error is printed, the pending queue is discarded, the chart is marked invalid and later events are ignored.
-			</description>
-		</method>
 		<method name="tick">
 			<return type="void" />
 			<param index="0" name="delta" type="float" />
 			<description>
 				Updates the State Tree. When no states are active the chart is transitioned in, then the child sensors are evaluated and every active state's [method NNSTTickedNodes.on_tick] method is called from the root down to the leaf with [param delta]. The tree reads and writes its data through the effective [NNBlackboard], which any state reaches with [method NoodleNodes.get_blackboard] and the other blackboard helpers. The resolved actor is available to every state as [method NoodleNodes.get_actor].
 				This is the manual entry point: automatic ticking calls it too. Calling it is the only way to re-enter an inactive chart by hand, so with [member process_thread] set to [constant MANUAL] a custom scheduler can own the timing.
-			</description>
-		</method>
-		<method name="get_assigned_blackboard" qualifiers="const">
-			<return type="NNBlackboard" />
-			<description>
-				Returns the explicitly assigned blackboard, or [code]null[/code] when none is assigned. This is the value of [member blackboard]. Use [method NoodleNodes.get_blackboard_resource] to read the effective board, which is the assigned board, the board inherited from the nearest ancestor root, or this root's private board.
-			</description>
-		</method>
-		<method name="set_blackboard_resource">
-			<return type="void" />
-			<param index="0" name="blackboard" type="NNBlackboard" />
-			<description>
-				Assigns [param blackboard] as the root's blackboard. An explicit assignment wins over the board inherited from an ancestor root. Assigning [code]null[/code] clears the assignment and returns to inherited resolution, which is the nearest ancestor root's board or this root's private board.
-			</description>
-		</method>
-		<method name="get_assigned_actor" qualifiers="const">
-			<return type="Node" />
-			<description>
-				Returns the explicitly assigned actor, or [code]null[/code] when none is assigned or the assigned actor was freed. This is the value of [member actor]. Use [method get_actor] to read the resolved actor, which may be inherited from an ancestor root or fall back to the root's parent.
-			</description>
-		</method>
-		<method name="set_actor">
-			<return type="void" />
-			<param index="0" name="actor" type="Node" />
-			<description>
-				Assigns [param actor] as the root's explicit actor. Assigning [code]null[/code] clears the assignment, so resolution returns to [member actor_node_path], then the nearest ancestor root's actor, then the root's parent.
-			</description>
-		</method>
-		<method name="set_actor_node_path">
-			<return type="void" />
-			<param index="0" name="actor_node_path" type="NodePath" />
-			<description>
-				Sets the fallback actor path, resolved relative to this root. It is used when no live explicit [member actor] is set and wins over the actor inherited from an ancestor root.
-			</description>
-		</method>
-		<method name="get_actor_node_path" qualifiers="const">
-			<return type="NodePath" />
-			<description>
-				Returns the fallback actor path. This is the value of [member actor_node_path].
 			</description>
 		</method>
 		<method name="set_expression_property">
@@ -134,7 +86,7 @@
 	</methods>
 	<members>
 		<member name="actor" type="Node" setter="set_actor" getter="get_assigned_actor">
-			The explicitly assigned actor, or [code]null[/code] when none is assigned. No resolved fallback is ever stored here. To read the resolved actor use [method get_actor], which resolves the explicit actor, then [member actor_node_path], then the actor of the nearest ancestor root of any Noodle Nodes system, then the root's parent on demand.
+			The explicitly assigned actor, or [code]null[/code] when none is assigned or the assigned actor was freed. Assigning [code]null[/code] clears the assignment. No resolved fallback is ever stored here. To read the resolved actor use [method get_actor], which resolves the explicit actor, then [member actor_node_path], then the actor of the nearest ancestor root of any Noodle Nodes system, then the root's parent on demand.
 		</member>
 		<member name="actor_node_path" type="NodePath" setter="set_actor_node_path" getter="get_actor_node_path" default="NodePath(&quot;&quot;)">
 			Fallback actor path, used when no live explicit [member actor] is set. The path is resolved relative to this root and wins over the actor inherited from an ancestor root.
@@ -159,7 +111,7 @@
 		<signal name="event_received">
 			<param index="0" name="name" type="String" />
 			<description>
-				Emitted once for each event processed by this root, before the event is delivered to the active states. See [method send_event].
+				Emitted once for each event processed by this root, before the event is delivered to the active states. See [method NNSTBranchNodes.send_event].
 			</description>
 		</signal>
 		<signal name="finished">

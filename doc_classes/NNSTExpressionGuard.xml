@@ -5,6 +5,7 @@
 	</brief_description>
 	<description>
 		Expression guards give you the most flexibility when it comes to guards. You can use expressions to determine whether a transition should be taken or not. Expression guards are evaluated using the [Expression] class.
+		It reports [constant NNSTRoot.PROPERTY_CHANGE] from [method NNSTGuard.get_supported_trigger_types], because its result can change when an expression property changes.
 	</description>
 	<tutorials>
 	</tutorials>
@@ -16,12 +17,6 @@
 			<description>
 				Returns [code]true[/code] if [member expression] evaluates to [code]true[/code], [code]false[/code] otherwise.
 				Returns [code]false[/code] and reports an error when [param p_state] is [code]null[/code] or its state chart root cannot be found. [param p_transition] may be [code]null[/code]; it is only used to identify the guard in diagnostic messages.
-			</description>
-		</method>
-		<method name="get_supported_trigger_types" qualifiers="const">
-			<return type="int" />
-			<description>
-				Returns [constant NNSTRoot.PROPERTY_CHANGE], because this guard's result can change when an expression property changes.
 			</description>
 		</method>
 	</methods>

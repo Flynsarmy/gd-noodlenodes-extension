@@ -5,6 +5,7 @@
 	</brief_description>
 	<description>
 		This guard is used to check if the given [member state] is active.
+		It reports [constant NNSTRoot.STATE_CHANGE] from [method NNSTGuard.get_supported_trigger_types], because its result can change when another state becomes active or inactive.
 	</description>
 	<tutorials>
 	</tutorials>
@@ -15,12 +16,6 @@
 			<param index="1" name="p_state" type="NNSTTickedNodes" />
 			<description>
 				Checks if the [member state] is active. Returns [code]true[/code] if the state is active, [code]false[/code] otherwise.
-			</description>
-		</method>
-		<method name="get_supported_trigger_types" qualifiers="const">
-			<return type="int" />
-			<description>
-				Returns [constant NNSTRoot.STATE_CHANGE], because this guard's result can change when another state becomes active or inactive.
 			</description>
 		</method>
 	</methods>

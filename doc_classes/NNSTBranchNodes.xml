@@ -43,7 +43,8 @@
 			<description>
 				Sends an event to the chart. Events are queued on the [NNSTRoot] and processed one at a time in FIFO order, so calling this from a callback (for example [method NNSTTickedNodes.on_enter_state], [method NNSTTickedNodes.on_exit_state] or a guard) does not process the event recursively. The event is handled after the transition that is running and all of its callbacks have completed, whether that transition came from an event or from a direct [method NNSTTickedNodes.transition_to] call.
 				The event is delivered to the innermost active state first and bubbles up to its ancestors until a state consumes it. A compound state forwards the event to its active child first and only handles it when that child did not. A parallel state forwards the event to every active region. The root is the last state to see the event, so transitions attached directly to the root are only tried when no active child consumed it.
-				Every transition with a matching event name is tried in child order; a transition whose guard fails does not consume the event, so the remaining transitions and the parent states still receive it. Emits [signal NNSTRoot.event_received] on the root and [signal NNSTTickedNodes.event_received] on every state the event is delivered to.
+				Every transition with a matching event name is tried in child order; a transition whose guard fails does not consume the event, so the remaining transitions and the parent states still receive it. Emits [signal NNSTRoot.event_received] on the root and [signal NNSTTickedNodes.event_received] on every state the event is delivered to. A root-level transition whose target is the currently active root child does nothing.
+				A processing pass that applies more than 100 transitions is treated as an infinite loop: an error is printed, the pending queue is discarded, the chart is marked invalid and later events are ignored.
 			</description>
 		</method>
 	</methods>

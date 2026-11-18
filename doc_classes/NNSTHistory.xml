@@ -45,7 +45,7 @@
 			</description>
 		</method>
 		<method name="get_remembered_states" qualifiers="const">
-			<return type="Array[NodePath]" />
+			<return type="NodePath[]" />
 			<description>
 				Returns the configuration that would be restored, as paths relative to the compound state and in pre-order (parents before children). For a shallow history this is only the compound's direct active child; for a deep history it is the whole hierarchy, including every active parallel region. Returns an empty array when there is no usable history.
 			</description>
