@@ -72,8 +72,8 @@ NNBTRoot::NNBTRoot() {
 	// that is used until a board is assigned.
 	_local_blackboard.instantiate();
 	_actor_id = ObjectID();
-	_tick_scheduler.configure(this, [this](double p_delta, bool p_due) -> bool {
-		return _auto_tick_step_callback(p_delta, p_due);
+	_tick_scheduler.configure(this, [this](double p_delta, double p_tick_delta, bool p_due) -> bool {
+		return _auto_tick_step_callback(p_delta, p_tick_delta, p_due);
 	});
 	_running_action_id = ObjectID();
 	_ticked_child_id = ObjectID();
@@ -177,11 +177,11 @@ bool NNBTRoot::auto_tick_step(int p_process_thread, double p_delta) {
 	return _tick_scheduler.step(p_process_thread, p_delta);
 }
 
-bool NNBTRoot::_auto_tick_step_callback(double p_delta, bool p_due) {
+bool NNBTRoot::_auto_tick_step_callback(double p_delta, double p_tick_delta, bool p_due) {
 	if (!p_due) {
 		return false;
 	}
-	tick((float)p_delta);
+	tick((float)p_tick_delta);
 	return true;
 }
 

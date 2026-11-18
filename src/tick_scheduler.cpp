@@ -14,6 +14,7 @@ NNTickScheduler::NNTickScheduler() {
 	_process_thread = ProcessThread::PHYSICS;
 	_tick_rate = 1;
 	_frame = 0;
+	_elapsed_delta = 0.0;
 	_process_tree_id = ObjectID();
 }
 
@@ -47,6 +48,7 @@ int NNTickScheduler::get_tick_rate() const {
 
 void NNTickScheduler::rearm() {
 	_frame = 0;
+	_elapsed_delta = 0.0;
 }
 
 void NNTickScheduler::on_tree_entered() {
@@ -158,5 +160,15 @@ bool NNTickScheduler::step(int p_process_thread, double p_delta) {
 
 	const uint64_t frame = _frame++;
 	const bool due = _tick_rate <= 1 || (frame % (uint64_t)_tick_rate) == 0;
-	return _step(p_delta, due);
+
+	_elapsed_delta += p_delta;
+	if (!due) {
+		return _step(p_delta, 0.0, false);
+	}
+
+	// A due moment consumes its elapsed time even when the step declines, so an
+	// inactive owner does not inherit the idle time once it becomes active.
+	const double tick_delta = _elapsed_delta;
+	_elapsed_delta = 0.0;
+	return _step(p_delta, tick_delta, true);
 }

@@ -107,8 +107,8 @@ NNSTRoot::NNSTRoot() {
 
 	_scope_depth = 0;
 
-	_tick_scheduler.configure(this, [this](double p_delta, bool p_due) -> bool {
-		return _auto_tick_step_callback(p_delta, p_due);
+	_tick_scheduler.configure(this, [this](double p_delta, double p_tick_delta, bool p_due) -> bool {
+		return _auto_tick_step_callback(p_delta, p_tick_delta, p_due);
 	});
 }
 
@@ -241,7 +241,7 @@ bool NNSTRoot::auto_tick_step(int p_process_thread, double p_delta) {
 	return _tick_scheduler.step(p_process_thread, p_delta);
 }
 
-bool NNSTRoot::_auto_tick_step_callback(double p_delta, bool p_due) {
+bool NNSTRoot::_auto_tick_step_callback(double p_delta, double p_tick_delta, bool p_due) {
 	if (!p_due) {
 		return false;
 	}
@@ -249,7 +249,7 @@ bool NNSTRoot::_auto_tick_step_callback(double p_delta, bool p_due) {
 	if (!get_is_active()) {
 		return false;
 	}
-	tick((float)p_delta);
+	tick((float)p_tick_delta);
 	return true;
 }
 

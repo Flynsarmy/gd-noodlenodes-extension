@@ -60,7 +60,7 @@ private:
 
 	void _on_scene_tree_process_frame();
 	void _on_scene_tree_physics_frame();
-	bool _auto_tick_step_callback(double p_delta, bool p_due);
+	bool _auto_tick_step_callback(double p_delta, double p_tick_delta, bool p_due);
 
 	NNBehaviourGroup *_resolve_behaviour_group(const ObjectID &behaviour_group_id) const;
 	NNBehaviour *_resolve_behaviour(const ObjectID &behaviour_id) const;

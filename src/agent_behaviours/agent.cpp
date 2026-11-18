@@ -111,8 +111,8 @@ NNAgent::NNAgent() {
 	_current_action_id = ObjectID();
 	_current_action_change_pending = false;
 
-	_tick_scheduler.configure(this, [this](double p_delta, bool p_due) -> bool {
-		return _auto_tick_step_callback(p_delta, p_due);
+	_tick_scheduler.configure(this, [this](double p_delta, double p_tick_delta, bool p_due) -> bool {
+		return _auto_tick_step_callback(p_delta, p_tick_delta, p_due);
 	});
 	// The agent's rate throttles only thinking, so 6 keeps actions smooth; tree roots gate the whole tick and stay at 1.
 	_tick_scheduler.set_tick_rate(6);
@@ -740,9 +740,9 @@ bool NNAgent::auto_tick_step(int p_process_thread, double p_delta) {
 	return _tick_scheduler.step(p_process_thread, p_delta);
 }
 
-bool NNAgent::_auto_tick_step_callback(double p_delta, bool p_due) {
+bool NNAgent::_auto_tick_step_callback(double p_delta, double p_tick_delta, bool p_due) {
 	if (p_due) {
-		evaluate_options((float)p_delta);
+		evaluate_options((float)p_tick_delta);
 		update_current_behaviour();
 	}
 	_tick_selected_nodes("frame_tick", p_delta);

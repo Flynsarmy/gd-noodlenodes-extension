@@ -166,6 +166,20 @@ func test_ineligible_invocation_does_not_advance_the_schedule() -> void:
 	bt_root.free()
 
 
+func test_tick_receives_the_time_elapsed_since_the_previous_tick() -> void:
+	var bt_root: NNBTRoot = NNBTRoot.new()
+	var delayer: NNBTDelayer = NNBTDelayer.new()
+	delayer.wait_time = 1.0
+	delayer.add_child(_make_leaf(NNBTNodes.RUNNING))
+	bt_root.add_child(delayer)
+	bt_root.tick_rate = 6
+
+	assert_eq(_step_n(bt_root, 7), [true, false, false, false, false, false, true], "a rate of 6 ticks on invocations 1 and 7")
+	assert_almost_eq(delayer.get_time_waited(), 0.7, 0.0001, "the second tick waited the whole 0.7s that elapsed since the first tick")
+
+	bt_root.free()
+
+
 func test_process_thread_selects_exactly_one_frame_signal() -> void:
 	var bt_root: NNBTRoot = NNBTRoot.new()
 	var leaf: CountingLeaf = _make_leaf(NNBTNodes.RUNNING)

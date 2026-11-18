@@ -15,7 +15,8 @@ public:
 		MANUAL = 2,
 	};
 
-	using StepCallback = std::function<bool(double p_delta, bool p_due)>;
+	// p_tick_delta is the time since the previous due tick and is only passed on a due step.
+	using StepCallback = std::function<bool(double p_delta, double p_tick_delta, bool p_due)>;
 
 	NNTickScheduler();
 
@@ -48,5 +49,6 @@ private:
 	int _process_thread;
 	int _tick_rate;
 	uint64_t _frame;
+	double _elapsed_delta;
 	godot::ObjectID _process_tree_id;
 };

@@ -69,7 +69,7 @@ private:
 
 	void _on_scene_tree_process_frame();
 	void _on_scene_tree_physics_frame();
-	bool _auto_tick_step_callback(double p_delta, bool p_due);
+	bool _auto_tick_step_callback(double p_delta, double p_tick_delta, bool p_due);
 
 #ifdef DEBUG_ENABLED
 	uint64_t _total_tick_usec;
