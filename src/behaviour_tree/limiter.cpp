@@ -45,7 +45,7 @@ void NNBTLimiter::reset() {
 	NNBTDecoratorNodes::reset();
 }
 
-NNBTNodes::Status NNBTLimiter::_tick(Variant blackboard, float delta) {
+NNBTNodes::Status NNBTLimiter::_tick(float delta) {
 	if (Engine::get_singleton()->is_editor_hint())
 		return Status::FAILURE;
 
@@ -63,7 +63,7 @@ NNBTNodes::Status NNBTLimiter::_tick(Variant blackboard, float delta) {
 			continue;
 		}
 		--_current_repeat_times;
-		Status result = btnode->tick(blackboard, delta);
+		Status result = btnode->tick(delta);
 		if (result != Status::RUNNING) {
 			return result;
 		}

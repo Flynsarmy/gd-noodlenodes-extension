@@ -1,5 +1,8 @@
 #include "branch_nodes.h"
 #include "../agent_behaviours/considerations.h"
+#include "blackboard.h"
+#include "blackboard_helpers.h"
+#include "root.h"
 #include <state_tree/node.h>
 #include <state_tree/transition.h>
 #include <godot_cpp/classes/engine.hpp>
@@ -16,6 +19,12 @@ void NNSTBranchNodes::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("set_child_state_selection_rule", "child_state_selection_rule"), &NNSTBranchNodes::set_child_state_selection_rule);
 	ClassDB::bind_method(D_METHOD("get_child_state_selection_rule"), &NNSTBranchNodes::get_child_state_selection_rule);
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "child_state_selection_rule", PROPERTY_HINT_ENUM, "OnEnterConditionMethod:0,UtilityScoring:1"), "set_child_state_selection_rule", "get_child_state_selection_rule");
+
+	ClassDB::bind_method(D_METHOD("get_blackboard_resource"), &NNSTBranchNodes::get_blackboard_resource_ref);
+	ClassDB::bind_method(D_METHOD("get_blackboard", "key", "default_value"), &NNSTBranchNodes::get_blackboard, Variant());
+	ClassDB::bind_method(D_METHOD("set_blackboard", "key", "value"), &NNSTBranchNodes::set_blackboard);
+	ClassDB::bind_method(D_METHOD("has_blackboard", "key"), &NNSTBranchNodes::has_blackboard);
+	ClassDB::bind_method(D_METHOD("erase_blackboard", "key"), &NNSTBranchNodes::erase_blackboard);
 
 	ADD_SUBGROUP("Debugging", "");
 
@@ -67,6 +76,36 @@ int NNSTBranchNodes::get_child_state_selection_rule() const {
 
 bool NNSTBranchNodes::get_is_active() const {
 	return _internal_status == ST_INTERNAL_STATUS_ACTIVE;
+}
+
+NNBlackboard *NNSTBranchNodes::get_blackboard_resource() const {
+	// Walk the parent chain instead of a stored root pointer, so a reparented
+	// node resolves against its current position.
+	return nn_resolve_blackboard_resource<NNSTBranchNodes, NNSTRoot>(this);
+}
+
+Ref<NNBlackboard> NNSTBranchNodes::get_blackboard_resource_ref() const {
+	return Ref<NNBlackboard>(get_blackboard_resource());
+}
+
+Variant NNSTBranchNodes::get_blackboard(const String &p_key, const Variant &p_default) const {
+	NNBlackboard *board = get_blackboard_resource();
+	return board != nullptr ? board->get_value(p_key, p_default) : p_default;
+}
+
+bool NNSTBranchNodes::set_blackboard(const String &p_key, const Variant &p_value) {
+	NNBlackboard *board = get_blackboard_resource();
+	return board != nullptr ? board->set_value(p_key, p_value) : false;
+}
+
+bool NNSTBranchNodes::has_blackboard(const String &p_key) const {
+	NNBlackboard *board = get_blackboard_resource();
+	return board != nullptr ? board->has_value(p_key) : false;
+}
+
+bool NNSTBranchNodes::erase_blackboard(const String &p_key) {
+	NNBlackboard *board = get_blackboard_resource();
+	return board != nullptr ? board->erase_value(p_key) : false;
 }
 
 void NNSTBranchNodes::set_internal_status(int internal_status) {

@@ -3,6 +3,8 @@
 
 // Classes to include in to the gdextension module.
 
+#include "blackboard.h"
+
 // Performance monitor singleton.
 #include "performance_monitor_singleton.h"
 
@@ -40,7 +42,6 @@
 
 // BEHAVIOUR TREE
 #include "behaviour_tree/action_leaf.h"
-#include "behaviour_tree/blackboard.h"
 #include "behaviour_tree/blackboard_compare.h"
 #include "behaviour_tree/blackboard_erase.h"
 #include "behaviour_tree/blackboard_has.h"

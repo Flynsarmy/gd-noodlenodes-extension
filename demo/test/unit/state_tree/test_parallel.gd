@@ -45,12 +45,14 @@ func test_children_failing_condition_dont_tick() -> void:
 	var _parallel: NNSTParallel = NNSTParallel.new()
 	var _node1: NNSTNode = NNSTNode.new()
 	var _node2: NNSTNode = load("res://test/unit/state_tree/node_enter_condition_fail.gd").new()
-	_root.blackboard = {
+	var board := NNBlackboard.new()
+	board.values = {
 		"on_enter_condition": 0,
 		"on_enter_state": 0,
 		"on_tick": 0,
 		"on_exit_state": 0
 	}
+	_root.blackboard = board
 
 	_root.add_child(_parallel)
 	_parallel.add_child(_node1)
@@ -67,7 +69,7 @@ func test_transitions_away_in_correct_order() -> void:
 	var _grandchild1: NNSTNode = load("res://test/unit/state_tree/node_on_call_logger.gd").new()
 	var _grandchild2: NNSTNode = load("res://test/unit/state_tree/node_on_call_logger.gd").new()
 	var _node: NNSTNode = load("res://test/unit/state_tree/node_on_call_logger.gd").new()
-	_root.blackboard['log'] = []
+	_root.get_blackboard_resource().set_value('log', [])
 
 	# - root
 	#   - parallel
@@ -86,14 +88,14 @@ func test_transitions_away_in_correct_order() -> void:
 	_node.name = '_node';
 
 	_root.tick(0.1)
-	_root.blackboard['log'] = []
+	_root.get_blackboard_resource().set_value('log', [])
 	_parallel.transition_to(_parallel.get_path_to(_node))
 
 	assert_eq(_parallel.get_is_active(), false)
 	assert_eq(_grandchild1.get_is_active(), false)
 	assert_eq(_grandchild2.get_is_active(), false)
 	assert_eq(_node.get_is_active(), true)
-	assert_eq(_root.blackboard['log'], [
+	assert_eq(_root.get_blackboard('log'), [
 		"_grandchild2 on_exit_state",
 		"_grandchild1 on_exit_state",
 		"_parallel on_exit_state",
@@ -142,7 +144,9 @@ func test_removing_active_parallel_child_exits_only_that_child() -> void:
 	var _parallel: NNSTParallel = NNSTParallel.new()
 	var _child1: NNSTNode = load("res://test/unit/state_tree/node_on_call_logger.gd").new()
 	var _child2: NNSTNode = load("res://test/unit/state_tree/node_on_call_logger.gd").new()
-	_root.blackboard = { "log": [] }
+	var board := NNBlackboard.new()
+	board.values = { "log": [] }
+	_root.blackboard = board
 	_child1.name = "Child1"
 	_child2.name = "Child2"
 	_parallel.add_child(_child1)
@@ -151,19 +155,19 @@ func test_removing_active_parallel_child_exits_only_that_child() -> void:
 
 	assert_eq(_child1.get_is_active(), true)
 	assert_eq(_child2.get_is_active(), true)
-	_root.blackboard['log'] = []
+	_root.get_blackboard_resource().set_value('log', [])
 
 	_parallel.remove_child(_child2)
 	autofree(_child2)
 
 	assert_eq(_child2.get_is_active(), false)
-	assert_eq((_root.blackboard['log'] as Array).count("Child2 on_exit_state"), 1)
+	assert_eq((_root.get_blackboard('log') as Array).count("Child2 on_exit_state"), 1)
 	assert_eq(_child1.get_is_active(), true)
 
 	_root.tick(0.1)
 
 	assert_eq(_child1.get_is_active(), true)
-	assert_eq((_root.blackboard['log'] as Array).count("Child2 on_exit_state"), 1)
+	assert_eq((_root.get_blackboard('log') as Array).count("Child2 on_exit_state"), 1)
 
 ## A child may free an active sibling from on_tick(). Snapshotting the active
 ## list by instance ID keeps the remaining iteration safe.
@@ -215,7 +219,9 @@ func test_reparenting_active_child_updates_both_branches() -> void:
 	var _branch1: NNSTNode = NNSTNode.new()
 	var _branch2: NNSTNode = NNSTNode.new()
 	var _leaf: NNSTNode = load("res://test/unit/state_tree/node_on_call_logger.gd").new()
-	_root.blackboard = { "log": [] }
+	var board := NNBlackboard.new()
+	board.values = { "log": [] }
+	_root.blackboard = board
 	_leaf.name = "Leaf"
 	_branch1.add_child(_leaf)
 	_parallel.add_child(_branch1)
@@ -225,14 +231,14 @@ func test_reparenting_active_child_updates_both_branches() -> void:
 	assert_eq(_branch1.get_is_active(), true)
 	assert_eq(_branch2.get_is_active(), true)
 	assert_eq(_leaf.get_is_active(), true)
-	_root.blackboard['log'] = []
+	_root.get_blackboard_resource().set_value('log', [])
 
 	_leaf.reparent(_branch2)
 
 	assert_eq(_leaf.get_parent(), _branch2)
-	assert_eq((_root.blackboard['log'] as Array).count("Leaf on_exit_state"), 1)
+	assert_eq((_root.get_blackboard('log') as Array).count("Leaf on_exit_state"), 1)
 	assert_eq(_leaf.get_is_active(), true)
 
 	_root.tick(0.1)
 	assert_eq(_leaf.get_is_active(), true)
-	assert_eq((_root.blackboard['log'] as Array).count("Leaf on_exit_state"), 1)
+	assert_eq((_root.get_blackboard('log') as Array).count("Leaf on_exit_state"), 1)

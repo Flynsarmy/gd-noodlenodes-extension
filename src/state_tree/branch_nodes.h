@@ -5,12 +5,14 @@
 #include "state_tree/nodes.h"
 #include <godot_cpp/classes/input_event.hpp>
 #include <godot_cpp/classes/node.hpp>
+#include <godot_cpp/classes/ref.hpp>
 #include <godot_cpp/core/gdvirtual.gen.inc>
 #include <godot_cpp/core/object_id.hpp>
 #include <vector>
 
 namespace godot {
 
+class NNBlackboard;
 class NNSTRoot; // Forward declaration
 class NNSTTransition; // Forward declaration
 class NNSTTickedNodes; // Forward declaration
@@ -78,6 +80,14 @@ public:
 	// Getters and setters for attributes.
 
 	bool get_is_active() const;
+
+	virtual NNBlackboard *get_blackboard_resource() const;
+	// Returns a Ref so the resource stays owned when the value reaches GDScript.
+	Ref<NNBlackboard> get_blackboard_resource_ref() const;
+	Variant get_blackboard(const String &key, const Variant &default_value = Variant()) const;
+	bool set_blackboard(const String &key, const Variant &value);
+	bool has_blackboard(const String &key) const;
+	bool erase_blackboard(const String &key);
 
 	// Monotonic identity of this node's current activation. Changes on every
 	// ACTIVE <-> INACTIVE edge, so callers can tell whether an activation they

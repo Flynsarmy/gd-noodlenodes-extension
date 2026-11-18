@@ -19,7 +19,7 @@ NNBTSequenceStar::~NNBTSequenceStar() {
 
 // Handling methods.
 
-void NNBTSequenceStar::_on_before_run(Variant blackboard, float delta) {
+void NNBTSequenceStar::_on_before_run(float delta) {
 	// Deliberately keeps the child cursor so the memory spans runs.
 }
 
@@ -29,8 +29,8 @@ void NNBTSequenceStar::reset() {
 	NNBTSequence::reset();
 }
 
-NNBTNodes::Status NNBTSequenceStar::_tick(Variant blackboard, float delta) {
-	Status result = NNBTSequence::_tick(blackboard, delta);
+NNBTNodes::Status NNBTSequenceStar::_tick(float delta) {
+	Status result = NNBTSequence::_tick(delta);
 	if (result == Status::SUCCESS) {
 		// SUCCESS forgets the memory; FAILURE keeps the index on the failed child.
 		_current_child_index = 0;

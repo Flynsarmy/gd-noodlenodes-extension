@@ -2,19 +2,17 @@ extends GutTest
 @warning_ignore('unused_parameter')
 @warning_ignore('return_value_discarded')
 
-const BLACKBOARD: Dictionary = {}
-
 
 class ConstantLeaf extends NNBTLeaf:
 	var result: int = NNBTNodes.SUCCESS
 	var tick_count: int = 0
 	var interrupt_count: int = 0
 
-	func on_tick(_blackboard: Variant, _delta: float) -> Status:
+	func on_tick(_delta: float) -> Status:
 		tick_count += 1
 		return result
 
-	func on_interrupt(_blackboard: Variant, _delta: float) -> void:
+	func on_interrupt(_delta: float) -> void:
 		interrupt_count += 1
 
 
@@ -34,7 +32,7 @@ func _build_root(parent: NNBTNodes, leaves: Array) -> NNBTRoot:
 
 
 func _tick_and_assert(root: NNBTRoot, node: NNBTNodes, expected: int) -> void:
-	var result: int = root.tick(BLACKBOARD, 0.1)
+	var result: int = root.tick(0.1)
 
 	assert_eq(result, expected)
 	if expected == NNBTNodes.RUNNING:

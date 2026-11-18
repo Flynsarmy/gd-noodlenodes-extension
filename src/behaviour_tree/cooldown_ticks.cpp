@@ -63,7 +63,7 @@ NNBTNodes::Status NNBTCooldownTicks::get_cooldown_return_value() const {
 
 // Handling methods.
 
-NNBTNodes::Status NNBTCooldownTicks::_tick(Variant blackboard, float delta) {
+NNBTNodes::Status NNBTCooldownTicks::_tick(float delta) {
 	_report_extra_enabled_child_btnodes();
 
 	if (_current_cooldown_ticks > 0) {
@@ -75,7 +75,7 @@ NNBTNodes::Status NNBTCooldownTicks::_tick(Variant blackboard, float delta) {
 		if (!btnode->get_is_enabled()) {
 			continue;
 		}
-		Status result = btnode->tick(blackboard, delta);
+		Status result = btnode->tick(delta);
 
 		if (result != Status::RUNNING) {
 			_current_cooldown_ticks = _cooldown_ticks;

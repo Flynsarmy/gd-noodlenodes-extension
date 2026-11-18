@@ -14,14 +14,6 @@
 				Returns a monotonically increasing token identifying the current (or most recent) activation of this state. It is incremented every time the state is entered, before any user callback runs. Queued automatic [constant NNSTRoot.STATE_ENTER] transitions carry this token so a request from an earlier activation can be discarded after a re-entry.
 			</description>
 		</method>
-		<method name="get_blackboard" qualifiers="const">
-			<return type="Variant" />
-			<param index="0" name="key" type="String" />
-			<param index="1" name="default" type="Variant" default="null" />
-			<description>
-				Returns the corresponding value for the given [param key] in the blackboard dictionary. Blackboard keys are always [String]s. If the key does not exist, returns [param default], or `null` if the parameter is omitted. See [method Dictionary.get].
-			</description>
-		</method>
 		<method name="get_on_entered_condition" qualifiers="const">
 			<return type="bool" />
 			<description>
@@ -57,14 +49,6 @@
 			<param index="0" name="delta" type="float" />
 			<description>
 				Logic to run when a state is ticked. This will execute before the corrosponding signal.
-			</description>
-		</method>
-		<method name="set_blackboard">
-			<return type="bool" />
-			<param index="0" name="key" type="String" />
-			<param index="1" name="value" type="Variant" />
-			<description>
-				Sets the value of the element at the given [param key] to the given [param value]. Blackboard keys are always [String]s. See [method Dictionary.set].
 			</description>
 		</method>
 		<method name="set_on_entered_condition">

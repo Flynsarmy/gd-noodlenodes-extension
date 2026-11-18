@@ -1,6 +1,7 @@
 extends NNBTLeaf
 
-func on_tick(blackboard: Variant, _delta: float) -> Status:
-	blackboard.movement_speed = 0.0
-	blackboard.play("default")
+func on_tick(_delta: float) -> Status:
+	var actor := get_actor()
+	actor.movement_speed = 0.0
+	actor.play("default")
 	return SUCCESS

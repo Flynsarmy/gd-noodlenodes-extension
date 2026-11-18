@@ -27,12 +27,14 @@ func test_state_check_enter_condition_not_called_when_method_exists() -> void:
 	var _root: NNSTRoot = add_child_autofree(NNSTRoot.new())
 	var _child: NNSTNode = load("res://test/unit/state_tree/node_enter_condition_success.gd").new()
 
-	_root.blackboard = {
+	var board := NNBlackboard.new()
+	board.values = {
 		"on_enter_condition": 0,
 		"on_enter_state": 0,
 		"on_tick": 0,
 		"on_exit_state": 0
 	}
+	_root.blackboard = board
 
 	watch_signals(_child)
 	_root.add_child(_child)

@@ -70,8 +70,21 @@
 			<return type="void" />
 			<param index="0" name="delta" type="float" />
 			<description>
-				Updates the State Tree. When no states are active the chart is transitioned in, then the child sensors are evaluated and every active state's [method NNSTTickedNodes.on_tick] method is called from the root down to the leaf with [param delta].
+				Updates the State Tree. When no states are active the chart is transitioned in, then the child sensors are evaluated and every active state's [method NNSTTickedNodes.on_tick] method is called from the root down to the leaf with [param delta]. The tree reads and writes its data through [member blackboard], the root's [NNBlackboard], which any state reaches with [method NNSTBranchNodes.get_blackboard] and the other blackboard helpers.
 				This is the manual entry point: automatic ticking calls it too. Calling it is the only way to re-enter an inactive chart by hand, so with [member process_thread] set to [constant MANUAL] a custom scheduler can own the timing.
+			</description>
+		</method>
+		<method name="get_assigned_blackboard" qualifiers="const">
+			<return type="NNBlackboard" />
+			<description>
+				Returns the explicitly assigned blackboard, or [code]null[/code] when none is assigned. This is the value of [member blackboard]. Use [method NNSTBranchNodes.get_blackboard_resource] to read the effective board, which is the assigned board or this root's private board.
+			</description>
+		</method>
+		<method name="set_blackboard_resource">
+			<return type="void" />
+			<param index="0" name="blackboard" type="NNBlackboard" />
+			<description>
+				Assigns [param blackboard] as the root's blackboard. Assigning [code]null[/code] clears the assignment and falls back to the root's private board.
 			</description>
 		</method>
 		<method name="set_expression_property">
@@ -87,16 +100,16 @@
 			<param index="0" name="name" type="StringName" />
 			<param index="1" name="default" type="Variant" default="null" />
 			<description>
-				Returns the value of a previously set expression property, or [param default] when it has not been set.
+				Returns the value of a previously set expression property, or [param default] when it has not been set. Expression property values are stored in [member blackboard] under the property name.
 			</description>
 		</method>
 	</methods>
 	<members>
-		<member name="blackboard" type="Dictionary[String, Variant]" setter="set_blackboard" getter="get_blackboard" default="{}">
-			A dictionary to use for optional state data. Expression properties are stored here as well.
+		<member name="blackboard" type="NNBlackboard" setter="set_blackboard_resource" getter="get_assigned_blackboard">
+			The explicitly assigned typed state tree blackboard resource, or [code]null[/code] when none is assigned. When it is [code]null[/code] the root uses a private per-instance board and the [NNSTBranchNodes] blackboard helpers still work. Assigning [code]null[/code] clears the assignment and falls back to that private board. Blackboards default to [code]resource_local_to_scene = true[/code], so an assigned inspector board is per scene instance unless you deliberately untick it to share one board. This property is the assignment only; [method NNSTBranchNodes.get_blackboard_resource] returns the effective board. Expression properties are stored in this board as well.
 		</member>
 		<member name="initial_expression_properties" type="Dictionary[String, Variant]" setter="set_initial_expression_properties" getter="get_initial_expression_properties" default="{}">
-			Initial values for expression properties. They are applied when the root first transitions in, before any state is entered, so expressions are always valid on the first evaluation.
+			Initial values for expression properties. They are written into [member blackboard] when the root first transitions in, before any state is entered, so expressions are always valid on the first evaluation.
 		</member>
 		<member name="process_thread" type="int" enum="NNSTRoot.ProcessThread" setter="set_process_thread" getter="get_process_thread" default="1">
 			Selects the SceneTree frame signal that drives automatic ticking, not this node's processing flags. Defaults to [constant PHYSICS], so a root auto-ticks once added to a scene. [constant IDLE] uses [code]process_frame[/code], [constant PHYSICS] uses [code]physics_frame[/code] and [constant MANUAL] connects neither so a custom scheduler ticks the chart. Exactly one signal is connected at a time. Out-of-range values fall back to [constant PHYSICS]. Setting this property re-arms the [member tick_rate] schedule.

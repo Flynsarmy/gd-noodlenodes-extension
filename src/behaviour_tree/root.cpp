@@ -40,10 +40,6 @@ void NNBTRoot::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_process_thread"), &NNBTRoot::get_process_thread);
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "process_thread", PROPERTY_HINT_ENUM, "Idle:0,Physics:1,Manual:2"), "set_process_thread", "get_process_thread");
 
-	ClassDB::bind_method(D_METHOD("set_tick_argument", "tick_argument"), &NNBTRoot::set_tick_argument);
-	ClassDB::bind_method(D_METHOD("get_tick_argument"), &NNBTRoot::get_tick_argument);
-	ADD_PROPERTY(PropertyInfo(Variant::NIL, "tick_argument", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_DEFAULT | PROPERTY_USAGE_NIL_IS_VARIANT), "set_tick_argument", "get_tick_argument");
-
 	// Signals.
 
 	ADD_SIGNAL(MethodInfo("tree_enabled"));
@@ -60,7 +56,7 @@ void NNBTRoot::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("auto_tick_step", "process_thread", "delta"), &NNBTRoot::auto_tick_step);
 	ClassDB::bind_method(D_METHOD("get_running_action"), &NNBTRoot::get_running_action);
 
-	ClassDB::bind_method(D_METHOD("tick", "blackboard", "delta"), &NNBTRoot::tick);
+	ClassDB::bind_method(D_METHOD("tick", "delta"), &NNBTRoot::tick);
 
 	// The frame handlers are connected as engine-resolved method callables. A
 	// method-pointer Callable would dereference this instance during teardown if
@@ -79,7 +75,6 @@ NNBTRoot::NNBTRoot() {
 	_tick_scheduler.configure(this, [this](double p_delta, bool p_due) -> bool {
 		return _auto_tick_step_callback(p_delta, p_due);
 	});
-	_tick_argument = Variant();
 	_running_action_id = ObjectID();
 	_ticked_child_id = ObjectID();
 #ifdef DEBUG_ENABLED
@@ -168,18 +163,10 @@ int NNBTRoot::get_process_thread() const {
 	return _tick_scheduler.get_process_thread();
 }
 
-void NNBTRoot::set_tick_argument(const Variant &p_tick_argument) {
-	_tick_argument = p_tick_argument;
-}
-
-Variant NNBTRoot::get_tick_argument() const {
-	return _tick_argument;
-}
-
 // Handling functions.
 
-NNBTNodes::Status NNBTRoot::tick(Variant blackboard, float delta) {
-	Status result = NNBTNodes::tick(blackboard, delta);
+NNBTNodes::Status NNBTRoot::tick(float delta) {
+	Status result = NNBTNodes::tick(delta);
 	// Track the active path once the tree has settled. This never changes the
 	// result the caller sees.
 	_update_running_action(result);
@@ -194,7 +181,7 @@ bool NNBTRoot::_auto_tick_step_callback(double p_delta, bool p_due) {
 	if (!p_due) {
 		return false;
 	}
-	tick(_tick_argument, (float)p_delta);
+	tick((float)p_delta);
 	return true;
 }
 
@@ -285,7 +272,7 @@ ObjectID NNBTRoot::_find_active_descendant_id(NNBTNodes *p_node) const {
 	return ObjectID();
 }
 
-NNBTNodes::Status NNBTRoot::_tick(Variant blackboard, float delta) {
+NNBTNodes::Status NNBTRoot::_tick(float delta) {
 #ifdef DEBUG_ENABLED
 	uint64_t method_start_time_usec = godot::Time::get_singleton()->get_ticks_usec();
 #endif
@@ -323,7 +310,7 @@ NNBTNodes::Status NNBTRoot::_tick(Variant blackboard, float delta) {
 		// Remember which child this run drives so a later child order change can
 		// tell whether the run's child is still the one this root ticks.
 		_ticked_child_id = btnode->get_instance_id();
-		Status result = btnode->tick(blackboard, delta);
+		Status result = btnode->tick(delta);
 #ifdef DEBUG_ENABLED
 		_total_tick_usec = godot::Time::get_singleton()->get_ticks_usec() - method_start_time_usec;
 		NNPerformanceMonitorSingleton::get_singleton()->increment_total_time_elapsed_behaviour_trees_usec(_total_tick_usec);

@@ -43,12 +43,14 @@ func test_is_active_after_tick() -> void:
 func test_is_not_running_on_enter_condition_fail() -> void:
 	var _root: NNSTRoot = _add_manual_root(NNSTRoot.new())
 	var _child: NNSTNode = load("res://test/unit/state_tree/node_enter_condition_fail.gd").new()
-	_root.blackboard = {
+	var board := NNBlackboard.new()
+	board.values = {
 		"on_enter_condition": 0,
 		"on_enter_state": 0,
 		"on_tick": 0,
 		"on_exit_state": 0
 	}
+	_root.blackboard = board
 	_root.add_child(_child)
 
 	_root.tick(0.1)
@@ -121,7 +123,7 @@ func test_is_active_on_grandchild() -> void:
 
 func test_node_methods_called_in_correct_order() -> void:
 	var _root: NNSTRoot = _add_manual_root(NNSTRoot.new())
-	_root.blackboard['log'] = []
+	_root.get_blackboard_resource().set_value("log", [])
 
 	var _child1: NNSTNode = autofree(load("res://test/unit/state_tree/node_on_call_logger.gd").new())
 	var _child2: NNSTNode = autofree(load("res://test/unit/state_tree/node_on_call_logger.gd").new())
@@ -136,7 +138,7 @@ func test_node_methods_called_in_correct_order() -> void:
 	# Activation order
 	_root.tick(0.1)
 
-	assert_eq(_root.blackboard['log'], [
+	assert_eq(_root.get_blackboard("log"), [
 		"_child1 on_enter_condition",
 		"_child1 on_enter_state",
 		"_grandchild on_enter_condition",
@@ -146,9 +148,9 @@ func test_node_methods_called_in_correct_order() -> void:
 	])
 
 	# Transition order
-	_root.blackboard['log'] = []
+	_root.get_blackboard_resource().set_value("log", [])
 	_child1.transition_to(_child1.get_path_to(_child2))
-	assert_eq(_root.blackboard['log'], [
+	assert_eq(_root.get_blackboard("log"), [
 		"_grandchild on_exit_state",
 		"_child1 on_exit_state",
 		"_child2 on_enter_state"

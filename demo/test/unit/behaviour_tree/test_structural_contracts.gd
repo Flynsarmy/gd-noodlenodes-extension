@@ -2,8 +2,6 @@ extends GutTest
 @warning_ignore('unused_parameter')
 @warning_ignore('return_value_discarded')
 
-const BLACKBOARD: Dictionary = {}
-
 const STRUCTURE_ERROR_TEXT := "exactly one behaviour-tree child"
 
 
@@ -11,7 +9,7 @@ class CountingLeaf extends NNBTLeaf:
 	var result: int = NNBTNodes.SUCCESS
 	var tick_count: int = 0
 
-	func on_tick(_blackboard: Variant, _delta: float) -> Status:
+	func on_tick(_delta: float) -> Status:
 		tick_count += 1
 		return result
 
@@ -53,7 +51,7 @@ func test_root_with_two_enabled_children_ticks_only_first() -> void:
 	bt_root.add_child(first)
 	bt_root.add_child(second)
 
-	assert_eq(bt_root.tick(BLACKBOARD, 0.1), NNBTNodes.SUCCESS, "the result comes from the first enabled child")
+	assert_eq(bt_root.tick(0.1), NNBTNodes.SUCCESS, "the result comes from the first enabled child")
 	assert_eq(first.tick_count, 1, "the first enabled child is ticked once")
 	assert_eq(second.tick_count, 0, "extra enabled children are ignored")
 
@@ -74,10 +72,10 @@ func test_root_reports_extra_child_only_once() -> void:
 	bt_root.add_child(first)
 	bt_root.add_child(second)
 
-	assert_eq(bt_root.tick(BLACKBOARD, 0.1), NNBTNodes.SUCCESS)
+	assert_eq(bt_root.tick(0.1), NNBTNodes.SUCCESS)
 	assert_eq(get_errors().size(), 1, "the first tick reports the extra enabled child")
 
-	assert_eq(bt_root.tick(BLACKBOARD, 0.1), NNBTNodes.SUCCESS)
+	assert_eq(bt_root.tick(0.1), NNBTNodes.SUCCESS)
 	assert_eq(get_errors().size(), 1, "a second tick must not report again")
 	assert_eq(first.tick_count, 2, "the first enabled child keeps ticking")
 	assert_eq(second.tick_count, 0, "the extra child is still ignored")
@@ -93,7 +91,7 @@ func test_root_ignores_disabled_extra_child() -> void:
 	bt_root.add_child(enabled)
 	bt_root.add_child(disabled)
 
-	assert_eq(bt_root.tick(BLACKBOARD, 0.1), NNBTNodes.SUCCESS)
+	assert_eq(bt_root.tick(0.1), NNBTNodes.SUCCESS)
 	assert_eq(enabled.tick_count, 1)
 	assert_eq(disabled.tick_count, 0)
 	assert_eq(get_errors().size(), 0, "a disabled extra child is not a structural error")
@@ -108,7 +106,7 @@ func test_root_ticks_first_enabled_child_when_first_is_disabled() -> void:
 	bt_root.add_child(disabled)
 	bt_root.add_child(enabled)
 
-	assert_eq(bt_root.tick(BLACKBOARD, 0.1), NNBTNodes.SUCCESS, "the first enabled child provides the result")
+	assert_eq(bt_root.tick(0.1), NNBTNodes.SUCCESS, "the first enabled child provides the result")
 	assert_eq(disabled.tick_count, 0)
 	assert_eq(enabled.tick_count, 1)
 	assert_eq(get_errors().size(), 0, "one enabled child is a valid configuration")
@@ -119,7 +117,7 @@ func test_root_ticks_first_enabled_child_when_first_is_disabled() -> void:
 func test_root_without_children_still_fails() -> void:
 	var bt_root: NNBTRoot = NNBTRoot.new()
 
-	assert_eq(bt_root.tick(BLACKBOARD, 0.1), NNBTNodes.FAILURE, "an empty root still fails")
+	assert_eq(bt_root.tick(0.1), NNBTNodes.FAILURE, "an empty root still fails")
 	assert_eq(get_errors().size(), 0, "an empty root is not a runtime structural error")
 
 	bt_root.free()
@@ -140,7 +138,7 @@ func test_limiter_ticks_only_first_enabled_child() -> void:
 
 	# A RUNNING child keeps the limiter running, so the first child's RUNNING
 	# result is passed through and must not expose the second child.
-	assert_eq(bt_root.tick(BLACKBOARD, 0.1), NNBTNodes.RUNNING)
+	assert_eq(bt_root.tick(0.1), NNBTNodes.RUNNING)
 	assert_eq(first.tick_count, 1, "only the first enabled child is ticked")
 	assert_eq(second.tick_count, 0, "the second enabled child is never ticked")
 
@@ -157,7 +155,7 @@ func test_limiter_with_one_child_reports_no_error() -> void:
 	limiter.add_child(child)
 	bt_root.add_child(limiter)
 
-	assert_eq(bt_root.tick(BLACKBOARD, 0.1), NNBTNodes.RUNNING, "a RUNNING child keeps the limiter running")
+	assert_eq(bt_root.tick(0.1), NNBTNodes.RUNNING, "a RUNNING child keeps the limiter running")
 	assert_eq(child.tick_count, 1)
 	assert_eq(get_errors().size(), 0, "a single child is a valid configuration")
 
@@ -188,7 +186,7 @@ func test_decorators_tick_only_first_enabled_child() -> void:
 		bt_root.add_child(decorator)
 
 		var errors_before: int = get_errors().size()
-		bt_root.tick(BLACKBOARD, 0.1)
+		bt_root.tick(0.1)
 
 		assert_eq(first.tick_count, 1, "%s ticks its first enabled child" % decorator.get_class())
 		assert_eq(second.tick_count, 0, "%s ignores its extra enabled child" % decorator.get_class())
@@ -206,13 +204,13 @@ func test_composites_keep_identity_results_without_structural_errors() -> void:
 	var sequence_root: NNBTRoot = NNBTRoot.new()
 	var sequence: NNBTSequence = NNBTSequence.new()
 	sequence_root.add_child(sequence)
-	assert_eq(sequence_root.tick(BLACKBOARD, 0.1), NNBTNodes.SUCCESS, "an empty sequence still succeeds")
+	assert_eq(sequence_root.tick(0.1), NNBTNodes.SUCCESS, "an empty sequence still succeeds")
 	sequence_root.free()
 
 	var selector_root: NNBTRoot = NNBTRoot.new()
 	var selector: NNBTSelector = NNBTSelector.new()
 	selector_root.add_child(selector)
-	assert_eq(selector_root.tick(BLACKBOARD, 0.1), NNBTNodes.FAILURE, "an empty selector still fails")
+	assert_eq(selector_root.tick(0.1), NNBTNodes.FAILURE, "an empty selector still fails")
 	selector_root.free()
 
 	assert_eq(get_errors().size(), 0, "composites only warn in the editor")

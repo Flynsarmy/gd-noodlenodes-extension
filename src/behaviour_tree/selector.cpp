@@ -36,11 +36,11 @@ bool NNBTSelector::get_reactive() const {
 	return _is_reactive;
 }
 
-void NNBTSelector::_on_before_run(Variant blackboard, float delta) {
+void NNBTSelector::_on_before_run(float delta) {
 	_current_child_index = 0;
 }
 
-NNBTNodes::Status NNBTSelector::_tick(Variant blackboard, float delta) {
+NNBTNodes::Status NNBTSelector::_tick(float delta) {
 	// A reactive selector re-evaluates from the first child on every tick
 	// instead of resuming from the child that was running previously.
 	if (_is_reactive) {
@@ -49,7 +49,7 @@ NNBTNodes::Status NNBTSelector::_tick(Variant blackboard, float delta) {
 	while (_current_child_index < (int)_num_child_btnodes) {
 		NNBTNodes *btnode = _child_btnodes[_current_child_index];
 		if (btnode->get_is_enabled()) {
-			Status result = btnode->tick(blackboard, delta);
+			Status result = btnode->tick(delta);
 			if (result == Status::SUCCESS) { //&& _current_child_index == get_child_count() - 1 ) {
 				return Status::SUCCESS;
 			} else if (result == Status::RUNNING) {

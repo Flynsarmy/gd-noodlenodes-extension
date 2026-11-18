@@ -58,7 +58,7 @@ void NNBTBlackboardSet::_report_configuration_error(const String &p_reason) {
 	ERR_PRINT(vformat("%s node '%s' (%s) %s; returning FAILURE.", get_class(), get_name(), node_location, p_reason));
 }
 
-NNBTNodes::Status NNBTBlackboardSet::_tick(Variant blackboard, float delta) {
+NNBTNodes::Status NNBTBlackboardSet::_tick(float delta) {
 	Status result = Status::FAILURE;
 	if (_key.is_empty()) {
 		_report_configuration_error("requires a non-empty blackboard key");

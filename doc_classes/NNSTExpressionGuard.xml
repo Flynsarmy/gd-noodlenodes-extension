@@ -27,7 +27,7 @@
 	</methods>
 	<members>
 		<member name="expression" type="String" setter="set_expression" getter="get_expression" default="&quot;&quot;">
-			An expression to be evaluated by the [Expression] class. Expressions have access to the blackboard. For example is the blackboard has a key called [code]my_variable[/code], you can use it in the expression like this: [code]my_variable == 1[/code].
+			An expression to be evaluated by the [Expression] class. Expressions have access to the values of the root's [member NNSTRoot.blackboard]. For example, when the blackboard has a key called [code]my_variable[/code], you can use it in the expression like this: [code]my_variable == 1[/code].
 		</member>
 	</members>
 </class>

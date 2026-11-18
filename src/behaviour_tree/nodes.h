@@ -53,7 +53,7 @@ public:
 	virtual float evaluate();
 
 	// Wrapper that manages the node's run lifecycle around _tick().
-	Status tick(Variant blackboard, float delta);
+	Status tick(float delta);
 
 	virtual void reset();
 	virtual void update_child_vectors();
@@ -74,7 +74,7 @@ public:
 
 	// Blackboard and actor helpers. These resolve against the nearest NNBTRoot
 	// ancestor and are documented to return silent safe defaults when no root
-	// exists. The Variant passed to tick() is never consulted by them.
+	// exists.
 	virtual NNBlackboard *get_blackboard_resource() const;
 	// Ref-returning wrapper bound under the GDScript name
 	// "get_blackboard_resource". Returning the raw pointer to GDScript would
@@ -97,7 +97,6 @@ private:
 	// active run and ends on a terminal result or an interrupt.
 	bool _is_running;
 	ObjectID _run_owner;
-	Variant _run_blackboard;
 	float _run_delta;
 
 protected:
@@ -105,13 +104,13 @@ protected:
 
 	// Node-specific tick implementation. Returns the tick result the wrapper
 	// exposes through tick().
-	virtual Status _tick(Variant blackboard, float delta);
+	virtual Status _tick(float delta);
 
 	// Lifecycle hooks. Every before_run is matched by exactly one after_run or
 	// interrupt for the same run.
-	virtual void _on_before_run(Variant blackboard, float delta);
-	virtual void _on_after_run(Variant blackboard, float delta);
-	virtual void _on_interrupt(Variant blackboard, float delta);
+	virtual void _on_before_run(float delta);
+	virtual void _on_after_run(float delta);
+	virtual void _on_interrupt(float delta);
 
 	// Interrupts every behaviour-tree child that still has an active run.
 	void _interrupt_active_children();

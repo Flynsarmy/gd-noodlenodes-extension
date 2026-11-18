@@ -125,7 +125,7 @@ func test_expression_property_change_triggers_automatic_transition() -> void:
 	assert_true(_target.get_is_active())
 	assert_eq(_root.get_expression_property("flag"), true)
 	# Expression properties are stored in the blackboard so guards see them.
-	assert_eq(_root.blackboard.get("flag"), true)
+	assert_eq(_root.get_blackboard("flag"), true)
 
 
 func test_automatic_transitions_do_not_fire_every_frame() -> void:
@@ -486,7 +486,9 @@ func test_state_enter_evaluates_automatic_guard_once_per_entry() -> void:
 	_transition.guard = _guard
 	_guard.expression = "counter.bump()"
 	_transition.to = _transition.get_path_to(_b)
-	_root.blackboard = {"counter": _counter}
+	var board := NNBlackboard.new()
+	board.values = {"counter": _counter}
+	_root.blackboard = board
 
 	_add_manual_root(_root)
 	assert_true(_outside.get_is_active())
@@ -520,7 +522,9 @@ func test_state_enter_reentry_evaluates_guard_once_per_activation() -> void:
 	_transition.guard = _guard
 	_guard.expression = "counter.bump()"
 	_transition.to = _transition.get_path_to(_b)
-	_root.blackboard = {"counter": _counter}
+	var board := NNBlackboard.new()
+	board.values = {"counter": _counter}
+	_root.blackboard = board
 
 	_add_manual_root(_root)
 	assert_true(_outside.get_is_active())

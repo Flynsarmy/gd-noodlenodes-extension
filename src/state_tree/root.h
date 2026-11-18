@@ -6,6 +6,7 @@
 #include <agent_behaviours/sensors.h>
 #include <cstdint>
 #include <godot_cpp/classes/node.hpp>
+#include <godot_cpp/classes/ref.hpp>
 #include <godot_cpp/variant/dictionary.hpp>
 #include <godot_cpp/variant/string_name.hpp>
 #include <godot_cpp/variant/variant.hpp>
@@ -76,7 +77,9 @@ private:
 	TypedArray<NNSensors> _child_sensors;
 	unsigned int _num_child_sensors;
 
-	Dictionary _blackboard;
+	Ref<NNBlackboard> _blackboard;
+	// Never a property, so it is not serialised and every root gets its own.
+	Ref<NNBlackboard> _local_blackboard;
 
 	// Initial values for expression properties. Applied once, when the root
 	// first transitions in, before any state is entered.
@@ -152,8 +155,9 @@ public:
 
 	// Getters and setters for attributes.
 
-	void set_blackboard(Dictionary blackboard);
-	Dictionary get_blackboard() const;
+	void set_blackboard_resource(const Ref<NNBlackboard> &p_blackboard);
+	Ref<NNBlackboard> get_assigned_blackboard() const;
+	NNBlackboard *get_blackboard_resource() const override;
 
 	void set_expression_property(const StringName &p_name, const Variant &p_value);
 	Variant get_expression_property(const StringName &p_name, const Variant &p_default = Variant()) const;

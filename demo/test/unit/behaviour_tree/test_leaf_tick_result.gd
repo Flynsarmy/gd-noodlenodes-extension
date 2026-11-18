@@ -2,8 +2,6 @@ extends GutTest
 @warning_ignore('unused_parameter')
 @warning_ignore('return_value_discarded')
 
-const BLACKBOARD: Dictionary = {}
-
 
 const CUSTOM_STATUS_SCRIPT := "res://test/unit/behaviour_tree/leaf_custom_status.gd"
 const LEAF_NAME := "BadLeaf"
@@ -12,14 +10,14 @@ const LEAF_NAME := "BadLeaf"
 class ConstantLeaf extends NNBTLeaf:
 	var result: int = NNBTNodes.SUCCESS
 
-	func on_tick(_blackboard: Variant, _delta: float) -> Status:
+	func on_tick(_delta: float) -> Status:
 		return result
 
 
 class CountingLeaf extends NNBTLeaf:
 	var tick_count: int = 0
 
-	func on_tick(_blackboard: Variant, _delta: float) -> Status:
+	func on_tick(_delta: float) -> Status:
 		tick_count += 1
 		return NNBTNodes.SUCCESS
 
@@ -68,7 +66,7 @@ func _assert_validation_error(value_fragment: String, type_fragment := "") -> vo
 
 
 func _assert_rejected(root: NNBTRoot, leaf: NNBTNodes, value_fragment: String, type_fragment := "") -> void:
-	assert_eq(root.tick(BLACKBOARD, 0.1), NNBTNodes.FAILURE)
+	assert_eq(root.tick(0.1), NNBTNodes.FAILURE)
 	assert_eq(leaf.tick_result, NNBTNodes.FAILURE)
 	assert_false(leaf.get_is_running())
 	_assert_validation_error(value_fragment, type_fragment)
@@ -156,7 +154,7 @@ func test_valid_status_skip_is_passed_through() -> void:
 	var leaf: ConstantLeaf = _make_leaf(NNBTNodes.SKIP)
 	var root: NNBTRoot = _build_root(leaf)
 
-	assert_eq(root.tick(BLACKBOARD, 0.1), NNBTNodes.SKIP)
+	assert_eq(root.tick(0.1), NNBTNodes.SKIP)
 	assert_eq(leaf.tick_result, NNBTNodes.SKIP)
 	assert_true(leaf.get_is_running())
 	assert_engine_error_count(0)
@@ -168,7 +166,7 @@ func test_valid_status_failure_is_passed_through() -> void:
 	var leaf: ConstantLeaf = _make_leaf(NNBTNodes.FAILURE)
 	var root: NNBTRoot = _build_root(leaf)
 
-	assert_eq(root.tick(BLACKBOARD, 0.1), NNBTNodes.FAILURE)
+	assert_eq(root.tick(0.1), NNBTNodes.FAILURE)
 	assert_eq(leaf.tick_result, NNBTNodes.FAILURE)
 	assert_false(leaf.get_is_running())
 	assert_engine_error_count(0)
@@ -180,7 +178,7 @@ func test_valid_status_running_is_passed_through() -> void:
 	var leaf: ConstantLeaf = _make_leaf(NNBTNodes.RUNNING)
 	var root: NNBTRoot = _build_root(leaf)
 
-	assert_eq(root.tick(BLACKBOARD, 0.1), NNBTNodes.RUNNING)
+	assert_eq(root.tick(0.1), NNBTNodes.RUNNING)
 	assert_eq(leaf.tick_result, NNBTNodes.RUNNING)
 	assert_true(leaf.get_is_running())
 	assert_engine_error_count(0)
@@ -192,7 +190,7 @@ func test_valid_status_success_is_passed_through() -> void:
 	var leaf: ConstantLeaf = _make_leaf(NNBTNodes.SUCCESS)
 	var root: NNBTRoot = _build_root(leaf)
 
-	assert_eq(root.tick(BLACKBOARD, 0.1), NNBTNodes.SUCCESS)
+	assert_eq(root.tick(0.1), NNBTNodes.SUCCESS)
 	assert_eq(leaf.tick_result, NNBTNodes.SUCCESS)
 	assert_false(leaf.get_is_running())
 	assert_engine_error_count(0)
@@ -211,7 +209,7 @@ func test_sequence_stops_at_invalid_leaf() -> void:
 	sequence.add_child(counting_leaf)
 	var root: NNBTRoot = _build_root(sequence)
 
-	assert_eq(root.tick(BLACKBOARD, 0.1), NNBTNodes.FAILURE)
+	assert_eq(root.tick(0.1), NNBTNodes.FAILURE)
 	assert_eq(bad_leaf.tick_result, NNBTNodes.FAILURE)
 	assert_eq(sequence.tick_result, NNBTNodes.FAILURE)
 	assert_eq(counting_leaf.tick_count, 0, "the second leaf must not be ticked")

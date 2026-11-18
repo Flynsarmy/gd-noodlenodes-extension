@@ -28,7 +28,7 @@ NNBTSucceeder::~NNBTSucceeder() {
  * reports its configured result immediately and regardless of the child:
  * the succeeder waits for the child to finish and only then reports SUCCESS.
  */
-NNBTNodes::Status NNBTSucceeder::_tick(Variant blackboard, float delta) {
+NNBTNodes::Status NNBTSucceeder::_tick(float delta) {
 	_report_extra_enabled_child_btnodes();
 
 	// Only the first enabled behaviour tree child is ticked. Any further
@@ -39,7 +39,7 @@ NNBTNodes::Status NNBTSucceeder::_tick(Variant blackboard, float delta) {
 			continue;
 		}
 
-		Status result = btnode->tick(blackboard, delta);
+		Status result = btnode->tick(delta);
 
 		if (result == Status::RUNNING) {
 			return Status::RUNNING;

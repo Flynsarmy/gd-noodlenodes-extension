@@ -11,35 +11,35 @@ NNBTTaskNodes::~NNBTTaskNodes() {
 }
 
 void NNBTTaskNodes::_bind_methods() {
-	GDVIRTUAL_BIND(on_tick, "blackboard", "delta");
-	GDVIRTUAL_BIND(on_before_run, "blackboard", "delta");
-	GDVIRTUAL_BIND(on_after_run, "blackboard", "delta");
-	GDVIRTUAL_BIND(on_interrupt, "blackboard", "delta");
+	GDVIRTUAL_BIND(on_tick, "delta");
+	GDVIRTUAL_BIND(on_before_run, "delta");
+	GDVIRTUAL_BIND(on_after_run, "delta");
+	GDVIRTUAL_BIND(on_interrupt, "delta");
 }
 
 // Lifecycle hooks.
 
-void NNBTTaskNodes::_on_before_run(Variant blackboard, float delta) {
-	GDVIRTUAL_CALL(on_before_run, blackboard, delta);
+void NNBTTaskNodes::_on_before_run(float delta) {
+	GDVIRTUAL_CALL(on_before_run, delta);
 }
 
-void NNBTTaskNodes::_on_after_run(Variant blackboard, float delta) {
-	GDVIRTUAL_CALL(on_after_run, blackboard, delta);
+void NNBTTaskNodes::_on_after_run(float delta) {
+	GDVIRTUAL_CALL(on_after_run, delta);
 }
 
-void NNBTTaskNodes::_on_interrupt(Variant blackboard, float delta) {
-	GDVIRTUAL_CALL(on_interrupt, blackboard, delta);
+void NNBTTaskNodes::_on_interrupt(float delta) {
+	GDVIRTUAL_CALL(on_interrupt, delta);
 }
 
-bool NNBTTaskNodes::_call_on_tick(Variant blackboard, float delta, Variant &r_result) const {
+bool NNBTTaskNodes::_call_on_tick(float delta, Variant &r_result) const {
 	if (!gdextension_interface::object_has_script_method(_owner, &_gdvirtual_on_tick_sn)) {
 		return false;
 	}
 
 	GDExtensionCallError call_error;
-	Variant args[2] = { blackboard, Variant(delta) };
-	const Variant *arg_ptrs[2] = { &args[0], &args[1] };
-	gdextension_interface::object_call_script_method(_owner, &_gdvirtual_on_tick_sn, (const GDExtensionConstVariantPtr *)arg_ptrs, 2, &r_result, &call_error);
+	Variant args[1] = { Variant(delta) };
+	const Variant *arg_ptrs[1] = { &args[0] };
+	gdextension_interface::object_call_script_method(_owner, &_gdvirtual_on_tick_sn, (const GDExtensionConstVariantPtr *)arg_ptrs, 1, &r_result, &call_error);
 	return call_error.error == GDEXTENSION_CALL_OK;
 }
 

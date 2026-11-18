@@ -6,7 +6,7 @@
 	<description>
 		Returns [code]SUCCESS[/code] when [member key] exists in the [NNBlackboard] of the nearest [NNBTRoot] ancestor and its stored value is not [code]null[/code]. Returns [code]FAILURE[/code] for a missing key or a null-valued key without an engine error.
 		A missing [NNBTRoot] ancestor with a blackboard, or an empty [member key], is a configuration error that is reported once per node instance and returns [code]FAILURE[/code].
-		This leaf is fully data-driven: it is configured entirely by its properties, does not call and is not affected by an [code]on_tick[/code] override in an attached script, and never reads the [Variant] passed to [method NNBTTaskNodes.on_tick].
+		This leaf is fully data-driven: it is configured entirely by its properties, does not call and is not affected by an [code]on_tick[/code] override in an attached script, and works on the [NNBlackboard] of the nearest [NNBTRoot] ancestor through the [NNBTNodes] blackboard helpers.
 	</description>
 	<tutorials>
 	</tutorials>

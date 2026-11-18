@@ -6,8 +6,6 @@ extends GutTest
 const MIN := 1
 const MEAN := 3
 
-const BLACKBOARD: Dictionary = {}
-
 
 func _make_consideration(value: float, enabled := true) -> NNConsideration:
 	var consideration: NNConsideration = NNConsideration.new()
@@ -42,7 +40,7 @@ func test_min_ignores_disabled_first_consideration() -> void:
 	var _root: NNBTRoot = _tree["root"]
 	var _scored: NNBTFixedResult = _tree["scored"]
 
-	_root.tick(BLACKBOARD, 0.1)
+	_root.tick(0.1)
 
 	assert_almost_eq(_scored.score, 0.5, 0.0001)
 	_root.free()
@@ -53,7 +51,7 @@ func test_mean_divides_by_evaluated_considerations() -> void:
 	var _root: NNBTRoot = _tree["root"]
 	var _scored: NNBTFixedResult = _tree["scored"]
 
-	_root.tick(BLACKBOARD, 0.1)
+	_root.tick(0.1)
 
 	# (0.5 + 0.8) / 2 == 0.65, not (0.5 + 0.8) / 3.
 	assert_almost_eq(_scored.score, 0.65, 0.0001)

@@ -5,8 +5,6 @@ extends GutTest
 # NNBTNodes exposes its evaluation method enumeration as class constants, so
 # scripts can name the values instead of using magic integers.
 
-const BLACKBOARD: Dictionary = {}
-
 const EVALUATION_METHOD_VALUES: Dictionary = {
 	"Sum": 0,
 	"Min": 1,
@@ -91,7 +89,7 @@ func test_sum_evaluation_method_aggregates_scores() -> void:
 	var root: NNBTRoot = tree["root"]
 	var scored: NNBTFixedResult = tree["scored"]
 
-	root.tick(BLACKBOARD, 0.1)
+	root.tick(0.1)
 
 	assert_almost_eq(scored.score, 0.9, 0.0001)
 
@@ -101,7 +99,7 @@ func test_multiply_evaluation_method_aggregates_scores() -> void:
 	var root: NNBTRoot = tree["root"]
 	var scored: NNBTFixedResult = tree["scored"]
 
-	root.tick(BLACKBOARD, 0.1)
+	root.tick(0.1)
 
 	assert_almost_eq(scored.score, 0.2, 0.0001)
 
@@ -111,7 +109,7 @@ func test_first_non_zero_evaluation_method_uses_the_first_positive_score() -> vo
 	var root: NNBTRoot = tree["root"]
 	var scored: NNBTFixedResult = tree["scored"]
 
-	root.tick(BLACKBOARD, 0.1)
+	root.tick(0.1)
 
 	assert_almost_eq(scored.score, 0.6, 0.0001)
 
@@ -121,7 +119,7 @@ func test_max_evaluation_method_uses_the_highest_score() -> void:
 	var root: NNBTRoot = tree["root"]
 	var scored: NNBTFixedResult = tree["scored"]
 
-	root.tick(BLACKBOARD, 0.1)
+	root.tick(0.1)
 
 	assert_almost_eq(scored.score, 0.7, 0.0001)
 
@@ -133,7 +131,7 @@ func test_multiply_evaluation_method_short_circuits_on_a_zero_score() -> void:
 	var root: NNBTRoot = tree["root"]
 	var scored: NNBTFixedResult = tree["scored"]
 
-	root.tick(BLACKBOARD, 0.1)
+	root.tick(0.1)
 
 	assert_almost_eq(scored.score, 0.0, 0.0001)
 
@@ -143,6 +141,6 @@ func test_first_non_zero_evaluation_method_scores_zero_when_all_are_zero() -> vo
 	var root: NNBTRoot = tree["root"]
 	var scored: NNBTFixedResult = tree["scored"]
 
-	root.tick(BLACKBOARD, 0.1)
+	root.tick(0.1)
 
 	assert_almost_eq(scored.score, 0.0, 0.0001)

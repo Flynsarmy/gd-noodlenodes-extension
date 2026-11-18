@@ -1,5 +1,6 @@
 #include "root.h"
 #include "../agent_behaviours/sensors.h"
+#include "blackboard.h"
 #include "nodes.h"
 #include "transition.h"
 
@@ -28,18 +29,9 @@ void NNSTRoot::_bind_methods() {
 	BIND_ENUM_CONSTANT(PHYSICS);
 	BIND_ENUM_CONSTANT(MANUAL);
 
-	ClassDB::bind_method(D_METHOD("set_blackboard", "blackboard"), &NNSTRoot::set_blackboard);
-	ClassDB::bind_method(D_METHOD("get_blackboard"), &NNSTRoot::get_blackboard);
-	// The blackboard is a Dictionary<String, Variant>. Typed dictionary hints use
-	// the format "key_type;value_type", where "Variant" accepts any value type.
-	ADD_PROPERTY(
-			PropertyInfo(
-					Variant::DICTIONARY,
-					"blackboard",
-					PROPERTY_HINT_DICTIONARY_TYPE,
-					vformat("%s;%s", Variant::get_type_name(Variant::STRING), "Variant")),
-			"set_blackboard",
-			"get_blackboard");
+	ClassDB::bind_method(D_METHOD("set_blackboard_resource", "blackboard"), &NNSTRoot::set_blackboard_resource);
+	ClassDB::bind_method(D_METHOD("get_assigned_blackboard"), &NNSTRoot::get_assigned_blackboard);
+	ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "blackboard", PROPERTY_HINT_RESOURCE_TYPE, "NNBlackboard"), "set_blackboard_resource", "get_assigned_blackboard");
 
 	ClassDB::bind_method(D_METHOD("set_expression_property", "name", "value"), &NNSTRoot::set_expression_property);
 	ClassDB::bind_method(D_METHOD("get_expression_property", "name", "default"), &NNSTRoot::get_expression_property, Variant());
@@ -100,9 +92,7 @@ NNSTRoot::NNSTRoot() {
 	_child_sensors.clear();
 	_num_child_sensors = 0;
 
-	_blackboard = Dictionary();
-	// Typed as Dictionary<String, Variant>. A NIL value type accepts any value.
-	_blackboard.set_typed(Variant::STRING, StringName(), Variant(), Variant::NIL, StringName(), Variant());
+	_local_blackboard.instantiate();
 
 	_initial_expression_properties = Dictionary();
 	_initial_expression_properties_applied = false;
@@ -137,14 +127,17 @@ uint64_t NNSTRoot::get_total_tick_usec() const {
 }
 #endif
 
-void NNSTRoot::set_blackboard(Dictionary blackboard) {
-	// assign() enforces the String key type: non-String keys are rejected with
-	// an error and the existing blackboard is left untouched.
-	_blackboard.assign(blackboard);
-};
-Dictionary NNSTRoot::get_blackboard() const {
+void NNSTRoot::set_blackboard_resource(const Ref<NNBlackboard> &p_blackboard) {
+	_blackboard = p_blackboard;
+}
+
+Ref<NNBlackboard> NNSTRoot::get_assigned_blackboard() const {
 	return _blackboard;
-};
+}
+
+NNBlackboard *NNSTRoot::get_blackboard_resource() const {
+	return _blackboard.is_valid() ? _blackboard.ptr() : _local_blackboard.ptr();
+}
 
 void NNSTRoot::set_initial_expression_properties(const Dictionary &p_properties) {
 	_initial_expression_properties = p_properties;
@@ -169,20 +162,20 @@ void NNSTRoot::_apply_initial_expression_properties() {
 		}
 		// Expression properties share the blackboard with expression guards so
 		// both use the exact same names inside Expression objects.
-		_blackboard[String(key)] = _initial_expression_properties[key];
+		get_blackboard_resource()->set_value(String(key), _initial_expression_properties[key]);
 	}
 }
 
 void NNSTRoot::set_expression_property(const StringName &p_name, const Variant &p_value) {
 	_apply_initial_expression_properties();
 
-	_blackboard[String(p_name)] = p_value;
+	get_blackboard_resource()->set_value(String(p_name), p_value);
 	_property_change_pending = true;
 	_run_changes();
 }
 
 Variant NNSTRoot::get_expression_property(const StringName &p_name, const Variant &p_default) const {
-	return _blackboard.get(String(p_name), p_default);
+	return get_blackboard_resource()->get_value(String(p_name), p_default);
 }
 
 void NNSTRoot::set_process_thread(int p_process_thread) {

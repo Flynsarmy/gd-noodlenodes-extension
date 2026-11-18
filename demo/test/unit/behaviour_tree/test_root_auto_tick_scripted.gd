@@ -8,7 +8,7 @@ class CountingLeaf extends NNBTLeaf:
 	var result: int = NNBTNodes.RUNNING
 	var tick_count: int = 0
 
-	func on_tick(_blackboard: Variant, _delta: float) -> Status:
+	func on_tick(_delta: float) -> Status:
 		tick_count += 1
 		return result
 

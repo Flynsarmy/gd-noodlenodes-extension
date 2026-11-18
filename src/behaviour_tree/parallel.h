@@ -34,9 +34,9 @@ private:
 protected:
 	static void _bind_methods();
 
-	virtual void _on_before_run(Variant blackboard, float delta) override;
-	virtual void _on_after_run(Variant blackboard, float delta) override;
-	virtual void _on_interrupt(Variant blackboard, float delta) override;
+	virtual void _on_before_run(float delta) override;
+	virtual void _on_after_run(float delta) override;
+	virtual void _on_interrupt(float delta) override;
 
 public:
 	NNBTParallel();
@@ -56,7 +56,7 @@ public:
 
 	virtual void update_child_vectors() override;
 
-	virtual Status _tick(Variant blackboard, float delta) override;
+	virtual Status _tick(float delta) override;
 };
 
 } //namespace godot

@@ -44,25 +44,25 @@ float NNBTTimeLimiter::get_time_spent() const {
 
 // Handling functions.
 
-void NNBTTimeLimiter::_on_before_run(Variant blackboard, float delta) {
+void NNBTTimeLimiter::_on_before_run(float delta) {
 	_time_spent = 0.0f;
-	NNBTDecoratorNodes::_on_before_run(blackboard, delta);
+	NNBTDecoratorNodes::_on_before_run(delta);
 }
 
-void NNBTTimeLimiter::_on_after_run(Variant blackboard, float delta) {
+void NNBTTimeLimiter::_on_after_run(float delta) {
 	_time_spent = 0.0f;
-	NNBTDecoratorNodes::_on_after_run(blackboard, delta);
+	NNBTDecoratorNodes::_on_after_run(delta);
 }
 
-void NNBTTimeLimiter::_on_interrupt(Variant blackboard, float delta) {
+void NNBTTimeLimiter::_on_interrupt(float delta) {
 	// An interrupt ends the run without resetting the node; clear the
 	// accumulated _time_spent so the next run cannot time out early.
 	_time_spent = 0.0f;
-	NNBTDecoratorNodes::_on_interrupt(blackboard, delta);
+	NNBTDecoratorNodes::_on_interrupt(delta);
 }
 
 // Checks the deadline before ticking the child so an expired child gets no extra tick.
-NNBTNodes::Status NNBTTimeLimiter::_tick(Variant blackboard, float delta) {
+NNBTNodes::Status NNBTTimeLimiter::_tick(float delta) {
 	_report_extra_enabled_child_btnodes();
 
 	// Only the first enabled behaviour tree child is ticked. Any further
@@ -80,7 +80,7 @@ NNBTNodes::Status NNBTTimeLimiter::_tick(Variant blackboard, float delta) {
 			return Status::FAILURE;
 		}
 
-		Status result = btnode->tick(blackboard, delta);
+		Status result = btnode->tick(delta);
 
 		if (result == Status::RUNNING) {
 			return Status::RUNNING;

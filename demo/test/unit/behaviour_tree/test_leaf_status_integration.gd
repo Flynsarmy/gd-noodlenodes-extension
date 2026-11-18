@@ -2,8 +2,6 @@ extends GutTest
 @warning_ignore('unused_parameter')
 @warning_ignore('return_value_discarded')
 
-const BLACKBOARD: Dictionary = {}
-
 
 const CUSTOM_STATUS_SCRIPT := "res://test/unit/behaviour_tree/leaf_custom_status.gd"
 const LEAF_NAME := "StatusLeaf"
@@ -17,7 +15,7 @@ const INVALID_PAYLOAD_FRAGMENTS: Array = ["nil", "float", "bool", "string", "'42
 class ConstantLeaf extends NNBTLeaf:
 	var result: int = NNBTNodes.SUCCESS
 
-	func on_tick(_blackboard: Variant, _delta: float) -> Status:
+	func on_tick(_delta: float) -> Status:
 		return result
 
 
@@ -51,7 +49,7 @@ func test_missing_override_fails_without_duplicate_errors() -> void:
 	root.add_child(leaf)
 
 	for tick_index in range(3):
-		assert_eq(root.tick(BLACKBOARD, 0.1), NNBTNodes.FAILURE, "missing override tick %d must fail" % tick_index)
+		assert_eq(root.tick(0.1), NNBTNodes.FAILURE, "missing override tick %d must fail" % tick_index)
 		assert_false(leaf.get_is_running())
 
 	_assert_missing_override_error(LEAF_NAME)
@@ -69,7 +67,7 @@ func test_raw_invalid_statuses_fail_with_one_error_each() -> void:
 		var root: NNBTRoot = NNBTRoot.new()
 		root.add_child(leaf)
 
-		assert_eq(root.tick(BLACKBOARD, 0.1), NNBTNodes.FAILURE, "%s must be rejected" % var_to_str(payload))
+		assert_eq(root.tick(0.1), NNBTNodes.FAILURE, "%s must be rejected" % var_to_str(payload))
 		assert_false(leaf.get_is_running())
 
 		var errors: Array = get_errors()
@@ -100,7 +98,7 @@ func test_valid_statuses_pass_through_unchanged() -> void:
 		var root: NNBTRoot = NNBTRoot.new()
 		root.add_child(leaf)
 
-		assert_eq(root.tick(BLACKBOARD, 0.1), status)
+		assert_eq(root.tick(0.1), status)
 		assert_eq(leaf.get_is_running(), expected_is_running[status])
 		root.free()
 

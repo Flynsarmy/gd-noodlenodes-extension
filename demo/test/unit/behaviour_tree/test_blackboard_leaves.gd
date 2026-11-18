@@ -6,12 +6,12 @@ extends GutTest
 class RunningCondition extends NNBTConditionLeaf:
 	var result: int = NNBTNodes.RUNNING
 
-	func on_tick(_blackboard: Variant, _delta: float) -> Status:
+	func on_tick(_delta: float) -> Status:
 		return result
 
 
 class RunningAction extends NNBTActionLeaf:
-	func on_tick(_blackboard: Variant, _delta: float) -> Status:
+	func on_tick(_delta: float) -> Status:
 		return NNBTNodes.RUNNING
 
 
@@ -41,13 +41,13 @@ func test_set_has_compare_through_root_tick() -> void:
 	sequence.add_child(has_leaf)
 	sequence.add_child(compare_leaf)
 
-	assert_eq(bt_root.tick({}, 0.1), NNBTNodes.SUCCESS)
+	assert_eq(bt_root.tick(0.1), NNBTNodes.SUCCESS)
 	assert_eq(bt_root.get_blackboard("score", 0), 5)
 
 	# The second tick re-reads the value that survived the first tick.
 	compare_leaf.set_value(6)
 	compare_leaf.set_operator(NNBTBlackboardCompare.LESS)
-	assert_eq(bt_root.tick({}, 0.1), NNBTNodes.SUCCESS)
+	assert_eq(bt_root.tick(0.1), NNBTNodes.SUCCESS)
 	assert_eq(bt_root.get_blackboard("score", 0), 5)
 
 	assert_engine_error_count(0)
@@ -81,7 +81,7 @@ func test_compare_all_operators() -> void:
 		leaf.set_value(comparison[2])
 		leaf.set_operator(comparison[0])
 		var expected: int = NNBTNodes.SUCCESS if comparison[3] else NNBTNodes.FAILURE
-		assert_eq(bt_root.tick({}, 0.1), expected,
+		assert_eq(bt_root.tick(0.1), expected,
 				"operator %d: stored %s vs %s" % [comparison[0], str(comparison[1]), str(comparison[2])])
 
 	assert_engine_error_count(0)
@@ -109,7 +109,7 @@ func test_invalid_operator_is_rejected() -> void:
 	errors[0].handled = true
 
 	assert_eq(leaf.operator, NNBTBlackboardCompare.GREATER, "the previous operator is kept")
-	assert_eq(bt_root.tick({}, 0.1), NNBTNodes.SUCCESS, "the kept GREATER operator still evaluates")
+	assert_eq(bt_root.tick(0.1), NNBTNodes.SUCCESS, "the kept GREATER operator still evaluates")
 	assert_eq(get_errors().size(), 1, "ticking adds no error")
 	assert_true(errors[0].handled, "the operator error has been consumed")
 
@@ -126,13 +126,13 @@ func test_compare_incompatible_and_missing_fail_without_errors() -> void:
 	bt_root.add_child(leaf)
 
 	bt_root.set_blackboard("key", "not a number")
-	assert_eq(bt_root.tick({}, 0.1), NNBTNodes.FAILURE, "incompatible types fail")
+	assert_eq(bt_root.tick(0.1), NNBTNodes.FAILURE, "incompatible types fail")
 
 	bt_root.get_blackboard_resource().clear()
-	assert_eq(bt_root.tick({}, 0.1), NNBTNodes.FAILURE, "a missing key fails")
+	assert_eq(bt_root.tick(0.1), NNBTNodes.FAILURE, "a missing key fails")
 
 	bt_root.set_blackboard("key", null)
-	assert_eq(bt_root.tick({}, 0.1), NNBTNodes.FAILURE, "a null-valued key fails")
+	assert_eq(bt_root.tick(0.1), NNBTNodes.FAILURE, "a null-valued key fails")
 
 	assert_engine_error_count(0)
 	bt_root.free()
@@ -155,7 +155,7 @@ func test_erase_then_has_fails() -> void:
 	sequence.add_child(has_leaf)
 	bt_root.set_blackboard("key", 1)
 
-	assert_eq(bt_root.tick({}, 0.1), NNBTNodes.FAILURE)
+	assert_eq(bt_root.tick(0.1), NNBTNodes.FAILURE)
 	assert_false(bt_root.get_blackboard_resource().has_value("key"))
 	assert_false(bt_root.get_blackboard_resource().keys().has("key"), "the key is erased entirely")
 
@@ -170,7 +170,7 @@ func test_erase_missing_key_fails_without_error() -> void:
 	leaf.key = "missing"
 	bt_root.add_child(leaf)
 
-	assert_eq(bt_root.tick({}, 0.1), NNBTNodes.FAILURE)
+	assert_eq(bt_root.tick(0.1), NNBTNodes.FAILURE)
 	assert_engine_error_count(0)
 	bt_root.free()
 
@@ -185,7 +185,7 @@ func test_erase_null_valued_key_succeeds() -> void:
 	bt_root.set_blackboard("key", null)
 	assert_true(bt_root.get_blackboard_resource().keys().has("key"))
 
-	assert_eq(bt_root.tick({}, 0.1), NNBTNodes.SUCCESS)
+	assert_eq(bt_root.tick(0.1), NNBTNodes.SUCCESS)
 	assert_false(bt_root.get_blackboard_resource().keys().has("key"))
 
 	assert_engine_error_count(0)
@@ -209,7 +209,7 @@ func test_set_null_then_has_fails() -> void:
 	sequence.add_child(set_leaf)
 	sequence.add_child(has_leaf)
 
-	assert_eq(bt_root.tick({}, 0.1), NNBTNodes.FAILURE, "a null value counts as absent")
+	assert_eq(bt_root.tick(0.1), NNBTNodes.FAILURE, "a null value counts as absent")
 	assert_false(bt_root.get_blackboard_resource().has_value("key"))
 	assert_true(bt_root.get_blackboard_resource().keys().has("key"), "the null-valued key still exists")
 
@@ -237,7 +237,7 @@ func test_empty_key_reports_once_per_leaf() -> void:
 		leaf.name = "EmptyKeyLeaf"
 		bt_root.add_child(leaf)
 
-		assert_eq(bt_root.tick({}, 0.1), NNBTNodes.FAILURE, "%s fails on an empty key" % class_names[index])
+		assert_eq(bt_root.tick(0.1), NNBTNodes.FAILURE, "%s fails on an empty key" % class_names[index])
 
 		var errors: Array = get_errors()
 		assert_eq(errors.size(), index + 1, "%s reports one configuration error" % class_names[index])
@@ -246,7 +246,7 @@ func test_empty_key_reports_once_per_leaf() -> void:
 		assert_string_contains(str(error.code), "non-empty blackboard key")
 		error.handled = true
 
-		assert_eq(bt_root.tick({}, 0.1), NNBTNodes.FAILURE)
+		assert_eq(bt_root.tick(0.1), NNBTNodes.FAILURE)
 		assert_eq(get_errors().size(), index + 1, "a second tick adds no second error")
 
 		bt_root.free()
@@ -281,7 +281,7 @@ func test_no_root_reports_once_per_leaf() -> void:
 		leaf.set_key("key")
 		reference.node_reference = leaf
 
-		assert_eq(bt_root.tick({}, 0.1), NNBTNodes.FAILURE,
+		assert_eq(bt_root.tick(0.1), NNBTNodes.FAILURE,
 				"%s fails without an NNBTRoot ancestor" % class_names[index])
 
 		reported += 1
@@ -293,7 +293,7 @@ func test_no_root_reports_once_per_leaf() -> void:
 		assert_string_contains(str(error.code), "no NNBTRoot ancestor")
 		error.handled = true
 
-		assert_eq(bt_root.tick({}, 0.1), NNBTNodes.FAILURE, "the second tick still fails")
+		assert_eq(bt_root.tick(0.1), NNBTNodes.FAILURE, "the second tick still fails")
 		assert_eq(get_errors().size(), reported, "a second tick adds no second error")
 
 		bt_root.free()
@@ -308,7 +308,7 @@ func test_condition_leaf_running_is_returned_unchanged_and_reported_once() -> vo
 	leaf.name = "RunningCondition"
 	bt_root.add_child(leaf)
 
-	assert_eq(bt_root.tick({}, 0.1), NNBTNodes.RUNNING, "the RUNNING result is not coerced")
+	assert_eq(bt_root.tick(0.1), NNBTNodes.RUNNING, "the RUNNING result is not coerced")
 	assert_true(leaf.get_is_running(), "a RUNNING condition stays ticked")
 
 	var errors: Array = get_errors()
@@ -317,11 +317,11 @@ func test_condition_leaf_running_is_returned_unchanged_and_reported_once() -> vo
 	assert_string_contains(str(errors[0].code), "RUNNING")
 	errors[0].handled = true
 
-	assert_eq(bt_root.tick({}, 0.1), NNBTNodes.RUNNING)
+	assert_eq(bt_root.tick(0.1), NNBTNodes.RUNNING)
 	assert_eq(get_errors().size(), 1, "a second RUNNING tick does not report again")
 
 	leaf.result = NNBTNodes.SUCCESS
-	assert_eq(bt_root.tick({}, 0.1), NNBTNodes.SUCCESS)
+	assert_eq(bt_root.tick(0.1), NNBTNodes.SUCCESS)
 	assert_false(leaf.get_is_running(), "a SUCCESS condition completes")
 
 	bt_root.free()
@@ -332,7 +332,7 @@ func test_action_leaf_running_is_propagated() -> void:
 	var leaf := RunningAction.new()
 	bt_root.add_child(leaf)
 
-	assert_eq(bt_root.tick({}, 0.1), NNBTNodes.RUNNING)
+	assert_eq(bt_root.tick(0.1), NNBTNodes.RUNNING)
 
 	assert_engine_error_count(0)
 	bt_root.free()

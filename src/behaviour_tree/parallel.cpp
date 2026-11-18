@@ -68,16 +68,16 @@ void NNBTParallel::update_child_vectors() {
 	}
 }
 
-void NNBTParallel::_on_before_run(Variant blackboard, float delta) {
+void NNBTParallel::_on_before_run(float delta) {
 	// Every run starts with fresh per-child memory.
 	_child_results.clear();
 }
 
-void NNBTParallel::_on_after_run(Variant blackboard, float delta) {
+void NNBTParallel::_on_after_run(float delta) {
 	_child_results.clear();
 }
 
-void NNBTParallel::_on_interrupt(Variant blackboard, float delta) {
+void NNBTParallel::_on_interrupt(float delta) {
 	_child_results.clear();
 }
 
@@ -142,7 +142,7 @@ NNBTNodes::Status NNBTParallel::_evaluate_policies(int p_num_enabled, int p_num_
 	return Status::RUNNING;
 }
 
-NNBTNodes::Status NNBTParallel::_tick(Variant blackboard, float delta) {
+NNBTNodes::Status NNBTParallel::_tick(float delta) {
 	// The enabled count is fixed for this tick so a "require all" policy only
 	// becomes true once every enabled child has a terminal result.
 	int num_enabled = 0;
@@ -162,7 +162,7 @@ NNBTNodes::Status NNBTParallel::_tick(Variant blackboard, float delta) {
 
 		std::map<NNBTNodes *, Status>::iterator recorded = _child_results.find(btnode);
 		if (recorded == _child_results.end()) {
-			Status result = btnode->tick(blackboard, delta);
+			Status result = btnode->tick(delta);
 			if (result != Status::RUNNING) {
 				// SKIP and SUCCESS both count as a success. Only terminal
 				// results are remembered; a RUNNING child is ticked again on

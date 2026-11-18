@@ -2,14 +2,12 @@ extends GutTest
 @warning_ignore('unused_parameter')
 @warning_ignore('return_value_discarded')
 
-const BLACKBOARD: Dictionary = {}
-
 
 class ConstantLeaf extends NNBTLeaf:
 	var result: int = NNBTNodes.SUCCESS
 	var tick_count: int = 0
 
-	func on_tick(_blackboard: Variant, _delta: float) -> Status:
+	func on_tick(_delta: float) -> Status:
 		tick_count += 1
 		return result
 
@@ -23,18 +21,18 @@ class ScriptedLeaf extends NNBTLeaf:
 	var after_run_count: int = 0
 	var interrupt_count: int = 0
 
-	func on_tick(_blackboard: Variant, _delta: float) -> Status:
+	func on_tick(_delta: float) -> Status:
 		var index: int = mini(tick_count, results.size() - 1)
 		tick_count += 1
 		return results[index]
 
-	func on_before_run(_blackboard: Variant, _delta: float) -> void:
+	func on_before_run(_delta: float) -> void:
 		before_run_count += 1
 
-	func on_after_run(_blackboard: Variant, _delta: float) -> void:
+	func on_after_run(_delta: float) -> void:
 		after_run_count += 1
 
-	func on_interrupt(_blackboard: Variant, _delta: float) -> void:
+	func on_interrupt(_delta: float) -> void:
 		interrupt_count += 1
 
 
@@ -62,7 +60,7 @@ func _build_parallel(leaves: Array) -> Dictionary:
 
 func _tick_and_assert(tree: Dictionary, expected: int) -> void:
 	var parallel: NNBTParallel = tree["parallel"]
-	var result: int = tree["root"].tick(BLACKBOARD, 0.1)
+	var result: int = tree["root"].tick(0.1)
 
 	assert_eq(result, expected)
 	if expected == NNBTNodes.RUNNING:

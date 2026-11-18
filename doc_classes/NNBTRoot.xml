@@ -35,7 +35,7 @@
 			<param index="0" name="process_thread" type="int" enum="NNBTRoot.ProcessThread" />
 			<param index="1" name="delta" type="float" />
 			<description>
-				The shared body of the frame-signal handlers, and the deterministic driver for custom schedulers. Ticks the tree with [member tick_argument] and the supplied [param delta] when the call is due, and returns [code]true[/code] only when it actually ticked.
+				The shared body of the frame-signal handlers, and the deterministic driver for custom schedulers. Ticks the tree with the supplied [param delta] when the call is due, and returns [code]true[/code] only when it actually ticked.
 				The call is ignored, returning [code]false[/code], when [param process_thread] is not the selected [member process_thread], when the selected thread is [constant MANUAL], when the root is disabled, in the editor, or when [member tick_rate] makes this invocation not due. An ignored call does not advance the [member tick_rate] schedule.
 				This method also works outside the tree, so tests and custom schedulers can drive the schedule deterministically without frame signals.
 			</description>
@@ -59,12 +59,18 @@
 				The node is tracked through an object ID, so the method returns [code]null[/code] when the active node was freed and never returns a freed object.
 			</description>
 		</method>
+		<method name="set_blackboard_resource">
+			<return type="void" />
+			<param index="0" name="blackboard" type="NNBlackboard" />
+			<description>
+				Assigns [param blackboard] as the root's blackboard. Assigning [code]null[/code] clears the assignment and falls back to the root's private board.
+			</description>
+		</method>
 		<method name="tick">
 			<return type="int" enum="NNBTNodes.Status" />
-			<param index="0" name="blackboard" type="Variant" />
-			<param index="1" name="delta" type="float" />
+			<param index="0" name="delta" type="float" />
 			<description>
-				This is the behaviour tree tick-method you should be using to tick the tree. You can provide any [Variant] type as a parameter (usually a node used as an actor or a dictionary used as a blackboard), along with a delta-time. These are passed to all the child nodes of the behaviour tree during ticks.
+				This is the behaviour tree tick-method you should be using to tick the tree. It ticks the tree for the given [param delta]. The tree and its nodes read and write their data through the root's [member blackboard], which every [NNBTNodes] child reaches with the blackboard helpers. The root's parent is the actor unless [member actor] or [member actor_node_path] says otherwise; read it with [method NNBTNodes.get_actor].
 				Manual ticking keeps working while automatic ticking is on, so a script may call this method and also let the automatic callback tick the tree.
 			</description>
 		</method>
@@ -81,9 +87,6 @@
 		</member>
 		<member name="process_thread" type="int" enum="NNBTRoot.ProcessThread" setter="set_process_thread" getter="get_process_thread" default="1">
 			Selects the SceneTree frame signal that drives automatic ticking, not this node's processing flags. Defaults to [constant PHYSICS], so a root auto-ticks once added to a scene. [constant IDLE] uses [code]process_frame[/code], [constant PHYSICS] uses [code]physics_frame[/code] and [constant MANUAL] connects neither so a custom scheduler ticks the tree. Exactly one signal is connected at a time. Out-of-range values fall back to [constant PHYSICS]. Setting this property re-arms the [member tick_rate] schedule.
-		</member>
-		<member name="tick_argument" type="Variant" setter="set_tick_argument" getter="get_tick_argument" default="null">
-			The [Variant] passed as the first argument of every automatic tick. It defaults to [code]null[/code]. Manual calls to [method tick] pass their own argument.
 		</member>
 		<member name="tick_rate" type="int" setter="set_tick_rate" getter="get_tick_rate" default="1">
 			The number of eligible frame signal emissions between automatic ticks. The default of [code]1[/code] ticks every eligible emission, and a rate of 2 ticks on emissions 1, 3, 5 and so on. Values below 1 are clamped to 1. Ineligible emissions, such as those for a signal that is not selected, do not advance the count. Setting this property or [member process_thread], an [member is_enabled] change, and entering or leaving the tree re-arm the schedule.

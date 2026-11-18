@@ -15,16 +15,16 @@ class EventSenderNode extends NNSTNode:
 
 	func on_enter_state() -> void:
 		enter_count += 1
-		get_root().blackboard['log'].push_back("%s on_enter_state" % name)
+		get_root().get_blackboard('log').push_back("%s on_enter_state" % name)
 		for event_name in events_to_send:
-			get_root().blackboard['log'].push_back("%s send_event %s" % [name, event_name])
+			get_root().get_blackboard('log').push_back("%s send_event %s" % [name, event_name])
 			get_root().send_event(event_name)
 
 	func on_exit_state() -> void:
 		exit_count += 1
-		get_root().blackboard['log'].push_back("%s on_exit_state" % name)
+		get_root().get_blackboard('log').push_back("%s on_exit_state" % name)
 		for event_name in exit_events_to_send:
-			get_root().blackboard['log'].push_back("%s send_event %s" % [name, event_name])
+			get_root().get_blackboard('log').push_back("%s send_event %s" % [name, event_name])
 			get_root().send_event(event_name)
 
 ## Logs enter/exit calls without sending anything.
@@ -34,11 +34,11 @@ class LoggerNode extends NNSTNode:
 
 	func on_enter_state() -> void:
 		enter_count += 1
-		get_root().blackboard['log'].push_back("%s on_enter_state" % name)
+		get_root().get_blackboard('log').push_back("%s on_enter_state" % name)
 
 	func on_exit_state() -> void:
 		exit_count += 1
-		get_root().blackboard['log'].push_back("%s on_exit_state" % name)
+		get_root().get_blackboard('log').push_back("%s on_exit_state" % name)
 
 ## Sends an event in the middle of on_enter_state() and logs on both sides of
 ## the call, so a test can tell whether the enter callback ran to completion
@@ -47,14 +47,14 @@ class EnterMidCallbackNode extends NNSTNode:
 	var event_to_send: String = ""
 
 	func on_enter_state() -> void:
-		var log: Array = get_root().blackboard['log']
+		var log: Array = get_root().get_blackboard('log')
 		log.push_back("%s enter begin" % name)
 		log.push_back("%s send_event %s" % [name, event_to_send])
 		get_root().send_event(event_to_send)
 		log.push_back("%s enter end" % name)
 
 	func on_exit_state() -> void:
-		get_root().blackboard['log'].push_back("%s on_exit_state" % name)
+		get_root().get_blackboard('log').push_back("%s on_exit_state" % name)
 
 
 ## Transitions to `target_path` when entered, so leaving a state can
@@ -65,12 +65,12 @@ class RedirectOnEnterNode extends NNSTNode:
 
 	func on_enter_state() -> void:
 		enter_count += 1
-		get_root().blackboard['log'].push_back("%s on_enter_state" % name)
+		get_root().get_blackboard('log').push_back("%s on_enter_state" % name)
 		if not target_path.is_empty():
 			transition_to(target_path)
 
 	func on_exit_state() -> void:
-		get_root().blackboard['log'].push_back("%s on_exit_state" % name)
+		get_root().get_blackboard('log').push_back("%s on_exit_state" % name)
 
 
 ## Transitions `state` away from itself inside the guard callback. The native
@@ -112,14 +112,16 @@ func _make_transition(branch: NNSTBranchNodes, event_name: String, target: Node)
 
 
 func _get_log(root: NNSTRoot) -> Array:
-	return root.blackboard['log']
+	return root.get_blackboard('log')
 
 
 ## The innermost active state handles an event before its ancestors: when the
 ## child and the parent both declare the same event, only the child transitions.
 func test_child_transition_wins_over_parent_for_same_event() -> void:
 	var _root: NNSTRoot = NNSTRoot.new()
-	_root.blackboard = { "log": [] }
+	var board := NNBlackboard.new()
+	board.values = { "log": [] }
+	_root.blackboard = board
 	var _parent := _make_logger("Parent")
 	var _child_a := _make_logger("ChildA")
 	var _child_b := _make_logger("ChildB")
@@ -149,7 +151,9 @@ func test_child_transition_wins_over_parent_for_same_event() -> void:
 ## bubbles up to the parent, which then transitions.
 func test_unhandled_event_bubbles_to_parent() -> void:
 	var _root: NNSTRoot = NNSTRoot.new()
-	_root.blackboard = { "log": [] }
+	var board := NNBlackboard.new()
+	board.values = { "log": [] }
+	_root.blackboard = board
 	var _parent := _make_logger("Parent")
 	var _child := _make_logger("Child")
 	var _parent_sibling := _make_logger("ParentSibling")
@@ -174,7 +178,9 @@ func test_unhandled_event_bubbles_to_parent() -> void:
 ## gets its chance and its transition applies.
 func test_failed_child_guard_does_not_consume_event() -> void:
 	var _root: NNSTRoot = NNSTRoot.new()
-	_root.blackboard = { "log": [] }
+	var board := NNBlackboard.new()
+	board.values = { "log": [] }
+	_root.blackboard = board
 	var _parent := _make_logger("Parent")
 	var _child_a := _make_logger("ChildA")
 	var _child_b := _make_logger("ChildB")
@@ -207,7 +213,9 @@ func test_failed_child_guard_does_not_consume_event() -> void:
 ## not fire.
 func test_parallel_event_reaches_all_regions() -> void:
 	var _root: NNSTRoot = NNSTRoot.new()
-	_root.blackboard = { "log": [] }
+	var board := NNBlackboard.new()
+	board.values = { "log": [] }
+	_root.blackboard = board
 	var _parallel: NNSTParallel = NNSTParallel.new()
 	var _region1 := _make_logger("Region1")
 	var _region2 := _make_logger("Region2")
@@ -250,7 +258,9 @@ func test_parallel_event_reaches_all_regions() -> void:
 ## the state completes, then the queued events are processed in FIFO order.
 func test_reentrant_send_event_is_queued_and_processed_in_fifo_order() -> void:
 	var _root: NNSTRoot = NNSTRoot.new()
-	_root.blackboard = { "log": [] }
+	var board := NNBlackboard.new()
+	board.values = { "log": [] }
+	_root.blackboard = board
 	var _node_a := _make_logger("A")
 	var _node_b := _make_sender("B", ["second", "third"])
 	var _node_c := _make_logger("C")
@@ -266,7 +276,7 @@ func test_reentrant_send_event_is_queued_and_processed_in_fifo_order() -> void:
 
 	add_child_autofree(_root)
 	assert_true(_node_a.get_is_active())
-	_root.blackboard['log'] = []
+	_root.get_blackboard_resource().set_value('log', [])
 
 	_root.send_event("first")
 
@@ -294,7 +304,9 @@ func test_reentrant_send_event_is_queued_and_processed_in_fifo_order() -> void:
 ## callbacks) before the next event is delivered.
 func test_consecutive_external_send_events_are_processed_in_fifo_order() -> void:
 	var _root: NNSTRoot = NNSTRoot.new()
-	_root.blackboard = { "log": [] }
+	var board := NNBlackboard.new()
+	board.values = { "log": [] }
+	_root.blackboard = board
 	var _node_a := _make_logger("A")
 	var _node_b := _make_logger("B")
 	var _node_c := _make_logger("C")
@@ -310,7 +322,7 @@ func test_consecutive_external_send_events_are_processed_in_fifo_order() -> void
 
 	add_child_autofree(_root)
 	assert_true(_node_a.get_is_active())
-	_root.blackboard['log'] = []
+	_root.get_blackboard_resource().set_value('log', [])
 
 	_root.send_event("first")
 	_root.send_event("second")
@@ -339,7 +351,9 @@ func test_consecutive_external_send_events_are_processed_in_fifo_order() -> void
 ## callback finishes first, then the queued event is processed.
 func test_event_sent_from_enter_during_direct_transition_is_deferred() -> void:
 	var _root: NNSTRoot = NNSTRoot.new()
-	_root.blackboard = { "log": [] }
+	var board := NNBlackboard.new()
+	board.values = { "log": [] }
+	_root.blackboard = board
 	var _start := _make_logger("Start")
 	var _node_a := EnterMidCallbackNode.new()
 	_node_a.name = "A"
@@ -353,7 +367,7 @@ func test_event_sent_from_enter_during_direct_transition_is_deferred() -> void:
 
 	add_child_autofree(_root)
 	assert_true(_start.get_is_active())
-	_root.blackboard['log'] = []
+	_root.get_blackboard_resource().set_value('log', [])
 
 	assert_true(_start.transition_to(_start.get_path_to(_node_a)))
 
@@ -375,7 +389,9 @@ func test_event_sent_from_enter_during_direct_transition_is_deferred() -> void:
 ## queued event is processed.
 func test_send_event_from_on_exit_state_is_queued() -> void:
 	var _root: NNSTRoot = NNSTRoot.new()
-	_root.blackboard = { "log": [] }
+	var board := NNBlackboard.new()
+	board.values = { "log": [] }
+	_root.blackboard = board
 	var _node_a := _make_sender("A", [])
 	_node_a.exit_events_to_send = ["after"]
 	var _node_b := _make_logger("B")
@@ -389,7 +405,7 @@ func test_send_event_from_on_exit_state_is_queued() -> void:
 
 	add_child_autofree(_root)
 	assert_true(_node_a.get_is_active())
-	_root.blackboard['log'] = []
+	_root.get_blackboard_resource().set_value('log', [])
 
 	_root.send_event("go")
 
@@ -409,7 +425,9 @@ func test_send_event_from_on_exit_state_is_queued() -> void:
 ## consumed the event.
 func test_root_level_transition_fires() -> void:
 	var _root: NNSTRoot = NNSTRoot.new()
-	_root.blackboard = { "log": [] }
+	var board := NNBlackboard.new()
+	board.values = { "log": [] }
+	_root.blackboard = board
 	var _node_a := _make_logger("A")
 	var _node_b := _make_logger("B")
 	_root.add_child(_node_a)
@@ -430,7 +448,9 @@ func test_root_level_transition_fires() -> void:
 ## consumes it first and the root's own transition does not fire.
 func test_root_transition_only_fires_after_active_child_declines() -> void:
 	var _root: NNSTRoot = NNSTRoot.new()
-	_root.blackboard = { "log": [] }
+	var board := NNBlackboard.new()
+	board.values = { "log": [] }
+	_root.blackboard = board
 	var _node_a := _make_logger("A")
 	var _node_b := _make_logger("B")
 	var _node_c := _make_logger("C")
@@ -455,7 +475,9 @@ func test_root_transition_only_fires_after_active_child_declines() -> void:
 ## dispatching a second, independent traversal.
 func test_send_event_on_a_state_routes_through_the_chart() -> void:
 	var _root: NNSTRoot = NNSTRoot.new()
-	_root.blackboard = { "log": [] }
+	var board := NNBlackboard.new()
+	board.values = { "log": [] }
+	_root.blackboard = board
 	var _parent := _make_logger("Parent")
 	var _child_a := _make_logger("ChildA")
 	var _child_b := _make_logger("ChildB")
@@ -479,7 +501,9 @@ func test_send_event_on_a_state_routes_through_the_chart() -> void:
 ## state context. A failing guard falls through to the next root transition.
 func test_root_transition_guards_are_evaluated() -> void:
 	var _root: NNSTRoot = NNSTRoot.new()
-	_root.blackboard = { "log": [] }
+	var board := NNBlackboard.new()
+	board.values = { "log": [] }
+	_root.blackboard = board
 	var _node_a := _make_logger("A")
 	var _node_b := _make_logger("B")
 	var _node_c := _make_logger("C")
@@ -511,7 +535,9 @@ func test_root_transition_guards_are_evaluated() -> void:
 ## state the event is delivered to. Inactive states do not see it.
 func test_event_received_is_emitted_for_delivered_states() -> void:
 	var _root: NNSTRoot = NNSTRoot.new()
-	_root.blackboard = { "log": [] }
+	var board := NNBlackboard.new()
+	board.values = { "log": [] }
+	_root.blackboard = board
 	var _parent := _make_logger("Parent")
 	var _child := _make_logger("Child")
 	var _inactive := _make_logger("Inactive")
@@ -537,7 +563,9 @@ func test_event_received_is_emitted_for_delivered_states() -> void:
 ## root's transition budget instead of recursing until the stack overflows.
 func test_infinite_loop_guard_aborts_processing() -> void:
 	var _root: NNSTRoot = NNSTRoot.new()
-	_root.blackboard = { "log": [] }
+	var board := NNBlackboard.new()
+	board.values = { "log": [] }
+	_root.blackboard = board
 	var _node_a := _make_sender("A", ["ping"])
 	var _node_b := _make_sender("B", ["ping"])
 	_root.add_child(_node_a)
@@ -574,7 +602,9 @@ func test_infinite_loop_guard_aborts_processing() -> void:
 ## afterwards and move the chart on to C.
 func test_event_received_callback_transition_cancels_state_dispatch() -> void:
 	var _root: NNSTRoot = NNSTRoot.new()
-	_root.blackboard = { "log": [] }
+	var board := NNBlackboard.new()
+	board.values = { "log": [] }
+	_root.blackboard = board
 	var _node_a := _make_logger("A")
 	var _node_b := _make_logger("B")
 	var _node_c := _make_logger("C")
@@ -604,7 +634,9 @@ func test_event_received_callback_transition_cancels_state_dispatch() -> void:
 ## consumed the event by transitioning away. The parent must not handle it.
 func test_event_received_callback_transition_cancels_parent_dispatch() -> void:
 	var _root: NNSTRoot = NNSTRoot.new()
-	_root.blackboard = { "log": [] }
+	var board := NNBlackboard.new()
+	board.values = { "log": [] }
+	_root.blackboard = board
 	var _parent := _make_logger("Parent")
 	var _node_a := _make_logger("A")
 	var _node_b := _make_logger("B")
@@ -643,7 +675,9 @@ func test_event_received_callback_transition_cancels_parent_dispatch() -> void:
 ## it guarded must not be applied from the stale activation.
 func test_guard_callback_transition_cancels_state_dispatch() -> void:
 	var _root: NNSTRoot = NNSTRoot.new()
-	_root.blackboard = { "log": [] }
+	var board := NNBlackboard.new()
+	board.values = { "log": [] }
+	_root.blackboard = board
 	var _node_a := _make_logger("A")
 	var _node_b := _make_logger("B")
 	var _node_c := _make_logger("C")
@@ -676,7 +710,9 @@ func test_guard_callback_transition_cancels_state_dispatch() -> void:
 ## would let C be entered here.
 func test_exit_and_reentry_does_not_fire_stale_transition() -> void:
 	var _root: NNSTRoot = NNSTRoot.new()
-	_root.blackboard = { "log": [] }
+	var board := NNBlackboard.new()
+	board.values = { "log": [] }
+	_root.blackboard = board
 	var _node_a := _make_logger("A")
 	var _node_b := RedirectOnEnterNode.new()
 	_node_b.name = "B"
@@ -695,7 +731,7 @@ func test_exit_and_reentry_does_not_fire_stale_transition() -> void:
 	add_child_autofree(_root)
 	_node_b.target_path = _node_b.get_path_to(_node_a)
 	assert_true(_node_a.get_is_active())
-	_root.blackboard['log'] = []
+	_root.get_blackboard_resource().set_value('log', [])
 
 	_root.send_event("go")
 

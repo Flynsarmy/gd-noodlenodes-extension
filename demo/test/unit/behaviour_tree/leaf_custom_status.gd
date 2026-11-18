@@ -7,5 +7,5 @@ extends Node
 var payload: Variant
 
 
-func on_tick(_blackboard: Variant, _delta: float) -> Variant:
+func on_tick(_delta: float) -> Variant:
 	return payload

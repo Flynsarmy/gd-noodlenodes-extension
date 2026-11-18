@@ -152,14 +152,14 @@ void NNBTNodeReference::reset() {
 	_is_resetting = false;
 }
 
-void NNBTNodeReference::_on_interrupt(Variant blackboard, float delta) {
+void NNBTNodeReference::_on_interrupt(float delta) {
 	if (_is_interrupting) {
 		ERR_PRINT("NNBTNodeReference::_on_interrupt(): Detected a cycle in node_reference links; aborting traversal.");
 		return;
 	}
 
 	_is_interrupting = true;
-	NNBTTaskNodes::_on_interrupt(blackboard, delta);
+	NNBTTaskNodes::_on_interrupt(delta);
 	// Only the reference that owns the target's active run may cancel it.
 	NNBTNodes *target = get_node_reference();
 	if (target != nullptr && target->get_is_running() && target->get_run_owner() == ObjectID(get_instance_id())) {
@@ -168,7 +168,7 @@ void NNBTNodeReference::_on_interrupt(Variant blackboard, float delta) {
 	_is_interrupting = false;
 }
 
-NNBTNodes::Status NNBTNodeReference::_tick(Variant blackboard, float delta) {
+NNBTNodes::Status NNBTNodeReference::_tick(float delta) {
 	if (_is_ticking) {
 		ERR_PRINT("NNBTNodeReference::_tick(): Detected a cycle in node_reference links; returning FAILURE.");
 		return Status::FAILURE;
@@ -188,7 +188,7 @@ NNBTNodes::Status NNBTNodeReference::_tick(Variant blackboard, float delta) {
 			target->interrupt();
 		}
 		target->set_run_owner(self_id);
-		result = target->tick(blackboard, delta);
+		result = target->tick(delta);
 	}
 	_is_ticking = false;
 	return result;

@@ -116,9 +116,6 @@ public:
 	void set_root(NNSTRoot *p_root); // Setter
 	NNSTRoot *get_root() const;
 
-	bool set_blackboard(const String &p_key, const Variant &p_value);
-	Variant get_blackboard(const String &p_key, const Variant &p_default) const;
-
 	void set_score(float score);
 	float get_score() const;
 

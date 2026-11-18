@@ -36,8 +36,8 @@ private:
 protected:
 	static void _bind_methods();
 
-	virtual void _on_after_run(Variant blackboard, float delta) override;
-	virtual void _on_interrupt(Variant blackboard, float delta) override;
+	virtual void _on_after_run(float delta) override;
+	virtual void _on_interrupt(float delta) override;
 
 public:
 	NNBTRunNQSQuery();
@@ -58,7 +58,7 @@ public:
 	bool get_is_high_priority() const;
 
 	// Handling functions.
-	virtual Status _tick(Variant blackboard, float delta) override;
+	virtual Status _tick(float delta) override;
 
 	// Godot virtuals.
 

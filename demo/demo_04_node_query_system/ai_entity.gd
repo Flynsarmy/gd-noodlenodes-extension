@@ -1,6 +1,5 @@
 extends AnimatedSprite2D
 
-@onready var root: NNBTRoot = $NNBTRoot
 @onready var distance_to_vector_2_search_criterion: NNDistanceToVector2SearchCriterion = $NNNodeGroupSearchSpace/NNDistanceToVector2SearchCriterion
 @onready var debug_circle: MeshInstance2D = $debug_circle
 
@@ -8,10 +7,6 @@ extends AnimatedSprite2D
 var movement_speed: float = 100.0
 var movement_target_point: Vector2
 var dir_to_target: Vector2
-
-
-func _ready() -> void:
-	root.tick_argument = self
 
 
 func _physics_process(delta: float) -> void:

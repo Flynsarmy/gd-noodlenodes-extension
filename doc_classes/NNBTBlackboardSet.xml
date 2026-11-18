@@ -6,7 +6,7 @@
 	<description>
 		Stores [member value] under [member key] in the [NNBlackboard] of the nearest [NNBTRoot] ancestor. Returns [code]SUCCESS[/code] when the value was stored, including when the value is [code]null[/code]. Returns [code]FAILURE[/code] for an empty [member key], when there is no [NNBTRoot] ancestor with a blackboard, or when the write is rejected.
 		Configuration errors are reported once per node instance, naming the class, node name and location, and the node returns [code]FAILURE[/code] without coercing anything.
-		This leaf is fully data-driven: it is configured entirely by its properties, does not call and is not affected by an [code]on_tick[/code] override in an attached script, and never reads the [Variant] passed to [method NNBTTaskNodes.on_tick].
+		This leaf is fully data-driven: it is configured entirely by its properties, does not call and is not affected by an [code]on_tick[/code] override in an attached script, and works on the [NNBlackboard] of the nearest [NNBTRoot] ancestor through the [NNBTNodes] blackboard helpers.
 	</description>
 	<tutorials>
 	</tutorials>

@@ -2,44 +2,36 @@ extends GutTest
 @warning_ignore('unused_parameter')
 @warning_ignore('return_value_discarded')
 
-const BLACKBOARD: Dictionary = {}
-
 
 class LifecycleLeaf extends NNBTLeaf:
 	var result: int = NNBTNodes.SUCCESS
 	var before_run_count: int = 0
 	var after_run_count: int = 0
 	var interrupt_count: int = 0
-	var last_before_blackboard: Variant = null
 	var last_before_delta: float = 0.0
-	var last_after_blackboard: Variant = null
 	var last_after_delta: float = 0.0
-	var last_interrupt_blackboard: Variant = null
 	var last_interrupt_delta: float = 0.0
 
-	func on_tick(_blackboard: Variant, _delta: float) -> Status:
+	func on_tick(_delta: float) -> Status:
 		return result
 
-	func on_before_run(blackboard: Variant, delta: float) -> void:
+	func on_before_run(delta: float) -> void:
 		before_run_count += 1
-		last_before_blackboard = blackboard
 		last_before_delta = delta
 
-	func on_after_run(blackboard: Variant, delta: float) -> void:
+	func on_after_run(delta: float) -> void:
 		after_run_count += 1
-		last_after_blackboard = blackboard
 		last_after_delta = delta
 
-	func on_interrupt(blackboard: Variant, delta: float) -> void:
+	func on_interrupt(delta: float) -> void:
 		interrupt_count += 1
-		last_interrupt_blackboard = blackboard
 		last_interrupt_delta = delta
 
 
 class PlainLeaf extends NNBTLeaf:
 	var result: int = NNBTNodes.SUCCESS
 
-	func on_tick(_blackboard: Variant, _delta: float) -> Status:
+	func on_tick(_delta: float) -> Status:
 		return result
 
 
@@ -48,17 +40,17 @@ class TraceLeaf extends NNBTLeaf:
 	var events: Array = []
 	var result: int = NNBTNodes.RUNNING
 
-	func on_before_run(_blackboard: Variant, _delta: float) -> void:
+	func on_before_run(_delta: float) -> void:
 		events.append("before")
 
-	func on_tick(_blackboard: Variant, _delta: float) -> Status:
+	func on_tick(_delta: float) -> Status:
 		events.append("tick")
 		return result
 
-	func on_after_run(_blackboard: Variant, _delta: float) -> void:
+	func on_after_run(_delta: float) -> void:
 		events.append("after")
 
-	func on_interrupt(_blackboard: Variant, _delta: float) -> void:
+	func on_interrupt(_delta: float) -> void:
 		events.append("interrupt")
 
 
@@ -70,13 +62,13 @@ class LifecyclePassThrough extends NNBTPassThrough:
 	var after_run_count: int = 0
 	var interrupt_count: int = 0
 
-	func on_before_run(_blackboard: Variant, _delta: float) -> void:
+	func on_before_run(_delta: float) -> void:
 		before_run_count += 1
 
-	func on_after_run(_blackboard: Variant, _delta: float) -> void:
+	func on_after_run(_delta: float) -> void:
 		after_run_count += 1
 
-	func on_interrupt(_blackboard: Variant, _delta: float) -> void:
+	func on_interrupt(_delta: float) -> void:
 		interrupt_count += 1
 
 
@@ -85,20 +77,20 @@ class LifecycleReference extends NNBTNodeReference:
 	var after_run_count: int = 0
 	var interrupt_count: int = 0
 
-	func on_before_run(_blackboard: Variant, _delta: float) -> void:
+	func on_before_run(_delta: float) -> void:
 		before_run_count += 1
 
-	func on_after_run(_blackboard: Variant, _delta: float) -> void:
+	func on_after_run(_delta: float) -> void:
 		after_run_count += 1
 
-	func on_interrupt(_blackboard: Variant, _delta: float) -> void:
+	func on_interrupt(_delta: float) -> void:
 		interrupt_count += 1
 
 
 class LifecycleQuery extends NNBTRunNQSQuery:
 	var interrupt_count: int = 0
 
-	func on_interrupt(_blackboard: Variant, _delta: float) -> void:
+	func on_interrupt(_delta: float) -> void:
 		interrupt_count += 1
 
 
@@ -152,7 +144,7 @@ func test_clean_success_runs_before_and_after_once() -> void:
 	var leaf: LifecycleLeaf = _make_leaf(NNBTNodes.SUCCESS)
 	var root: NNBTRoot = _make_root_with(leaf)
 
-	assert_eq(root.tick(BLACKBOARD, 0.1), NNBTNodes.SUCCESS)
+	assert_eq(root.tick(0.1), NNBTNodes.SUCCESS)
 	assert_eq(leaf.before_run_count, 1, "a new run fires before_run once")
 	assert_eq(leaf.after_run_count, 1, "a terminal result fires after_run once")
 	assert_eq(leaf.interrupt_count, 0)
@@ -164,12 +156,12 @@ func test_running_then_success_keeps_one_run() -> void:
 	var leaf: LifecycleLeaf = _make_leaf(NNBTNodes.RUNNING)
 	var root: NNBTRoot = _make_root_with(leaf)
 
-	assert_eq(root.tick(BLACKBOARD, 0.1), NNBTNodes.RUNNING)
+	assert_eq(root.tick(0.1), NNBTNodes.RUNNING)
 	assert_eq(leaf.before_run_count, 1)
 	assert_eq(leaf.after_run_count, 0)
 
 	leaf.result = NNBTNodes.SUCCESS
-	assert_eq(root.tick(BLACKBOARD, 0.1), NNBTNodes.SUCCESS)
+	assert_eq(root.tick(0.1), NNBTNodes.SUCCESS)
 	assert_eq(leaf.before_run_count, 1, "the second tick must not restart the run")
 	assert_eq(leaf.after_run_count, 1)
 	assert_eq(leaf.interrupt_count, 0)
@@ -177,24 +169,20 @@ func test_running_then_success_keeps_one_run() -> void:
 	assert_engine_error_count(0)
 
 
-func test_lifecycle_hooks_receive_the_run_arguments() -> void:
-	var run_blackboard: Dictionary = { "marker": 42 }
+func test_lifecycle_hooks_receive_the_run_delta() -> void:
 	var leaf: LifecycleLeaf = _make_leaf(NNBTNodes.RUNNING)
 	var root: NNBTRoot = _make_root_with(leaf)
 
-	assert_eq(root.tick(run_blackboard, 0.25), NNBTNodes.RUNNING)
-	assert_eq(leaf.last_before_blackboard, run_blackboard, "before_run receives the run blackboard")
+	assert_eq(root.tick(0.25), NNBTNodes.RUNNING)
 	assert_almost_eq(leaf.last_before_delta, 0.25, 0.0001, "before_run receives the run delta")
 
 	leaf.result = NNBTNodes.SUCCESS
-	assert_eq(root.tick({}, 0.5), NNBTNodes.SUCCESS)
-	assert_eq(leaf.last_after_blackboard, run_blackboard, "after_run receives the blackboard of the run it closes")
+	assert_eq(root.tick(0.5), NNBTNodes.SUCCESS)
 	assert_almost_eq(leaf.last_after_delta, 0.25, 0.0001, "after_run receives the delta of the run it closes")
 
 	leaf.result = NNBTNodes.RUNNING
-	assert_eq(root.tick(run_blackboard, 0.4), NNBTNodes.RUNNING)
+	assert_eq(root.tick(0.4), NNBTNodes.RUNNING)
 	root.interrupt()
-	assert_eq(leaf.last_interrupt_blackboard, run_blackboard, "interrupt supplies the interrupted run's blackboard")
 	assert_almost_eq(leaf.last_interrupt_delta, 0.4, 0.0001, "interrupt supplies the interrupted run's delta")
 
 	assert_engine_error_count(0)
@@ -208,17 +196,17 @@ func test_reactive_branch_switch_interrupts_the_abandoned_branch() -> void:
 	selector.add_child(b)
 	var root: NNBTRoot = _make_root_with(selector)
 
-	assert_eq(root.tick(BLACKBOARD, 0.1), NNBTNodes.RUNNING)
+	assert_eq(root.tick(0.1), NNBTNodes.RUNNING)
 	assert_eq(b.before_run_count, 1, "the running branch starts its run")
 	assert_eq(b.interrupt_count, 0)
 
 	a.result = NNBTNodes.SUCCESS
-	assert_eq(root.tick(BLACKBOARD, 0.1), NNBTNodes.SUCCESS)
+	assert_eq(root.tick(0.1), NNBTNodes.SUCCESS)
 	assert_eq(b.interrupt_count, 1, "the abandoned branch is interrupted once")
 	assert_eq(b.after_run_count, 0, "an interrupted run must not fire after_run")
 
 	a.result = NNBTNodes.FAILURE
-	assert_eq(root.tick(BLACKBOARD, 0.1), NNBTNodes.RUNNING)
+	assert_eq(root.tick(0.1), NNBTNodes.RUNNING)
 	assert_eq(b.before_run_count, 2, "re-entering the branch starts a fresh run")
 
 	assert_engine_error_count(0)
@@ -232,17 +220,17 @@ func test_sequence_reactive_switch_interrupts_the_abandoned_branch() -> void:
 	sequence.add_child(b)
 	var root: NNBTRoot = _make_root_with(sequence)
 
-	assert_eq(root.tick(BLACKBOARD, 0.1), NNBTNodes.RUNNING)
+	assert_eq(root.tick(0.1), NNBTNodes.RUNNING)
 	assert_eq(b.before_run_count, 1, "the running child starts its run")
 	assert_eq(b.interrupt_count, 0)
 
 	a.result = NNBTNodes.RUNNING
-	assert_eq(root.tick(BLACKBOARD, 0.1), NNBTNodes.RUNNING)
+	assert_eq(root.tick(0.1), NNBTNodes.RUNNING)
 	assert_eq(b.interrupt_count, 1, "the abandoned branch is interrupted once")
 	assert_eq(b.after_run_count, 0, "an interrupted run must not fire after_run")
 	assert_eq(a.before_run_count, 2, "the restarted child starts a fresh run")
 
-	assert_eq(root.tick(BLACKBOARD, 0.1), NNBTNodes.RUNNING)
+	assert_eq(root.tick(0.1), NNBTNodes.RUNNING)
 	assert_eq(a.before_run_count, 2, "the continuing child is not restarted")
 	assert_eq(b.interrupt_count, 1)
 
@@ -257,11 +245,11 @@ func test_sequence_failure_interrupts_a_still_running_child() -> void:
 	sequence.add_child(action)
 	var root: NNBTRoot = _make_root_with(sequence)
 
-	assert_eq(root.tick(BLACKBOARD, 0.1), NNBTNodes.RUNNING)
+	assert_eq(root.tick(0.1), NNBTNodes.RUNNING)
 	assert_eq(action.before_run_count, 1, "the running child starts its run")
 
 	gate.result = NNBTNodes.FAILURE
-	assert_eq(root.tick(BLACKBOARD, 0.1), NNBTNodes.FAILURE)
+	assert_eq(root.tick(0.1), NNBTNodes.FAILURE)
 	assert_eq(action.interrupt_count, 1, "the still-running child is interrupted")
 	assert_eq(action.after_run_count, 0, "an interrupted run must not fire after_run")
 
@@ -276,11 +264,11 @@ func test_terminal_completion_interrupts_only_still_active_children() -> void:
 	selector.add_child(b)
 	var root: NNBTRoot = _make_root_with(selector)
 
-	assert_eq(root.tick(BLACKBOARD, 0.1), NNBTNodes.RUNNING)
+	assert_eq(root.tick(0.1), NNBTNodes.RUNNING)
 	assert_eq(b.before_run_count, 1)
 
 	a.result = NNBTNodes.SUCCESS
-	assert_eq(root.tick(BLACKBOARD, 0.1), NNBTNodes.SUCCESS)
+	assert_eq(root.tick(0.1), NNBTNodes.SUCCESS)
 	assert_eq(b.interrupt_count, 1, "the still-active sibling is interrupted")
 	assert_eq(a.interrupt_count, 0, "a completed sibling is not interrupted")
 
@@ -297,11 +285,11 @@ func test_terminal_completion_interrupts_a_running_descendant() -> void:
 	selector.add_child(sequence)
 	var root: NNBTRoot = _make_root_with(selector)
 
-	assert_eq(root.tick(BLACKBOARD, 0.1), NNBTNodes.RUNNING)
+	assert_eq(root.tick(0.1), NNBTNodes.RUNNING)
 	assert_eq(running.before_run_count, 1)
 
 	a.result = NNBTNodes.SUCCESS
-	assert_eq(root.tick(BLACKBOARD, 0.1), NNBTNodes.SUCCESS)
+	assert_eq(root.tick(0.1), NNBTNodes.SUCCESS)
 	assert_eq(running.interrupt_count, 1, "the cleanup recurses into the sequence")
 	assert_eq(running.after_run_count, 0)
 
@@ -318,12 +306,12 @@ func test_terminal_completion_interrupts_a_lifecycle_aware_descendant() -> void:
 	selector.add_child(decorator)
 	var root: NNBTRoot = _make_root_with(selector)
 
-	assert_eq(root.tick(BLACKBOARD, 0.1), NNBTNodes.RUNNING)
+	assert_eq(root.tick(0.1), NNBTNodes.RUNNING)
 	assert_eq(decorator.before_run_count, 1)
 	assert_eq(running.before_run_count, 1)
 
 	a.result = NNBTNodes.SUCCESS
-	assert_eq(root.tick(BLACKBOARD, 0.1), NNBTNodes.SUCCESS)
+	assert_eq(root.tick(0.1), NNBTNodes.SUCCESS)
 	assert_eq(decorator.interrupt_count, 1)
 	assert_eq(running.interrupt_count, 1)
 	assert_eq(decorator.after_run_count, 0)
@@ -335,7 +323,7 @@ func test_disabling_a_running_leaf_interrupts_once() -> void:
 	var leaf: LifecycleLeaf = _make_leaf(NNBTNodes.RUNNING)
 	var root: NNBTRoot = _make_root_with(leaf)
 
-	assert_eq(root.tick(BLACKBOARD, 0.1), NNBTNodes.RUNNING)
+	assert_eq(root.tick(0.1), NNBTNodes.RUNNING)
 	assert_eq(leaf.before_run_count, 1)
 
 	leaf.is_enabled = false
@@ -346,7 +334,7 @@ func test_disabling_a_running_leaf_interrupts_once() -> void:
 	assert_eq(leaf.interrupt_count, 1, "disabling again is a no-op")
 
 	leaf.is_enabled = true
-	assert_eq(root.tick(BLACKBOARD, 0.1), NNBTNodes.RUNNING)
+	assert_eq(root.tick(0.1), NNBTNodes.RUNNING)
 	assert_eq(leaf.before_run_count, 2, "re-enabling starts a fresh run")
 
 	assert_engine_error_count(0)
@@ -359,7 +347,7 @@ func test_root_disable_stops_a_running_query_and_reenable_posts_again() -> void:
 	query.nqs_search_space = search_space
 	var root: NNBTRoot = _make_root_with(query)
 
-	assert_eq(root.tick(BLACKBOARD, 0.1), NNBTNodes.RUNNING)
+	assert_eq(root.tick(0.1), NNBTNodes.RUNNING)
 	assert_true(search_space.is_query_still_running)
 
 	root.is_enabled = false
@@ -367,7 +355,7 @@ func test_root_disable_stops_a_running_query_and_reenable_posts_again() -> void:
 	assert_false(search_space.is_query_still_running, "the interrupted query is stopped")
 
 	root.is_enabled = true
-	assert_eq(root.tick(BLACKBOARD, 0.1), NNBTNodes.RUNNING)
+	assert_eq(root.tick(0.1), NNBTNodes.RUNNING)
 	assert_true(search_space.is_query_still_running, "a fresh query is posted after re-enabling")
 
 	Engine.get_singleton("NodeQuerySystem").stop_query(search_space)
@@ -380,7 +368,7 @@ func test_root_interrupt_stops_a_running_query_and_is_idempotent() -> void:
 	query.nqs_search_space = search_space
 	var root: NNBTRoot = _make_root_with(query)
 
-	assert_eq(root.tick(BLACKBOARD, 0.1), NNBTNodes.RUNNING)
+	assert_eq(root.tick(0.1), NNBTNodes.RUNNING)
 	assert_true(search_space.is_query_still_running)
 
 	root.interrupt()
@@ -390,7 +378,7 @@ func test_root_interrupt_stops_a_running_query_and_is_idempotent() -> void:
 	root.interrupt()
 	assert_eq(query.interrupt_count, 1, "interrupt is idempotent")
 
-	assert_eq(root.tick(BLACKBOARD, 0.1), NNBTNodes.RUNNING)
+	assert_eq(root.tick(0.1), NNBTNodes.RUNNING)
 	assert_true(search_space.is_query_still_running, "a fresh query is posted after the interrupt")
 
 	Engine.get_singleton("NodeQuerySystem").stop_query(search_space)
@@ -400,7 +388,7 @@ func test_root_reset_interrupts_the_active_leaf() -> void:
 	var leaf: LifecycleLeaf = _make_leaf(NNBTNodes.RUNNING)
 	var root: NNBTRoot = _make_root_with(leaf)
 
-	assert_eq(root.tick(BLACKBOARD, 0.1), NNBTNodes.RUNNING)
+	assert_eq(root.tick(0.1), NNBTNodes.RUNNING)
 	assert_eq(leaf.before_run_count, 1)
 
 	# Disabling the root resets the whole tree, which interrupts the active
@@ -411,7 +399,7 @@ func test_root_reset_interrupts_the_active_leaf() -> void:
 
 	root.is_enabled = true
 	leaf.result = NNBTNodes.SUCCESS
-	assert_eq(root.tick(BLACKBOARD, 0.1), NNBTNodes.SUCCESS)
+	assert_eq(root.tick(0.1), NNBTNodes.SUCCESS)
 	assert_eq(leaf.before_run_count, 2)
 
 	assert_engine_error_count(0)
@@ -435,7 +423,7 @@ func test_is_running_is_true_during_a_running_run() -> void:
 	var leaf: LifecycleLeaf = _make_leaf(NNBTNodes.RUNNING)
 	var root: NNBTRoot = _make_root_with(leaf)
 
-	assert_eq(root.tick(BLACKBOARD, 0.1), NNBTNodes.RUNNING)
+	assert_eq(root.tick(0.1), NNBTNodes.RUNNING)
 	assert_true(leaf.get_is_running(), "a RUNNING result keeps the run active")
 	assert_true(root.get_is_running())
 
@@ -446,9 +434,9 @@ func test_is_running_is_false_after_a_terminal_result() -> void:
 	var leaf: LifecycleLeaf = _make_leaf(NNBTNodes.RUNNING)
 	var root: NNBTRoot = _make_root_with(leaf)
 
-	assert_eq(root.tick(BLACKBOARD, 0.1), NNBTNodes.RUNNING)
+	assert_eq(root.tick(0.1), NNBTNodes.RUNNING)
 	leaf.result = NNBTNodes.SUCCESS
-	assert_eq(root.tick(BLACKBOARD, 0.1), NNBTNodes.SUCCESS)
+	assert_eq(root.tick(0.1), NNBTNodes.SUCCESS)
 	assert_false(leaf.get_is_running(), "a terminal result ends the run")
 	assert_false(root.get_is_running())
 
@@ -459,7 +447,7 @@ func test_is_running_is_false_after_interrupt() -> void:
 	var leaf: LifecycleLeaf = _make_leaf(NNBTNodes.RUNNING)
 	var root: NNBTRoot = _make_root_with(leaf)
 
-	assert_eq(root.tick(BLACKBOARD, 0.1), NNBTNodes.RUNNING)
+	assert_eq(root.tick(0.1), NNBTNodes.RUNNING)
 	assert_true(leaf.get_is_running())
 
 	leaf.interrupt()
@@ -472,7 +460,7 @@ func test_is_running_is_false_after_a_disable() -> void:
 	var leaf: LifecycleLeaf = _make_leaf(NNBTNodes.RUNNING)
 	var root: NNBTRoot = _make_root_with(leaf)
 
-	assert_eq(root.tick(BLACKBOARD, 0.1), NNBTNodes.RUNNING)
+	assert_eq(root.tick(0.1), NNBTNodes.RUNNING)
 	assert_true(leaf.get_is_running())
 
 	leaf.is_enabled = false
@@ -485,7 +473,7 @@ func test_is_running_is_false_after_a_reset() -> void:
 	var leaf: LifecycleLeaf = _make_leaf(NNBTNodes.RUNNING)
 	var root: NNBTRoot = _make_root_with(leaf)
 
-	assert_eq(root.tick(BLACKBOARD, 0.1), NNBTNodes.RUNNING)
+	assert_eq(root.tick(0.1), NNBTNodes.RUNNING)
 	assert_true(root.get_is_running(), "a RUNNING result keeps the tree's run active")
 	assert_true(leaf.get_is_running())
 
@@ -508,14 +496,14 @@ func test_node_reference_forwards_run_lifecycle() -> void:
 	reference.node_reference = target
 	var root: NNBTRoot = _make_root_with(reference)
 
-	assert_eq(root.tick(BLACKBOARD, 0.1), NNBTNodes.SUCCESS)
+	assert_eq(root.tick(0.1), NNBTNodes.SUCCESS)
 	assert_eq(reference.before_run_count, 1)
 	assert_eq(target.before_run_count, 1)
 	assert_eq(target.after_run_count, 1)
 	assert_eq(reference.after_run_count, 1)
 
 	target.result = NNBTNodes.RUNNING
-	assert_eq(root.tick(BLACKBOARD, 0.1), NNBTNodes.RUNNING)
+	assert_eq(root.tick(0.1), NNBTNodes.RUNNING)
 	assert_eq(reference.before_run_count, 2)
 	assert_eq(target.before_run_count, 2)
 
@@ -547,18 +535,18 @@ func test_shared_reference_target_is_not_interrupted_by_the_previous_owner() -> 
 	selector.add_child(reference_a)
 	var root: NNBTRoot = _make_root_with(selector)
 
-	assert_eq(root.tick(BLACKBOARD, 0.1), NNBTNodes.RUNNING)
+	assert_eq(root.tick(0.1), NNBTNodes.RUNNING)
 	assert_eq(shared.events, ["before", "tick"], "the first reference starts the shared run")
 
 	condition.result = NNBTNodes.SUCCESS
-	assert_eq(root.tick(BLACKBOARD, 0.1), NNBTNodes.RUNNING)
+	assert_eq(root.tick(0.1), NNBTNodes.RUNNING)
 	assert_eq(
 		shared.events,
 		["before", "tick", "interrupt", "before", "tick"],
 		"the new owner interrupts the old run and starts a fresh one"
 	)
 
-	assert_eq(root.tick(BLACKBOARD, 0.1), NNBTNodes.RUNNING)
+	assert_eq(root.tick(0.1), NNBTNodes.RUNNING)
 	assert_eq(
 		shared.events,
 		["before", "tick", "interrupt", "before", "tick", "tick"],
@@ -589,9 +577,9 @@ func test_shared_reference_target_survives_disabling_the_non_owner() -> void:
 	selector.add_child(reference_a)
 	var root: NNBTRoot = _make_root_with(selector)
 
-	assert_eq(root.tick(BLACKBOARD, 0.1), NNBTNodes.RUNNING)
+	assert_eq(root.tick(0.1), NNBTNodes.RUNNING)
 	condition.result = NNBTNodes.SUCCESS
-	assert_eq(root.tick(BLACKBOARD, 0.1), NNBTNodes.RUNNING)
+	assert_eq(root.tick(0.1), NNBTNodes.RUNNING)
 	assert_eq(
 		shared.events,
 		["before", "tick", "interrupt", "before", "tick"],
@@ -607,7 +595,7 @@ func test_shared_reference_target_survives_disabling_the_non_owner() -> void:
 		"disabling the non-owner must not reset or interrupt the shared run"
 	)
 
-	assert_eq(root.tick(BLACKBOARD, 0.1), NNBTNodes.RUNNING)
+	assert_eq(root.tick(0.1), NNBTNodes.RUNNING)
 	assert_eq(
 		shared.events,
 		["before", "tick", "interrupt", "before", "tick", "tick"],
@@ -632,8 +620,8 @@ func test_shared_reference_target_with_one_active_reference_keeps_its_run() -> v
 
 	var root: NNBTRoot = _make_root_with(active)
 
-	assert_eq(root.tick(BLACKBOARD, 0.1), NNBTNodes.RUNNING)
-	assert_eq(root.tick(BLACKBOARD, 0.1), NNBTNodes.RUNNING)
+	assert_eq(root.tick(0.1), NNBTNodes.RUNNING)
+	assert_eq(root.tick(0.1), NNBTNodes.RUNNING)
 	assert_eq(
 		shared.events,
 		["before", "tick", "tick"],
@@ -657,7 +645,7 @@ func test_interrupt_without_an_active_run_is_a_no_op() -> void:
 	var completed: LifecycleLeaf = _make_leaf(NNBTNodes.SUCCESS)
 	var root: NNBTRoot = _make_root_with(completed)
 
-	assert_eq(root.tick(BLACKBOARD, 0.1), NNBTNodes.SUCCESS)
+	assert_eq(root.tick(0.1), NNBTNodes.SUCCESS)
 	completed.interrupt()
 	assert_eq(completed.interrupt_count, 0, "a completed run is not active")
 
@@ -669,7 +657,7 @@ func test_interrupt_without_an_active_run_is_a_no_op() -> void:
 
 	var running: LifecycleLeaf = _make_leaf(NNBTNodes.RUNNING)
 	var running_root: NNBTRoot = _make_root_with(running)
-	assert_eq(running_root.tick(BLACKBOARD, 0.1), NNBTNodes.RUNNING)
+	assert_eq(running_root.tick(0.1), NNBTNodes.RUNNING)
 	running.interrupt()
 	running.interrupt()
 	assert_eq(running.interrupt_count, 1, "interrupting a running node twice interrupts once")
@@ -685,9 +673,9 @@ func test_leaf_with_only_on_tick_needs_no_lifecycle_hooks() -> void:
 	var root: NNBTRoot = _make_root_with(leaf)
 
 	leaf.result = NNBTNodes.RUNNING
-	assert_eq(root.tick(BLACKBOARD, 0.1), NNBTNodes.RUNNING)
+	assert_eq(root.tick(0.1), NNBTNodes.RUNNING)
 	leaf.result = NNBTNodes.SUCCESS
 	for tick_index in range(2):
-		assert_eq(root.tick(BLACKBOARD, 0.1), NNBTNodes.SUCCESS, "tick %d must succeed" % tick_index)
+		assert_eq(root.tick(0.1), NNBTNodes.SUCCESS, "tick %d must succeed" % tick_index)
 
 	assert_engine_error_count(0)

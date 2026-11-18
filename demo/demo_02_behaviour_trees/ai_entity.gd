@@ -9,7 +9,6 @@ var movement_speed: float = 0.0
 
 func _ready() -> void:
 	ai.tick_rate = 20
-	ai.tick_argument = self
 
 
 func _physics_process(delta: float) -> void:

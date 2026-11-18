@@ -30,7 +30,7 @@ NNBTUntilFail::~NNBTUntilFail() {
  * The child is never reset on success. The normal run lifecycle starts the
  * child's next run on the next tick.
  */
-NNBTNodes::Status NNBTUntilFail::_tick(Variant blackboard, float delta) {
+NNBTNodes::Status NNBTUntilFail::_tick(float delta) {
 	_report_extra_enabled_child_btnodes();
 
 	// Only the first enabled behaviour tree child is ticked. Any further
@@ -41,7 +41,7 @@ NNBTNodes::Status NNBTUntilFail::_tick(Variant blackboard, float delta) {
 			continue;
 		}
 
-		Status result = btnode->tick(blackboard, delta);
+		Status result = btnode->tick(delta);
 
 		if (result == Status::FAILURE) {
 			return Status::SUCCESS;

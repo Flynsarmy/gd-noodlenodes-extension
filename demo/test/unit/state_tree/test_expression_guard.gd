@@ -36,7 +36,9 @@ func test_expression_satisfied_with_blackboard_vars() -> void:
 	_transition.guard = _guard
 
 	var blackboard: Dictionary = {"foo": "bar"}
-	_root.blackboard = blackboard
+	var board := NNBlackboard.new()
+	board.values = blackboard
+	_root.blackboard = board
 
 	_guard.expression = "foo=='bar'"
 	result = _guard.is_satisfied(_transition, _child)
@@ -75,7 +77,9 @@ func test_null_transition_with_valid_state_evaluates_expression() -> void:
 	_guard.expression = "1==0"
 	assert_false(_guard.is_satisfied(null, _child))
 
-	_root.blackboard = {"enabled": true}
+	var board := NNBlackboard.new()
+	board.values = {"enabled": true}
+	_root.blackboard = board
 	_guard.expression = "enabled"
 	assert_true(_guard.is_satisfied(null, _child))
 

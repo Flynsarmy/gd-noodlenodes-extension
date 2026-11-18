@@ -2,8 +2,6 @@ extends GutTest
 @warning_ignore('unused_parameter')
 @warning_ignore('return_value_discarded')
 
-const BLACKBOARD: Dictionary = {}
-
 
 # NNBTParallel exposes its policy constants, repeated here so failures name the
 # intended constant even if a binding changes.
@@ -17,7 +15,7 @@ class ConstantLeaf extends NNBTLeaf:
 	var result: int = NNBTNodes.SUCCESS
 	var tick_count: int = 0
 
-	func on_tick(_blackboard: Variant, _delta: float) -> Status:
+	func on_tick(_delta: float) -> Status:
 		tick_count += 1
 		return result
 
@@ -43,7 +41,7 @@ func _tick_case(test_case: Dictionary, success_policy: int, failure_policy: int)
 	var root: NNBTRoot = NNBTRoot.new()
 	root.add_child(parallel)
 
-	var result: int = root.tick(BLACKBOARD, 0.1)
+	var result: int = root.tick(0.1)
 	return { "root": root, "parallel": parallel, "leaves": leaves, "result": result }
 
 
@@ -200,7 +198,7 @@ func test_default_policies_reproduce_the_existing_matrix() -> void:
 
 		assert_eq(parallel.success_policy, NNBTParallel.SUCCESS_REQUIRE_ALL)
 		assert_eq(parallel.failure_policy, NNBTParallel.FAILURE_REQUIRE_ONE)
-		assert_eq(root.tick(BLACKBOARD, 0.1), expectation["expected"])
+		assert_eq(root.tick(0.1), expectation["expected"])
 		for leaf_index in leaves.size():
 			assert_eq(leaves[leaf_index].tick_count, expectation["ticks"][leaf_index])
 

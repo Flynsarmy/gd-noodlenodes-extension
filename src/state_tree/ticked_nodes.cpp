@@ -69,9 +69,6 @@ static void _discard_history_registrations(const ObjectID &history_id, const NNS
 void NNSTTickedNodes::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_root"), &NNSTTickedNodes::get_root);
 
-	ClassDB::bind_method(D_METHOD("get_blackboard", "key", "default"), &NNSTTickedNodes::get_blackboard, Variant());
-	ClassDB::bind_method(D_METHOD("set_blackboard", "key", "value"), &NNSTTickedNodes::set_blackboard);
-
 	ClassDB::bind_method(D_METHOD("set_score", "score"), &NNSTTickedNodes::set_score);
 	ClassDB::bind_method(D_METHOD("get_score"), &NNSTTickedNodes::get_score);
 	ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "score", PROPERTY_HINT_NONE), "set_score", "get_score");
@@ -152,18 +149,6 @@ NNSTRoot *NNSTTickedNodes::_get_tree_root() const {
 	}
 	return nullptr;
 }
-
-bool NNSTTickedNodes::set_blackboard(const String &p_key, const Variant &p_value) {
-	ERR_FAIL_COND_V_MSG(_root == nullptr, false, "Tree root not set on this node. Can't retrieve blackboard.");
-
-	return get_root()->get_blackboard().set(p_key, p_value);
-}
-
-Variant NNSTTickedNodes::get_blackboard(const String &p_key, const Variant &p_default) const {
-	ERR_FAIL_COND_V_MSG(_root == nullptr, p_default, "Tree root not set on this node. Can't retrieve blackboard.");
-
-	return get_root()->get_blackboard().get(p_key, p_default);
-};
 
 void NNSTTickedNodes::set_score(float score) {
 	_score = score;

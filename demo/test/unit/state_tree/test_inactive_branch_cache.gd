@@ -26,7 +26,7 @@ func _make_logger(node_name: String) -> NNSTNode:
 
 
 func _get_log(root: NNSTRoot) -> Array:
-	return root.blackboard['log']
+	return root.get_blackboard('log')
 
 
 func _make_consideration(value: float) -> NNConsideration:
@@ -41,7 +41,9 @@ func test_inactive_branch_sees_child_added_after_ready() -> void:
 	var _root: NNSTRoot = _add_manual_root(NNSTRoot.new())
 	var _active_sibling: NNSTNode = _make_logger("ActiveSibling")
 	var _branch: NNSTNode = _make_logger("Branch")
-	_root.blackboard = { "log": [] }
+	var board := NNBlackboard.new()
+	board.values = { "log": [] }
+	_root.blackboard = board
 	_root.add_child(_active_sibling)
 	_root.add_child(_branch)
 
@@ -83,7 +85,9 @@ func test_inactive_branch_sees_child_removed_after_ready() -> void:
 	var _active_sibling: NNSTNode = _make_logger("ActiveSibling")
 	var _branch: NNSTNode = _make_logger("Branch")
 	var _old_child: NNSTNode = _make_logger("OldChild")
-	_root.blackboard = { "log": [] }
+	var board := NNBlackboard.new()
+	board.values = { "log": [] }
+	_root.blackboard = board
 	_root.add_child(_active_sibling)
 	_root.add_child(_branch)
 	_branch.add_child(_old_child)
@@ -92,7 +96,7 @@ func test_inactive_branch_sees_child_removed_after_ready() -> void:
 	assert_true(_active_sibling.get_is_active())
 	assert_false(_branch.get_is_active())
 	assert_eq(_get_log(_root).count("OldChild on_enter_state"), 0)
-	_root.blackboard['log'] = []
+	_root.get_blackboard_resource().set_value('log', [])
 
 	_branch.remove_child(_old_child)
 	autofree(_old_child)
@@ -119,7 +123,9 @@ func test_inactive_branch_sees_child_reorder_after_ready() -> void:
 	var _branch: NNSTNode = _make_logger("Branch")
 	var _first_child: NNSTNode = _make_logger("FirstChild")
 	var _second_child: NNSTNode = _make_logger("SecondChild")
-	_root.blackboard = { "log": [] }
+	var board := NNBlackboard.new()
+	board.values = { "log": [] }
+	_root.blackboard = board
 	_root.add_child(_active_sibling)
 	_root.add_child(_branch)
 	_branch.add_child(_first_child)
@@ -128,7 +134,7 @@ func test_inactive_branch_sees_child_reorder_after_ready() -> void:
 
 	assert_true(_active_sibling.get_is_active())
 	assert_false(_branch.get_is_active())
-	_root.blackboard['log'] = []
+	_root.get_blackboard_resource().set_value('log', [])
 
 	_branch.move_child(_second_child, 0)
 
@@ -150,7 +156,9 @@ func test_inactive_branch_sees_transition_added_after_ready() -> void:
 	var _active_sibling: NNSTNode = _make_logger("ActiveSibling")
 	var _branch: NNSTNode = _make_logger("Branch")
 	var _target: NNSTNode = _make_logger("Target")
-	_root.blackboard = { "log": [] }
+	var board := NNBlackboard.new()
+	board.values = { "log": [] }
+	_root.blackboard = board
 	_root.add_child(_active_sibling)
 	_root.add_child(_branch)
 	_root.add_child(_target)
@@ -165,7 +173,7 @@ func test_inactive_branch_sees_transition_added_after_ready() -> void:
 
 	assert_true(_active_sibling.transition_to(_active_sibling.get_path_to(_branch)))
 	assert_true(_branch.get_is_active())
-	_root.blackboard['log'] = []
+	_root.get_blackboard_resource().set_value('log', [])
 
 	_root.send_event("go")
 
@@ -181,7 +189,9 @@ func test_inactive_branch_sees_consideration_added_after_ready() -> void:
 	var _start: NNSTNode = _make_logger("Start")
 	var _rival: NNSTNode = _make_logger("Rival")
 	var _branch: NNSTNode = _make_logger("Branch")
-	_root.blackboard = { "log": [] }
+	var board := NNBlackboard.new()
+	board.values = { "log": [] }
+	_root.blackboard = board
 	_root.child_state_selection_rule = UTILITY_SCORING
 	_start.add_child(_make_consideration(1.0))
 	_rival.add_child(_make_consideration(0.5))
@@ -192,7 +202,7 @@ func test_inactive_branch_sees_consideration_added_after_ready() -> void:
 
 	assert_true(_start.get_is_active())
 	assert_false(_branch.get_is_active())
-	_root.blackboard['log'] = []
+	_root.get_blackboard_resource().set_value('log', [])
 
 	_branch.add_child(_make_consideration(1.0))
 
@@ -222,13 +232,15 @@ func test_active_branch_reorder_and_removal_still_works() -> void:
 	var _root: NNSTRoot = _add_manual_root(NNSTRoot.new())
 	var _child: NNSTNode = _make_logger("Child")
 	var _sibling: NNSTNode = _make_logger("Sibling")
-	_root.blackboard = { "log": [] }
+	var board := NNBlackboard.new()
+	board.values = { "log": [] }
+	_root.blackboard = board
 	_root.add_child(_child)
 	_root.add_child(_sibling)
 
 	assert_true(_child.get_is_active())
 	assert_false(_sibling.get_is_active())
-	_root.blackboard['log'] = []
+	_root.get_blackboard_resource().set_value('log', [])
 
 	_root.move_child(_sibling, 0)
 

@@ -35,7 +35,7 @@ NNBTNodes::Status NNBTFixedResult::get_fixed_result() const {
 
 // Handling methods.
 
-NNBTNodes::Status NNBTFixedResult::_tick(Variant blackboard, float delta) {
+NNBTNodes::Status NNBTFixedResult::_tick(float delta) {
 	_report_extra_enabled_child_btnodes();
 
 	for (unsigned int i = 0; i < _num_child_btnodes; i++) {
@@ -43,7 +43,7 @@ NNBTNodes::Status NNBTFixedResult::_tick(Variant blackboard, float delta) {
 		if (!btnode->get_is_enabled()) {
 			continue;
 		}
-		btnode->tick(blackboard, delta);
+		btnode->tick(delta);
 		break;
 	}
 	return _fixed_result;

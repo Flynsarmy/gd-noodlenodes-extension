@@ -351,12 +351,6 @@ extends AnimatedSprite2D
 var movement_speed:float = 0.0
 
 
-func _ready():
-	# The root ticks itself, so tell it which node the tree's on_tick()
-	# methods receive as their actor argument.
-	$UtilityAIBTRoot.tick_argument = self
-
-
 func _physics_process(delta):
 	# Set the AI-entity position as the from-vector.
 	sensor_distance.from_vector = global_position
@@ -381,9 +375,8 @@ func _physics_process(delta):
 What this code does:
  * The row `@onready var sensor_distance:UtilityAIDistanceVector2Sensor = $UtilityAIBTRoot/UtilityAIDistanceVector2Sensor` gets a reference to the Vector2 based distance sensor of the AI entity. This sensor is used to check the distance and to get the direction vector towards the target.
  * The row `var movement_speed:float = 0.0` defines a variable that we will use to control the movement speed of the AI entity.
- * In `_ready()` the row `$UtilityAIBTRoot.tick_argument = self` gives the root node of the AI entity scene, which in this case is the **self** keyword, as the first argument of every automatic tick. This gives the behaviour tree node `on_tick()` methods access to all the properties of the AI entity node.
  * In the `_physics_process(delta)` method we first set the distance sensor **from-position** as the global position of the AI entity, and the **to-position** as the location of the mouse cursor from the parent node. The sensor will use these two positions to calculate the distance from the AI entity to the mouse cursor, and also the direction vector that we will use later for movement.
- * The behaviour tree root ticks itself once per physics frame by default, so the script never calls `tick()` itself. Section [9. Next steps](Getting_started_with_Behaviour_Trees.md#9-next-steps) shows how to lower that rate with `tick_rate`, and how to drive the root from your own code by setting `process_thread` to `Manual`.
+ * The behaviour tree root ticks itself once per physics frame by default, so the script never calls `tick()` itself. Section [9. Next steps](Getting_started_with_Behaviour_Trees.md#9-next-steps) shows how to lower that rate with `tick_rate`, and how to drive the root from your own code by setting `process_thread` to `Manual`. The tree keeps its data in the root node's blackboard, and the task nodes reach the AI entity with `get_actor()`, which resolves the parent of the behaviour tree root node. In this scene that parent is the **ai_entity** node, so the `on_tick()` methods can use all the properties of the AI entity.
  * After the tree has been ticked, the row `self.global_position += sensor_distance.direction_vector * movement_speed * delta` moves the AI entity based on the direction vector calculated by the distance sensor. Delta time is used to scale the movement amount. The `movement_speed` is set by the behaviour tree task nodes.
  * The final rows of the method make sure the character sprite is facing the direction it is moving to by flipping the sprite horizontally when needed.
 
@@ -397,7 +390,8 @@ What this code does:
 extends UtilityAIBTLeaf
 
 
-func on_tick(actor, delta):
+func on_tick(_delta):
+	var actor = get_actor()
 	# Check if the distance is greater than expected.
 	if actor.sensor_distance.distance > 150.0:
 		return 1 # Success = Far
@@ -405,7 +399,7 @@ func on_tick(actor, delta):
 
 ```
 
-We define the `on_tick()` method and name the **user_data** parameter as the **actor**. You can set the name to anything you want. In this case the name "actor" was chosen because in step 7.1 we set the **ai_entity** node as the root node's `tick_argument`.
+We define the `on_tick()` method and it receives only the tick's delta time as its parameter. The examples name it `_delta` because they don't use it, and the leading underscore tells Godot the parameter is intentionally unused. The tree gives us no other input: the task nodes read and write the data they need through the blackboard helpers. To reach the AI entity itself we call `get_actor()`, which resolves the parent of the behaviour tree root node, and store it in a local `actor` variable. You can name that variable anything you want. In this case the name "actor" was chosen because in step 7.1 the **ai_entity** node is the parent of the **UtilityAIBTRoot** node.
 
 All the `on_tick()` method does is that it checks what the distance to the mouse cursor is based on the sensor. If it is greater than the expected value 1 is returned. This means that the leaf node succeeded. If not, -1 (failure) is returned. 
 
@@ -418,7 +412,8 @@ What we have defined is called a **conditional** node for the behaviour tree. A 
 extends UtilityAIBTLeaf
 
 
-func on_tick(actor, delta):
+func on_tick(_delta):
+	var actor = get_actor()
 	actor.movement_speed = -100.0
 	actor.play("moving")
 	return 1
@@ -437,7 +432,8 @@ The behaviour tree is a structure used for **making decisions about what to do**
 extends UtilityAIBTLeaf
 
 
-func on_tick(actor, delta):
+func on_tick(_delta):
+	var actor = get_actor()
 	# Check if the distance is less than expected.
 	if actor.sensor_distance.distance < 90:
 		return 1 # Success = Too close
@@ -455,7 +451,8 @@ This again is a **conditional** node. This time we are checking if the AI entity
 extends UtilityAIBTLeaf
 
 
-func on_tick(actor, delta):
+func on_tick(_delta):
+	var actor = get_actor()
 	actor.movement_speed = 100.0
 	actor.play("moving")
 	return 1
@@ -472,7 +469,8 @@ This is the almost the same code as we had in step 7.3 but instead of the moveme
 extends UtilityAIBTLeaf
 
 
-func on_tick(actor, delta):
+func on_tick(_delta):
+	var actor = get_actor()
 	actor.movement_speed = 0.0
 	actor.play("default")
 	return 1
@@ -522,7 +520,6 @@ var movement_speed:float = 0.0
 func _ready():
 	# Tick roughly three times per second at 60 physics frames per second.
 	$UtilityAIBTRoot.tick_rate = 20
-	$UtilityAIBTRoot.tick_argument = self
 
 
 func _physics_process(delta):

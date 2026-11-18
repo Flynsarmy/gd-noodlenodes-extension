@@ -1,18 +1,16 @@
 extends GutTest
 @warning_ignore('unused_parameter')
 
-const BLACKBOARD: Dictionary = {}
-
 
 class CountingLeaf extends NNBTLeaf:
 	var result: int = NNBTNodes.RUNNING
 	var tick_count: int = 0
-	var last_blackboard: Variant = null
+	var last_blackboard: NNBlackboard = null
 	var last_delta: float = 0.0
 
-	func on_tick(blackboard: Variant, delta: float) -> Status:
+	func on_tick(delta: float) -> Status:
 		tick_count += 1
-		last_blackboard = blackboard
+		last_blackboard = get_blackboard_resource()
 		last_delta = delta
 		return result
 
@@ -62,9 +60,8 @@ func test_defaults_auto_tick_on_the_physics_frame() -> void:
 
 	assert_eq(bt_root.tick_rate, 1)
 	assert_eq(bt_root.process_thread, NNBTRoot.PHYSICS, "a default root auto-ticks from the physics frame")
-	assert_null(bt_root.tick_argument)
 
-	assert_eq(bt_root.tick(BLACKBOARD, 0.1), NNBTNodes.SUCCESS, "a default root still ticks manually")
+	assert_eq(bt_root.tick(0.1), NNBTNodes.SUCCESS, "a default root still ticks manually")
 	assert_eq(leaf.tick_count, 1)
 
 	assert_true(bt_root.auto_tick_step(NNBTRoot.PHYSICS, 0.1), "a default root auto-ticks without any configuration")
@@ -75,16 +72,16 @@ func test_defaults_auto_tick_on_the_physics_frame() -> void:
 
 # Automatic ticking.
 
-func test_auto_tick_step_passes_the_tick_argument_and_delta() -> void:
+func test_auto_tick_step_passes_the_delta_and_resolves_the_root_board() -> void:
 	var bt_root: NNBTRoot = NNBTRoot.new()
 	var leaf: CountingLeaf = _make_leaf(NNBTNodes.RUNNING)
 	bt_root.add_child(leaf)
-	var argument: Dictionary = { "key": 7 }
-	bt_root.tick_argument = argument
+	var board: NNBlackboard = NNBlackboard.new()
+	bt_root.blackboard = board
 
 	assert_true(bt_root.auto_tick_step(NNBTRoot.PHYSICS, 0.25), "auto_tick_step ticks and reports it")
 	assert_eq(leaf.tick_count, 1)
-	assert_eq(leaf.last_blackboard, argument, "the tick_argument is passed as the first tick argument")
+	assert_eq(leaf.last_blackboard, board, "the board comes from the root resource, not from the tick call")
 	assert_almost_eq(leaf.last_delta, 0.25, 0.0001, "the supplied delta is passed through")
 
 	bt_root.free()
@@ -269,14 +266,14 @@ func test_running_action_tracks_the_deepest_active_node() -> void:
 
 func test_running_action_is_null_for_a_completed_or_empty_root() -> void:
 	var empty_root: NNBTRoot = NNBTRoot.new()
-	assert_eq(empty_root.tick(BLACKBOARD, 0.1), NNBTNodes.FAILURE)
+	assert_eq(empty_root.tick(0.1), NNBTNodes.FAILURE)
 	assert_null(empty_root.get_running_action(), "an empty root never has a running action")
 	empty_root.free()
 
 	var completed_root: NNBTRoot = NNBTRoot.new()
 	var leaf: CountingLeaf = _make_leaf(NNBTNodes.SUCCESS)
 	completed_root.add_child(leaf)
-	assert_eq(completed_root.tick(BLACKBOARD, 0.1), NNBTNodes.SUCCESS)
+	assert_eq(completed_root.tick(0.1), NNBTNodes.SUCCESS)
 	assert_null(completed_root.get_running_action(), "a completed root has no running action")
 	completed_root.free()
 
@@ -303,7 +300,7 @@ func test_manual_tick_works_while_auto_ticking() -> void:
 	var leaf: CountingLeaf = _make_leaf(NNBTNodes.SUCCESS)
 	bt_root.add_child(leaf)
 
-	assert_eq(bt_root.tick(BLACKBOARD, 0.1), NNBTNodes.SUCCESS, "manual ticking is not guarded")
+	assert_eq(bt_root.tick(0.1), NNBTNodes.SUCCESS, "manual ticking is not guarded")
 	assert_eq(leaf.tick_count, 1)
 
 	assert_true(bt_root.auto_tick_step(NNBTRoot.PHYSICS, 0.1), "auto-ticking keeps working after a manual tick")
@@ -322,7 +319,7 @@ func test_manual_mode_ticks_only_when_the_caller_ticks() -> void:
 	assert_false(bt_root.auto_tick_step(NNBTRoot.IDLE, 0.1))
 	assert_eq(leaf.tick_count, 0)
 
-	assert_eq(bt_root.tick(BLACKBOARD, 0.1), NNBTNodes.SUCCESS, "a custom scheduler drives tick() itself")
+	assert_eq(bt_root.tick(0.1), NNBTNodes.SUCCESS, "a custom scheduler drives tick() itself")
 	assert_eq(leaf.tick_count, 1)
 
 	bt_root.free()

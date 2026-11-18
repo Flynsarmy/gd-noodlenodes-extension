@@ -25,7 +25,7 @@ public:
 
 	// Handling functions.
 
-	virtual Status _tick(Variant blackboard, float delta) override;
+	virtual Status _tick(float delta) override;
 };
 
 } //namespace godot

@@ -3,13 +3,8 @@ extends GutTest
 @warning_ignore('return_value_discarded')
 
 
-class LegacyLeaf extends NNBTLeaf:
-	var received_blackboard: Variant = null
-	var tick_count: int = 0
-
-	func on_tick(blackboard: Variant, _delta: float) -> Status:
-		received_blackboard = blackboard
-		tick_count += 1
+class HelperWritingLeaf extends NNBTLeaf:
+	func on_tick(_delta: float) -> Status:
 		set_blackboard("helper_key", "helper_value")
 		return NNBTNodes.SUCCESS
 
@@ -442,16 +437,13 @@ func test_node_reference_resolves_from_its_target() -> void:
 	actor_b.free()
 
 
-func test_legacy_tick_argument_is_untouched() -> void:
+func test_leaf_on_tick_writes_through_the_root_blackboard() -> void:
 	var bt_root := NNBTRoot.new()
-	var leaf := LegacyLeaf.new()
+	var leaf := HelperWritingLeaf.new()
 	bt_root.add_child(leaf)
 
-	var legacy := { "keep": 1 }
-	assert_eq(bt_root.tick(legacy, 0.1), NNBTNodes.SUCCESS)
-	assert_eq(leaf.received_blackboard, legacy, "the leaf receives the exact Variant passed to tick")
-	assert_eq(legacy, { "keep": 1 }, "the legacy argument is not modified")
-	assert_eq(bt_root.get_blackboard("helper_key", ""), "helper_value")
+	assert_eq(bt_root.tick(0.1), NNBTNodes.SUCCESS)
+	assert_eq(bt_root.get_blackboard("helper_key", ""), "helper_value", "on_tick writes resolve the nearest root's blackboard")
 	assert_eq(bt_root.get_blackboard_resource().keys().size(), 1)
 
 	assert_engine_error_count(0)

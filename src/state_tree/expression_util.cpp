@@ -1,4 +1,5 @@
 #include "expression_util.h"
+#include "blackboard.h"
 #include "root.h"
 
 #include <godot_cpp/classes/expression.hpp>
@@ -15,8 +16,8 @@ Variant evaluate_expression(const String &context, NNSTRoot *state_chart, const 
 
 	Ref<Expression> the_expression;
 	the_expression.instantiate();
-	Dictionary blackboard = state_chart->get_blackboard();
-	Array input_names = blackboard.keys();
+	Dictionary board_values = state_chart->get_blackboard_resource()->get_values();
+	Array input_names = board_values.keys();
 
 	int parse_result = the_expression->parse(expression, input_names);
 
@@ -25,7 +26,7 @@ Variant evaluate_expression(const String &context, NNSTRoot *state_chart, const 
 		return default_value;
 	}
 
-	Array input_values = blackboard.values();
+	Array input_values = board_values.values();
 	Variant result = the_expression->execute(input_values, Variant(), false);
 
 	if (the_expression->has_execute_failed()) {

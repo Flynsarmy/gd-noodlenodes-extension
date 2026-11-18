@@ -2,7 +2,11 @@ extends AnimatedSprite2D
 
 # This is the distance sensor.
 @onready var root: NNSTRoot = $NNSTRoot
-@onready var sensor_distance: NNDistanceVector2Sensor = $NNSTRoot/MouseSensor
+# Resolved on demand: the state tree enters states before @onready assignments run.
+var sensor_distance: NNDistanceVector2Sensor:
+	get:
+		return $NNSTRoot/MouseSensor
+
 var movement_speed: float = 0.0
 
 

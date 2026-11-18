@@ -21,7 +21,7 @@ NNBTRandomSelector::~NNBTRandomSelector() {
 
 // Getters and Setters.
 
-void NNBTRandomSelector::_on_before_run(Variant blackboard, float delta) {
+void NNBTRandomSelector::_on_before_run(float delta) {
 	_current_child_index = 0;
 	// Create a random order.
 	_child_node_order.clear();
@@ -37,10 +37,10 @@ void NNBTRandomSelector::_on_before_run(Variant blackboard, float delta) {
 
 // Handling functions.
 
-NNBTNodes::Status NNBTRandomSelector::_tick(Variant blackboard, float delta) {
+NNBTNodes::Status NNBTRandomSelector::_tick(float delta) {
 	while (_current_child_index < _child_node_order.size()) {
 		NNBTNodes *btnode = _child_btnodes[(int)_child_node_order[_current_child_index]];
-		Status result = btnode->tick(blackboard, delta);
+		Status result = btnode->tick(delta);
 		if (result == Status::SUCCESS) {
 			return Status::SUCCESS;
 		} else if (result == Status::RUNNING) {

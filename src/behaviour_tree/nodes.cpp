@@ -1,6 +1,7 @@
 #include "nodes.h"
 #include "../agent_behaviours/considerations.h"
 #include "blackboard.h"
+#include "blackboard_helpers.h"
 #include "root.h"
 #include <godot_cpp/classes/engine.hpp>
 #include <godot_cpp/classes/time.hpp>
@@ -62,7 +63,6 @@ NNBTNodes::NNBTNodes() {
 	_tick_result = Status::SUCCESS;
 	_is_running = false;
 	_run_owner = ObjectID();
-	_run_blackboard = Variant();
 	_run_delta = 0.0f;
 	_num_child_btnodes = 0;
 	_num_child_considerations = 0;
@@ -123,12 +123,7 @@ NodePath NNBTNodes::get_tree_root() const {
 // Blackboard and actor helpers.
 
 NNBlackboard *NNBTNodes::get_blackboard_resource() const {
-	for (Node *node = const_cast<NNBTNodes *>(this); node != nullptr; node = node->get_parent()) {
-		if (NNBTRoot *root = godot::Object::cast_to<NNBTRoot>(node)) {
-			return root->get_blackboard_resource();
-		}
-	}
-	return nullptr;
+	return nn_resolve_blackboard_resource<NNBTNodes, NNBTRoot>(this);
 }
 
 Ref<NNBlackboard> NNBTNodes::get_blackboard_resource_ref() const {
@@ -137,34 +132,22 @@ Ref<NNBlackboard> NNBTNodes::get_blackboard_resource_ref() const {
 
 Variant NNBTNodes::get_blackboard(const String &key, const Variant &default_value) const {
 	NNBlackboard *board = get_blackboard_resource();
-	if (board == nullptr) {
-		return default_value;
-	}
-	return board->get_value(key, default_value);
+	return board != nullptr ? board->get_value(key, default_value) : default_value;
 }
 
 bool NNBTNodes::set_blackboard(const String &key, const Variant &value) {
 	NNBlackboard *board = get_blackboard_resource();
-	if (board == nullptr) {
-		return false;
-	}
-	return board->set_value(key, value);
+	return board != nullptr ? board->set_value(key, value) : false;
 }
 
 bool NNBTNodes::has_blackboard(const String &key) const {
 	NNBlackboard *board = get_blackboard_resource();
-	if (board == nullptr) {
-		return false;
-	}
-	return board->has_value(key);
+	return board != nullptr ? board->has_value(key) : false;
 }
 
 bool NNBTNodes::erase_blackboard(const String &key) {
 	NNBlackboard *board = get_blackboard_resource();
-	if (board == nullptr) {
-		return false;
-	}
-	return board->erase_value(key);
+	return board != nullptr ? board->erase_value(key) : false;
 }
 
 Node *NNBTNodes::get_actor() const {
@@ -252,7 +235,7 @@ float NNBTNodes::evaluate() {
 	return _score;
 }
 
-NNBTNodes::Status NNBTNodes::tick(Variant blackboard, float delta) {
+NNBTNodes::Status NNBTNodes::tick(float delta) {
 #ifdef DEBUG_ENABLED
 	_last_visited_timestamp = godot::Time::get_singleton()->get_ticks_usec();
 #endif
@@ -266,34 +249,31 @@ NNBTNodes::Status NNBTNodes::tick(Variant blackboard, float delta) {
 
 	if (!_is_running) {
 		_is_running = true;
-		_run_blackboard = blackboard;
 		_run_delta = delta;
-		_on_before_run(blackboard, delta);
+		_on_before_run(delta);
 		if (!_is_running) {
 			// The before_run hook interrupted the run it had just started.
 			return Status::FAILURE;
 		}
 	}
 
-	Status result = _tick(blackboard, delta);
+	Status result = _tick(delta);
 	// Only the wrapper writes the tick result, so it always describes the most recent tick.
 	_tick_result = result;
 	if (_is_running && (result == Status::SUCCESS || result == Status::FAILURE)) {
-		Variant run_blackboard = _run_blackboard;
 		float run_delta = _run_delta;
 		_is_running = false;
 		_run_owner = ObjectID();
-		_run_blackboard = Variant();
 		_run_delta = 0.0f;
 		_interrupt_active_children();
-		_on_after_run(run_blackboard, run_delta);
+		_on_after_run(run_delta);
 	}
 	// SKIP is not terminal, so the run stays active for a later interrupt or
 	// terminal result.
 	return result;
 }
 
-NNBTNodes::Status NNBTNodes::_tick(Variant blackboard, float delta) {
+NNBTNodes::Status NNBTNodes::_tick(float delta) {
 	return Status::RUNNING;
 }
 
@@ -302,25 +282,23 @@ void NNBTNodes::interrupt() {
 		return;
 	}
 
-	Variant run_blackboard = _run_blackboard;
 	float run_delta = _run_delta;
 	_is_running = false;
 	_run_owner = ObjectID();
-	_run_blackboard = Variant();
 	_run_delta = 0.0f;
 	_interrupt_active_children();
-	_on_interrupt(run_blackboard, run_delta);
+	_on_interrupt(run_delta);
 }
 
 // Lifecycle hooks.
 
-void NNBTNodes::_on_before_run(Variant blackboard, float delta) {
+void NNBTNodes::_on_before_run(float delta) {
 }
 
-void NNBTNodes::_on_after_run(Variant blackboard, float delta) {
+void NNBTNodes::_on_after_run(float delta) {
 }
 
-void NNBTNodes::_on_interrupt(Variant blackboard, float delta) {
+void NNBTNodes::_on_interrupt(float delta) {
 }
 
 void NNBTNodes::_interrupt_active_children() {

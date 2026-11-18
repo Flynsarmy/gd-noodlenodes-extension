@@ -3,8 +3,6 @@ extends GutTest
 @warning_ignore('unused_parameter')
 @warning_ignore('return_value_discarded')
 
-const BLACKBOARD: Dictionary = {}
-
 # The budget is node-lifetime: a completed run does not refill it.
 
 
@@ -12,7 +10,7 @@ class CountingLeaf extends NNBTLeaf:
 	var result: int = NNBTNodes.SUCCESS
 	var tick_count: int = 0
 
-	func on_tick(_blackboard: Variant, _delta: float) -> Status:
+	func on_tick(_delta: float) -> Status:
 		tick_count += 1
 		return result
 
@@ -27,7 +25,7 @@ func _build_tree(max_repeat_times: int, child: NNBTNodes) -> Array:
 
 
 func _tick_and_assert(root: NNBTRoot, node: NNBTNodes, expected: int) -> void:
-	var result: int = root.tick(BLACKBOARD, 0.1)
+	var result: int = root.tick(0.1)
 
 	assert_eq(result, expected)
 	if expected == NNBTNodes.RUNNING:

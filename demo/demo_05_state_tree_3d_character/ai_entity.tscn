@@ -1,4 +1,4 @@
-[gd_scene load_steps=34 format=3 uid="uid://digtgw0djj7ag"]
+[gd_scene load_steps=35 format=3 uid="uid://digtgw0djj7ag"]
 
 [ext_resource type="PackedScene" uid="uid://b63nj6ojftrm7" path="res://demo_05_state_tree_3d_character/visuals/gobot.tscn" id="1_ha2aq"]
 [ext_resource type="Script" uid="uid://c846lrlm3g82d" path="res://demo_05_state_tree_3d_character/ai_entity.gd" id="1_x4txl"]
@@ -111,6 +111,13 @@ nodes/jump_oneshot/node = SubResource("AnimationNodeOneShot_nildm")
 nodes/jump_oneshot/position = Vector2(11.4286, 148.571)
 node_connections = [&"jump_oneshot", 0, &"basic_movement", &"jump_oneshot", 1, &"StateMachine", &"output", 0, &"jump_oneshot"]
 
+[sub_resource type="NNBlackboard" id="NNBlackboard_a1b2c"]
+values = {
+"acceleration": 0.75,
+"holding_sprint": false,
+"input_dir": Vector3(0, 0, 0)
+}
+
 [node name="ai_entity" type="CharacterBody3D"]
 script = ExtResource("1_x4txl")
 
@@ -139,11 +146,7 @@ parameters/jump_oneshot/internal_active = 0.0
 parameters/jump_oneshot/request = 0
 
 [node name="NNSTRoot" type="NNSTRoot" parent="."]
-blackboard = {
-"acceleration": 0.75,
-"holding_sprint": false,
-"input_dir": Vector3(0, 0, 0)
-}
+blackboard = SubResource("NNBlackboard_a1b2c")
 script = ExtResource("3_twn2d")
 
 [node name="Root" type="NNSTParallel" parent="NNSTRoot"]

@@ -84,7 +84,7 @@ The structure of the state tree controls the state selection flow for your AI en
 
 A state tree is updated by **ticking** the tree. When there are no states active, a **transition** is started with the **root** node as the transition target. This causes the states in the tree to be evaluated starting from the root node and descending down the tree until a leaf state node is found that can be activated. When a leaf node is found, all its parent nodes up until the root node will be marked as active nodes. The root node ticks itself: by default it does so on every **Physics** frame signal, so you do not need a manual tick.
 
-After the initial state has been chosen, the state transitions must be explicitly started by calling the `transition_to(new_state_nodepath:NodePath, user_data:Variant, delta:float)` method. The transition target can be any of the nodes in the tree, including the root node. The target is defined by the **NodePath relative to the root node of the state tree**. In the image below, if the `transition_to()` was called with the following parameters: `transition_to("/Child state 1/Sub child state 2", null, delta)`, it would cause the child states of *Sub child state 2* to be evaluated to find a new leaf state.
+After the initial state has been chosen, the state transitions must be explicitly started by calling the `transition_to(new_state_nodepath:NodePath)` method. The transition target can be any of the nodes in the tree, including the root node. The target is defined by the **NodePath relative to the root node of the state tree**. In the image below, if the `transition_to()` was called with the following parameter: `transition_to("/Child state 1/Sub child state 2")`, it would cause the child states of *Sub child state 2* to be evaluated to find a new leaf state.
 
 ![Behaviour Tree node priority order](images/getting_started_st_gen_1.png)<br>
 *A state tree with some states. The evaluation during transition is done in top-to-down order.*<br>
@@ -129,10 +129,12 @@ With the setup above, leaving `Combat` while `Attack` is active and then transit
 
 To handle state transitioning, entering, exiting and updating the states, four state handling methods can be defined for the state nodes: 
 
- * `func on_enter_condition(user_data, delta) -> bool` is used to check if the state can be entered. This method should **always** return either **true** or **false**. Alternatively the *utility-based considerations* can be used (see 4. Utility enabled State Trees in Utility AI GDExtension for more details). 
- * `func on_enter_state(user_data, delta)` is used to run any initialization the state needs to run before it is *ticked*.
- * `func on_exit_state(user_data, delta)` is used to run any clean up after the state is no longer active.
- * `func on_tick(user_data, delta)` is used to run what ever code the state needs to do when it is *ticked*.
+ * `func on_enter_condition() -> bool` is used to check if the state can be entered. This method should **always** return either **true** or **false**. Alternatively the *utility-based considerations* can be used (see 4. Utility enabled State Trees in Utility AI GDExtension for more details). 
+ * `func on_enter_state()` is used to run any initialization the state needs to run before it is *ticked*.
+ * `func on_exit_state()` is used to run any clean up after the state is no longer active.
+ * `func on_tick(delta)` is used to run what ever code the state needs to do when it is *ticked*.
+
+The state handling methods get no user data passed to them. The state tree keeps its data in the root node's blackboard, so a state stores a value with `set_blackboard("key", value)` and reads it back with `get_blackboard("key", default_value)`. This is also how initial expression properties and expression guards share values with the states.
 
 The `transition_to()` method can be called anywhere in the state's script code. If you want to start a transition from the script of some completely different node, you should use a node reference to call the method, for instance `$MyStateTreeRoot.transition_to(".")`.
 
@@ -414,7 +416,7 @@ What this code does:
  * The row `@onready var sensor_distance:UtilityAIDistanceVector2Sensor = $UtilityAISTRoot/UtilityAIDistanceVector2Sensor` gets a reference to the Vector2 based distance sensor of the AI entity. This sensor is used to check the distance and to get the direction vector towards the target.
  * The row `var movement_speed:float = 0.0` defines a variable that we will use to control the movement speed of the AI entity.
  * In the `_physics_process(delta)` method we first set the distance sensor **from-position** as the global position of the AI entity, and the **to-position** as the location of the mouse cursor from the parent node. The sensor will use these two positions to calculate the distance from the AI entity to the mouse cursor, and also the direction vector that we will use later for movement.
- * The state tree needs no manual tick. By default the root ticks itself on the **Physics** frame signal, so once the AI entity is in the scene the active states run their `on_tick()` methods every physics frame. The root's **Tick Rate** property ticks less often (a rate of 2 ticks on every second physics frame). To drive the tree from your own scheduler instead, set the root's **Process Thread** property to **Manual** and call `tick(delta)` yourself.
+ * The state tree needs no manual tick. By default the root ticks itself on the **Physics** frame signal, so once the AI entity is in the scene the active states run their `on_tick()` methods every physics frame. The root's **Tick Rate** property ticks less often (a rate of 2 ticks on every second physics frame). To drive the tree from your own scheduler instead, set the root's **Process Thread** property to **Manual** and call `tick(delta)` yourself. The state handling methods get no user data, so the states read the AI entity from the tree itself: `get_root()` returns the **UtilityAISTRoot** node and its parent is the **ai_entity** node. In this scene that means `get_root().get_parent()` is the AI entity, which gives the state handling methods access to all its properties.
  * After the tree has ticked, the row `self.global_position += sensor_distance.direction_vector * movement_speed * delta` moves the AI entity based on the direction vector calculated by the distance sensor. Delta time is used to scale the movement amount. The `movement_speed` is set by the active state.
  * The final rows of the method make sure the character sprite is facing the direction it is moving to by flipping the sprite horizontally when needed.
 
@@ -426,26 +428,29 @@ What this code does:
 extends UtilityAISTNode
 
 
-func on_enter_condition(actor, delta):
+func on_enter_condition():
+	var actor = get_root().get_parent()
 	return actor.sensor_distance.distance > 200.0
 
 
-func on_enter_state(actor, delta):
+func on_enter_state():
+	var actor = get_root().get_parent()
 	actor.movement_speed = -100
 	actor.play("moving")
 
 
-func on_exit_state(actor, delta):
+func on_exit_state():
 	pass
 
 
-func on_tick(actor, delta):
+func on_tick(_delta):
+	var actor = get_root().get_parent()
 	if actor.sensor_distance.distance <= 200:
-		transition_to(".", actor, delta)
+		transition_to(".")
 
 ```
 
-For all the methods we name the **user_data** parameter as the **actor**. You can set the name to anything you want. In this case the name "actor" was chosen because the state handling methods act on the **ai_entity** node that owns the state tree.
+For all the methods we read the AI entity with `get_root().get_parent()` and store it in a local `actor` variable. You can name that variable anything you want. The state handling methods themselves receive no user data: `on_enter_condition()`, `on_enter_state()` and `on_exit_state()` take no parameters, and `on_tick()` receives only the tick's delta time, which these states don't use and therefore name `_delta`. In step 7.1 the **ai_entity** node is the parent of the **UtilityAISTRoot** node, so `get_root().get_parent()` is the AI entity.
 
 The **on_enter_condition()** method is used to determine if the state should be entered. It is executed when the `transition_to()` method is called and the state tree is evaluated. The *Moving closer* state is entered if the distance between the AI entity and the mouse cursor is more than 200 pixels. 
 
@@ -453,7 +458,7 @@ The **on_enter_state()** method is called when this state is entered. For the *M
 
 The **on_exit_state()** method is called when the state is exited. For this tutorial we don't need to do any clean up and the content is left empty. In a real game you would simply not define this method when you do not need it. It is included here to make you aware of it.
 
-The **on_tick()** method is called every time the state tree is ticked. This is where you usually add code to update the AI entity's properties related to state updates and also the conditions for transitioning away from this state using the `transition_to()` method. In this case, if the distance is less or equal to 200 pixels the `transition_to()` method is called with parameters `new_state_nodepath="."` and the actor and delta. The *"."* node path will evaluate the states to transition to starting from the **UtilityAISTRoot** node.
+The **on_tick()** method is called every time the state tree is ticked. This is where you usually add code to update the AI entity's properties related to state updates and also the conditions for transitioning away from this state using the `transition_to()` method. In this case, if the distance is less or equal to 200 pixels the `transition_to()` method is called with the parameter `new_state_nodepath="."`. The *"."* node path will evaluate the states to transition to starting from the **UtilityAISTRoot** node.
 
 
 
@@ -463,22 +468,25 @@ The **on_tick()** method is called every time the state tree is ticked. This is 
 extends UtilityAISTNode
 
 
-func on_enter_condition(actor, delta):
+func on_enter_condition():
+	var actor = get_root().get_parent()
 	return actor.sensor_distance.distance < 90.0
 
 
-func on_enter_state(actor, delta):
+func on_enter_state():
+	var actor = get_root().get_parent()
 	actor.movement_speed = 100
 	actor.play("moving")
 
 
-func on_exit_state(actor, delta):
+func on_exit_state():
 	pass
 
 
-func on_tick(actor, delta):
+func on_tick(_delta):
+	var actor = get_root().get_parent()
 	if actor.sensor_distance.distance >= 90 :
-		transition_to(".", actor, delta)
+		transition_to(".")
 
 
 ```
@@ -493,18 +501,20 @@ Again, we define the state handling methods. This time the **on_enter_condition(
 extends UtilityAISTNode
 
 
-func on_enter_state(actor, delta):
+func on_enter_state():
+	var actor = get_root().get_parent()
 	actor.movement_speed = 0
 	actor.play("default")
 
 
-func on_exit_state(actor, delta):
+func on_exit_state():
 	pass
 
 
-func on_tick(actor, delta):
+func on_tick(_delta):
+	var actor = get_root().get_parent()
 	if actor.sensor_distance.distance > 200 or actor.sensor_distance.distance < 90:
-		transition_to("Moving", actor, delta)
+		transition_to("Moving")
 
 
 ```

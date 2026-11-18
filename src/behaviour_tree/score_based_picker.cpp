@@ -24,7 +24,7 @@ NNBTScoreBasedPicker::~NNBTScoreBasedPicker() {
 
 // Getters and Setters.
 
-void NNBTScoreBasedPicker::_on_before_run(Variant blackboard, float delta) {
+void NNBTScoreBasedPicker::_on_before_run(float delta) {
 	// Evaluate the scores and pick the child with the highest
 	// score to run.
 	_current_child_index = -1;
@@ -43,14 +43,14 @@ void NNBTScoreBasedPicker::_on_before_run(Variant blackboard, float delta) {
 	} //endfor children
 }
 
-NNBTNodes::Status NNBTScoreBasedPicker::_tick(Variant blackboard, float delta) {
+NNBTNodes::Status NNBTScoreBasedPicker::_tick(float delta) {
 	if (_current_child_index < 0) {
 		return Status::FAILURE; // No valid child found.
 	}
 
 	NNBTNodes *btnode = _child_btnodes[_current_child_index];
 	if (btnode != nullptr) {
-		Status return_value = btnode->tick(blackboard, delta);
+		Status return_value = btnode->tick(delta);
 		if (return_value == Status::RUNNING) {
 			_interrupt_other_active_children(btnode);
 		}

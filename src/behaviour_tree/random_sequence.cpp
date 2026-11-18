@@ -24,7 +24,7 @@ NNBTRandomSequence::~NNBTRandomSequence() {
 
 // Getters and Setters.
 
-void NNBTRandomSequence::_on_before_run(Variant blackboard, float delta) {
+void NNBTRandomSequence::_on_before_run(float delta) {
 	_current_child_index = 0;
 	// Create a random order.
 	_child_node_order.clear();
@@ -38,10 +38,10 @@ void NNBTRandomSequence::_on_before_run(Variant blackboard, float delta) {
 	_child_node_order.shuffle();
 }
 
-NNBTNodes::Status NNBTRandomSequence::_tick(Variant blackboard, float delta) {
+NNBTNodes::Status NNBTRandomSequence::_tick(float delta) {
 	while (_current_child_index < _child_node_order.size()) {
 		NNBTNodes *btnode = _child_btnodes[(int)_child_node_order[_current_child_index]];
-		Status result = btnode->tick(blackboard, delta);
+		Status result = btnode->tick(delta);
 		if (result == Status::FAILURE) {
 			return Status::FAILURE;
 		} else if (result == Status::RUNNING) {

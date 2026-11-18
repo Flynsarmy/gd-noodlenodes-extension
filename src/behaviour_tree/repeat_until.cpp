@@ -70,7 +70,7 @@ void NNBTRepeatUntil::reset() {
 	NNBTDecoratorNodes::reset();
 }
 
-NNBTNodes::Status NNBTRepeatUntil::_tick(Variant blackboard, float delta) {
+NNBTNodes::Status NNBTRepeatUntil::_tick(float delta) {
 	if (Engine::get_singleton()->is_editor_hint())
 		return Status::FAILURE;
 
@@ -91,7 +91,7 @@ NNBTNodes::Status NNBTRepeatUntil::_tick(Variant blackboard, float delta) {
 		if (_current_max_repeat_times > 0) {
 			--_current_max_repeat_times;
 		}
-		Status result = btnode->tick(blackboard, delta);
+		Status result = btnode->tick(delta);
 		if (result == _expected_tick_result) {
 			_is_expected_tick_result_reached = true;
 			return Status::SUCCESS;

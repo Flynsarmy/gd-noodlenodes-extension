@@ -28,7 +28,6 @@ private:
 	NodePath _actor_node_path;
 
 	NNTickScheduler _tick_scheduler;
-	Variant _tick_argument;
 	// The deepest node on the active path after the last tick. It is stored as
 	// an ObjectID so a freed node is detected instead of dereferenced.
 	ObjectID _running_action_id;
@@ -83,8 +82,6 @@ public:
 	int get_tick_rate() const;
 	void set_process_thread(int p_process_thread);
 	int get_process_thread() const;
-	void set_tick_argument(const Variant &p_tick_argument);
-	Variant get_tick_argument() const;
 
 	// Shared body of the SceneTree frame-signal handlers, and the deterministic
 	// driver for tests and custom schedulers. Returns true when this call
@@ -102,11 +99,9 @@ public:
 
 	// Handling functions.
 
-	// Public tick entry point. Forwards to the lifecycle wrapper on NNBTNodes
-	// so the GDScript tick signature stays unchanged.
-	Status tick(Variant blackboard, float delta);
+	Status tick(float delta);
 
-	virtual Status _tick(Variant blackboard, float delta) override;
+	virtual Status _tick(float delta) override;
 
 	virtual void reset() override;
 

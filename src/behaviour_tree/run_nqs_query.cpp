@@ -110,7 +110,7 @@ void NNBTRunNQSQuery::_on_query_completed(Object *p_search_space, int64_t p_quer
 	}
 }
 
-NNBTNodes::Status NNBTRunNQSQuery::_tick(Variant blackboard, float delta) {
+NNBTNodes::Status NNBTRunNQSQuery::_tick(float delta) {
 	NNNQSSearchSpaces *search_space = _resolve_nqs_search_space();
 	NNNodeQuerySystem *nqs = godot::Object::cast_to<NNNodeQuerySystem>(Engine::get_singleton()->get_singleton("NodeQuerySystem"));
 	Status result = Status::FAILURE;
@@ -153,16 +153,16 @@ NNBTNodes::Status NNBTRunNQSQuery::_tick(Variant blackboard, float delta) {
 	return result;
 }
 
-void NNBTRunNQSQuery::_on_after_run(Variant blackboard, float delta) {
+void NNBTRunNQSQuery::_on_after_run(float delta) {
 	// The run is over, so drop the posted query and its completion connection.
 	_cancel_posted_query();
-	NNBTTaskNodes::_on_after_run(blackboard, delta);
+	NNBTTaskNodes::_on_after_run(delta);
 }
 
-void NNBTRunNQSQuery::_on_interrupt(Variant blackboard, float delta) {
+void NNBTRunNQSQuery::_on_interrupt(float delta) {
 	// Stop only this leaf's own posted query before running the script hook.
 	_cancel_posted_query();
-	NNBTTaskNodes::_on_interrupt(blackboard, delta);
+	NNBTTaskNodes::_on_interrupt(delta);
 }
 
 void NNBTRunNQSQuery::_exit_tree() {

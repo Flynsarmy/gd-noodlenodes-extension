@@ -43,26 +43,26 @@ float NNBTDelayer::get_time_waited() const {
 
 // Handling functions.
 
-void NNBTDelayer::_on_before_run(Variant blackboard, float delta) {
+void NNBTDelayer::_on_before_run(float delta) {
 	_time_waited = 0.0f;
 	_is_delay_elapsed = false;
-	NNBTDecoratorNodes::_on_before_run(blackboard, delta);
+	NNBTDecoratorNodes::_on_before_run(delta);
 }
 
-void NNBTDelayer::_on_after_run(Variant blackboard, float delta) {
+void NNBTDelayer::_on_after_run(float delta) {
 	_time_waited = 0.0f;
 	_is_delay_elapsed = false;
-	NNBTDecoratorNodes::_on_after_run(blackboard, delta);
+	NNBTDecoratorNodes::_on_after_run(delta);
 }
 
-void NNBTDelayer::_on_interrupt(Variant blackboard, float delta) {
+void NNBTDelayer::_on_interrupt(float delta) {
 	// Interrupts do not reset the node, so restart the delay to discard a partial wait.
 	_time_waited = 0.0f;
 	_is_delay_elapsed = false;
-	NNBTDecoratorNodes::_on_interrupt(blackboard, delta);
+	NNBTDecoratorNodes::_on_interrupt(delta);
 }
 
-NNBTNodes::Status NNBTDelayer::_tick(Variant blackboard, float delta) {
+NNBTNodes::Status NNBTDelayer::_tick(float delta) {
 	_report_extra_enabled_child_btnodes();
 
 	// Only the first enabled behaviour tree child is ticked. Any further
@@ -83,7 +83,7 @@ NNBTNodes::Status NNBTDelayer::_tick(Variant blackboard, float delta) {
 			_is_delay_elapsed = true;
 		}
 
-		Status result = btnode->tick(blackboard, delta);
+		Status result = btnode->tick(delta);
 		return result;
 	}
 

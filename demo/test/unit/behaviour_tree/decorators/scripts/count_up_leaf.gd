@@ -2,11 +2,7 @@ extends NNBTLeaf
 
 @export var key: String = "custom_value"
 
-func on_tick(blackboard: Variant, delta: float) -> Status:
-	blackboard = blackboard as Dictionary
-	if not blackboard.has(key):
-		blackboard[key] = 0
-
-	blackboard[key] += 1
+func on_tick(_delta: float) -> Status:
+	set_blackboard(key, get_blackboard(key, 0) + 1)
 
 	return Status.SUCCESS

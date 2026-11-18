@@ -11,13 +11,13 @@ extends GutTest
 class HookedSet extends NNBTBlackboardSet:
 	var events: Array = []
 
-	func on_before_run(_blackboard: Variant, _delta: float) -> void:
+	func on_before_run(_delta: float) -> void:
 		events.append("before")
 
-	func on_after_run(_blackboard: Variant, _delta: float) -> void:
+	func on_after_run(_delta: float) -> void:
 		events.append("after")
 
-	func on_interrupt(_blackboard: Variant, _delta: float) -> void:
+	func on_interrupt(_delta: float) -> void:
 		events.append("interrupt")
 
 
@@ -29,26 +29,26 @@ class BlackboardWriter extends NNBTActionLeaf:
 	var result: Status = NNBTNodes.RUNNING
 	var writes: int = 0
 
-	func on_tick(_blackboard: Variant, _delta: float) -> Status:
+	func on_tick(_delta: float) -> Status:
 		writes += 1
 		events.append("tick")
 		set_blackboard("from_target", writes)
 		return result
 
-	func on_before_run(_blackboard: Variant, _delta: float) -> void:
+	func on_before_run(_delta: float) -> void:
 		events.append("before")
 
-	func on_after_run(_blackboard: Variant, _delta: float) -> void:
+	func on_after_run(_delta: float) -> void:
 		events.append("after")
 
-	func on_interrupt(_blackboard: Variant, _delta: float) -> void:
+	func on_interrupt(_delta: float) -> void:
 		events.append("interrupt")
 
 
 class FlippingCondition extends NNBTConditionLeaf:
 	var result: Status = NNBTNodes.FAILURE
 
-	func on_tick(_blackboard: Variant, _delta: float) -> Status:
+	func on_tick(_delta: float) -> Status:
 		return result
 
 
@@ -69,11 +69,11 @@ func test_blackboard_leaf_fires_lifecycle_hooks_once_per_run() -> void:
 	root.add_child(leaf)
 	add_child_autofree(root)
 
-	assert_eq(root.tick({}, 0.1), NNBTNodes.SUCCESS)
+	assert_eq(root.tick(0.1), NNBTNodes.SUCCESS)
 	assert_eq(leaf.events, ["before", "after"], "a data-driven leaf still gets one before/after per run")
 	assert_eq(board.get_value("hp", -1), 7)
 
-	assert_eq(root.tick({}, 0.1), NNBTNodes.SUCCESS)
+	assert_eq(root.tick(0.1), NNBTNodes.SUCCESS)
 	assert_eq(
 		leaf.events,
 		["before", "after", "before", "after"],
@@ -113,14 +113,14 @@ func test_shared_target_takeover_keeps_blackboard_writes_on_its_own_root() -> vo
 	reference_a.node_reference = target
 	reference_b.node_reference = target
 
-	assert_eq(root.tick({}, 0.1), NNBTNodes.RUNNING)
+	assert_eq(root.tick(0.1), NNBTNodes.RUNNING)
 	assert_eq(target.events, ["before", "tick"], "the first reference starts the shared run")
 	assert_eq(target.writes, 1)
 	assert_eq(target_board.get_value("from_target", -1), 1)
 	assert_eq(referencer_board.has_value("from_target"), false, "the referencer's board stays untouched")
 
 	condition.result = NNBTNodes.SUCCESS
-	assert_eq(root.tick({}, 0.1), NNBTNodes.RUNNING)
+	assert_eq(root.tick(0.1), NNBTNodes.RUNNING)
 	assert_eq(
 		target.events,
 		["before", "tick", "interrupt", "before", "tick"],
@@ -128,7 +128,7 @@ func test_shared_target_takeover_keeps_blackboard_writes_on_its_own_root() -> vo
 	)
 	assert_eq(target_board.get_value("from_target", -1), 2)
 
-	assert_eq(root.tick({}, 0.1), NNBTNodes.RUNNING)
+	assert_eq(root.tick(0.1), NNBTNodes.RUNNING)
 	assert_eq(
 		target.events,
 		["before", "tick", "interrupt", "before", "tick", "tick"],

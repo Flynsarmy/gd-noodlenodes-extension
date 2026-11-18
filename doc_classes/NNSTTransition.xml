@@ -13,7 +13,7 @@
 		<method name="evaluate_delay" qualifiers="const">
 			<return type="float" />
 			<description>
-				Evaluates [member delay_in_seconds] to a non-negative number of seconds. Plain numeric strings are returned directly, otherwise the string is evaluated as an expression against the [NNSTRoot] blackboard. Empty, invalid, non-numeric and negative results return [code]0.0[/code].
+				Evaluates [member delay_in_seconds] to a non-negative number of seconds. Plain numeric strings are returned directly, otherwise the string is evaluated as an expression against the values of the root's [member NNSTRoot.blackboard]. Empty, invalid, non-numeric and negative results return [code]0.0[/code].
 			</description>
 		</method>
 		<method name="take">
@@ -51,7 +51,7 @@
 	</methods>
 	<members>
 		<member name="delay_in_seconds" type="String" setter="set_delay_in_seconds" getter="get_delay_in_seconds" default="&quot;0.0&quot;">
-			An expression for the delay in seconds before this transition is taken. A plain number is used directly. The expression can use the blackboard keys of the [NNSTRoot] as input names. Invalid or negative results fall back to [code]0.0[/code], which takes the transition immediately. While a delay is pending, [signal NNSTTickedNodes.transition_pending] is emitted on the parent state every tick, and the pending transition is cancelled when the state exits.
+			An expression for the delay in seconds before this transition is taken. A plain number is used directly. The expression can use the keys of the root's [member NNSTRoot.blackboard] as input names. Invalid or negative results fall back to [code]0.0[/code], which takes the transition immediately. While a delay is pending, [signal NNSTTickedNodes.transition_pending] is emitted on the parent state every tick, and the pending transition is cancelled when the state exits.
 		</member>
 		<member name="delay_seconds" type="float" setter="set_delay_seconds" getter="get_delay_seconds" default="0.0">
 			Deprecated float alias for [member delay_in_seconds]. Prefer [member delay_in_seconds].

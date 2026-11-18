@@ -12,7 +12,6 @@ var movement_speed := 0.0
 
 func _ready() -> void:
 	tree_root.tick_rate = 20
-	tree_root.tick_argument = self
 
 
 func _physics_process(delta: float) -> void:

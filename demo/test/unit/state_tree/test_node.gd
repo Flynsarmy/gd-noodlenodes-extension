@@ -14,75 +14,81 @@ func _add_manual_root(root: NNSTRoot) -> NNSTRoot:
 func test_on_method_state_calls() -> void:
 	var _root: NNSTRoot = _add_manual_root(NNSTRoot.new())
 	var _child: NNSTNode = load("res://test/unit/state_tree/node_enter_condition_success.gd").new()
-	_root.blackboard = {
+	var board := NNBlackboard.new()
+	board.values = {
 		"on_enter_condition": 0,
 		"on_enter_state": 0,
 		"on_tick": 0,
 		"on_exit_state": 0
 	}
+	_root.blackboard = board
 
 	_root.add_child(_child)
 	_root.tick(0.1)
-	assert_eq(_root.blackboard['on_enter_condition'], 1)
-	assert_eq(_root.blackboard['on_tick'], 1)
-	assert_eq(_root.blackboard['on_enter_state'], 1)
-	assert_eq(_root.blackboard['on_exit_state'], 0)
+	assert_eq(_root.get_blackboard('on_enter_condition'), 1)
+	assert_eq(_root.get_blackboard('on_tick'), 1)
+	assert_eq(_root.get_blackboard('on_enter_state'), 1)
+	assert_eq(_root.get_blackboard('on_exit_state'), 0)
 
 	_root.tick(0.1)
-	assert_eq(_root.blackboard['on_enter_condition'], 1)
-	assert_eq(_root.blackboard['on_tick'], 2)
-	assert_eq(_root.blackboard['on_enter_state'], 1)
-	assert_eq(_root.blackboard['on_exit_state'], 0)
+	assert_eq(_root.get_blackboard('on_enter_condition'), 1)
+	assert_eq(_root.get_blackboard('on_tick'), 2)
+	assert_eq(_root.get_blackboard('on_enter_state'), 1)
+	assert_eq(_root.get_blackboard('on_exit_state'), 0)
 
 ## No on_* methods should fire if on_enter_condition returns false
 func test_on_enter_condition_fail_checks() -> void:
 	var _root: NNSTRoot = _add_manual_root(NNSTRoot.new())
 	var _child: NNSTNode = load("res://test/unit/state_tree/node_enter_condition_fail.gd").new()
-	_root.blackboard = {
+	var board := NNBlackboard.new()
+	board.values = {
 		"on_enter_condition": 0,
 		"on_enter_state": 0,
 		"on_tick": 0,
 		"on_exit_state": 0
 	}
+	_root.blackboard = board
 
 	_root.add_child(_child)
 	_root.tick(0.1)
 	# root will have tried entering on ready. tick tries again.
-	assert_eq(_root.blackboard['on_enter_condition'], 2)
-	assert_eq(_root.blackboard['on_tick'], 0)
-	assert_eq(_root.blackboard['on_enter_state'], 0)
-	assert_eq(_root.blackboard['on_exit_state'], 0)
+	assert_eq(_root.get_blackboard('on_enter_condition'), 2)
+	assert_eq(_root.get_blackboard('on_tick'), 0)
+	assert_eq(_root.get_blackboard('on_enter_state'), 0)
+	assert_eq(_root.get_blackboard('on_exit_state'), 0)
 
 	_root.tick(0.1)
-	assert_eq(_root.blackboard['on_enter_condition'], 3)
-	assert_eq(_root.blackboard['on_tick'], 0)
-	assert_eq(_root.blackboard['on_enter_state'], 0)
-	assert_eq(_root.blackboard['on_exit_state'], 0)
+	assert_eq(_root.get_blackboard('on_enter_condition'), 3)
+	assert_eq(_root.get_blackboard('on_tick'), 0)
+	assert_eq(_root.get_blackboard('on_enter_state'), 0)
+	assert_eq(_root.get_blackboard('on_exit_state'), 0)
 
 func test_grandchildren_on_method_calls() -> void:
 	var _root: NNSTRoot = _add_manual_root(NNSTRoot.new())
 	var _child: NNSTNode = load("res://test/unit/state_tree/node_enter_condition_success.gd").new()
 	var _grandchild: NNSTNode = load("res://test/unit/state_tree/node_enter_condition_success.gd").new()
-	_root.blackboard = {
+	var board := NNBlackboard.new()
+	board.values = {
 		"on_enter_condition": 0,
 		"on_enter_state": 0,
 		"on_tick": 0,
 		"on_exit_state": 0
 	}
+	_root.blackboard = board
 
 	_child.add_child(_grandchild)
 	_root.add_child(_child)
 	_root.tick(0.1)
-	assert_eq(_root.blackboard['on_enter_condition'], 2) # 1 for child, 1 for grandchild
-	assert_eq(_root.blackboard['on_tick'], 2)
-	assert_eq(_root.blackboard['on_enter_state'], 2)
-	assert_eq(_root.blackboard['on_exit_state'], 0)
+	assert_eq(_root.get_blackboard('on_enter_condition'), 2) # 1 for child, 1 for grandchild
+	assert_eq(_root.get_blackboard('on_tick'), 2)
+	assert_eq(_root.get_blackboard('on_enter_state'), 2)
+	assert_eq(_root.get_blackboard('on_exit_state'), 0)
 
 	_root.tick(0.1)
-	assert_eq(_root.blackboard['on_enter_condition'], 2)
-	assert_eq(_root.blackboard['on_tick'], 4)
-	assert_eq(_root.blackboard['on_enter_state'], 2)
-	assert_eq(_root.blackboard['on_exit_state'], 0)
+	assert_eq(_root.get_blackboard('on_enter_condition'), 2)
+	assert_eq(_root.get_blackboard('on_tick'), 4)
+	assert_eq(_root.get_blackboard('on_enter_state'), 2)
+	assert_eq(_root.get_blackboard('on_exit_state'), 0)
 
 func test_get_root_works_when_child_changed() -> void:
 	var _root: NNSTRoot = _add_manual_root(NNSTRoot.new())
@@ -144,7 +150,9 @@ func test_active_grandchild_freed_before_tick_is_safe() -> void:
 	var _parent: NNSTNode = NNSTNode.new()
 	var _child: NNSTNode = load("res://test/unit/state_tree/node_on_call_logger.gd").new()
 	var _sibling: NNSTNode = load("res://test/unit/state_tree/node_on_call_logger.gd").new()
-	_root.blackboard = { "log": [] }
+	var board := NNBlackboard.new()
+	board.values = { "log": [] }
+	_root.blackboard = board
 	_child.name = "Child"
 	_sibling.name = "Sibling"
 	_parent.add_child(_child)

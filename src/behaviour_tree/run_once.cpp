@@ -21,7 +21,7 @@ void NNBTRunOnce::reset() {
 	NNBTDecoratorNodes::reset();
 }
 
-NNBTNodes::Status NNBTRunOnce::_tick(Variant blackboard, float delta) {
+NNBTNodes::Status NNBTRunOnce::_tick(float delta) {
 	// The latch survives an interrupt because an interrupt only cancels the child subtree.
 	if (_has_held_result) {
 		return _held_result;
@@ -35,7 +35,7 @@ NNBTNodes::Status NNBTRunOnce::_tick(Variant blackboard, float delta) {
 			continue;
 		}
 
-		Status result = btnode->tick(blackboard, delta);
+		Status result = btnode->tick(delta);
 		if (result == Status::SUCCESS || result == Status::FAILURE) {
 			_held_result = result;
 			_has_held_result = true;

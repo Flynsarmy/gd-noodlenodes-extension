@@ -2,14 +2,12 @@ extends GutTest
 @warning_ignore('unused_parameter')
 @warning_ignore('return_value_discarded')
 
-const BLACKBOARD: Dictionary = {}
-
 
 class CountingLeaf extends NNBTLeaf:
 	var result: int = NNBTNodes.SUCCESS
 	var tick_count: int = 0
 
-	func on_tick(_blackboard: Variant, _delta: float) -> Status:
+	func on_tick(_delta: float) -> Status:
 		tick_count += 1
 		return result
 
@@ -110,7 +108,7 @@ func test_reparent_introduced_cycle_does_not_hang_reset_or_tick() -> void:
 	bt_root.is_enabled = true
 
 	# Ticking the cycle must return FAILURE instead of recursing forever.
-	assert_eq(bt_root.tick(BLACKBOARD, 0.1), NNBTNodes.FAILURE)
+	assert_eq(bt_root.tick(0.1), NNBTNodes.FAILURE)
 	assert_false(reference.get_is_running())
 	assert_false(composite.get_is_running())
 	assert_eq(reference.tick_result, NNBTNodes.FAILURE)
@@ -137,7 +135,7 @@ func test_valid_reference_chain_resets_and_ticks() -> void:
 	assert_eq(b.get_node_reference(), composite)
 
 	bt_root.add_child(a)
-	assert_eq(bt_root.tick(BLACKBOARD, 0.1), NNBTNodes.SUCCESS)
+	assert_eq(bt_root.tick(0.1), NNBTNodes.SUCCESS)
 	assert_eq(leaf.tick_count, 1)
 	assert_eq(leaf.tick_result, NNBTNodes.SUCCESS)
 	assert_eq(composite.tick_result, NNBTNodes.SUCCESS)
@@ -151,7 +149,7 @@ func test_valid_reference_chain_resets_and_ticks() -> void:
 	assert_false(leaf.get_is_running())
 	assert_eq(leaf.tick_count, 1)
 
-	assert_eq(bt_root.tick(BLACKBOARD, 0.1), NNBTNodes.SUCCESS)
+	assert_eq(bt_root.tick(0.1), NNBTNodes.SUCCESS)
 	assert_eq(leaf.tick_count, 2)
 
 	assert_engine_error_count(0)
@@ -178,7 +176,7 @@ func test_shared_subtree_referenced_twice_is_traversed() -> void:
 	parallel.add_child(second_reference)
 	bt_root.add_child(parallel)
 
-	assert_eq(bt_root.tick(BLACKBOARD, 0.1), NNBTNodes.SUCCESS)
+	assert_eq(bt_root.tick(0.1), NNBTNodes.SUCCESS)
 	assert_eq(shared_leaf.tick_count, 2, "each reference traverses the shared leaf")
 	assert_eq(parallel.tick_result, NNBTNodes.SUCCESS)
 
@@ -205,7 +203,7 @@ func test_freed_reference_target_is_safe_on_reset_and_tick() -> void:
 	assert_eq(reference.get_node_reference(), null, "stale reference is cleared")
 
 	# Ticking after the target was freed fails safely.
-	assert_eq(bt_root.tick(BLACKBOARD, 0.1), NNBTNodes.FAILURE)
+	assert_eq(bt_root.tick(0.1), NNBTNodes.FAILURE)
 	assert_false(reference.get_is_running())
 	assert_eq(reference.tick_result, NNBTNodes.FAILURE)
 

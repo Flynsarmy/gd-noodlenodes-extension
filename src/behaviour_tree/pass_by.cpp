@@ -24,12 +24,12 @@ NNBTPassBy::~NNBTPassBy() {
 
 // Handling methods.
 
-NNBTNodes::Status NNBTPassBy::_tick(Variant blackboard, float delta) {
+NNBTNodes::Status NNBTPassBy::_tick(float delta) {
 	// The passBy node just calls its tick and then ticks the first
 	// behaviour tree node child and returns the result of the child.
 	// Otherwise it returns what ever is set as the tick result property.
 	if (_has_on_tick_method) {
-		call("on_tick", blackboard, delta);
+		call("on_tick", delta);
 	}
 	return Status::SUCCESS;
 }

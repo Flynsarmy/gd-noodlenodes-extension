@@ -18,7 +18,7 @@ public:
 
 	// Handling functions.
 
-	virtual Status _tick(Variant blackboard, float delta) override;
+	virtual Status _tick(float delta) override;
 
 	// Godot virtuals.
 	void _notification(int p_what) override;

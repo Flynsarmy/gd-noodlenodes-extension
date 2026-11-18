@@ -8,6 +8,34 @@
 	<tutorials>
 	</tutorials>
 	<methods>
+		<method name="erase_blackboard">
+			<return type="bool" />
+			<param index="0" name="key" type="String" />
+			<description>
+				Erases [param key] from the blackboard of the nearest [NNSTRoot] ancestor. Returns [code]false[/code] when the key is absent or when there is no root.
+			</description>
+		</method>
+		<method name="get_blackboard" qualifiers="const">
+			<return type="Variant" />
+			<param index="0" name="key" type="String" />
+			<param index="1" name="default_value" type="Variant" default="null" />
+			<description>
+				Returns the value stored under [param key] in the blackboard of the nearest [NNSTRoot] ancestor. Returns [param default] when the key is missing, its value is [code]null[/code], or there is no root. Blackboard keys are always [String]s.
+			</description>
+		</method>
+		<method name="get_blackboard_resource" qualifiers="const">
+			<return type="NNBlackboard" />
+			<description>
+				Returns the effective [NNBlackboard] of the nearest [NNSTRoot] ancestor: the board explicitly assigned to that root, or the root's own private board when none is assigned. Returns [code]null[/code] only when there is no [NNSTRoot] ancestor.
+			</description>
+		</method>
+		<method name="has_blackboard" qualifiers="const">
+			<return type="bool" />
+			<param index="0" name="key" type="String" />
+			<description>
+				Returns [code]true[/code] when [param key] exists in the blackboard of the nearest [NNSTRoot] ancestor and its value is not [code]null[/code]; returns [code]false[/code] otherwise, including when there is no root.
+			</description>
+		</method>
 		<method name="get_is_active" qualifiers="const">
 			<return type="bool" />
 			<description>
@@ -33,6 +61,14 @@
 			<param index="0" name="event" type="InputEvent" />
 			<description>
 				See [method Node._unhandled_key_input]. The [member internal_status] property must also be set to `Active` for this function to fire.
+			</description>
+		</method>
+		<method name="set_blackboard">
+			<return type="bool" />
+			<param index="0" name="key" type="String" />
+			<param index="1" name="value" type="Variant" />
+			<description>
+				Stores [param value] under [param key] in the blackboard of the nearest [NNSTRoot] ancestor. Returns [code]false[/code] when the key is empty or there is no root.
 			</description>
 		</method>
 		<method name="send_event">

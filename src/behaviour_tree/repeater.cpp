@@ -47,22 +47,22 @@ int NNBTRepeater::get_times_repeated() const {
 
 // Handling functions.
 
-void NNBTRepeater::_on_before_run(Variant blackboard, float delta) {
+void NNBTRepeater::_on_before_run(float delta) {
 	_times_repeated = 0;
-	NNBTDecoratorNodes::_on_before_run(blackboard, delta);
+	NNBTDecoratorNodes::_on_before_run(delta);
 }
 
-void NNBTRepeater::_on_after_run(Variant blackboard, float delta) {
+void NNBTRepeater::_on_after_run(float delta) {
 	_times_repeated = 0;
-	NNBTDecoratorNodes::_on_after_run(blackboard, delta);
+	NNBTDecoratorNodes::_on_after_run(delta);
 }
 
-void NNBTRepeater::_on_interrupt(Variant blackboard, float delta) {
+void NNBTRepeater::_on_interrupt(float delta) {
 	_times_repeated = 0;
-	NNBTDecoratorNodes::_on_interrupt(blackboard, delta);
+	NNBTDecoratorNodes::_on_interrupt(delta);
 }
 
-NNBTNodes::Status NNBTRepeater::_tick(Variant blackboard, float delta) {
+NNBTNodes::Status NNBTRepeater::_tick(float delta) {
 	if (!get_is_enabled() || _child_btnodes.size() == 0)
 		return Status::FAILURE;
 	if (Engine::get_singleton()->is_editor_hint())
@@ -80,7 +80,7 @@ NNBTNodes::Status NNBTRepeater::_tick(Variant blackboard, float delta) {
 			continue;
 		}
 
-		Status result = btnode->tick(blackboard, delta);
+		Status result = btnode->tick(delta);
 
 		if (result == Status::RUNNING) {
 			return result;
