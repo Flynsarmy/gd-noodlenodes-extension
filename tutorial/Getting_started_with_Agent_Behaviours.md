@@ -104,11 +104,15 @@ The *behaviours* contain **actions** that are executed when a behaviour is activ
 
 ### 3.2 The update methods for the Agent Behaviours
 
-The AI Agent is updated by calling its `evaluate_options()` method. This method will update all the **sensors** and evaluate all the **behaviour groups** and **behaviours** that are child nodes of the **AI agent**. Based on the evaluation it will choose a behaviour as the active behaviour. When this happens, the **behaviour_changed signal** is emitted with the chosen behaviour. 
+The AI Agent updates itself. On every eligible step of the **SceneTree** frame signal selected with the agent's **Process Thread** property (**Physics** by default), the agent calls its `evaluate_options()` method and then its `update_current_behaviour()` method. The `evaluate_options()` method will update all the **sensors** and evaluate all the **behaviour groups** and **behaviours** that are child nodes of the **AI agent**. Based on the evaluation it will choose a behaviour as the active behaviour. When this happens, the **behaviour_changed signal** is emitted with the chosen behaviour. 
+
+The agent's **Tick Rate** property is the single thinking throttle: with a value of N the agent thinks on every Nth eligible step. On every eligible step, whether it thinks or not, the selected behaviour group, behaviour and action all receive a `frame_tick(delta)` signal, so the code that realizes the behaviour can run every frame.
 
 The `evaluate_options()` method evaluates the behaviours in top-to-down order and places them to a list based on their score. If two behaviours get the same score, the one that is evaluated first gets higher priority. As an example, this means that in a situation where you want to choose top 3 behaviours out of 10 and you already have evaluated 3 behaviours, if the any of the later ones get the same score as the behaviour at third place, the later behaviour gets discarded. If later evaluated behaviour gets the same score as the second one, it will be placed third in the list.  
 
-If *actions* are used, the `update_current_behaviour()` method is then called to choose an action to perform. When an action gets selected the **action_changed()** signal is emitted with the chosen action. If a behaviour has no actions set as its child nodes, the `update_current_behaviour()` will exit and emit the **behaviour_changed()** signal with a **null** behaviour.
+The `update_current_behaviour()` method chooses an action to perform from the active behaviour. When an action gets selected the **action_changed()** signal is emitted with the chosen action. If a behaviour has no actions set as its child nodes, the `update_current_behaviour()` will exit and emit the **behaviour_changed()** signal with a **null** behaviour.
+
+The thinking happens before the frame tick within a step, so an action that gets chosen during a step receives its `frame_tick` in that same step. A script attached to the agent keeps its own `_process()` and `_physics_process()` callbacks: automatic stepping does not depend on them, so they cannot shadow it.
 
 When choosing the behaviour the `evaluate_options()` method will check if the **Can be interrupted** property of the currently active behaviour is set. If it is, the behaviours will be evaluated. If not, the `evaluate_options()` method will exit. When using the *can be interrupted* property for a behaviour you can end a behaviour by setting all its child actions as finished by assigning their **is_finished** property as true. If the behaviour does not have action nodes as its childs, you can end the behaviour by calling the AI Agent's `update_current_behaviour()` method.
 
@@ -382,8 +386,8 @@ func _physics_process(delta):
 	# Set the mouse cursor position as the to-vector.
 	sensor_distance.to_vector = get_parent().mouse_position 
 	
-	# Update the AI.
-	$UtilityAIAgent.evaluate_options(delta)
+	# The AI Agent thinks and ticks its behaviours automatically from the
+	# physics frame, so the sensor vectors above are the only input it needs.
 	
 	# Move based on movement speed.
 	self.global_position += sensor_distance.direction_vector * movement_speed * delta
@@ -418,14 +422,14 @@ What this code does:
  * The row `@onready var sensor_distance:UtilityAIDistanceVector2Sensor = $UtilityAISTRoot/UtilityAIDistanceVector2Sensor` gets a reference to the Vector2 based distance sensor of the AI entity. This sensor is used to check the distance and to get the direction vector towards the target.
  * The row `var movement_speed:float = 0.0` defines a variable that we will use to control the movement speed of the AI entity.
  * In the `_physics_process(delta)` method we first set the distance sensor **from-position** as the global position of the AI entity, and the **to-position** as the location of the mouse cursor from the parent node. The sensor will use these two positions to calculate the distance from the AI entity to the mouse cursor, and also the direction vector that we will use later for movement.
- * `$UtilityAIAgent.evaluate_options(delta)` evaluates which behaviour should be activated. It will **emit the behaviour_changed** signal when a behaviour changes.
- * After *evaluating the options* for the AI Agent node, the row `self.global_position += sensor_distance.direction_vector * movement_speed * delta` moves the AI entity based on the direction vector calculated by the distance sensor. Delta time is used to scale the movement amount. The `movement_speed` is set by the selected behaviour.
+ * The AI Agent node needs no manual update call: it thinks and ticks its behaviours automatically on the physics frame, and it will **emit the behaviour_changed** signal when a behaviour changes. The thinking happens on every frame selected by the **Tick Rate** property, which is the single thinking throttle.
+ * After the agent has stepped for the frame, the row `self.global_position += sensor_distance.direction_vector * movement_speed * delta` moves the AI entity based on the direction vector calculated by the distance sensor. Delta time is used to scale the movement amount. The `movement_speed` is set by the selected behaviour.
  * The final rows of the `_physics_process()` method make sure the character sprite is facing the direction it is moving to by flipping the sprite horizontally when needed.
  * At the end of the script, we have the method `_on_utility_ai_agent_behaviour_changed(behaviour_node)`. This is a signal hander for a signal we will shortly create. It checks that the new behaviour is not null, and then uses the behaviour **name** to determine how to set up the **movement_speed** and which animation to play. Alternatively the **Behaviour ID** property could be used to differentiate between the behaviours.
 
 
 > [!NOTE]
-> For this tutorial we are calling the AI Agent node `evaluate_options()` method every physics frame. This isn't what you usually want to do in a real game. See section [8. Next steps](Getting_started_with_Agent_Behaviours.md#8-next-steps) for more information.
+> For this tutorial the AI Agent keeps its default **Tick Rate** of 1, so it thinks on every physics frame. This isn't what you usually want to do in a real game: raise the **Tick Rate** or drive the agent from your own scheduler instead. See section [8. Next steps](Getting_started_with_Agent_Behaviours.md#8-next-steps) for more information.
 
 
 
@@ -460,7 +464,8 @@ This concludes the tutorial, but there are things you can try to learn more. For
 In 6.1 it was noted that you usually don't want to update the AI every physics frame. There are several reasons for this. For one, the game world usually doesn't change dramatically each frame and as a result the AI Agent would end up choosing the same behaviour as it did on the previous frame. Secondly, updating the AI Agent each frame has of course a cost, even if it can be a tiny one. If the updating doesn't result in a change in the behaviour and it costs some frame time, it doesn't make sense to do the updating unless it is necessary. The more AI agents you want to run, the more important this becomes. Thirdly, we humans (and also animals in general) have various *reaction times* that cause some delay when we are reacting to the changes in our environment. Adding some delay may make your AI entities more *believable* and fun. 
 
 Some of the ways to update the AI less often can be:
- * Set the cooldown value for the AI agent node to a higher value. Each time you update the AI Agent, this cooldown value will be reset and the update will happen only after the cooldown time has passed.
- * Use a delay like on the Behaviour Tree tutorial with a random variance added.
- * Evaluate the AI Agent options based on **events**. For example, if you have an Area2D or Area3D that you use for sensing the environment, you can evaluate what the AI Agent should do when an enemy enters or exits the area. Another example could be the AI entity losing or gaining more health, getting an alarm signal, and so on.
+ * Raise the AI Agent's **Tick Rate**. Thinking then happens on every Nth eligible step, while the selected nodes still receive `frame_tick` every step so movement and animations stay smooth. This is the agent's single thinking throttle.
+ * Set the AI Agent's **Process Thread** to **Idle** to think on the process frame instead of the physics frame.
+ * Set the **Process Thread** to **Manual** and call the agent's `tick(delta)` method from your own scheduler: a timer, a fixed-step accumulator, or an event. In manual mode the agent connects no SceneTree frame signal, so only your code drives it. `tick(delta)` performs a full step: it thinks and then frame-ticks the selected nodes.
+ * Evaluate the AI Agent options based on **events**. For example, if you have an Area2D or Area3D that you use for sensing the environment, you can evaluate what the AI Agent should do when an enemy enters or exits the area. Another example could be the AI entity losing or gaining more health, getting an alarm signal, and so on. In manual mode you can also call `evaluate_options(delta)` and `update_current_behaviour()` yourself if you only want to think and not tick.
 

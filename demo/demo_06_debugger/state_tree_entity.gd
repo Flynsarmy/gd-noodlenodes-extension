@@ -10,20 +10,10 @@ var movement_speed := 0.0
 
 
 func _physics_process(delta: float) -> void:
-	if _is_paused():
-		return
-
 	sensor_distance.from_vector = global_position
 	sensor_distance.to_vector = get_parent().mouse_position
 
-	tree_root.tick(delta)
-
 	_move(sensor_distance.direction_vector * movement_speed * delta)
-
-
-func _is_paused() -> bool:
-	var scene := get_parent()
-	return scene != null and scene.get("ai_paused") == true
 
 
 func _move(offset: Vector2) -> void:

@@ -28,16 +28,10 @@
 				Emitted for the current behaviour group when some behaviour in some other behaviour group gets selected during the [NNAgent] evaluate_options call.
 			</description>
 		</signal>
-		<signal name="idle_frame_tick">
+		<signal name="frame_tick">
 			<param index="0" name="delta" type="float" />
 			<description>
-				Called when the node gets the process tick notification. Can be used to handle behaviour group related update logic.
-			</description>
-		</signal>
-		<signal name="physics_frame_tick">
-			<param index="0" name="delta" type="float" />
-			<description>
-				Called when the node gets the physics_process tick notification. Can be used to handle behaviour group related update logic.
+				Emitted on every eligible agent step while this behaviour group is selected. Use it to handle behaviour group related update logic. The signal fires on the agent's selected frame signal, so its cadence is set by [member NNAgent.process_thread].
 			</description>
 		</signal>
 	</signals>

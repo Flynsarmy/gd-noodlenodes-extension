@@ -14,9 +14,6 @@ func _physics_process(delta: float) -> void:
 	box_sensor.from_vector = global_position
 	box_sensor.to_vector = _get_closest_box_pos()
 
-	# Update the AI.
-	agent.evaluate_options(delta)
-
 	# Move based on movement speed.
 	global_position += mouse_sensor.direction_vector * movement_speed * delta
 

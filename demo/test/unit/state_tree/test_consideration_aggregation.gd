@@ -3,6 +3,13 @@ extends GutTest
 # Regression tests: Min/Max/Mean aggregation must skip disabled considerations
 # and divide by the number of *evaluated* children, not the total child count.
 
+
+# These tests tick the chart by hand, so automatic ticking is off.
+func _add_manual_root(root: NNSTRoot) -> NNSTRoot:
+	root.process_thread = NNSTRoot.MANUAL
+	return add_child_autofree(root)
+
+
 const MIN := 1
 const MAX := 2
 const MEAN := 3
@@ -29,7 +36,7 @@ func test_min_ignores_disabled_first_consideration() -> void:
 	_node.add_child(_make_consideration(0.8))
 
 	_root.add_child(_node)
-	add_child_autofree(_root)
+	_add_manual_root(_root)
 
 	assert_almost_eq(_node.score, 0.5, 0.0001)
 
@@ -46,7 +53,7 @@ func test_mean_divides_by_evaluated_considerations() -> void:
 	_node.add_child(_make_consideration(0.8))
 
 	_root.add_child(_node)
-	add_child_autofree(_root)
+	_add_manual_root(_root)
 
 	# (0.5 + 0.8) / 2 == 0.65, not (0.5 + 0.8) / 3.
 	assert_almost_eq(_node.score, 0.65, 0.0001)
@@ -64,7 +71,7 @@ func test_max_ignores_disabled_first_consideration() -> void:
 	_node.add_child(_make_consideration(0.8))
 
 	_root.add_child(_node)
-	add_child_autofree(_root)
+	_add_manual_root(_root)
 
 	assert_almost_eq(_node.score, 0.8, 0.0001)
 
@@ -80,7 +87,7 @@ func test_all_considerations_disabled_scores_zero() -> void:
 	_node.add_child(_make_consideration(0.8, false))
 
 	_root.add_child(_node)
-	add_child_autofree(_root)
+	_add_manual_root(_root)
 
 	# No division by zero / NaN when nothing was evaluated.
 	assert_almost_eq(_node.score, 0.0, 0.0001)
@@ -101,7 +108,7 @@ func test_consideration_group_mean_skips_disabled() -> void:
 
 	_node.add_child(_group)
 	_root.add_child(_node)
-	add_child_autofree(_root)
+	_add_manual_root(_root)
 
 	assert_almost_eq(_group.score, 0.65, 0.0001)
 	assert_almost_eq(_node.score, 0.65, 0.0001)
@@ -128,7 +135,7 @@ func test_sensor_group_min_skips_disabled() -> void:
 	_group.add_child(_sensor2)
 
 	_root.add_child(_group)
-	add_child_autofree(_root)
+	_add_manual_root(_root)
 
 	_root.tick(0.1)
 
@@ -156,7 +163,7 @@ func test_sensor_group_mean_skips_disabled() -> void:
 	_group.add_child(_sensor2)
 
 	_root.add_child(_group)
-	add_child_autofree(_root)
+	_add_manual_root(_root)
 
 	_root.tick(0.1)
 

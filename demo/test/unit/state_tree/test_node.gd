@@ -3,9 +3,16 @@ extends GutTest
 @warning_ignore('unused_parameter')
 @warning_ignore('return_value_discarded')
 
+
+# These tests tick the chart by hand, so automatic ticking is off.
+func _add_manual_root(root: NNSTRoot) -> NNSTRoot:
+	root.process_thread = NNSTRoot.MANUAL
+	return add_child_autofree(root)
+
+
 ## Confirm on_* methods are called when they should be
 func test_on_method_state_calls() -> void:
-	var _root: NNSTRoot = add_child_autofree(NNSTRoot.new())
+	var _root: NNSTRoot = _add_manual_root(NNSTRoot.new())
 	var _child: NNSTNode = load("res://test/unit/state_tree/node_enter_condition_success.gd").new()
 	_root.blackboard = {
 		"on_enter_condition": 0,
@@ -29,7 +36,7 @@ func test_on_method_state_calls() -> void:
 
 ## No on_* methods should fire if on_enter_condition returns false
 func test_on_enter_condition_fail_checks() -> void:
-	var _root: NNSTRoot = add_child_autofree(NNSTRoot.new())
+	var _root: NNSTRoot = _add_manual_root(NNSTRoot.new())
 	var _child: NNSTNode = load("res://test/unit/state_tree/node_enter_condition_fail.gd").new()
 	_root.blackboard = {
 		"on_enter_condition": 0,
@@ -53,7 +60,7 @@ func test_on_enter_condition_fail_checks() -> void:
 	assert_eq(_root.blackboard['on_exit_state'], 0)
 
 func test_grandchildren_on_method_calls() -> void:
-	var _root: NNSTRoot = add_child_autofree(NNSTRoot.new())
+	var _root: NNSTRoot = _add_manual_root(NNSTRoot.new())
 	var _child: NNSTNode = load("res://test/unit/state_tree/node_enter_condition_success.gd").new()
 	var _grandchild: NNSTNode = load("res://test/unit/state_tree/node_enter_condition_success.gd").new()
 	_root.blackboard = {
@@ -78,7 +85,7 @@ func test_grandchildren_on_method_calls() -> void:
 	assert_eq(_root.blackboard['on_exit_state'], 0)
 
 func test_get_root_works_when_child_changed() -> void:
-	var _root: NNSTRoot = add_child_autofree(NNSTRoot.new())
+	var _root: NNSTRoot = _add_manual_root(NNSTRoot.new())
 	var _child: NNSTNode = NNSTNode.new()
 	var _grandchild: NNSTNode = NNSTNode.new()
 
@@ -89,7 +96,7 @@ func test_get_root_works_when_child_changed() -> void:
 	assert_eq(_grandchild.get_root(), _root)
 
 func test_get_root_works_when_grandchild_changed() -> void:
-	var _root: NNSTRoot = add_child_autofree(NNSTRoot.new())
+	var _root: NNSTRoot = _add_manual_root(NNSTRoot.new())
 	var _child: NNSTNode = NNSTNode.new()
 	var _grandchild: NNSTNode = NNSTNode.new()
 
@@ -113,7 +120,7 @@ func test_initial_state_works() -> void:
 	_root.add_child(_child)
 	_child.add_child(_grandchild)
 	_child.add_child(_grandchild2)
-	add_child_autofree(_root)
+	_add_manual_root(_root)
 
 	assert_eq(_grandchild.get_is_active(), false)
 	assert_eq(_grandchild2.get_is_active(), true)
@@ -133,7 +140,7 @@ func test_initial_state_only_accepts_immediate_children() -> void:
 ## Freeing an active grandchild must reconcile the parent's active list before
 ## the next tick, and the parent should select its remaining child.
 func test_active_grandchild_freed_before_tick_is_safe() -> void:
-	var _root: NNSTRoot = add_child_autofree(NNSTRoot.new())
+	var _root: NNSTRoot = _add_manual_root(NNSTRoot.new())
 	var _parent: NNSTNode = NNSTNode.new()
 	var _child: NNSTNode = load("res://test/unit/state_tree/node_on_call_logger.gd").new()
 	var _sibling: NNSTNode = load("res://test/unit/state_tree/node_on_call_logger.gd").new()

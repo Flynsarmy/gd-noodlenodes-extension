@@ -1,5 +1,12 @@
 extends GutTest
 
+
+# These tests tick the chart by hand, so automatic ticking is off.
+func _add_manual_root(root: NNSTRoot) -> NNSTRoot:
+	root.process_thread = NNSTRoot.MANUAL
+	return add_child_autofree(root)
+
+
 const DEFAULT_MAX_ANGLE_DEGREES := 360.0
 const DEFAULT_MAX_ANGLE_RADIAN := 2.0 * PI
 const QUARTER_TURN_SCORE := 0.25
@@ -17,7 +24,7 @@ func test_default_sensor_value_is_finite_and_normalized() -> void:
 	var _sensor := _make_sensor()
 
 	_root.add_child(_sensor)
-	add_child_autofree(_root)
+	_add_manual_root(_root)
 
 	_root.tick(0.1)
 
@@ -32,7 +39,7 @@ func test_default_matches_setting_the_same_max_angle() -> void:
 	var _sensor := _make_sensor()
 
 	_root.add_child(_sensor)
-	add_child_autofree(_root)
+	_add_manual_root(_root)
 
 	_root.tick(0.1)
 	var default_value: float = _sensor.sensor_value
@@ -49,7 +56,7 @@ func test_custom_max_angle_still_normalizes() -> void:
 	var _sensor := _make_sensor()
 
 	_root.add_child(_sensor)
-	add_child_autofree(_root)
+	_add_manual_root(_root)
 
 	_sensor.max_angle_degrees = 180.0
 	_root.tick(0.1)

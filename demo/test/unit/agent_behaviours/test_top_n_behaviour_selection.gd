@@ -24,6 +24,8 @@ func _make_agent(behaviours: Array, num_behaviours_to_select: int) -> NNAgent:
 	agent.num_behaviours_to_select = num_behaviours_to_select
 	for behaviour in behaviours:
 		agent.add_child(behaviour)
+	# These tests drive the agent by hand, so automatic ticking is off.
+	agent.process_thread = NNAgent.MANUAL
 	add_child_autofree(agent)
 	return agent
 

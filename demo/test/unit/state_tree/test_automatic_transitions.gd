@@ -3,6 +3,13 @@ extends GutTest
 @warning_ignore('unused_parameter')
 @warning_ignore('return_value_discarded')
 
+
+# These tests tick the chart by hand, so automatic ticking is off.
+func _add_manual_root(root: NNSTRoot) -> NNSTRoot:
+	root.process_thread = NNSTRoot.MANUAL
+	return add_child_autofree(root)
+
+
 ## Counts guard evaluations. bump() increments count and succeeds once count
 ## reaches threshold. Used to prove an automatic STATE_ENTER guard is evaluated
 ## exactly once per activation of its state.
@@ -69,7 +76,7 @@ func test_automatic_transition_fires_on_state_enter() -> void:
 
 	# Build the whole tree before it enters, so the transition exists when the
 	# root enters _start during _ready().
-	add_child_autofree(_root)
+	_add_manual_root(_root)
 
 	# The automatic transition must have been evaluated on state enter.
 	assert_false(_start.get_is_active())
@@ -77,7 +84,7 @@ func test_automatic_transition_fires_on_state_enter() -> void:
 
 
 func test_automatic_transition_with_failing_guard_does_not_fire_on_enter() -> void:
-	var _root: NNSTRoot = add_child_autofree(NNSTRoot.new())
+	var _root: NNSTRoot = _add_manual_root(NNSTRoot.new())
 	var _start: NNSTNode = NNSTNode.new()
 	var _target: NNSTNode = NNSTNode.new()
 	var _transition: NNSTTransition = NNSTTransition.new()
@@ -95,7 +102,7 @@ func test_automatic_transition_with_failing_guard_does_not_fire_on_enter() -> vo
 
 
 func test_expression_property_change_triggers_automatic_transition() -> void:
-	var _root: NNSTRoot = add_child_autofree(NNSTRoot.new())
+	var _root: NNSTRoot = _add_manual_root(NNSTRoot.new())
 	var _start: NNSTNode = NNSTNode.new()
 	var _target: NNSTNode = NNSTNode.new()
 	var _transition: NNSTTransition = NNSTTransition.new()
@@ -122,7 +129,7 @@ func test_expression_property_change_triggers_automatic_transition() -> void:
 
 
 func test_automatic_transitions_do_not_fire_every_frame() -> void:
-	var _root: NNSTRoot = add_child_autofree(NNSTRoot.new())
+	var _root: NNSTRoot = _add_manual_root(NNSTRoot.new())
 	var _start: NNSTNode = NNSTNode.new()
 	var _target: NNSTNode = NNSTNode.new()
 	var _transition: NNSTTransition = NNSTTransition.new()
@@ -153,7 +160,7 @@ func test_automatic_transitions_do_not_fire_every_frame() -> void:
 
 
 func test_state_is_active_guard_triggers_on_state_change() -> void:
-	var _root: NNSTRoot = add_child_autofree(NNSTRoot.new())
+	var _root: NNSTRoot = _add_manual_root(NNSTRoot.new())
 	var _parallel: NNSTParallel = NNSTParallel.new()
 	var _left: NNSTNode = NNSTNode.new()
 	var _right: NNSTNode = NNSTNode.new()
@@ -245,7 +252,7 @@ func test_transition_trigger_types() -> void:
 
 
 func test_non_automatic_transitions_remain_event_driven() -> void:
-	var _root: NNSTRoot = add_child_autofree(NNSTRoot.new())
+	var _root: NNSTRoot = _add_manual_root(NNSTRoot.new())
 	var _start: NNSTNode = NNSTNode.new()
 	var _target: NNSTNode = NNSTNode.new()
 	var _transition: NNSTTransition = NNSTTransition.new()
@@ -302,7 +309,7 @@ func test_automatic_transition_cycle_terminates_without_crashing() -> void:
 	_tb.to = _tb.get_path_to(_a)
 
 	# This call used to crash outright. It must return normally.
-	add_child_autofree(_root)
+	_add_manual_root(_root)
 
 	# The bounded runner emits a single engine error when it hits its cap. Mark
 	# those errors handled so GUT does not treat the expected error as a failure.
@@ -348,7 +355,7 @@ func test_parallel_regions_all_handle_the_same_event() -> void:
 	_parallel.add_child(_region1)
 	_parallel.add_child(_region2)
 	_root.add_child(_parallel)
-	add_child_autofree(_root)
+	_add_manual_root(_root)
 
 	assert_true(_a1.get_is_active())
 	assert_true(_a2.get_is_active())
@@ -408,7 +415,7 @@ func test_state_change_wins_over_event_queued_during_property_change() -> void:
 	_to_q3.event_name = "go_event"
 	_to_q3.to = _to_q3.get_path_to(_q3)
 
-	add_child_autofree(_root)
+	_add_manual_root(_root)
 	assert_true(_s.get_is_active())
 	assert_true(_q.get_is_active())
 
@@ -446,7 +453,7 @@ func test_property_set_from_on_exit_state_is_deferred_until_transition_completes
 	_a.prop_name = "flag"
 	_a.prop_value = true
 
-	add_child_autofree(_root)
+	_add_manual_root(_root)
 	assert_true(_a.get_is_active())
 	assert_false(_c.get_is_active())
 
@@ -481,7 +488,7 @@ func test_state_enter_evaluates_automatic_guard_once_per_entry() -> void:
 	_transition.to = _transition.get_path_to(_b)
 	_root.blackboard = {"counter": _counter}
 
-	add_child_autofree(_root)
+	_add_manual_root(_root)
 	assert_true(_outside.get_is_active())
 
 	_outside.transition_to(_outside.get_path_to(_compound))
@@ -515,7 +522,7 @@ func test_state_enter_reentry_evaluates_guard_once_per_activation() -> void:
 	_transition.to = _transition.get_path_to(_b)
 	_root.blackboard = {"counter": _counter}
 
-	add_child_autofree(_root)
+	_add_manual_root(_root)
 	assert_true(_outside.get_is_active())
 
 	# First activation of A.
@@ -601,7 +608,7 @@ func _build_change_before_queued_event_chart(property_trigger: bool, entrypoint:
 
 	_l2.state_entered.connect(func(): _root.send_event("later"))
 
-	add_child_autofree(_root)
+	_add_manual_root(_root)
 	match entrypoint:
 		"take":
 			_to_l2.take()

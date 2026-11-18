@@ -10,9 +10,6 @@ func _physics_process(delta: float):
 	sensor_distance.from_vector = global_position
 	sensor_distance.to_vector = get_parent().mouse_position
 
-	# Update the AI.
-	root.tick(delta)
-
 	# Move based on movement speed.
 	global_position += sensor_distance.direction_vector * movement_speed * delta
 

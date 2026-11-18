@@ -1,5 +1,12 @@
 extends GutTest
 
+
+# These tests tick the agent by hand, so automatic ticking is off.
+func _add_manual_agent(agent: NNAgent) -> NNAgent:
+	agent.process_thread = NNAgent.MANUAL
+	return add_child_autofree(agent)
+
+
 class CountingConsideration extends NNConsideration:
 	var evaluation_count := 0
 	var score_value := 1.0
@@ -28,7 +35,7 @@ func _make_agent(group: NNBehaviourGroup) -> NNAgent:
 	group.add_child(_make_consideration(1.0))
 	var agent: NNAgent = NNAgent.new()
 	agent.add_child(group)
-	add_child_autofree(agent)
+	_add_manual_agent(agent)
 	return agent
 
 
@@ -110,7 +117,7 @@ func test_disabled_current_grouped_behaviour_matches_direct_candidate() -> void:
 	var direct_enabled: NNBehaviour = _make_behaviour(0.5)
 	direct_agent.add_child(direct_disabled)
 	direct_agent.add_child(direct_enabled)
-	add_child_autofree(direct_agent)
+	_add_manual_agent(direct_agent)
 	direct_agent.set_current_behaviour_node(direct_disabled)
 
 	direct_agent.evaluate_options(0.1)

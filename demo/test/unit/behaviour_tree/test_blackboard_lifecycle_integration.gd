@@ -52,9 +52,16 @@ class FlippingCondition extends NNBTConditionLeaf:
 		return result
 
 
+# These tests tick the roots by hand, so automatic ticking is off.
+func _make_manual_root() -> NNBTRoot:
+	var root: NNBTRoot = NNBTRoot.new()
+	root.process_thread = NNBTRoot.MANUAL
+	return root
+
+
 func test_blackboard_leaf_fires_lifecycle_hooks_once_per_run() -> void:
 	var board: NNBlackboard = NNBlackboard.new()
-	var root: NNBTRoot = NNBTRoot.new()
+	var root: NNBTRoot = _make_manual_root()
 	root.blackboard = board
 	var leaf: HookedSet = HookedSet.new()
 	leaf.key = "hp"
@@ -80,14 +87,14 @@ func test_shared_target_takeover_keeps_blackboard_writes_on_its_own_root() -> vo
 	# The shared target lives under its own root with its own board. The
 	# referencing tree has a different board, which must never be written.
 	var target_board: NNBlackboard = NNBlackboard.new()
-	var target_root: NNBTRoot = NNBTRoot.new()
+	var target_root: NNBTRoot = _make_manual_root()
 	target_root.blackboard = target_board
 	var target: BlackboardWriter = BlackboardWriter.new()
 	target_root.add_child(target)
 	add_child_autofree(target_root)
 
 	var referencer_board: NNBlackboard = NNBlackboard.new()
-	var root: NNBTRoot = NNBTRoot.new()
+	var root: NNBTRoot = _make_manual_root()
 	root.blackboard = referencer_board
 	var selector: NNBTSelector = NNBTSelector.new()
 	selector.reactive = true

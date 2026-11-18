@@ -36,7 +36,6 @@ func _make_scripted_root() -> NNBTRoot:
 	leaf.result = NNBTNodes.RUNNING
 	leaf.name = "CountingLeaf"
 	bt_root.add_child(leaf)
-	bt_root.auto_tick = true
 	return bt_root
 
 
@@ -56,7 +55,6 @@ func _wait_process_frames(count: int) -> void:
 func test_scripted_root_auto_ticks_in_physics_mode() -> void:
 	var bt_root: NNBTRoot = _make_scripted_root()
 	var leaf: CountingLeaf = _leaf_of(bt_root)
-	bt_root.process_thread = NNBTRoot.PHYSICS
 	add_child_autofree(bt_root)
 
 	var physics_calls: int = bt_root.get("physics_calls")

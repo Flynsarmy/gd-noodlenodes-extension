@@ -82,7 +82,7 @@ State trees are a new solution to AI that combine the flexibility and tree-struc
 
 The structure of the state tree controls the state selection flow for your AI entity. A state tree consists of a **root node** that is the basis of the tree and the tree branches are created using **state nodes**. The state nodes can have zero or more child state nodes. If a state node does not have any child state nodes, it is considered to be a *leaf* node.
 
-A state tree is updated by **ticking** the tree. When there are no states active, a **transition** is started with the **root** node as the transition target. This causes the states in the tree to be evaluated starting from the root node and descending down the tree until a leaf state node is found that can be activated. When a leaf node is found, all its parent nodes up until the root node will be marked as active nodes.
+A state tree is updated by **ticking** the tree. When there are no states active, a **transition** is started with the **root** node as the transition target. This causes the states in the tree to be evaluated starting from the root node and descending down the tree until a leaf state node is found that can be activated. When a leaf node is found, all its parent nodes up until the root node will be marked as active nodes. The root node ticks itself: by default it does so on every **Physics** frame signal, so you do not need a manual tick.
 
 After the initial state has been chosen, the state transitions must be explicitly started by calling the `transition_to(new_state_nodepath:NodePath, user_data:Variant, delta:float)` method. The transition target can be any of the nodes in the tree, including the root node. The target is defined by the **NodePath relative to the root node of the state tree**. In the image below, if the `transition_to()` was called with the following parameters: `transition_to("/Child state 1/Sub child state 2", null, delta)`, it would cause the child states of *Sub child state 2* to be evaluated to find a new leaf state.
 
@@ -140,7 +140,7 @@ Any active state that is no longer active after the call to `transition_to()` wi
 
 A valid `transition_to()` call made from `on_exit_state()` is honored without the transition that triggered the exit overwriting the redirect. The redirect is synchronous, so its entry callbacks can run before the original exit callback returns. Targets whose state or ancestors are still exiting are rejected with `false` to avoid reactivating a lineage that the ongoing exit would undo.
 
-When the root node `tick()` method is called, all the active states will call their `on_tick()` methods, starting from the root node and going down the tree to the leaf node.
+When the root node ticks, all the active states will call their `on_tick()` methods, starting from the root node and going down the tree to the leaf node. By default the root is ticked by the SceneTree's **Physics** frame signal; its **Tick Rate** property lowers the cadence, and **Process Thread** set to **Manual** lets your own scheduler call `tick(delta)` instead.
 
 Removing or reparenting an active child exits it and its active descendants once. Freeing a state removes it from the active list without calling its exit handler during destruction. If an active branch loses its last active child, it selects a replacement on the next tick using its usual selection rule; the branch itself is not re-entered. Other active children of a parallel state keep running.
 
@@ -330,7 +330,7 @@ We are now done with the main scene. Next we will focus on creating the **ai_ent
 
 
 
-3. Choose the **UtilityAISTRoot** node and add it to the scene by clicking the **Create** button. The root-node will be the node we will be *ticking* later in code.
+3. Choose the **UtilityAISTRoot** node and add it to the scene by clicking the **Create** button. The root-node will be the node that runs the state tree; it ticks itself automatically once the AI entity is in the scene.
 
 ![The State Tree root node](images/getting_started_st_1.png)<br>
 
@@ -393,8 +393,8 @@ func _physics_process(delta):
 	# Set the mouse cursor position as the to-vector.
 	sensor_distance.to_vector = get_parent().mouse_position 
 	
-	# Update the AI.
-	$UtilityAISTRoot.tick(self, delta)
+	# The state tree ticks itself from the physics frame, so the two sensor
+	# positions above are the only input it needs here.
 	
 	# Move based on movement speed.
 	self.global_position += sensor_distance.direction_vector * movement_speed * delta
@@ -414,8 +414,8 @@ What this code does:
  * The row `@onready var sensor_distance:UtilityAIDistanceVector2Sensor = $UtilityAISTRoot/UtilityAIDistanceVector2Sensor` gets a reference to the Vector2 based distance sensor of the AI entity. This sensor is used to check the distance and to get the direction vector towards the target.
  * The row `var movement_speed:float = 0.0` defines a variable that we will use to control the movement speed of the AI entity.
  * In the `_physics_process(delta)` method we first set the distance sensor **from-position** as the global position of the AI entity, and the **to-position** as the location of the mouse cursor from the parent node. The sensor will use these two positions to calculate the distance from the AI entity to the mouse cursor, and also the direction vector that we will use later for movement.
- * `$UtilityAISTRoot.tick(self, delta)` ticks the state tree. As **user_data** we give the root node of the AI entity scene which in this case is the **self** keyword. This gives the state tree node state handling methods access to all the properties of the AI entity node.
- * After *ticking* the root node, the row `self.global_position += sensor_distance.direction_vector * movement_speed * delta` moves the AI entity based on the direction vector calculated by the distance sensor. Delta time is used to scale the movement amount. The `movement_speed` is set by the active state.
+ * The state tree needs no manual tick. By default the root ticks itself on the **Physics** frame signal, so once the AI entity is in the scene the active states run their `on_tick()` methods every physics frame. The root's **Tick Rate** property ticks less often (a rate of 2 ticks on every second physics frame). To drive the tree from your own scheduler instead, set the root's **Process Thread** property to **Manual** and call `tick(delta)` yourself.
+ * After the tree has ticked, the row `self.global_position += sensor_distance.direction_vector * movement_speed * delta` moves the AI entity based on the direction vector calculated by the distance sensor. Delta time is used to scale the movement amount. The `movement_speed` is set by the active state.
  * The final rows of the method make sure the character sprite is facing the direction it is moving to by flipping the sprite horizontally when needed.
 
 
@@ -445,7 +445,7 @@ func on_tick(actor, delta):
 
 ```
 
-For all the methods we name the **user_data** parameter as the **actor**. You can set the name to anything you want. In this case the name "actor" was chosen because in step 7.1 we use the **ai_entity** node in the root node `tick()` method.
+For all the methods we name the **user_data** parameter as the **actor**. You can set the name to anything you want. In this case the name "actor" was chosen because the state handling methods act on the **ai_entity** node that owns the state tree.
 
 The **on_enter_condition()** method is used to determine if the state should be entered. It is executed when the `transition_to()` method is called and the state tree is evaluated. The *Moving closer* state is entered if the distance between the AI entity and the mouse cursor is more than 200 pixels. 
 
@@ -536,51 +536,22 @@ This concludes the tutorial, but there are things you can try to learn more. For
  * Try adding another type of AI entity that has some other logic for its behaviour. 
  * Try setting the the `num_entities` to a larger value in the **tutorial_scene**. How many AI entities you can add without it affecting performance? 
 
-In this tutorial the State Tree is ticked every physics frame, and this is how state machines are usually used in games. States are a very convinient way of organizing your game and AI logic. After the State Tree has chosen the active states, the ticking only has the cost of the logic that you've built within the `on_tick()` method. 
+In this tutorial the State Tree ticks itself every physics frame, which is how state machines are usually used in games. States are a very convinient way of organizing your game and AI logic. After the State Tree has chosen the active states, the ticking only has the cost of the logic that you've built within the `on_tick()` method. 
 
 The tutorial State Tree was created so that it sets some parameters for the AI entity when entering a state, namely which animation it should play and its movement speed, and then during each *tick* it checks if a transition should occur. The ticking is therefore focused on checking if transitions between states are needed. You can also use the state tree the other way around: you have the game logic *inside* the states within the `on_tick()` method and then use **events** to check when a state transition should occur. 
 
-The game world usually doesn't change dramatically between frames, so it can be said that the tutorial State Tree does a lot of redundant checking for transitions by checking them every frame. This can be fixed simply by adding a delay or a cooldown as mentioned in the Behaviour Tree tutorial. Each time you tick the tree, you set a variable in the **ai_entity** node to some short time duration and then tick the tree only after this time has passed. An example of this is given below.
+The game world usually doesn't change dramatically between frames, so it can be said that the tutorial State Tree does a lot of redundant checking for transitions by checking them every frame. This can be fixed simply by lowering the root's ticking rate. The root's **Tick Rate** property counts eligible physics frames: a rate of 2 ticks on every second frame, a rate of 6 on every sixth frame. Every tick still receives the delta time of its frame, so the state logic stays frame-rate independent. An example is given below.
 
 However, it is common to tick the state machines every frame so don't be afraid to do so. It all depends on how you are using the State Tree. 
 
-To see the difference of adding some delay to ticking the tree, test how the code below for the **ai_entity** script changes the way the AI works. The only thing it adds is the `ticking_delay` variable that introduces a minimum delay plus a random variance to when the ticking occurs. You can try adding different delays and how it affects performance, the AI reaction times and the number of entities you can run.
+To see the difference of ticking the tree less often, set the **Tick Rate** property of the root node to a larger value, or add the code below to the **ai_entity** script. You can try different rates and see how they affect performance, the AI reaction times and the number of entities you can run.
 
 ```gdscript
-extends AnimatedSprite2D
-
-# This is the distance sensor. 
-@onready var sensor_distance:UtilityAIDistanceVector2Sensor = $UtilityAISTRoot/UtilityAIDistanceVector2Sensor
-var movement_speed:float = 0.0
-var ticking_delay:float = 0.0
-
-
 func _ready():
-	ticking_delay = randf() * 0.3
-
-
-func _physics_process(delta):
-	# Set the AI-entity position as the from-vector.
-	sensor_distance.from_vector = global_position
-	
-	# Set the mouse cursor position as the to-vector.
-	sensor_distance.to_vector = get_parent().mouse_position 
-	
-	# Update the AI.
-	ticking_delay -= delta
-	if ticking_delay <= 0.0:
-		ticking_delay = 0.3 + randf() * 0.3
-		$UtilityAISTRoot.tick(self, delta)
-	
-	# Move based on movement speed.
-	self.global_position += sensor_distance.direction_vector * movement_speed * delta
-	
-	# Flip the sprite horizontally based on the direction vector horizontal (x)
-	# value.
-	flip_h = (sensor_distance.direction_vector.x < 0)
-	# If the movement speed is negative, the entity is moving away so
-	# we should flip the sprite again.
-	if movement_speed < 0.0:
-		flip_h = !flip_h
-
+	# Tick the state tree on every sixth physics frame. The default is 1, which
+	# ticks on every physics frame. The root must keep its default Process
+	# Thread value (Physics) for this.
+	$UtilityAISTRoot.tick_rate = 6
 ```
+
+If you want full control over when the tree updates, set the root's **Process Thread** property to **Manual** and call `tick(delta)` from your own scheduler, for example with your own delay or cooldown logic. Calling `tick(delta)` by hand also re-enters a chart that was transitioned out on purpose, which the automatic ticking never does.

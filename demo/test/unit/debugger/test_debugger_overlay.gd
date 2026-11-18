@@ -88,6 +88,8 @@ func _add_agent(node_name: String) -> NNAgent:
 func _add_behaviour_tree(node_name: String) -> NNBTRoot:
 	var root: NNBTRoot = NNBTRoot.new()
 	root.name = node_name
+	# The overlay tests read the hierarchy only, so automatic ticking is off.
+	root.process_thread = NNBTRoot.MANUAL
 	_host.add_child(root)
 	return root
 
@@ -95,6 +97,8 @@ func _add_behaviour_tree(node_name: String) -> NNBTRoot:
 func _add_state_tree(node_name: String) -> NNSTRoot:
 	var root: NNSTRoot = NNSTRoot.new()
 	root.name = node_name
+	# The overlay tests read the hierarchy only, so automatic ticking is off.
+	root.process_thread = NNSTRoot.MANUAL
 	_host.add_child(root)
 	return root
 

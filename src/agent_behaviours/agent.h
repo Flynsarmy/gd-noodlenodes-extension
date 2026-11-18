@@ -1,5 +1,6 @@
 #pragma once
 
+#include "../tick_scheduler.h"
 #include "noodle_nodes.h"
 
 #include "performance_monitor_singleton.h"
@@ -43,8 +44,7 @@ private:
 	godot::String _top_scoring_behaviour_name;
 	godot::String _current_behaviour_name;
 
-	float _thinking_delay_in_seconds;
-	float _thinking_delay_in_seconds_current_timer;
+	NNTickScheduler _tick_scheduler;
 
 #ifdef DEBUG_ENABLED
 	uint64_t _total_evaluate_options_usec;
@@ -58,15 +58,9 @@ private:
 	void _end_current_action(bool emit_action_changed);
 	void _tick_selected_nodes(const char *signal_name, double delta);
 
-	// The SceneTree whose frame signals are currently connected, if any. It is
-	// stored as an ObjectID because get_tree() is not reliable on tree exit.
-	ObjectID _process_tree_id;
-
-	// Frame-signal helpers.
-	void _update_frame_connections();
-	void _disconnect_frame_connections();
 	void _on_scene_tree_process_frame();
 	void _on_scene_tree_physics_frame();
+	bool _auto_tick_step_callback(double p_delta, bool p_due);
 
 	NNBehaviourGroup *_resolve_behaviour_group(const ObjectID &behaviour_group_id) const;
 	NNBehaviour *_resolve_behaviour(const ObjectID &behaviour_id) const;
@@ -85,11 +79,19 @@ protected:
 	static void _bind_methods();
 	void place_into_top_n_behaviour_list(const ObjectID &behaviour_group_id, const ObjectID &behaviour_id, float score);
 
+	virtual void _on_is_enabled_changed(bool p_is_enabled) override;
+
 #ifdef DEBUG_ENABLED
 	uint64_t _last_evaluated_timestamp;
 	uint64_t _last_visited_timestamp;
 #endif
 public:
+	enum ProcessThread {
+		IDLE = NNTickScheduler::IDLE,
+		PHYSICS = NNTickScheduler::PHYSICS,
+		MANUAL = NNTickScheduler::MANUAL,
+	};
+
 	NNAgent();
 	~NNAgent();
 
@@ -100,8 +102,10 @@ public:
 	inline uint64_t get_last_evaluated_timestamp() const { return _last_evaluated_timestamp; };
 #endif
 
-	void set_thinking_delay_in_seconds(float thinking_delay_in_seconds);
-	float get_thinking_delay_in_seconds() const;
+	void set_process_thread(int p_process_thread);
+	int get_process_thread() const;
+	void set_tick_rate(int p_tick_rate);
+	int get_tick_rate() const;
 
 	void set_current_behaviour_group_node(NNBehaviourGroup *new_behaviour_group_node);
 	NNBehaviourGroup *get_current_behaviour_group_node() const;
@@ -137,6 +141,10 @@ public:
 
 	void update_current_behaviour();
 
+	void tick(double delta);
+
+	bool auto_tick_step(int p_process_thread, double p_delta);
+
 	void set_current_action_is_finished(bool is_finished);
 	void abort_current_behaviour();
 
@@ -145,3 +153,5 @@ public:
 };
 
 } //namespace godot
+
+VARIANT_ENUM_CAST(NNAgent::ProcessThread)

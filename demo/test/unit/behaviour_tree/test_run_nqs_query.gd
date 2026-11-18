@@ -23,8 +23,14 @@ func _complete_query(search_space: NNNQSSearchSpaces) -> void:
 		_nqs.run_queries()
 	assert_false(search_space.is_query_still_running, "The query did not complete.")
 
+# These tests drive every root by hand, so automatic physics ticking is off.
+func _make_root() -> NNBTRoot:
+	var root: NNBTRoot = NNBTRoot.new()
+	root.process_thread = NNBTRoot.MANUAL
+	return root
+
 func _make_root_with_leaf(search_space: NNNQSSearchSpaces) -> Array:
-	var _root: NNBTRoot = NNBTRoot.new()
+	var _root: NNBTRoot = _make_root()
 	var _child: NNBTRunNQSQuery = NNBTRunNQSQuery.new()
 	_child.nqs_search_space = search_space
 	_root.add_child(_child)
@@ -203,7 +209,7 @@ func test_reassigning_after_completion_does_not_report_the_old_result() -> void:
 	assert_eq(_child.nqs_search_space, _new_space)
 
 func test_unset_search_space_fails() -> void:
-	var _root: NNBTRoot = NNBTRoot.new()
+	var _root: NNBTRoot = _make_root()
 	var _child: NNBTRunNQSQuery = NNBTRunNQSQuery.new()
 	_root.add_child(_child)
 	add_child(_root)
@@ -217,7 +223,7 @@ func test_unset_search_space_fails() -> void:
 func test_configured_search_space_still_runs_and_resets() -> void:
 	var _search_space: NNNodeChildrenSearchSpace = NNNodeChildrenSearchSpace.new()
 	_search_space.add_child(NNDistanceToVector2SearchCriterion.new())
-	var _root: NNBTRoot = NNBTRoot.new()
+	var _root: NNBTRoot = _make_root()
 	var _child: NNBTRunNQSQuery = NNBTRunNQSQuery.new()
 	_child.nqs_search_space = _search_space
 	_root.add_child(_child)
@@ -245,7 +251,7 @@ func _make_search_space() -> NNNodeChildrenSearchSpace:
 
 func test_assigned_search_space_freed_before_first_tick_fails() -> void:
 	var _search_space: NNNodeChildrenSearchSpace = _make_search_space()
-	var _root: NNBTRoot = NNBTRoot.new()
+	var _root: NNBTRoot = _make_root()
 	var _child: NNBTRunNQSQuery = NNBTRunNQSQuery.new()
 	_child.nqs_search_space = _search_space
 	_root.add_child(_child)
@@ -263,7 +269,7 @@ func test_assigned_search_space_freed_before_first_tick_fails() -> void:
 func test_search_space_freed_while_query_is_running_fails_without_crashing() -> void:
 	var _search_space: NNNodeChildrenSearchSpace = _make_search_space()
 	add_child(_search_space)
-	var _root: NNBTRoot = NNBTRoot.new()
+	var _root: NNBTRoot = _make_root()
 	var _child: NNBTRunNQSQuery = NNBTRunNQSQuery.new()
 	_child.nqs_search_space = _search_space
 	_root.add_child(_child)
@@ -290,7 +296,7 @@ func test_search_space_freed_while_query_is_running_fails_without_crashing() -> 
 func test_interrupt_with_a_freed_search_space_cancels_without_crashing() -> void:
 	var _search_space: NNNodeChildrenSearchSpace = _make_search_space()
 	add_child(_search_space)
-	var _root: NNBTRoot = NNBTRoot.new()
+	var _root: NNBTRoot = _make_root()
 	var _child: NNBTRunNQSQuery = NNBTRunNQSQuery.new()
 	_child.nqs_search_space = _search_space
 	_root.add_child(_child)
@@ -315,7 +321,7 @@ func test_interrupt_with_a_freed_search_space_cancels_without_crashing() -> void
 
 func test_reassigning_a_search_space_after_a_freed_one_starts_a_new_query() -> void:
 	var _freed_space: NNNodeChildrenSearchSpace = _make_search_space()
-	var _root: NNBTRoot = NNBTRoot.new()
+	var _root: NNBTRoot = _make_root()
 	var _child: NNBTRunNQSQuery = NNBTRunNQSQuery.new()
 	_child.nqs_search_space = _freed_space
 	_root.add_child(_child)
@@ -342,7 +348,7 @@ func test_reassigning_search_space_while_a_query_runs_starts_a_new_query() -> vo
 	var _fresh_space: NNNodeChildrenSearchSpace = _make_search_space()
 	add_child_autofree(_search_space)
 	add_child_autofree(_fresh_space)
-	var _root: NNBTRoot = NNBTRoot.new()
+	var _root: NNBTRoot = _make_root()
 	var _child: NNBTRunNQSQuery = NNBTRunNQSQuery.new()
 	_child.nqs_search_space = _search_space
 	_root.add_child(_child)
@@ -366,7 +372,7 @@ func test_reassigning_search_space_while_a_query_runs_starts_a_new_query() -> vo
 func test_reassigning_search_space_after_a_dead_reference_is_observed_starts_a_new_query() -> void:
 	var _search_space: NNNodeChildrenSearchSpace = _make_search_space()
 	add_child(_search_space)
-	var _root: NNBTRoot = NNBTRoot.new()
+	var _root: NNBTRoot = _make_root()
 	var _child: NNBTRunNQSQuery = NNBTRunNQSQuery.new()
 	_child.nqs_search_space = _search_space
 	_root.add_child(_child)
@@ -477,7 +483,7 @@ func test_leaf_does_not_post_before_it_is_ready() -> void:
 	add_child_autofree(space)
 	var leaf := NNBTRunNQSQuery.new()
 	leaf.nqs_search_space = space
-	var root := NNBTRoot.new()
+	var root := _make_root()
 	root.add_child(leaf)
 
 	assert_eq(root.tick({}, 0.1), NNBTNodes.FAILURE)

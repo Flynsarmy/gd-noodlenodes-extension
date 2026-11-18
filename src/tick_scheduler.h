@@ -1,0 +1,52 @@
+#pragma once
+
+#include <functional>
+#include <godot_cpp/core/object_id.hpp>
+
+namespace godot {
+class NoodleNodes;
+}
+
+class NNTickScheduler {
+public:
+	enum ProcessThread {
+		IDLE = 0,
+		PHYSICS = 1,
+		MANUAL = 2,
+	};
+
+	using StepCallback = std::function<bool(double p_delta, bool p_due)>;
+
+	NNTickScheduler();
+
+	// The owner must outlive the scheduler.
+	void configure(godot::NoodleNodes *p_owner, StepCallback p_step);
+
+	void set_process_thread(int p_process_thread);
+	int get_process_thread() const;
+
+	void set_tick_rate(int p_tick_rate);
+	int get_tick_rate() const;
+
+	void rearm();
+
+	void on_tree_entered();
+	void on_tree_exited();
+	void on_enabled_changed(bool p_enabled);
+
+	void update_connections();
+	void disconnect_connections();
+
+	void handle_frame_signal(int p_process_thread, double p_delta);
+
+	bool step(int p_process_thread, double p_delta);
+
+private:
+	godot::NoodleNodes *_owner;
+	StepCallback _step;
+
+	int _process_thread;
+	int _tick_rate;
+	uint64_t _frame;
+	godot::ObjectID _process_tree_id;
+};

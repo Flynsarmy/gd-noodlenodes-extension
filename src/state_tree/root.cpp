@@ -24,6 +24,10 @@ void NNSTRoot::_bind_methods() {
 	BIND_ENUM_CONSTANT(PROPERTY_CHANGE);
 	BIND_ENUM_CONSTANT(STATE_CHANGE);
 
+	BIND_ENUM_CONSTANT(IDLE);
+	BIND_ENUM_CONSTANT(PHYSICS);
+	BIND_ENUM_CONSTANT(MANUAL);
+
 	ClassDB::bind_method(D_METHOD("set_blackboard", "blackboard"), &NNSTRoot::set_blackboard);
 	ClassDB::bind_method(D_METHOD("get_blackboard"), &NNSTRoot::get_blackboard);
 	// The blackboard is a Dictionary<String, Variant>. Typed dictionary hints use
@@ -50,6 +54,14 @@ void NNSTRoot::_bind_methods() {
 			"set_initial_expression_properties",
 			"get_initial_expression_properties");
 
+	ClassDB::bind_method(D_METHOD("set_tick_rate", "tick_rate"), &NNSTRoot::set_tick_rate);
+	ClassDB::bind_method(D_METHOD("get_tick_rate"), &NNSTRoot::get_tick_rate);
+	ADD_PROPERTY(PropertyInfo(Variant::INT, "tick_rate", PROPERTY_HINT_RANGE, "1,1000,1,or_greater"), "set_tick_rate", "get_tick_rate");
+
+	ClassDB::bind_method(D_METHOD("set_process_thread", "process_thread"), &NNSTRoot::set_process_thread);
+	ClassDB::bind_method(D_METHOD("get_process_thread"), &NNSTRoot::get_process_thread);
+	ADD_PROPERTY(PropertyInfo(Variant::INT, "process_thread", PROPERTY_HINT_ENUM, "Idle:0,Physics:1,Manual:2"), "set_process_thread", "get_process_thread");
+
 #ifdef DEBUG_ENABLED
 	ADD_SUBGROUP("Debugging", "");
 
@@ -60,9 +72,16 @@ void NNSTRoot::_bind_methods() {
 
 	ClassDB::bind_method(D_METHOD("tick", "delta"), &NNSTRoot::tick);
 
+	ClassDB::bind_method(D_METHOD("auto_tick_step", "process_thread", "delta"), &NNSTRoot::auto_tick_step);
+
 	ClassDB::bind_method(D_METHOD("get_child_sensors"), &NNSTRoot::get_child_sensors);
 
 	ADD_SIGNAL(MethodInfo("event_received", PropertyInfo(Variant::STRING, "name")));
+
+	// Bound by name, not by method pointer: a freed root must not be
+	// dereferenced while the signal is being emitted.
+	ClassDB::bind_method(D_METHOD("_on_scene_tree_process_frame"), &NNSTRoot::_on_scene_tree_process_frame);
+	ClassDB::bind_method(D_METHOD("_on_scene_tree_physics_frame"), &NNSTRoot::_on_scene_tree_physics_frame);
 }
 
 // Constructor and destructor.
@@ -97,6 +116,10 @@ NNSTRoot::NNSTRoot() {
 	_transitions_processing_active = false;
 
 	_scope_depth = 0;
+
+	_tick_scheduler.configure(this, [this](double p_delta, bool p_due) -> bool {
+		return _auto_tick_step_callback(p_delta, p_due);
+	});
 }
 
 NNSTRoot::~NNSTRoot() {
@@ -162,6 +185,22 @@ Variant NNSTRoot::get_expression_property(const StringName &p_name, const Varian
 	return _blackboard.get(String(p_name), p_default);
 }
 
+void NNSTRoot::set_process_thread(int p_process_thread) {
+	_tick_scheduler.set_process_thread(p_process_thread);
+}
+
+int NNSTRoot::get_process_thread() const {
+	return _tick_scheduler.get_process_thread();
+}
+
+void NNSTRoot::set_tick_rate(int p_tick_rate) {
+	_tick_scheduler.set_tick_rate(p_tick_rate);
+}
+
+int NNSTRoot::get_tick_rate() const {
+	return _tick_scheduler.get_tick_rate();
+}
+
 // Handling methods
 
 void NNSTRoot::tick(float delta) {
@@ -203,6 +242,36 @@ void NNSTRoot::tick(float delta) {
 	_total_tick_usec = godot::Time::get_singleton()->get_ticks_usec() - method_start_time_usec;
 	NNPerformanceMonitorSingleton::get_singleton()->increment_total_time_elapsed_state_trees_usec(_total_tick_usec);
 #endif
+}
+
+bool NNSTRoot::auto_tick_step(int p_process_thread, double p_delta) {
+	return _tick_scheduler.step(p_process_thread, p_delta);
+}
+
+bool NNSTRoot::_auto_tick_step_callback(double p_delta, bool p_due) {
+	if (!p_due) {
+		return false;
+	}
+	// The scheduler never re-enters an exited chart; only its owner does.
+	if (!get_is_active()) {
+		return false;
+	}
+	tick((float)p_delta);
+	return true;
+}
+
+void NNSTRoot::_on_scene_tree_process_frame() {
+	_tick_scheduler.handle_frame_signal(ProcessThread::IDLE, get_process_delta_time());
+}
+
+void NNSTRoot::_on_scene_tree_physics_frame() {
+	_tick_scheduler.handle_frame_signal(ProcessThread::PHYSICS, get_physics_process_delta_time());
+}
+
+void NNSTRoot::_on_is_enabled_changed(bool p_is_enabled) {
+	NNSTBranchNodes::_on_is_enabled_changed(p_is_enabled);
+
+	_tick_scheduler.on_enabled_changed(p_is_enabled);
 }
 
 void NNSTRoot::send_event(String name) {
@@ -801,6 +870,13 @@ void NNSTRoot::_notification(int p_what) {
 		}
 	}
 #endif
+
+	if (p_what == NOTIFICATION_ENTER_TREE) {
+		_tick_scheduler.on_tree_entered();
+	} else if (p_what == NOTIFICATION_EXIT_TREE) {
+		// get_tree() is unreliable on tree exit, so the stored SceneTree ID is used.
+		_tick_scheduler.on_tree_exited();
+	}
 
 	if (p_what == NOTIFICATION_READY || p_what == NOTIFICATION_CHILD_ORDER_CHANGED) {
 		if (Engine::get_singleton()->is_editor_hint()) {

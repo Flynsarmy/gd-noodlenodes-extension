@@ -8,31 +8,18 @@ extends AnimatedSprite2D
 @onready var distance_sensor: NNDistanceVector2Sensor = $NNBTRoot/DistanceSensor
 
 var movement_speed := 0.0
-var _tick_delay := 0.0
 
 
 func _ready() -> void:
-	_tick_delay = randf() * 0.2
+	tree_root.tick_rate = 20
+	tree_root.tick_argument = self
 
 
 func _physics_process(delta: float) -> void:
-	if _is_paused():
-		return
-
 	distance_sensor.from_vector = global_position
 	distance_sensor.to_vector = get_parent().mouse_position
 
-	_tick_delay -= delta
-	if _tick_delay <= 0.0:
-		_tick_delay = 0.25 + randf() * 0.2
-		tree_root.tick(self, delta)
-
 	_move(distance_sensor.direction_vector * movement_speed * delta)
-
-
-func _is_paused() -> bool:
-	var scene := get_parent()
-	return scene != null and scene.get("ai_paused") == true
 
 
 func _move(offset: Vector2) -> void:

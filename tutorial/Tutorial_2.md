@@ -109,7 +109,7 @@ For this tutorial we'll use the _process(delta) function to update the AI Agent.
  3. Act
 
 The _sense_ part focuses on updating the sensors for the AI Agent to sense what is happening in the game world. 
-The _think_ part focuses on using the Behaviours and the Consideration node structure of the AI Agent to reason about what behaviour would be best suited for the current situation and choosing a _behaviour_. This boils down to two method calls for the AI Agent node.
+The _think_ part focuses on using the Behaviours and the Consideration node structure of the AI Agent to reason about what behaviour would be best suited for the current situation and choosing a _behaviour_. The AI Agent does this by itself: set its **Process Thread** property to **Idle** so it thinks on the process frame, and its **Tick Rate** property decides how many eligible frames pass between thinking steps.
 The _act_ part focuses on realizing the _actions_ the chosen behaviour contains. You can freely define what each action does.
 
 The full _process(delta) function can be seen below. After the code we'll walk through what the code does, exactly.
@@ -122,8 +122,8 @@ func _process(delta):
 	sensor_distance_to_target.sensor_value = distance / 1000.0
 	
 	# Think
-	ai.evaluate_options(delta)
-	ai.update_current_behaviour()
+	# The AI Agent thinks and ticks its actions automatically. Set its Process
+	# Thread property to Idle so it updates from the process frame.
 	
 	# Act
 	if current_action == null:
@@ -143,7 +143,7 @@ func _process(delta):
 ```
 In the _sense_ part the sensor value is updated with a normalized distance, meaning that the distance is scaled to a value between 0 and 1. 
 
-After that in the _think_ part the AI Agent evaluate_options() method and the update_current_behaviour() method are called. The first one chooses one of the available behaviours based on the score it received from evaluating its considerations, and the second one steps the actions within a behaviour, choosing one of the actions as the current one. This will trigger the signals behaviour_changed and action_changed for the AI Agent.
+After that in the _think_ part nothing needs to be called by the script: the AI Agent thinks on its own selected frame signal. Its automatic step first calls evaluate_options(), which chooses one of the available behaviours based on the score it received from evaluating its considerations, and then update_current_behaviour(), which steps the actions within a behaviour and chooses one of the actions as the current one. This will trigger the signals behaviour_changed and action_changed for the AI Agent. The agent's Tick Rate property is the single thinking throttle; on the steps it does not think it still emits `frame_tick(delta)` to the selected behaviour group, behaviour and action.
 
 Finally, in the _act_ part the entity is updated based on the current action. Because the actions alter the speed of the entity, the position is always updated, and the actions focus on checking when they are finished. The move-action finishes when the entity is close enough to the target position. The pickup action does the picking up - in this case it just emits the signal - and is then immediately set as finished.
 
@@ -220,8 +220,8 @@ func _process(delta):
 	sensor_distance_to_target.sensor_value = distance / 1000.0
 	
 	# Think
-	ai.evaluate_options(delta)
-	ai.update_current_behaviour()
+	# The AI Agent thinks and ticks its actions automatically. Set its Process
+	# Thread property to Idle so it updates from the process frame.
 	
 	# Act
 	if current_action == null:

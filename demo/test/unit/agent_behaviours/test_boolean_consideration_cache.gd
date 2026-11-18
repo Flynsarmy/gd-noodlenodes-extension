@@ -6,6 +6,12 @@ extends GutTest
 # a constant activation input kept returning a stale score.
 
 
+# These tests tick the agent by hand, so automatic ticking is off.
+func _add_manual_agent(agent: NNAgent) -> NNAgent:
+	agent.process_thread = NNAgent.MANUAL
+	return add_child_autofree(agent)
+
+
 func _make_boolean_behaviour(input_value: float) -> Dictionary:
 	var agent: NNAgent = NNAgent.new()
 	var behaviour: NNBehaviour = NNBehaviour.new()
@@ -16,7 +22,7 @@ func _make_boolean_behaviour(input_value: float) -> Dictionary:
 	behaviour.add_child(action)
 	behaviour.add_child(consideration)
 	agent.add_child(behaviour)
-	add_child_autofree(agent)
+	_add_manual_agent(agent)
 
 	return {
 		"agent": agent,
@@ -90,7 +96,7 @@ func test_plain_consideration_still_evaluates() -> void:
 	consideration.activation_input_value = 0.5
 	behaviour.add_child(consideration)
 	agent.add_child(behaviour)
-	add_child_autofree(agent)
+	_add_manual_agent(agent)
 
 	agent.evaluate_options(1.0)
 	assert_almost_eq(consideration.score, 0.5, 0.0001)

@@ -39,16 +39,10 @@
 				Emitted for the current behaviour when some other behaviour gets selected during the NNAgent [member NNAgent.evaluate_options] call.
 			</description>
 		</signal>
-		<signal name="idle_frame_tick">
+		<signal name="frame_tick">
 			<param index="0" name="delta" type="float" />
 			<description>
-				Called when the node gets the process tick notification. Can be used to handle behaviour update logic.
-			</description>
-		</signal>
-		<signal name="physics_frame_tick">
-			<param index="0" name="delta" type="float" />
-			<description>
-				Called when the node gets the physics_process tick notification. Can be used to handle behaviour update logic.
+				Emitted on every eligible agent step while this behaviour is selected. Use it to handle behaviour update logic. The signal fires on the agent's selected frame signal, so its cadence is set by [member NNAgent.process_thread].
 			</description>
 		</signal>
 	</signals>

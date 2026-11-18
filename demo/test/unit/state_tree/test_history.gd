@@ -3,6 +3,13 @@ extends GutTest
 @warning_ignore('unused_parameter')
 @warning_ignore('return_value_discarded')
 
+
+# These tests tick the chart by hand, so automatic ticking is off.
+func _add_manual_root(root: NNSTRoot) -> NNSTRoot:
+	root.process_thread = NNSTRoot.MANUAL
+	return add_child_autofree(root)
+
+
 ## Test helper: counts how often a state is entered and exited.
 class CounterNode extends NNSTNode:
 	var enter_count: int = 0
@@ -269,7 +276,7 @@ func test_shallow_history_restores_non_initial_child() -> void:
 	_compound.add_child(_history)
 	_root.add_child(_compound)
 	_root.add_child(_outside)
-	add_child_autofree(_root)
+	_add_manual_root(_root)
 
 	assert_true(_compound.get_is_active())
 	assert_true(_idle.get_is_active())
@@ -325,7 +332,7 @@ func test_default_state_is_used_when_no_history_exists() -> void:
 	# Outside is first so the compound is not entered on ready.
 	_root.add_child(_outside)
 	_root.add_child(_compound)
-	add_child_autofree(_root)
+	_add_manual_root(_root)
 
 	assert_true(_outside.get_is_active())
 	assert_false(_compound.get_is_active())
@@ -347,7 +354,7 @@ func test_deep_history_restores_nested_grandchild() -> void:
 	var _a1: NNSTNode = _nodes["a1"]
 	var _a2: NNSTNode = _nodes["a2"]
 	var _history: NNSTHistory = _nodes["history"]
-	add_child_autofree(_root)
+	_add_manual_root(_root)
 
 	assert_true(_compound.get_is_active())
 	assert_true(_a.get_is_active())
@@ -384,7 +391,7 @@ func test_shallow_history_restores_only_the_direct_child() -> void:
 	var _a1: NNSTNode = _nodes["a1"]
 	var _a2: NNSTNode = _nodes["a2"]
 	var _history: NNSTHistory = _nodes["history"]
-	add_child_autofree(_root)
+	_add_manual_root(_root)
 
 	assert_true(_a1.transition_to(_a1.get_path_to(_a2)))
 	assert_true(_a2.transition_to(_a2.get_path_to(_outside)))
@@ -424,7 +431,7 @@ func test_transition_to_history_from_inside_the_compound() -> void:
 	_compound.add_child(_history)
 	_root.add_child(_compound)
 	_root.add_child(_outside)
-	add_child_autofree(_root)
+	_add_manual_root(_root)
 
 	assert_true(_idle.get_is_active())
 
@@ -461,7 +468,7 @@ func test_deep_history_is_stable_across_ticks_and_cycles() -> void:
 	var _a1: NNSTNode = _nodes["a1"]
 	var _a2: NNSTNode = _nodes["a2"]
 	var _history: NNSTHistory = _nodes["history"]
-	add_child_autofree(_root)
+	_add_manual_root(_root)
 
 	assert_true(_a1.transition_to(_a1.get_path_to(_a2)))
 	assert_true(_a2.transition_to(_a2.get_path_to(_outside)))
@@ -509,7 +516,7 @@ func test_partially_stale_deep_history_restores_valid_prefix() -> void:
 	var _history: NNSTHistory = _nodes["history"]
 	# Point the default somewhere else so using it would be observable.
 	_history.default_state = NodePath("../B")
-	add_child_autofree(_root)
+	_add_manual_root(_root)
 
 	assert_true(_a1.transition_to(_a1.get_path_to(_a2)))
 	assert_true(_a2.transition_to(_a2.get_path_to(_outside)))
@@ -557,7 +564,7 @@ func test_stale_freed_state_falls_back_to_default_state() -> void:
 	_compound.add_child(_history)
 	_root.add_child(_compound)
 	_root.add_child(_outside)
-	add_child_autofree(_root)
+	_add_manual_root(_root)
 
 	assert_true(_a.get_is_active())
 	assert_true(_a.transition_to(_a.get_path_to(_outside)))
@@ -596,7 +603,7 @@ func test_stale_reparented_state_falls_back_to_default_state() -> void:
 	_compound.add_child(_history)
 	_root.add_child(_compound)
 	_root.add_child(_outside)
-	add_child_autofree(_root)
+	_add_manual_root(_root)
 
 	assert_true(_a.transition_to(_a.get_path_to(_outside)))
 	assert_true(_history.get_has_history())
@@ -620,7 +627,7 @@ func test_history_as_initial_state_restores_shallow() -> void:
 	var _a2: NNSTNode = _nodes["a2"]
 	var _b: NNSTNode = _nodes["b"]
 	var _history: NNSTHistory = _nodes["history"]
-	add_child_autofree(_root)
+	_add_manual_root(_root)
 
 	# No history yet, so the default state A is entered and selects A1.
 	assert_true(_compound.get_is_active())
@@ -652,7 +659,7 @@ func test_history_as_initial_state_restores_deep() -> void:
 	var _a1: NNSTNode = _nodes["a1"]
 	var _a2: NNSTNode = _nodes["a2"]
 	var _history: NNSTHistory = _nodes["history"]
-	add_child_autofree(_root)
+	_add_manual_root(_root)
 
 	assert_true(_a1.transition_to(_a1.get_path_to(_a2)))
 	assert_true(_a2.transition_to(_a2.get_path_to(_outside)))
@@ -681,7 +688,7 @@ func test_unusable_history_target_fails_without_changing_the_tree() -> void:
 	_compound.add_child(_history)
 	_root.add_child(_outside)
 	_root.add_child(_compound)
-	add_child_autofree(_root)
+	_add_manual_root(_root)
 
 	assert_true(_outside.get_is_active())
 	assert_false(_outside.transition_to(_outside.get_path_to(_history)))
@@ -729,7 +736,7 @@ func test_history_child_does_not_disturb_normal_selection() -> void:
 	_compound.add_child(_history)
 	_root.add_child(_compound)
 	_root.add_child(_outside)
-	add_child_autofree(_root)
+	_add_manual_root(_root)
 
 	# The initial state is still honoured with the history child present.
 	assert_true(_b.get_is_active())
@@ -766,7 +773,7 @@ func test_history_as_initial_state_falls_back_to_normal_selection() -> void:
 	_compound.add_child(_first)
 	_compound.add_child(_second)
 	_root.add_child(_compound)
-	add_child_autofree(_root)
+	_add_manual_root(_root)
 
 	assert_true(_compound.get_is_active())
 	assert_true(_first.get_is_active())
@@ -776,7 +783,7 @@ func test_history_as_initial_state_falls_back_to_normal_selection() -> void:
 ## Even a history child that comes before the states in child order is never
 ## selected or treated as a state.
 func test_history_child_is_not_a_state_child() -> void:
-	var _root: NNSTRoot = add_child_autofree(NNSTRoot.new())
+	var _root: NNSTRoot = _add_manual_root(NNSTRoot.new())
 	var _compound: NNSTNode = NNSTNode.new()
 	var _state: CounterNode = CounterNode.new()
 	var _history: NNSTHistory = NNSTHistory.new()
@@ -809,7 +816,7 @@ func test_parallel_regions_are_restored_via_history_target() -> void:
 	var _r2a: CounterNode = _nodes["r2a"]
 	var _r2b: CounterNode = _nodes["r2b"]
 	var _history: NNSTHistory = _nodes["history"]
-	add_child_autofree(_root)
+	_add_manual_root(_root)
 
 	assert_true(_parallel.get_is_active())
 	assert_true(_r1a.get_is_active())
@@ -864,7 +871,7 @@ func test_parallel_regions_are_restored_via_initial_state() -> void:
 	var _r2a: CounterNode = _nodes["r2a"]
 	var _r2b: CounterNode = _nodes["r2b"]
 	var _history: NNSTHistory = _nodes["history"]
-	add_child_autofree(_root)
+	_add_manual_root(_root)
 
 	# No history yet: the default state enters and both regions pick initials.
 	assert_true(_r1a.get_is_active())
@@ -898,7 +905,7 @@ func test_stale_state_in_one_parallel_region_only_prunes_that_branch() -> void:
 	var _r2a: CounterNode = _nodes["r2a"]
 	var _r2b: CounterNode = _nodes["r2b"]
 	var _history: NNSTHistory = _nodes["history"]
-	add_child_autofree(_root)
+	_add_manual_root(_root)
 
 	_move_parallel_regions_to_b(_nodes)
 	_leave_parallel_compound(_nodes)
@@ -937,7 +944,7 @@ func test_stale_parallel_region_does_not_wipe_siblings() -> void:
 	var _r1b: CounterNode = _nodes["r1b"]
 	var _region2: NNSTNode = _nodes["region2"]
 	var _history: NNSTHistory = _nodes["history"]
-	add_child_autofree(_root)
+	_add_manual_root(_root)
 
 	_move_parallel_regions_to_b(_nodes)
 	_leave_parallel_compound(_nodes)
@@ -1014,7 +1021,7 @@ func test_nested_parallel_configuration_is_restored() -> void:
 	_compound.add_child(_history)
 	_root.add_child(_compound)
 	_root.add_child(_outside)
-	add_child_autofree(_root)
+	_add_manual_root(_root)
 
 	assert_true(_r1a.get_is_active())
 	assert_true(_s1a.get_is_active())
@@ -1060,7 +1067,7 @@ func test_parallel_history_configuration_is_stable_across_ticks() -> void:
 	var _r2a: CounterNode = _nodes["r2a"]
 	var _r2b: CounterNode = _nodes["r2b"]
 	var _history: NNSTHistory = _nodes["history"]
-	add_child_autofree(_root)
+	_add_manual_root(_root)
 
 	_move_parallel_regions_to_b(_nodes)
 	_leave_parallel_compound(_nodes)
@@ -1096,7 +1103,7 @@ func test_unselected_parallel_region_does_not_keep_stale_registrations() -> void
 	var _r2a: CounterNode = _nodes["r2a"]
 	var _r2b: CounterNode = _nodes["r2b"]
 	var _history: NNSTHistory = _nodes["history"]
-	add_child_autofree(_root)
+	_add_manual_root(_root)
 
 	_move_parallel_regions_to_b(_nodes)
 	# Region 2 stops accepting entry. It is still active, so it is recorded.
@@ -1134,7 +1141,7 @@ func test_shallow_and_deep_siblings_on_parallel_compound() -> void:
 	var _r2b: CounterNode = _nodes["r2b"]
 	var _shallow: NNSTHistory = _nodes["history"]
 	var _deep: NNSTHistory = _nodes["deep_history"]
-	add_child_autofree(_root)
+	_add_manual_root(_root)
 
 	assert_true(_r1a.get_is_active())
 	assert_true(_r2a.get_is_active())
@@ -1200,7 +1207,7 @@ func test_callback_redirect_wins_with_explicit_history_target() -> void:
 	var _b: CounterNode = _nodes["b"]
 	var _c: CounterNode = _nodes["c"]
 	var _history: NNSTHistory = _nodes["history"]
-	add_child_autofree(_root)
+	_add_manual_root(_root)
 
 	assert_true(_a.get_is_active())
 	assert_true(_a.transition_to(_a.get_path_to(_b)))
@@ -1238,7 +1245,7 @@ func test_callback_redirect_wins_with_history_as_initial_state() -> void:
 	var _b: CounterNode = _nodes["b"]
 	var _c: CounterNode = _nodes["c"]
 	var _history: NNSTHistory = _nodes["history"]
-	add_child_autofree(_root)
+	_add_manual_root(_root)
 
 	# First entry has no snapshot, so the default state enters and selects A.
 	assert_true(_a.get_is_active())
@@ -1298,7 +1305,7 @@ func test_callback_redirect_at_deeper_level_wins() -> void:
 	_compound.add_child(_history)
 	_root.add_child(_compound)
 	_root.add_child(_outside)
-	add_child_autofree(_root)
+	_add_manual_root(_root)
 
 	assert_true(_d1.get_is_active())
 	assert_true(_d1.transition_to(_d1.get_path_to(_d2)))
@@ -1342,7 +1349,7 @@ func test_callback_redirect_wins_inside_parallel_region() -> void:
 	var _r1c: CounterNode = CounterNode.new()
 	_r1c.name = "R1c"
 	_region1.add_child(_r1c)
-	add_child_autofree(_root)
+	_add_manual_root(_root)
 
 	assert_true(_r1a.get_is_active())
 	assert_true(_r2a.get_is_active())
@@ -1387,7 +1394,7 @@ func test_exit_callback_redirect_keeps_snapshot_and_restores_via_history_target(
 	var _a: CounterNode = _nodes["a"]
 	var _b: CounterNode = _nodes["b"]
 	var _history: NNSTHistory = _nodes["history"]
-	add_child_autofree(_root)
+	_add_manual_root(_root)
 
 	assert_true(_a.get_is_active())
 	assert_true(_a.transition_to(_a.get_path_to(_b)))
@@ -1427,7 +1434,7 @@ func test_exit_callback_redirect_keeps_snapshot_and_restores_via_initial_state()
 	var _a: CounterNode = _nodes["a"]
 	var _b: CounterNode = _nodes["b"]
 	var _history: NNSTHistory = _nodes["history"]
-	add_child_autofree(_root)
+	_add_manual_root(_root)
 
 	assert_true(_a.get_is_active())
 	assert_true(_a.transition_to(_a.get_path_to(_b)))
@@ -1464,7 +1471,7 @@ func test_exit_callback_redirect_from_deeper_state_keeps_snapshot() -> void:
 	var _a: CounterNode = _nodes["a"]
 	var _b: CounterNode = _nodes["b"]
 	var _history: NNSTHistory = _nodes["history"]
-	add_child_autofree(_root)
+	_add_manual_root(_root)
 
 	assert_true(_a.get_is_active())
 	assert_true(_a.transition_to(_a.get_path_to(_b)))
@@ -1500,7 +1507,7 @@ func test_delayed_transition_to_history_restores_deep_configuration() -> void:
 	var _a1: NNSTNode = _nodes["a1"]
 	var _a2: NNSTNode = _nodes["a2"]
 	var _history: NNSTHistory = _nodes["history"]
-	add_child_autofree(_root)
+	_add_manual_root(_root)
 
 	assert_true(_a1.transition_to(_a1.get_path_to(_a2)))
 	assert_true(_a2.transition_to(_a2.get_path_to(_outside)))
@@ -1532,7 +1539,7 @@ func test_delayed_transition_to_history_restores_parallel_regions() -> void:
 	var _r2a: CounterNode = _nodes["r2a"]
 	var _r2b: CounterNode = _nodes["r2b"]
 	var _history: NNSTHistory = _nodes["history"]
-	add_child_autofree(_root)
+	_add_manual_root(_root)
 
 	_move_parallel_regions_to_b(_nodes)
 	_leave_parallel_compound(_nodes)
@@ -1561,7 +1568,7 @@ func test_event_transition_to_history_restores_configuration() -> void:
 	var _a1: NNSTNode = _nodes["a1"]
 	var _a2: NNSTNode = _nodes["a2"]
 	var _history: NNSTHistory = _nodes["history"]
-	add_child_autofree(_root)
+	_add_manual_root(_root)
 
 	assert_true(_a1.transition_to(_a1.get_path_to(_a2)))
 	assert_true(_a2.transition_to(_a2.get_path_to(_outside)))

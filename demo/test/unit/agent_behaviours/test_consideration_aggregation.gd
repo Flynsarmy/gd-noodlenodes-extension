@@ -3,6 +3,13 @@ extends GutTest
 # Regression tests: NNBehaviour / NNBehaviourGroup Min/Mean aggregation must
 # skip disabled considerations and divide by the number of *evaluated* children.
 
+
+# These tests tick the agent by hand, so automatic ticking is off.
+func _add_manual_agent(agent: NNAgent) -> NNAgent:
+	agent.process_thread = NNAgent.MANUAL
+	return add_child_autofree(agent)
+
+
 const MIN := 1
 const MEAN := 3
 
@@ -25,7 +32,7 @@ func test_behaviour_min_ignores_disabled_first_consideration() -> void:
 	_behaviour.add_child(_make_consideration(0.8))
 
 	_agent.add_child(_behaviour)
-	add_child_autofree(_agent)
+	_add_manual_agent(_agent)
 
 	_agent.evaluate_options(0.1)
 
@@ -43,7 +50,7 @@ func test_behaviour_mean_divides_by_evaluated_considerations() -> void:
 	_behaviour.add_child(_make_consideration(0.8))
 
 	_agent.add_child(_behaviour)
-	add_child_autofree(_agent)
+	_add_manual_agent(_agent)
 
 	_agent.evaluate_options(0.1)
 
@@ -63,7 +70,7 @@ func test_behaviour_group_mean_divides_by_evaluated_considerations() -> void:
 	_group.add_child(_make_consideration(0.8))
 
 	_agent.add_child(_group)
-	add_child_autofree(_agent)
+	_add_manual_agent(_agent)
 
 	_agent.evaluate_options(0.1)
 

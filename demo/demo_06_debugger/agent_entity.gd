@@ -12,23 +12,13 @@ var movement_speed := 0.0
 
 
 func _physics_process(delta: float) -> void:
-	if _is_paused():
-		return
-
 	mouse_sensor.from_vector = global_position
 	mouse_sensor.to_vector = get_parent().mouse_position
 
 	box_sensor.from_vector = global_position
 	box_sensor.to_vector = _get_closest_box_pos()
 
-	agent.evaluate_options(delta)
-
 	_move(mouse_sensor.direction_vector * movement_speed * delta)
-
-
-func _is_paused() -> bool:
-	var scene := get_parent()
-	return scene != null and scene.get("ai_paused") == true
 
 
 func _move(offset: Vector2) -> void:

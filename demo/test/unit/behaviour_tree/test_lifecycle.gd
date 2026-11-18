@@ -121,6 +121,8 @@ func _make_leaf(result: int = NNBTNodes.SUCCESS) -> LifecycleLeaf:
 
 func _make_root_with(child: Node) -> NNBTRoot:
 	var root: NNBTRoot = NNBTRoot.new()
+	# These tests drive the root by hand, so automatic physics ticking is off.
+	root.process_thread = NNBTRoot.MANUAL
 	root.add_child(child)
 	add_child_autofree(root)
 	return root

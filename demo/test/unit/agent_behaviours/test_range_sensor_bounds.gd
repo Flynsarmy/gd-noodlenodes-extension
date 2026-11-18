@@ -4,6 +4,8 @@ extends GutTest
 func _make_root_with(sensor: Node) -> NNSTRoot:
 	var _root: NNSTRoot = NNSTRoot.new()
 	_root.add_child(sensor)
+	# These tests drive the root by hand, so automatic ticking is off.
+	_root.process_thread = NNSTRoot.MANUAL
 	add_child_autofree(_root)
 	return _root
 

@@ -60,7 +60,6 @@ animation = &"moving"
 script = ExtResource("2_script")
 
 [node name="NNAgent" type="NNAgent" parent="."]
-thinking_delay_in_seconds = 0.25
 
 [node name="MouseSensor" type="NNDistanceVector2Sensor" parent="NNAgent"]
 max_distance = 200.0

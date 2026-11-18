@@ -356,9 +356,6 @@ func _physics_process(delta):
 	# Set the AI-entity position as the from-vector.
 	$UtilityAINodeGroupSearchSpace/UtilityAIDistanceToVector2SearchCriterion.distance_to_vector = get_parent().mouse_position 
 	
-	# Update the AI.
-	$UtilityAIBTRoot.tick(self, delta)
-	
 	# Move based on movement speed.
 	self.global_position += dir_to_target * movement_speed * delta
 	if (global_position - movement_target_point).length() < 10.0:
@@ -379,13 +376,13 @@ func _physics_process(delta):
 What this code does:
  * The row `var movement_speed:float = 0.0` defines a variable that we will use to control the movement speed of the AI entity. We also define two other variables: `movement_target_point` that is the target the AI entity will move to, and the `dir_to_target` that will be used to store the direction towards the movement target point for the AI entity.
  * In the `_physics_process(delta)` method we first set the **UtilityAIDistanceToVector2SearchCriterion**'s **distance_to_vector** property as the location of the mouse cursor from the parent node. This will create the donut-shape for the query result.
- * `$UtilityAIBTRoot.tick(self, delta)` ticks the behaviour tree. As **user_data** we simply give **null**, as we do not need it for this tutorial.
- * After *ticking* the root node, the row `self.global_position += dir_to_target * movement_speed * delta` moves the AI entity based on the direction vector we will soon calculate in a method we will define soon. We will also set the `movement_speed` in that method. Delta time is used to scale the movement amount.
+ * The behaviour tree root ticks itself once per physics frame by default, so the script never calls `tick()` itself. The tree does not need an actor argument in this tutorial. To tick less often, set `tick_rate`; to tick the tree from your own code instead, set `process_thread` to `Manual` and call `tick()`.
+ * After the root has been ticked, the row `self.global_position += dir_to_target * movement_speed * delta` moves the AI entity based on the direction vector we will soon calculate in a method we will define soon. We will also set the `movement_speed` in that method. Delta time is used to scale the movement amount.
  * The following `if (global_position - movement_target_point).length() < 10.0:` statement checks if the AI entity is close enough to its target and then sets the `movement_speed` to **0.0**, which stops the AI entity. Otherwise it sets the movement speed to **100**.
  * The final rows of the method make sure the character sprite is facing the direction it is moving to by flipping the sprite horizontally when needed.
 
 > [!NOTE]
-> For this tutorial we are calling the root node `tick()` method every physics frame. This isn't what you usually want to do in a real game. See section [9. Next steps](Getting_started_with_the_Node_Query_System.md#9-next-steps) for more information.
+> A behaviour tree root added to a scene ticks itself once per physics frame by default. This isn't what you usually want to do in a real game. See section [9. Next steps](Getting_started_with_the_Node_Query_System.md#9-next-steps) for more information.
 
 
 2. In the **Scene-tab**, select the **UtilityAINodeGroupSearchSpace** and then go to the **Node-tab** and connect the **query_completed(search_space: Object)** signal to the **ai_entity** scene's script.

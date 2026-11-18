@@ -22,6 +22,8 @@ func _make_agent(behaviours: Array) -> NNAgent:
 	var agent: NNAgent = NNAgent.new()
 	for behaviour in behaviours:
 		agent.add_child(behaviour)
+	# These tests drive the agent by hand, so automatic ticking is off.
+	agent.process_thread = NNAgent.MANUAL
 	add_child_autofree(agent)
 	return agent
 
@@ -48,8 +50,7 @@ func test_no_candidates_after_update_stops_the_action() -> void:
 
 	var action_exits := _count_signal(action.action_exited)
 	var agent_action_exits := _count_signal(agent.action_exited)
-	var ticks := _count_signal(action.physics_frame_tick)
-	var idle_ticks := _count_signal(action.idle_frame_tick)
+	var ticks := _count_signal(action.frame_tick)
 
 	behaviour.is_enabled = false
 	agent.evaluate_options(100.0)
@@ -60,8 +61,7 @@ func test_no_candidates_after_update_stops_the_action() -> void:
 	assert_null(agent.get_current_action_node())
 
 	await _await_physics_frames(2)
-	assert_eq(ticks[0], 0, "a shut down action must not receive physics ticks")
-	assert_eq(idle_ticks[0], 0, "a shut down action must not receive idle ticks")
+	assert_eq(ticks[0], 0, "a shut down action must not receive frame ticks")
 
 
 func test_no_candidates_before_first_update_stops_the_started_action() -> void:
@@ -75,7 +75,7 @@ func test_no_candidates_before_first_update_stops_the_started_action() -> void:
 
 	var action_exits := _count_signal(action.action_exited)
 	var agent_action_exits := _count_signal(agent.action_exited)
-	var ticks := _count_signal(action.physics_frame_tick)
+	var ticks := _count_signal(action.frame_tick)
 
 	behaviour.is_enabled = false
 	agent.evaluate_options(100.0)
@@ -86,7 +86,7 @@ func test_no_candidates_before_first_update_stops_the_started_action() -> void:
 	assert_null(agent.get_current_action_node())
 
 	await _await_physics_frames(2)
-	assert_eq(ticks[0], 0, "a shut down action must not receive physics ticks")
+	assert_eq(ticks[0], 0, "a shut down action must not receive frame ticks")
 
 
 func test_abort_before_first_update_ends_the_started_action_once() -> void:
@@ -99,7 +99,7 @@ func test_abort_before_first_update_ends_the_started_action_once() -> void:
 
 	var action_exits := _count_signal(action.action_exited)
 	var agent_action_exits := _count_signal(agent.action_exited)
-	var ticks := _count_signal(action.physics_frame_tick)
+	var ticks := _count_signal(action.frame_tick)
 
 	agent.abort_current_behaviour()
 
@@ -109,7 +109,7 @@ func test_abort_before_first_update_ends_the_started_action_once() -> void:
 	assert_null(agent.get_current_behaviour_node())
 
 	await _await_physics_frames(2)
-	assert_eq(ticks[0], 0, "an aborted action must not receive physics ticks")
+	assert_eq(ticks[0], 0, "an aborted action must not receive frame ticks")
 
 
 func test_abort_after_update_ends_once_and_second_abort_adds_no_exit() -> void:
@@ -123,7 +123,7 @@ func test_abort_after_update_ends_once_and_second_abort_adds_no_exit() -> void:
 
 	var action_exits := _count_signal(action.action_exited)
 	var agent_action_exits := _count_signal(agent.action_exited)
-	var ticks := _count_signal(action.physics_frame_tick)
+	var ticks := _count_signal(action.frame_tick)
 
 	agent.abort_current_behaviour()
 	agent.abort_current_behaviour()
@@ -150,7 +150,7 @@ func test_switch_before_first_update_exits_first_action_once() -> void:
 	assert_eq(agent.get_current_action_node(), first_action)
 
 	var first_exits := _count_signal(first_action.action_exited)
-	var first_ticks := _count_signal(first_action.physics_frame_tick)
+	var first_ticks := _count_signal(first_action.frame_tick)
 	var second_enters := _count_signal(second_action.action_entered)
 
 	# Lower the current behaviour so the other one wins.
@@ -163,7 +163,7 @@ func test_switch_before_first_update_exits_first_action_once() -> void:
 	assert_eq(second_enters[0], 1, "the new action must enter exactly once")
 
 	await _await_physics_frames(2)
-	assert_eq(first_ticks[0], 0, "the replaced action must not receive physics ticks")
+	assert_eq(first_ticks[0], 0, "the replaced action must not receive frame ticks")
 
 
 func test_started_action_reports_action_changed_on_first_update() -> void:

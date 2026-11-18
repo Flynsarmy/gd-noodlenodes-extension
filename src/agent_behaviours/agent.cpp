@@ -3,7 +3,6 @@
 #include "sensors.h"
 
 #include <godot_cpp/classes/engine.hpp>
-#include <godot_cpp/classes/scene_tree.hpp>
 #include <godot_cpp/classes/time.hpp>
 #include <godot_cpp/core/class_db.hpp>
 #include <godot_cpp/core/object.hpp>
@@ -19,6 +18,10 @@ using namespace godot;
 // Method binds.
 
 void NNAgent::_bind_methods() {
+	BIND_ENUM_CONSTANT(IDLE);
+	BIND_ENUM_CONSTANT(PHYSICS);
+	BIND_ENUM_CONSTANT(MANUAL);
+
 	ClassDB::bind_method(D_METHOD("set_current_behaviour_group_node"), &NNAgent::set_current_behaviour_group_node);
 	ClassDB::bind_method(D_METHOD("get_current_behaviour_group_node"), &NNAgent::get_current_behaviour_group_node);
 
@@ -36,13 +39,20 @@ void NNAgent::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_num_behaviours_to_select"), &NNAgent::get_num_behaviours_to_select);
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "num_behaviours_to_select", PROPERTY_HINT_RANGE, "1,16"), "set_num_behaviours_to_select", "get_num_behaviours_to_select");
 
-	ClassDB::bind_method(D_METHOD("set_thinking_delay_in_seconds", "thinking_delay_in_seconds"), &NNAgent::set_thinking_delay_in_seconds);
-	ClassDB::bind_method(D_METHOD("get_thinking_delay_in_seconds"), &NNAgent::get_thinking_delay_in_seconds);
-	ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "thinking_delay_in_seconds", PROPERTY_HINT_RANGE, "0.0,3600.0,or_greater,suffix:seconds"), "set_thinking_delay_in_seconds", "get_thinking_delay_in_seconds");
+	ClassDB::bind_method(D_METHOD("set_tick_rate", "tick_rate"), &NNAgent::set_tick_rate);
+	ClassDB::bind_method(D_METHOD("get_tick_rate"), &NNAgent::get_tick_rate);
+	ADD_PROPERTY(PropertyInfo(Variant::INT, "tick_rate", PROPERTY_HINT_RANGE, "1,1000,1,or_greater"), "set_tick_rate", "get_tick_rate");
+
+	ClassDB::bind_method(D_METHOD("set_process_thread", "process_thread"), &NNAgent::set_process_thread);
+	ClassDB::bind_method(D_METHOD("get_process_thread"), &NNAgent::get_process_thread);
+	ADD_PROPERTY(PropertyInfo(Variant::INT, "process_thread", PROPERTY_HINT_ENUM, "Idle:0,Physics:1,Manual:2"), "set_process_thread", "get_process_thread");
 
 	ClassDB::bind_method(D_METHOD("set_current_behaviour_bias", "current_behaviour_bias"), &NNAgent::set_current_behaviour_bias);
 	ClassDB::bind_method(D_METHOD("get_current_behaviour_bias"), &NNAgent::get_current_behaviour_bias);
 	ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "current_behaviour_bias", PROPERTY_HINT_RANGE, "-1.0,1.0,or_greater"), "set_current_behaviour_bias", "get_current_behaviour_bias");
+
+	ClassDB::bind_method(D_METHOD("tick", "delta"), &NNAgent::tick);
+	ClassDB::bind_method(D_METHOD("auto_tick_step", "process_thread", "delta"), &NNAgent::auto_tick_step);
 
 	ADD_SUBGROUP("Debugging", "");
 
@@ -101,11 +111,10 @@ NNAgent::NNAgent() {
 	_current_action_id = ObjectID();
 	_current_action_change_pending = false;
 
-	// Frame-signal connections are made when the agent enters the tree.
-	_process_tree_id = ObjectID();
+	_tick_scheduler.configure(this, [this](double p_delta, bool p_due) -> bool {
+		return _auto_tick_step_callback(p_delta, p_due);
+	});
 
-	_thinking_delay_in_seconds = 1.0f; // One second delay in thinking of options.
-	_thinking_delay_in_seconds_current_timer = 0.0f;
 	_current_behaviour_bias = 0.1f;
 
 	_rng->randomize();
@@ -302,6 +311,7 @@ void NNAgent::_end_current_action(bool emit_action_changed) {
 // Handling functions.
 
 void NNAgent::evaluate_options(float delta) {
+	(void)delta;
 	uint64_t method_start_time_usec = godot::Time::get_singleton()->get_ticks_usec();
 #ifdef DEBUG_ENABLED
 	_last_evaluated_timestamp = method_start_time_usec;
@@ -321,17 +331,6 @@ void NNAgent::evaluate_options(float delta) {
 
 	NNBehaviour *current_behaviour = _resolve_behaviour(_current_behaviour_id);
 	if (current_behaviour != nullptr) {
-		// Respect the thinking delay if we have a current behaviour.
-		_thinking_delay_in_seconds_current_timer -= delta;
-		if (_thinking_delay_in_seconds_current_timer > 0.0f) {
-#ifdef DEBUG_ENABLED
-			_total_evaluate_options_usec = godot::Time::get_singleton()->get_ticks_usec() - method_start_time_usec;
-			NNPerformanceMonitorSingleton::get_singleton()->increment_total_time_elapsed_ai_agents_usec(_total_evaluate_options_usec);
-#endif
-			return;
-		}
-		_thinking_delay_in_seconds_current_timer = _thinking_delay_in_seconds;
-
 		// If the current behaviour cannot be interrupted, don't evaluate.
 		if (!current_behaviour->get_can_be_interrupted()) {
 #ifdef DEBUG_ENABLED
@@ -555,7 +554,6 @@ void NNAgent::evaluate_options(float delta) {
 			_current_action_id = ObjectID();
 			_current_behaviour_name = "";
 			_top_scoring_behaviour_name = "";
-			_thinking_delay_in_seconds_current_timer = _thinking_delay_in_seconds;
 			if (still_valid_group != nullptr && still_valid_group->get_parent() == this) {
 				// The group was entered but no child could start. Balance the
 				// group enter callback with an exit before clearing it.
@@ -598,8 +596,6 @@ void NNAgent::evaluate_options(float delta) {
 
 	_emit_node_signal("behaviour_group_changed", new_behaviour_group_id);
 	_emit_node_signal("behaviour_changed", new_behaviour_id);
-
-	_thinking_delay_in_seconds_current_timer = _thinking_delay_in_seconds;
 
 #ifdef DEBUG_ENABLED
 	_total_evaluate_options_usec = godot::Time::get_singleton()->get_ticks_usec() - method_start_time_usec;
@@ -732,6 +728,25 @@ void NNAgent::abort_current_behaviour() {
 	}
 }
 
+void NNAgent::tick(double delta) {
+	evaluate_options((float)delta);
+	update_current_behaviour();
+	_tick_selected_nodes("frame_tick", delta);
+}
+
+bool NNAgent::auto_tick_step(int p_process_thread, double p_delta) {
+	return _tick_scheduler.step(p_process_thread, p_delta);
+}
+
+bool NNAgent::_auto_tick_step_callback(double p_delta, bool p_due) {
+	if (p_due) {
+		evaluate_options((float)p_delta);
+		update_current_behaviour();
+	}
+	_tick_selected_nodes("frame_tick", p_delta);
+	return true;
+}
+
 // Getters and Setters.
 
 void NNAgent::set_current_behaviour_name(godot::String current_behaviour_name) {
@@ -779,12 +794,20 @@ int NNAgent::get_num_behaviours_to_select() const {
 	return _num_behaviours_to_select;
 }
 
-void NNAgent::set_thinking_delay_in_seconds(float thinking_delay_in_seconds) {
-	_thinking_delay_in_seconds = thinking_delay_in_seconds;
+void NNAgent::set_process_thread(int p_process_thread) {
+	_tick_scheduler.set_process_thread(p_process_thread);
 }
 
-float NNAgent::get_thinking_delay_in_seconds() const {
-	return _thinking_delay_in_seconds;
+int NNAgent::get_process_thread() const {
+	return _tick_scheduler.get_process_thread();
+}
+
+void NNAgent::set_tick_rate(int p_tick_rate) {
+	_tick_scheduler.set_tick_rate(p_tick_rate);
+}
+
+int NNAgent::get_tick_rate() const {
+	return _tick_scheduler.get_tick_rate();
 }
 
 void NNAgent::set_current_behaviour_bias(float current_behaviour_bias) {
@@ -823,18 +846,20 @@ uint64_t NNAgent::get_total_update_behaviour_usec() const {
 
 #endif
 
+void NNAgent::_on_is_enabled_changed(bool p_is_enabled) {
+	NoodleNodes::_on_is_enabled_changed(p_is_enabled);
+
+	_tick_scheduler.on_enabled_changed(p_is_enabled);
+}
+
 // Godot virtuals.
 
 void NNAgent::_notification(int p_what) {
-	// Frame-signal connections are maintained in every build. The editor
-	// registers no agent, so the debugger overlay handling stays behind its own
-	// guard and must not gate them.
 	if (p_what == NOTIFICATION_ENTER_TREE) {
-		_update_frame_connections();
+		_tick_scheduler.on_tree_entered();
 	} else if (p_what == NOTIFICATION_EXIT_TREE) {
-		// get_tree() is unreliable on tree exit, so the stored SceneTree ID is
-		// used to disconnect.
-		_disconnect_frame_connections();
+		// get_tree() is unreliable on tree exit, so the stored SceneTree ID is used.
+		_tick_scheduler.on_tree_exited();
 	}
 
 #ifdef DEBUG_ENABLED
@@ -915,71 +940,10 @@ void NNAgent::_tick_selected_nodes(const char *signal_name, double delta) {
 
 // Frame-signal handlers.
 
-void NNAgent::_update_frame_connections() {
-	// get_tree() reports an error when the node is outside the tree, so the
-	// inside-tree check comes first.
-	if (!is_inside_tree()) {
-		_disconnect_frame_connections();
-		return;
-	}
-	SceneTree *tree = get_tree();
-	if (tree == nullptr) {
-		_disconnect_frame_connections();
-		return;
-	}
-
-	// An agent always drives both ticks while it is in the tree. There is no
-	// enable condition here: evaluate_options() and _reconcile_selected_nodes()
-	// decide what, if anything, receives the tick.
-	const Callable idle_callable = Callable(this, "_on_scene_tree_process_frame");
-	const Callable physics_callable = Callable(this, "_on_scene_tree_physics_frame");
-
-	if (!tree->is_connected("process_frame", idle_callable)) {
-		tree->connect("process_frame", idle_callable);
-	}
-	if (!tree->is_connected("physics_frame", physics_callable)) {
-		tree->connect("physics_frame", physics_callable);
-	}
-
-	_process_tree_id = tree->get_instance_id();
-}
-
-void NNAgent::_disconnect_frame_connections() {
-	SceneTree *tree = Object::cast_to<SceneTree>(ObjectDB::get_instance(_process_tree_id));
-	_process_tree_id = ObjectID();
-	if (tree == nullptr) {
-		return;
-	}
-
-	const Callable idle_callable = Callable(this, "_on_scene_tree_process_frame");
-	const Callable physics_callable = Callable(this, "_on_scene_tree_physics_frame");
-	if (tree->is_connected("process_frame", idle_callable)) {
-		tree->disconnect("process_frame", idle_callable);
-	}
-	if (tree->is_connected("physics_frame", physics_callable)) {
-		tree->disconnect("physics_frame", physics_callable);
-	}
-}
-
 void NNAgent::_on_scene_tree_process_frame() {
-	// A frame signal can still arrive for a node that just left the tree, and a
-	// paused or process-disabled agent must not tick. The editor stays a no-op,
-	// as the former _process override never ran there.
-	if (!is_inside_tree() || !can_process()) {
-		return;
-	}
-	if (Engine::get_singleton()->is_editor_hint()) {
-		return;
-	}
-	_tick_selected_nodes("idle_frame_tick", get_process_delta_time());
+	_tick_scheduler.handle_frame_signal(ProcessThread::IDLE, get_process_delta_time());
 }
 
 void NNAgent::_on_scene_tree_physics_frame() {
-	if (!is_inside_tree() || !can_process()) {
-		return;
-	}
-	if (Engine::get_singleton()->is_editor_hint()) {
-		return;
-	}
-	_tick_selected_nodes("physics_frame_tick", get_physics_process_delta_time());
+	_tick_scheduler.handle_frame_signal(ProcessThread::PHYSICS, get_physics_process_delta_time());
 }

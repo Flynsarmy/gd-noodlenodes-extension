@@ -3,6 +3,13 @@ extends GutTest
 @warning_ignore('unused_parameter')
 @warning_ignore('return_value_discarded')
 
+
+# These tests tick the chart by hand, so automatic ticking is off.
+func _add_manual_root(root: NNSTRoot) -> NNSTRoot:
+	root.process_thread = NNSTRoot.MANUAL
+	return add_child_autofree(root)
+
+
 ## Confirms a child's state is set to active before tick() when the
 ## root is added to the tree with child already included.
 func test_is_active_before_tick() -> void:
@@ -10,14 +17,14 @@ func test_is_active_before_tick() -> void:
 	var _child: NNSTNode = NNSTNode.new()
 	_root.add_child(_child)
 
-	add_child_autofree(_root)
+	_add_manual_root(_root)
 	assert_eq(_root.get_is_active(), true)
 	assert_eq(_child.get_is_active(), true)
 
 ## Confirms a child's state is set to active before tick() when the
 ## child is added after root is already in the tree.
 func test_child_is_active_before_tick_with_root_in_tree() -> void:
-	var _root: NNSTRoot = add_child_autofree(NNSTRoot.new())
+	var _root: NNSTRoot = _add_manual_root(NNSTRoot.new())
 	var _child: NNSTNode = NNSTNode.new()
 	_root.add_child(_child)
 
@@ -25,7 +32,7 @@ func test_child_is_active_before_tick_with_root_in_tree() -> void:
 	assert_eq(_child.get_is_active(), true)
 
 func test_is_active_after_tick() -> void:
-	var _root: NNSTRoot = add_child_autofree(NNSTRoot.new())
+	var _root: NNSTRoot = _add_manual_root(NNSTRoot.new())
 	var _child: NNSTNode = NNSTNode.new()
 	_root.add_child(_child)
 
@@ -34,7 +41,7 @@ func test_is_active_after_tick() -> void:
 	assert_eq(_child.get_is_active(), true)
 
 func test_is_not_running_on_enter_condition_fail() -> void:
-	var _root: NNSTRoot = add_child_autofree(NNSTRoot.new())
+	var _root: NNSTRoot = _add_manual_root(NNSTRoot.new())
 	var _child: NNSTNode = load("res://test/unit/state_tree/node_enter_condition_fail.gd").new()
 	_root.blackboard = {
 		"on_enter_condition": 0,
@@ -49,7 +56,7 @@ func test_is_not_running_on_enter_condition_fail() -> void:
 	assert_eq(_child.get_is_active(), false)
 
 func test_is_active_only_on_first_child_of_non_parallel_state() -> void:
-	var _root: NNSTRoot = add_child_autofree(NNSTRoot.new())
+	var _root: NNSTRoot = _add_manual_root(NNSTRoot.new())
 	var _child1: NNSTNode = NNSTNode.new()
 	var _child2: NNSTNode = NNSTNode.new()
 
@@ -62,7 +69,7 @@ func test_is_active_only_on_first_child_of_non_parallel_state() -> void:
 	assert_eq(_child2.get_is_active(), false)
 
 func test_is_active_updates_on_transition() -> void:
-	var _root: NNSTRoot = add_child_autofree(NNSTRoot.new())
+	var _root: NNSTRoot = _add_manual_root(NNSTRoot.new())
 	var _child1: NNSTNode = NNSTNode.new()
 	var _child2: NNSTNode = NNSTNode.new()
 
@@ -76,7 +83,7 @@ func test_is_active_updates_on_transition() -> void:
 	assert_eq(_child2.get_is_active(), true)
 
 func test_is_active_updates_on_transition_to_another_branch() -> void:
-	var _root: NNSTRoot = add_child_autofree(NNSTRoot.new())
+	var _root: NNSTRoot = _add_manual_root(NNSTRoot.new())
 	var _child1: NNSTNode = NNSTNode.new()
 	var _child11: NNSTNode = NNSTNode.new()
 	var _child2: NNSTNode = NNSTNode.new()
@@ -100,7 +107,7 @@ func test_is_active_updates_on_transition_to_another_branch() -> void:
 	assert_eq(_child21.get_is_active(), true)
 
 func test_is_active_on_grandchild() -> void:
-	var _root: NNSTRoot = add_child_autofree(NNSTRoot.new())
+	var _root: NNSTRoot = _add_manual_root(NNSTRoot.new())
 	var _child: NNSTNode = NNSTNode.new()
 	var _grandchild: NNSTNode = NNSTNode.new()
 
@@ -113,7 +120,7 @@ func test_is_active_on_grandchild() -> void:
 	assert_eq(_grandchild.get_is_active(), true)
 
 func test_node_methods_called_in_correct_order() -> void:
-	var _root: NNSTRoot = add_child_autofree(NNSTRoot.new())
+	var _root: NNSTRoot = _add_manual_root(NNSTRoot.new())
 	_root.blackboard['log'] = []
 
 	var _child1: NNSTNode = autofree(load("res://test/unit/state_tree/node_on_call_logger.gd").new())

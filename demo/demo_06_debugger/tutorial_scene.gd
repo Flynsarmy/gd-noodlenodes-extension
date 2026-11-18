@@ -118,7 +118,7 @@ func _spawn_entity(kind: int, position: Vector2) -> Node:
 
 	add_child(entity)
 	if ai_paused:
-		entity.set_physics_process(false)
+		entity.process_mode = Node.PROCESS_MODE_DISABLED
 	_spawned.append(entity)
 	return entity
 
@@ -234,7 +234,7 @@ func _toggle_pause() -> void:
 	ai_paused = not ai_paused
 	for entity in _spawned:
 		if is_instance_valid(entity):
-			entity.set_physics_process(not ai_paused)
+			entity.process_mode = Node.PROCESS_MODE_DISABLED if ai_paused else Node.PROCESS_MODE_INHERIT
 	_update_status()
 
 

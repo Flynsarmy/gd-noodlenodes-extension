@@ -39,8 +39,7 @@ void NNBehaviour::_bind_methods() {
 
 	// Signals.
 	ADD_SIGNAL(MethodInfo("behaviour_entered"));
-	ADD_SIGNAL(MethodInfo("physics_frame_tick", PropertyInfo(Variant::FLOAT, "delta")));
-	ADD_SIGNAL(MethodInfo("idle_frame_tick", PropertyInfo(Variant::FLOAT, "delta")));
+	ADD_SIGNAL(MethodInfo("frame_tick", PropertyInfo(Variant::FLOAT, "delta")));
 	ADD_SIGNAL(MethodInfo("behaviour_exited"));
 }
 

@@ -17,6 +17,13 @@ const EVALUATION_METHOD_VALUES: Dictionary = {
 }
 
 
+# These tests tick the root by hand, so automatic ticking is off.
+func _make_manual_root() -> NNBTRoot:
+	var root: NNBTRoot = NNBTRoot.new()
+	root.process_thread = NNBTRoot.MANUAL
+	return root
+
+
 func _make_consideration(value: float) -> NNConsideration:
 	var consideration: NNConsideration = NNConsideration.new()
 	consideration.activation_input_value = value
@@ -24,7 +31,7 @@ func _make_consideration(value: float) -> NNConsideration:
 
 
 func _make_scored_tree(evaluation_method: int, values: Array) -> Dictionary:
-	var root: NNBTRoot = NNBTRoot.new()
+	var root: NNBTRoot = _make_manual_root()
 	var picker: NNBTScoreBasedPicker = NNBTScoreBasedPicker.new()
 	var scored: NNBTFixedResult = NNBTFixedResult.new()
 	var fallback: NNBTFixedResult = NNBTFixedResult.new()

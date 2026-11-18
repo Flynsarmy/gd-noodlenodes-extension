@@ -4,7 +4,10 @@
 		The root node for a State Tree.
 	</brief_description>
 	<description>
-		This is the root node for a State Tree. To update the tree, you call the [method tick] method of its root node. This will tick all the child nodes.
+		This is the root node for a State Tree. The root ticks itself: while it is in the scene tree and enabled, the SceneTree's [code]process_frame[/code] or [code]physics_frame[/code] signal selected by [member process_thread] calls [method tick], which updates the child sensors and lets every active state run its [method NNSTTickedNodes.on_tick] method from the root down to the leaf.
+		Automatic ticking is on by default. The root does not override or disable this node's own [code]_process[/code]/[code]_physics_process[/code], so a script attached to the root keeps its own callbacks and cannot shadow automatic ticking. Connections exist only while the root is in the tree with [member is_enabled] true and a [member process_thread] other than [constant MANUAL], and no tick happens while the root cannot process (paused or process mode disabled). [constant MANUAL] connects neither signal, so a custom scheduler calls [method tick] or [method auto_tick_step] itself.
+		An inactive chart is never ticked automatically. A root that was transitioned out stays dormant until its owner re-enters it, because [method tick] on a root with no active states transitions the chart in again; its owner decides when that should happen. A root placed in a scene becomes active on [constant NOTIFICATION_READY], so the normal flow ticks from the first frame. Call [method tick] directly to re-enter an inactive root by hand.
+		[member tick_rate] counts eligible frame signal emissions, starting with the first one. A rate of 2 ticks on emissions 1, 3, 5 and so on. No wall-clock time is involved. Re-arming the schedule (changing [member tick_rate], [member process_thread] or [member is_enabled], and entering or leaving the tree) restarts the count so the next eligible emission is due.
 		Events sent with [method send_event] are queued and processed one at a time in FIFO order. The root is the last state to see an event: the event is delivered to the innermost active state first and bubbles up to its ancestors until a state consumes it. Only when no active child consumed the event are transitions attached directly to the root tried.
 		A transition attached directly to the root can only leave the root's current active child: when its target is the child that is already active, the transition does nothing. Re-entering a state directly is not supported either, because [method NNSTTickedNodes.transition_to] rejects a transition whose source and target are the same state. Transition to a different state first and then back to re-enter a state.
 		The root also owns the change pipeline used by automatic transitions. Pending state changes and property changes are processed before queued events, under a reentrancy lock, so a transition caused by a change is fully applied before the next change is handled.
@@ -12,6 +15,15 @@
 	<tutorials>
 	</tutorials>
 	<constants>
+		<constant name="IDLE" value="0" enum="ProcessThread">
+			The root is ticked automatically from the SceneTree's [code]process_frame[/code] signal.
+		</constant>
+		<constant name="PHYSICS" value="1" enum="ProcessThread">
+			The root is ticked automatically from the SceneTree's [code]physics_frame[/code] signal. This is the default.
+		</constant>
+		<constant name="MANUAL" value="2" enum="ProcessThread">
+			Neither signal is connected and the root never ticks automatically, so a custom scheduler calls [method tick] or [method auto_tick_step] itself.
+		</constant>
 		<constant name="NONE" value="0">
 			No trigger type. Used as a default value.
 		</constant>
@@ -29,6 +41,16 @@
 		</constant>
 	</constants>
 	<methods>
+		<method name="auto_tick_step">
+			<return type="bool" />
+			<param index="0" name="process_thread" type="int" enum="NNSTRoot.ProcessThread" />
+			<param index="1" name="delta" type="float" />
+			<description>
+				The shared body of the frame-signal handlers, and the deterministic driver for custom schedulers. Ticks the chart when the call is due, and returns [code]true[/code] only when it actually ticked.
+				The call is ignored, returning [code]false[/code], when [param process_thread] is not the selected [member process_thread], when the selected thread is [constant MANUAL], when the root is disabled, in the editor, when the chart is inactive (see [method get_is_active]), or when [member tick_rate] makes this invocation not due. An ignored call does not advance the [member tick_rate] schedule.
+				This method also works outside the tree, so tests and custom schedulers can drive the schedule deterministically without frame signals.
+			</description>
+		</method>
 		<method name="get_child_sensors">
 			<return type="NNSensors[]" />
 			<description>
@@ -48,7 +70,8 @@
 			<return type="void" />
 			<param index="0" name="delta" type="float" />
 			<description>
-				The [method tick] method is used to update the State Tree state. You can provide any Godot variant type as a parameter (usually a node used as an actor or a dictionary used as a blackboard), along with a delta-time. [code]blackboard[/code] and [code]delta[/code] are passed to the [method NNSTNodes.on_enter_state], [method NNSTNodes.on_exit_state], [method NNSTNodes.on_tick] and [method NNSTNodes.on_enter_condition] methods of the child nodes.
+				Updates the State Tree. When no states are active the chart is transitioned in, then the child sensors are evaluated and every active state's [method NNSTTickedNodes.on_tick] method is called from the root down to the leaf with [param delta].
+				This is the manual entry point: automatic ticking calls it too. Calling it is the only way to re-enter an inactive chart by hand, so with [member process_thread] set to [constant MANUAL] a custom scheduler can own the timing.
 			</description>
 		</method>
 		<method name="set_expression_property">
@@ -74,6 +97,12 @@
 		</member>
 		<member name="initial_expression_properties" type="Dictionary[String, Variant]" setter="set_initial_expression_properties" getter="get_initial_expression_properties" default="{}">
 			Initial values for expression properties. They are applied when the root first transitions in, before any state is entered, so expressions are always valid on the first evaluation.
+		</member>
+		<member name="process_thread" type="int" enum="NNSTRoot.ProcessThread" setter="set_process_thread" getter="get_process_thread" default="1">
+			Selects the SceneTree frame signal that drives automatic ticking, not this node's processing flags. Defaults to [constant PHYSICS], so a root auto-ticks once added to a scene. [constant IDLE] uses [code]process_frame[/code], [constant PHYSICS] uses [code]physics_frame[/code] and [constant MANUAL] connects neither so a custom scheduler ticks the chart. Exactly one signal is connected at a time. Out-of-range values fall back to [constant PHYSICS]. Setting this property re-arms the [member tick_rate] schedule.
+		</member>
+		<member name="tick_rate" type="int" setter="set_tick_rate" getter="get_tick_rate" default="1">
+			The number of eligible frame signal emissions between automatic ticks. The default of [code]1[/code] ticks every eligible emission, and a rate of 2 ticks on emissions 1, 3, 5 and so on. Values below 1 are clamped to 1. Ineligible emissions, such as those for a signal that is not selected, do not advance the count. Setting this property or [member process_thread], an [member is_enabled] change, and entering or leaving the tree re-arm the schedule.
 		</member>
 		<member name="total_tick_usec" type="int" setter="set_total_tick_usec" getter="get_total_tick_usec" default="0">
 			The time to complete a tick in usec.

@@ -8,6 +8,13 @@ extends GutTest
 # notification was ignored entirely unless the branch was already active, so a
 # later transition into the branch saw a stale child list.
 
+
+# These tests tick the chart by hand, so automatic ticking is off.
+func _add_manual_root(root: NNSTRoot) -> NNSTRoot:
+	root.process_thread = NNSTRoot.MANUAL
+	return add_child_autofree(root)
+
+
 const LOGGER_PATH := "res://test/unit/state_tree/node_on_call_logger.gd"
 const UTILITY_SCORING := 1
 
@@ -31,7 +38,7 @@ func _make_consideration(value: float) -> NNConsideration:
 ## A state added below an inactive branch after _ready must be entered when the
 ## branch itself is entered later. Nothing may be entered or exited early.
 func test_inactive_branch_sees_child_added_after_ready() -> void:
-	var _root: NNSTRoot = add_child_autofree(NNSTRoot.new())
+	var _root: NNSTRoot = _add_manual_root(NNSTRoot.new())
 	var _active_sibling: NNSTNode = _make_logger("ActiveSibling")
 	var _branch: NNSTNode = _make_logger("Branch")
 	_root.blackboard = { "log": [] }
@@ -80,7 +87,7 @@ func test_inactive_branch_sees_child_removed_after_ready() -> void:
 	_root.add_child(_active_sibling)
 	_root.add_child(_branch)
 	_branch.add_child(_old_child)
-	add_child_autofree(_root)
+	_add_manual_root(_root)
 
 	assert_true(_active_sibling.get_is_active())
 	assert_false(_branch.get_is_active())
@@ -117,7 +124,7 @@ func test_inactive_branch_sees_child_reorder_after_ready() -> void:
 	_root.add_child(_branch)
 	_branch.add_child(_first_child)
 	_branch.add_child(_second_child)
-	add_child_autofree(_root)
+	_add_manual_root(_root)
 
 	assert_true(_active_sibling.get_is_active())
 	assert_false(_branch.get_is_active())
@@ -139,7 +146,7 @@ func test_inactive_branch_sees_child_reorder_after_ready() -> void:
 ## A transition added below an inactive branch after _ready must be cached, so
 ## send_event() can use it once the branch is entered.
 func test_inactive_branch_sees_transition_added_after_ready() -> void:
-	var _root: NNSTRoot = add_child_autofree(NNSTRoot.new())
+	var _root: NNSTRoot = _add_manual_root(NNSTRoot.new())
 	var _active_sibling: NNSTNode = _make_logger("ActiveSibling")
 	var _branch: NNSTNode = _make_logger("Branch")
 	var _target: NNSTNode = _make_logger("Target")
@@ -181,7 +188,7 @@ func test_inactive_branch_sees_consideration_added_after_ready() -> void:
 	_root.add_child(_start)
 	_root.add_child(_rival)
 	_root.add_child(_branch)
-	add_child_autofree(_root)
+	_add_manual_root(_root)
 
 	assert_true(_start.get_is_active())
 	assert_false(_branch.get_is_active())
@@ -212,7 +219,7 @@ func test_inactive_branch_sees_consideration_added_after_ready() -> void:
 ## existing behaviour: the reorder takes effect, the exit callback runs once and
 ## reselection waits for the next tick.
 func test_active_branch_reorder_and_removal_still_works() -> void:
-	var _root: NNSTRoot = add_child_autofree(NNSTRoot.new())
+	var _root: NNSTRoot = _add_manual_root(NNSTRoot.new())
 	var _child: NNSTNode = _make_logger("Child")
 	var _sibling: NNSTNode = _make_logger("Sibling")
 	_root.blackboard = { "log": [] }

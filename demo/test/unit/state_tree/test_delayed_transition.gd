@@ -3,6 +3,13 @@ extends GutTest
 @warning_ignore('unused_parameter')
 @warning_ignore('return_value_discarded')
 
+
+# These tests tick the chart by hand, so automatic ticking is off.
+func _add_manual_root(root: NNSTRoot) -> NNSTRoot:
+	root.process_thread = NNSTRoot.MANUAL
+	return add_child_autofree(root)
+
+
 ## Builds a state tree with an active Source state plus Target and Other
 ## siblings. Source owns a single transition to Target with the given delay.
 func _build_tree(delay: String = "0.0") -> Dictionary:
@@ -29,7 +36,7 @@ func _build_tree(delay: String = "0.0") -> Dictionary:
 	# or an event, so give it an inert event name to keep it manual-only.
 	_transition.event_name = "take_only"
 
-	add_child_autofree(_root)
+	_add_manual_root(_root)
 
 	return {
 		"root": _root,
@@ -337,7 +344,7 @@ func test_empty_delay_is_zero() -> void:
 	assert_eq(_transition.evaluate_delay(), 0.0)
 
 func test_take_on_inactive_state_is_rejected() -> void:
-	var _root: NNSTRoot = add_child_autofree(NNSTRoot.new())
+	var _root: NNSTRoot = _add_manual_root(NNSTRoot.new())
 	var _active: NNSTNode = NNSTNode.new()
 	var _inactive: NNSTNode = NNSTNode.new()
 	var _target: NNSTNode = NNSTNode.new()
@@ -462,7 +469,7 @@ func test_immediate_self_target_does_not_emit_taken() -> void:
 ## A target that is a descendant of the source is rejected by
 ## _can_transition_to(); it must not emit taken either.
 func test_immediate_descendant_target_does_not_emit_taken() -> void:
-	var _root: NNSTRoot = add_child_autofree(NNSTRoot.new())
+	var _root: NNSTRoot = _add_manual_root(NNSTRoot.new())
 	var _source: NNSTNode = NNSTNode.new()
 	var _leaf: NNSTNode = NNSTNode.new()
 	var _target: NNSTNode = NNSTNode.new()
@@ -514,7 +521,7 @@ func test_delayed_self_target_does_not_emit_taken_when_delay_elapses() -> void:
 ## A rejected event transition must return false without emitting taken so the
 ## next same-named transition still gets a chance to handle the event.
 func test_rejected_event_transition_falls_through_to_next_transition() -> void:
-	var _root: NNSTRoot = add_child_autofree(NNSTRoot.new())
+	var _root: NNSTRoot = _add_manual_root(NNSTRoot.new())
 	var _source: NNSTNode = NNSTNode.new()
 	var _target: NNSTNode = NNSTNode.new()
 	var _self_transition: NNSTTransition = NNSTTransition.new()
@@ -550,7 +557,7 @@ func test_rejected_event_transition_falls_through_to_next_transition() -> void:
 ## common ancestor is the parallel; it must not emit taken and both children
 ## must stay active.
 func test_parallel_common_ancestor_rejection_does_not_emit_taken() -> void:
-	var _root: NNSTRoot = add_child_autofree(NNSTRoot.new())
+	var _root: NNSTRoot = _add_manual_root(NNSTRoot.new())
 	var _parallel: NNSTParallel = NNSTParallel.new()
 	var _first: NNSTNode = NNSTNode.new()
 	var _second: NNSTNode = NNSTNode.new()

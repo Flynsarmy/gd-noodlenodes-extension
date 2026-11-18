@@ -1,5 +1,6 @@
 #pragma once
 
+#include "../tick_scheduler.h"
 #include "branch_nodes.h"
 #include "node.h"
 #include <agent_behaviours/sensors.h>
@@ -63,6 +64,12 @@ private:
 	// active descendants) so the existing transition logic is reused.
 	bool _run_transition_to(NNSTTickedNodes *to_state);
 
+	NNTickScheduler _tick_scheduler;
+
+	void _on_scene_tree_process_frame();
+	void _on_scene_tree_physics_frame();
+	bool _auto_tick_step_callback(double p_delta, bool p_due);
+
 #ifdef DEBUG_ENABLED
 	uint64_t _total_tick_usec;
 #endif
@@ -117,6 +124,8 @@ private:
 protected:
 	static void _bind_methods();
 
+	virtual void _on_is_enabled_changed(bool p_is_enabled) override;
+
 public:
 	NNSTRoot();
 	~NNSTRoot();
@@ -129,6 +138,12 @@ public:
 		STATE_ENTER = 2,
 		PROPERTY_CHANGE = 4,
 		STATE_CHANGE = 8,
+	};
+
+	enum ProcessThread {
+		IDLE = NNTickScheduler::IDLE,
+		PHYSICS = NNTickScheduler::PHYSICS,
+		MANUAL = NNTickScheduler::MANUAL,
 	};
 
 	// The maximum number of transitions a single processing pass may apply
@@ -145,6 +160,11 @@ public:
 
 	void set_initial_expression_properties(const Dictionary &p_properties);
 	Dictionary get_initial_expression_properties() const;
+
+	void set_process_thread(int p_process_thread);
+	int get_process_thread() const;
+	void set_tick_rate(int p_tick_rate);
+	int get_tick_rate() const;
 
 #ifdef DEBUG_ENABLED
 	uint64_t get_total_tick_usec() const;
@@ -175,6 +195,8 @@ public:
 	// an event processing pass are not counted.
 	bool _register_applied_transition();
 	bool get_is_event_processing_halted() const;
+
+	bool auto_tick_step(int p_process_thread, double p_delta);
 
 	virtual void _transition_in() override;
 	virtual void _evaluate_child_activations(std::vector<ObjectID> &nodes) override;
@@ -209,3 +231,4 @@ public:
 } //namespace godot
 
 VARIANT_ENUM_CAST(NNSTRoot::TriggerType)
+VARIANT_ENUM_CAST(NNSTRoot::ProcessThread)

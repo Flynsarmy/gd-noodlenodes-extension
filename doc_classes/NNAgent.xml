@@ -5,14 +5,24 @@
 	</brief_description>
 	<description>
 		This is the main node that is used to manage the NN. A [NNAgent] node represents an AI entity that can reason based in sensor input and then choose behaviours to react to the sensor input based on scores that are calculated with considerations. Behaviours can contain optional actions that allow reuse of action logic.
-		There are two methods that are used to update the AI Agent:
-		- [method evaluate_options] is used to choose a behaviour
-		- update_current_behaviour() is used to step actions of a behaviour
-		Frame ticks are driven by the SceneTree's [code]process_frame[/code] and [code]physics_frame[/code] signals rather than by this node's own [code]_process[/code]/[code]_physics_process[/code] overrides. Every [NNAgent] emits both [code]idle_frame_tick[/code] and [code]physics_frame_tick[/code] to its selected behaviour group, behaviour and action, and a script attached to the agent keeps its own [code]_process[/code] and [code]_physics_process[/code] callbacks and cannot shadow those ticks. The signal connections exist only while the agent is in the tree, and no tick happens while the agent cannot process (paused or process mode disabled). Because ticking no longer depends on this node's process callbacks, [code]set_process()[/code] and [code]set_physics_process()[/code] no longer stop agent ticking.
+		The agent updates itself automatically. Every eligible step of the frame signal selected with [member process_thread] performs the thinking step with [method evaluate_options] and [method update_current_behaviour], and then emits [code]frame_tick[/code] on the selected behaviour group, behaviour and action. Thinking happens first, so an action chosen on a step receives its frame tick in that same step. [member tick_rate] is the single thinking throttle: a rate of [code]N[/code] thinks on every [code]N[/code]th eligible step, while [code]frame_tick[/code] still fires on every eligible step.
+		Frame steps are driven by the SceneTree's [code]process_frame[/code] and [code]physics_frame[/code] signals rather than by this node's own [code]_process[/code]/[code]_physics_process[/code] overrides, so a script attached to the agent keeps its own callbacks and cannot shadow the automatic steps. The signal connections exist only while the agent is in the tree and enabled, and no step happens while the agent cannot process (paused or process mode disabled). Because stepping no longer depends on this node's process callbacks, [code]set_process()[/code] and [code]set_physics_process()[/code] do not stop the agent.
+		Both thinking primitives stay callable by hand. Set [member process_thread] to [code]Manual[/code] and call [method tick] from a custom scheduler, or call [method auto_tick_step] to reuse the scheduler's guards and rate schedule.
 		Noodle Nodes systems can be susceptile to oscillation, which means that two or more evaluated options get the highest score and the system ends up switching several times between the options. The [member current_behaviour_bias] property in the AI Agent can be used to add some bias towards the currently selected behaviour, which will decrease the chances of oscillation. In a sense the AI Agent is "more determined" to continue with the currently selected behaviour.
 	</description>
 	<tutorials>
 	</tutorials>
+	<constants>
+		<constant name="IDLE" value="0" enum="ProcessThread">
+			The agent steps automatically from the SceneTree's [code]process_frame[/code] signal.
+		</constant>
+		<constant name="PHYSICS" value="1" enum="ProcessThread">
+			The agent steps automatically from the SceneTree's [code]physics_frame[/code] signal. This is the default.
+		</constant>
+		<constant name="MANUAL" value="2" enum="ProcessThread">
+			Neither signal is connected and the agent never steps automatically, so a custom scheduler calls [method tick] or [method auto_tick_step] itself.
+		</constant>
+	</constants>
 	<methods>
 		<method name="abort_current_behaviour">
 			<return type="void" />
@@ -20,11 +30,20 @@
 				Immediately stops the currently selected behaviour and action. Used for stopping behaviours that have Can Be Interrupted property as [code]false[/code].
 			</description>
 		</method>
+		<method name="auto_tick_step">
+			<return type="bool" />
+			<param index="0" name="process_thread" type="int" enum="NNAgent.ProcessThread" />
+			<param index="1" name="delta" type="float" />
+			<description>
+				The shared body of the frame-signal handlers, and the deterministic driver for custom schedulers. Runs the agent's scheduled step and returns [code]true[/code] when it actually stepped. It applies the same guards and [member tick_rate] schedule as the frame-signal handlers, so tests and custom schedulers can drive the agent directly, even outside the tree.
+				The call is ignored, returning [code]false[/code], when [param process_thread] is not the selected [member process_thread], when the selected thread is [constant MANUAL], when the agent is disabled, in the editor, or when [member tick_rate] makes the thinking step not due. An ignored call does not advance the [member tick_rate] schedule; an eligible step that is not a thinking step still emits [code]frame_tick[/code].
+			</description>
+		</method>
 		<method name="evaluate_options">
 			<return type="void" />
 			<param index="0" name="delta" type="float" />
 			<description>
-				Gathers input from sensors and evaluates all the available behaviours by calculating a score for each of them and then choosing a random behaviour from the top [member num_behaviours_to_select] behaviours. Candidates must still be enabled and belong to this agent after evaluation and exit callbacks run.
+				Gathers input from sensors and evaluates all the available behaviours by calculating a score for each of them and then choosing a random behaviour from the top [member num_behaviours_to_select] behaviours. Candidates must still be enabled and belong to this agent after evaluation and exit callbacks run. The automatic step calls this on every step selected by [member tick_rate]; it remains callable by hand for custom schedulers.
 			</description>
 		</method>
 		<method name="get_current_action_node" qualifiers="const">
@@ -60,6 +79,13 @@
 			<description>
 			</description>
 		</method>
+		<method name="tick">
+			<return type="void" />
+			<param index="0" name="delta" type="float" />
+			<description>
+				Runs one full unguarded agent step: [method evaluate_options], [method update_current_behaviour], then [code]frame_tick[/code] on the selected nodes. Use it with [member process_thread] set to [code]Manual[/code] when a custom scheduler owns the timing. The scheduler guards do not apply, so it also works outside the tree.
+			</description>
+		</method>
 		<method name="update_current_behaviour">
 			<return type="void" />
 			<description>
@@ -77,8 +103,11 @@
 		<member name="num_behaviours_to_select" type="int" setter="set_num_behaviours_to_select" getter="get_num_behaviours_to_select" default="1">
 			Pick uniformly from up to this many eligible behaviours with the highest scores. Equal scores retain evaluation order when the list is full. Must be between 1 and 16; invalid assignments report an error and leave the value unchanged.
 		</member>
-		<member name="thinking_delay_in_seconds" type="float" setter="set_thinking_delay_in_seconds" getter="get_thinking_delay_in_seconds" default="1.0">
-			Delay time forced between calls to the method [method evaluate_options].
+		<member name="process_thread" type="int" enum="NNAgent.ProcessThread" setter="set_process_thread" getter="get_process_thread" default="1">
+			Selects the SceneTree frame signal that drives the automatic steps, not this node's processing flags. Defaults to [constant PHYSICS], so an agent steps automatically once added to a scene. [constant IDLE] uses [code]process_frame[/code], [constant PHYSICS] uses [code]physics_frame[/code] and [constant MANUAL] connects neither so a custom scheduler calls [method tick]. Exactly one signal is connected at a time. Out-of-range values fall back to [constant PHYSICS]. Setting this property re-arms the [member tick_rate] schedule.
+		</member>
+		<member name="tick_rate" type="int" setter="set_tick_rate" getter="get_tick_rate" default="1">
+			The single thinking throttle. A rate of [code]N[/code] performs [method evaluate_options] and [method update_current_behaviour] on every [code]N[/code]th eligible step, while the selected nodes still receive [code]frame_tick[/code] on every eligible step. The default of [code]1[/code] thinks on every eligible emission. Values below 1 clamp to 1, and ineligible emissions do not advance the count. Setting this property or [member process_thread], an [member is_enabled] change, and entering or leaving the tree re-arm the schedule so the next eligible step is due.
 		</member>
 		<member name="top_scoring_behaviour_name" type="String" setter="set_top_scoring_behaviour_name" getter="get_top_scoring_behaviour_name" default="&quot;&quot;">
 			This property shows what was the top scoring behaviour after the latest [method evaluate_options] method call.

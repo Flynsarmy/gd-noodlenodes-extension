@@ -42,6 +42,8 @@ func _make_behaviour_agents() -> Array[NNAgent]:
 		agent.num_behaviours_to_select = BEHAVIOUR_COUNT
 		for i in BEHAVIOUR_COUNT:
 			agent.add_child(_make_behaviour("Behaviour%d" % i))
+		# These tests drive the agent by hand, so automatic ticking is off.
+		agent.process_thread = NNAgent.MANUAL
 		add_child_autofree(agent)
 	return agents
 
@@ -61,6 +63,8 @@ func _make_action_group_agents() -> Array[NNAgent]:
 		var behaviour := _make_behaviour("GroupBehaviour")
 		behaviour.add_child(group)
 		agent.add_child(behaviour)
+		# These tests drive the agent by hand, so automatic ticking is off.
+		agent.process_thread = NNAgent.MANUAL
 		add_child_autofree(agent)
 		agents.append(agent)
 	return agents

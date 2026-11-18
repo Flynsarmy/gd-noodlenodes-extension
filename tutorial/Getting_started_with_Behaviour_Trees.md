@@ -351,15 +351,18 @@ extends AnimatedSprite2D
 var movement_speed:float = 0.0
 
 
+func _ready():
+	# The root ticks itself, so tell it which node the tree's on_tick()
+	# methods receive as their actor argument.
+	$UtilityAIBTRoot.tick_argument = self
+
+
 func _physics_process(delta):
 	# Set the AI-entity position as the from-vector.
 	sensor_distance.from_vector = global_position
 	
 	# Set the mouse cursor position as the to-vector.
 	sensor_distance.to_vector = get_parent().mouse_position 
-	
-	# Update the AI.
-	$UtilityAIBTRoot.tick(self, delta)
 	
 	# Move based on movement speed.
 	self.global_position += sensor_distance.direction_vector * movement_speed * delta
@@ -378,13 +381,14 @@ func _physics_process(delta):
 What this code does:
  * The row `@onready var sensor_distance:UtilityAIDistanceVector2Sensor = $UtilityAIBTRoot/UtilityAIDistanceVector2Sensor` gets a reference to the Vector2 based distance sensor of the AI entity. This sensor is used to check the distance and to get the direction vector towards the target.
  * The row `var movement_speed:float = 0.0` defines a variable that we will use to control the movement speed of the AI entity.
+ * In `_ready()` the row `$UtilityAIBTRoot.tick_argument = self` gives the root node of the AI entity scene, which in this case is the **self** keyword, as the first argument of every automatic tick. This gives the behaviour tree node `on_tick()` methods access to all the properties of the AI entity node.
  * In the `_physics_process(delta)` method we first set the distance sensor **from-position** as the global position of the AI entity, and the **to-position** as the location of the mouse cursor from the parent node. The sensor will use these two positions to calculate the distance from the AI entity to the mouse cursor, and also the direction vector that we will use later for movement.
- * `$UtilityAIBTRoot.tick(self, delta)` ticks the behaviour tree. As **user_data** we give the root node of the AI entity scene which in this case is the **self** keyword. This gives the behaviour tree node `on_tick()` methods access to all the properties of the AI entity node.
- * After *ticking* the root node, the row `self.global_position += sensor_distance.direction_vector * movement_speed * delta` moves the AI entity based on the direction vector calculated by the distance sensor. Delta time is used to scale the movement amount. The `movement_speed` is set by the behaviour tree task nodes.
+ * The behaviour tree root ticks itself once per physics frame by default, so the script never calls `tick()` itself. Section [9. Next steps](Getting_started_with_Behaviour_Trees.md#9-next-steps) shows how to lower that rate with `tick_rate`, and how to drive the root from your own code by setting `process_thread` to `Manual`.
+ * After the tree has been ticked, the row `self.global_position += sensor_distance.direction_vector * movement_speed * delta` moves the AI entity based on the direction vector calculated by the distance sensor. Delta time is used to scale the movement amount. The `movement_speed` is set by the behaviour tree task nodes.
  * The final rows of the method make sure the character sprite is facing the direction it is moving to by flipping the sprite horizontally when needed.
 
 > [!NOTE]
-> For this tutorial we are calling the root node `tick()` method every physics frame. This isn't what you usually want to do in a real game. See section [9. Next steps](Getting_started_with_Behaviour_Trees.md#9-next-steps) for more information.
+> A behaviour tree root added to a scene ticks itself once per physics frame by default. This isn't what you usually want to do in a real game. See section [9. Next steps](Getting_started_with_Behaviour_Trees.md#9-next-steps) for more information.
 
 
 2. In the **ai_entity** scene, in the **Scene-tab**, attach a script to the **Is too far from the cursor** node. Replace the code with the following code (see explanation for it below):
@@ -401,7 +405,7 @@ func on_tick(actor, delta):
 
 ```
 
-We define the `on_tick()` method and name the **user_data** parameter as the **actor**. You can set the name to anything you want. In this case the name "actor" was chosen because in step 7.1 we use the **ai_entity** node in the root node `tick()` method.
+We define the `on_tick()` method and name the **user_data** parameter as the **actor**. You can set the name to anything you want. In this case the name "actor" was chosen because in step 7.1 we set the **ai_entity** node as the root node's `tick_argument`.
 
 All the `on_tick()` method does is that it checks what the distance to the mouse cursor is based on the sensor. If it is greater than the expected value 1 is returned. This means that the leaf node succeeded. If not, -1 (failure) is returned. 
 
@@ -502,10 +506,10 @@ This concludes the tutorial, but there are things you can try to learn more. For
 In 7.1 it was noted that you usually don't want to tick the tree every physics frame. There are several reasons for this. For one, the game world usually doesn't change dramatically each frame and as a result the behaviour tree would end up to the same task node as it did on the previous frame. Secondly, ticking the behaviour tree each frame has of course a cost. If the ticking doesn't result in a change in the behaviour and it costs some frame time, it doesn't make sense to tick the tree unless it is necessary. Thirdly, we humans (and also animals in general) have various *reaction times* that cause some delay when we are reacting to the changes in our environment. Adding some delay may make your AI entities more *believable* and fun. Finally, ticking the tree every frame can lead to a practice of adding per-frame logic inside the behaviour tree which in turn can lead to a unnecessarily complex tree. 
 
 Some of the ways to tick the behaviour tree less often can be:
- * Add a delay or cooldown. Each time you tick the tree, you set a variable in the **ai_entity** node to some short time duration and then tick the tree only after this time has passed. An example of this is given below.
- * Tick the tree based on **events**. For example, if you have an Area2D or Area3D that you use for sensing the environment, you can tick the tree when an enemy enters or exits the area. Another examples could be the AI entity losing or gaining more health, getting an alarm signal, and so on.
+ * Set `tick_rate`. The root counts eligible frame emissions and ticks on every Nth one. An example is given below.
+ * Tick the tree based on **events**. Set `process_thread` to `Manual` so the root never ticks itself, then call `tick()` when something happens. For example, if you have an Area2D or Area3D that you use for sensing the environment, you can tick the tree when an enemy enters or exits the area. Another examples could be the AI entity losing or gaining more health, getting an alarm signal, and so on.
 
-To see the difference of adding some delay to ticking the tree, test how the code below for the **ai_entity** script changes the way the AI works. The only thing it adds is the `ticking_delay` variable that introduces a minimum delay plus a random variance to when the ticking occurs. You can try adding different delays and how it affects performance and the AI reaction times.
+To see the difference of ticking the tree less often, test how the code below for the **ai_entity** script changes the way the AI works. The only thing it adds is the `tick_rate = 20` line, which makes the root tick on every 20th physics frame, roughly three times per second at 60 physics frames per second. You can try different rates and see how they affect performance and the AI reaction times.
 
 ```gdscript
 extends AnimatedSprite2D
@@ -513,11 +517,12 @@ extends AnimatedSprite2D
 # This is the distance sensor. 
 @onready var sensor_distance:UtilityAIDistanceVector2Sensor = $UtilityAIBTRoot/UtilityAIDistanceVector2Sensor
 var movement_speed:float = 0.0
-var ticking_delay:float = 0.0
 
 
 func _ready():
-	ticking_delay = randf() * 0.3
+	# Tick roughly three times per second at 60 physics frames per second.
+	$UtilityAIBTRoot.tick_rate = 20
+	$UtilityAIBTRoot.tick_argument = self
 
 
 func _physics_process(delta):
@@ -526,12 +531,6 @@ func _physics_process(delta):
 	
 	# Set the mouse cursor position as the to-vector.
 	sensor_distance.to_vector = get_parent().mouse_position 
-	
-	# Update the AI.
-	ticking_delay -= delta
-	if ticking_delay <= 0.0:
-		ticking_delay = 0.3 + randf() * 0.3
-		$UtilityAIBTRoot.tick(self, delta)
 	
 	# Move based on movement speed.
 	self.global_position += sensor_distance.direction_vector * movement_speed * delta

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "../agent_behaviours/sensors.h"
+#include "../tick_scheduler.h"
 #include "blackboard.h"
 #include "nodes.h"
 #include <godot_cpp/classes/node.hpp>
@@ -26,29 +27,18 @@ private:
 	ObjectID _actor_id;
 	NodePath _actor_node_path;
 
-	// Auto-tick state. The frame counter counts eligible frame signal emissions
-	// for tick_rate and is re-armed whenever the schedule changes.
-	bool _auto_tick;
-	int _tick_rate;
-	int _process_thread;
+	NNTickScheduler _tick_scheduler;
 	Variant _tick_argument;
-	uint64_t _auto_tick_frame;
 	// The deepest node on the active path after the last tick. It is stored as
 	// an ObjectID so a freed node is detected instead of dereferenced.
 	ObjectID _running_action_id;
 	// The enabled behaviour-tree child driven by the active run, if any. It is
 	// stored as an ObjectID so a freed child is detected instead of dereferenced.
 	ObjectID _ticked_child_id;
-	// The SceneTree whose frame signals are currently connected, if any. It is
-	// stored as an ObjectID because get_tree() is not reliable on tree exit.
-	ObjectID _process_tree_id;
 
-	// Auto-tick helpers.
-	bool _is_auto_tick_due();
-	void _update_frame_connections();
-	void _disconnect_frame_connections();
 	void _on_scene_tree_process_frame();
 	void _on_scene_tree_physics_frame();
+	bool _auto_tick_step_callback(double p_delta, bool p_due);
 	void _update_running_action(Status p_result);
 	ObjectID _find_active_descendant_id(NNBTNodes *p_node) const;
 
@@ -68,12 +58,10 @@ protected:
 	unsigned int _num_child_sensors;
 
 public:
-	// Selects which SceneTree frame signal drives automatic ticking. MANUAL
-	// connects neither signal so a custom scheduler can call the tree.
 	enum ProcessThread {
-		IDLE = 0,
-		PHYSICS = 1,
-		MANUAL = 2,
+		IDLE = NNTickScheduler::IDLE,
+		PHYSICS = NNTickScheduler::PHYSICS,
+		MANUAL = NNTickScheduler::MANUAL,
 	};
 
 	NNBTRoot();
@@ -91,9 +79,6 @@ public:
 	void set_actor_node_path(const NodePath &p_actor_node_path);
 	NodePath get_actor_node_path() const;
 
-	// Auto-tick configuration.
-	void set_auto_tick(bool p_auto_tick);
-	bool get_auto_tick() const;
 	void set_tick_rate(int p_tick_rate);
 	int get_tick_rate() const;
 	void set_process_thread(int p_process_thread);

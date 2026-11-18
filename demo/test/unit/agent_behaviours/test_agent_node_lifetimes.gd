@@ -34,6 +34,8 @@ func _make_behaviour(value: float) -> NNBehaviour:
 
 func _make_agent() -> NNAgent:
 	var agent: NNAgent = NNAgent.new()
+	# These tests drive the agent by hand, so automatic ticking is off.
+	agent.process_thread = NNAgent.MANUAL
 	add_child_autofree(agent)
 	return agent
 
