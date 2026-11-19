@@ -256,7 +256,6 @@ void NNSTRoot::tick(float delta) {
 			continue;
 		}
 
-		stnode->set_root(this);
 		stnode->on_tick(delta);
 	}
 #ifdef DEBUG_ENABLED
@@ -812,7 +811,7 @@ void NNSTRoot::_transition_in() {
 	if (_active_states.empty()) {
 		std::vector<ObjectID> new_active_states;
 		_evaluate_child_activations(new_active_states);
-		_apply_active_states(new_active_states, this);
+		_apply_active_states(new_active_states);
 	}
 
 	_locked_down = was_locked;
@@ -902,14 +901,6 @@ void NNSTRoot::_notification(int p_what) {
 		// its child caches (and sensors below) for a later transition in.
 		if (p_what == NOTIFICATION_CHILD_ORDER_CHANGED && !is_node_ready()) {
 			return;
-		}
-
-		const std::vector<ObjectID> child_state_ids = _child_states;
-		for (unsigned int i = 0; i < child_state_ids.size(); i++) {
-			NNSTTickedNodes *stnode = _get_child_state(child_state_ids[i]);
-			if (stnode != nullptr) {
-				stnode->set_root(this);
-			}
 		}
 
 		_child_sensors.clear();

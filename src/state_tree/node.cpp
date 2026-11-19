@@ -69,7 +69,7 @@ void NNSTNode::_transition_in() {
 	// normal selection when nothing can be restored.
 	if (!_initial_state.is_empty()) {
 		NNSTHistory *history = Object::cast_to<NNSTHistory>(get_node_or_null(_initial_state));
-		if (history != nullptr && history->get_parent() == this && history->_restore_into_compound(get_root())) {
+		if (history != nullptr && history->get_parent() == this && history->_restore_into_compound()) {
 			return;
 		}
 	}
@@ -77,7 +77,7 @@ void NNSTNode::_transition_in() {
 	std::vector<ObjectID> new_active_states;
 	_evaluate_child_activations(new_active_states);
 
-	_apply_active_states(new_active_states, get_root());
+	_apply_active_states(new_active_states);
 };
 
 void NNSTNode::_on_transition_out_begin() {

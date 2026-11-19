@@ -77,7 +77,7 @@ void NNSTParallel::_transition_in() {
 	std::vector<ObjectID> new_active_states;
 	_evaluate_child_activations(new_active_states);
 
-	_apply_active_states(new_active_states, get_root());
+	_apply_active_states(new_active_states);
 };
 
 /**

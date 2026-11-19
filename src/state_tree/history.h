@@ -106,7 +106,7 @@ public:
 	void _pre_register(const std::vector<NNSTHistoryStateSnapshot> &entries);
 	// Internal API. Phase B: enters the remembered configuration top-down
 	// below `branch`. Re-resolves every state before and after user callbacks.
-	void _enter(NNSTBranchNodes *branch, const std::vector<NNSTHistoryStateSnapshot> &entries, NNSTRoot *p_root);
+	void _enter(NNSTBranchNodes *branch, const std::vector<NNSTHistoryStateSnapshot> &entries);
 	// Internal API. Removes Phase A registrations below a remembered state that
 	// were abandoned (an unselected parallel region, a callback replacement or
 	// an aborted restore). A remembered child that is currently running is
@@ -115,7 +115,7 @@ public:
 	// Internal API. Restores the remembered or default configuration into the
 	// owning compound while it is entered through this history as its initial
 	// state. Returns false when nothing could be restored.
-	bool _restore_into_compound(NNSTRoot *p_root);
+	bool _restore_into_compound();
 };
 
 } //namespace godot

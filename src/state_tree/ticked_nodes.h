@@ -14,7 +14,10 @@ class NNSTTickedNodes : public NNSTBranchNodes {
 	GDCLASS(NNSTTickedNodes, NNSTBranchNodes)
 
 private:
-	NNSTRoot *_root;
+	// A state removed from the chart while active still runs on_exit_state(),
+	// which may call get_root(). The ancestor cache cannot answer for it any
+	// more, so the last chart it belonged to is kept.
+	mutable ObjectID _last_known_tree_root_id;
 	NNRootHost _root_host;
 	bool _is_final;
 	String _hosted_success_event;
@@ -94,10 +97,8 @@ protected:
 	// p_tree_root is the chart root the caller has already resolved.
 	bool _is_dispatch_activation_valid(const ActivationIdentity &p_identity, const NNSTRoot *p_tree_root = nullptr) const;
 
-	// Resolves the owning chart root. The cached root is only trusted while it
-	// is actually an ancestor, so a reparented state falls back to the parent
-	// chain. Returns nullptr when no NNSTRoot owns this state (including the
-	// root itself, which has no root pointer).
+	// Resolves the nearest ancestor NNSTRoot. Returns nullptr when none owns
+	// this state, including a root that is not nested inside another chart.
 	NNSTRoot *_resolve_tree_root() const;
 
 	virtual void _on_internal_status_changed(bool p_is_active) override;
@@ -109,7 +110,6 @@ public:
 
 	// Getters and setters for attributes.
 
-	void set_root(NNSTRoot *p_root); // Setter
 	NNSTRoot *get_root() const;
 
 	NNRootHost *get_root_host() override { return &_root_host; }

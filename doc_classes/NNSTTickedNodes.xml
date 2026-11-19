@@ -24,7 +24,7 @@
 		<method name="get_root" qualifiers="const">
 			<return type="NNSTRoot" />
 			<description>
-				Returns the [NNSTRoot] root node of the state tree.
+				Returns the [NNSTRoot] chart this node belongs to, resolved from its ancestors. A state that is removed from its chart while still active keeps reporting the chart it last belonged to, so [method on_exit_state] can still reach it. Returns [code]null[/code] when the node is not part of a state tree.
 			</description>
 		</method>
 		<method name="on_enter_condition" qualifiers="virtual">

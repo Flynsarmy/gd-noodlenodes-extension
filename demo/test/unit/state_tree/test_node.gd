@@ -103,6 +103,31 @@ func test_get_root_resolves_regardless_of_build_order() -> void:
 		assert_eq(_child.get_root(), _root)
 		assert_eq(_grandchild.get_root(), _root)
 
+func test_get_root_skips_a_nested_root_of_another_type() -> void:
+	var _root: NNSTRoot = _add_manual_root(NNSTRoot.new())
+	var _bt_root: NNBTRoot = NNBTRoot.new()
+	var _state: NNSTNode = NNSTNode.new()
+	_bt_root.add_child(_state)
+	_root.add_child(_bt_root)
+
+	assert_eq(_state.get_root(), _root, "only a state tree root owns a chart")
+	assert_engine_error_count(0)
+
+func test_reparented_descendant_resolves_the_new_chart() -> void:
+	var _root_a: NNSTRoot = _add_manual_root(NNSTRoot.new())
+	var _root_b: NNSTRoot = _add_manual_root(NNSTRoot.new())
+	var _branch: NNSTNode = NNSTNode.new()
+	var _state: NNSTNode = NNSTNode.new()
+	_branch.add_child(_state)
+	_root_a.add_child(_branch)
+
+	assert_eq(_state.get_root(), _root_a)
+
+	_branch.reparent(_root_b)
+
+	assert_eq(_branch.get_root(), _root_b)
+	assert_eq(_state.get_root(), _root_b, "a descendant follows the chart of its reparented ancestor")
+
 func test_initial_state_works() -> void:
 	var _root: NNSTRoot = NNSTRoot.new()
 	var _child: NNSTNode = NNSTNode.new()

@@ -277,7 +277,7 @@ void NNSTHistory::_pre_register(const std::vector<NNSTHistoryStateSnapshot> &ent
 	}
 }
 
-void NNSTHistory::_enter(NNSTBranchNodes *branch, const std::vector<NNSTHistoryStateSnapshot> &entries, NNSTRoot *p_root) {
+void NNSTHistory::_enter(NNSTBranchNodes *branch, const std::vector<NNSTHistoryStateSnapshot> &entries) {
 	if (branch == nullptr) {
 		return;
 	}
@@ -328,9 +328,6 @@ void NNSTHistory::_enter(NNSTBranchNodes *branch, const std::vector<NNSTHistoryS
 
 			branch->_add_active_child_state(state);
 			if (state->get_internal_status() != ST_INTERNAL_STATUS_ACTIVE) {
-				if (p_root != nullptr) {
-					state->set_root(p_root);
-				}
 				state->_transition_in();
 			}
 
@@ -345,7 +342,7 @@ void NNSTHistory::_enter(NNSTBranchNodes *branch, const std::vector<NNSTHistoryS
 
 		NNSTBranchNodes *state_branch = Object::cast_to<NNSTBranchNodes>(state);
 		if (state_branch != nullptr && !entries[i].children.empty()) {
-			_enter(state_branch, entries[i].children, p_root);
+			_enter(state_branch, entries[i].children);
 		}
 	}
 }
@@ -370,7 +367,7 @@ void NNSTHistory::_discard_registrations(const NNSTHistoryStateSnapshot &entry) 
 	}
 }
 
-bool NNSTHistory::_restore_into_compound(NNSTRoot *p_root) {
+bool NNSTHistory::_restore_into_compound() {
 	NNSTBranchNodes *compound = _get_owning_compound();
 	if (compound == nullptr || compound->get_internal_status() != ST_INTERNAL_STATUS_ACTIVE) {
 		return false;
@@ -388,23 +385,11 @@ bool NNSTHistory::_restore_into_compound(NNSTRoot *p_root) {
 		return false;
 	}
 
-	// The root node itself has no root pointer. Resolve it from the compound so
-	// entered states still receive the tree root.
-	if (p_root == nullptr) {
-		for (Node *node = compound; node != nullptr; node = node->get_parent()) {
-			NNSTRoot *state_tree_root = Object::cast_to<NNSTRoot>(node);
-			if (state_tree_root != nullptr) {
-				p_root = state_tree_root;
-				break;
-			}
-		}
-	}
-
 	// Phase A registers the remembered children on compounds without running
 	// user code; Phase B then enters the configuration top-down. NNSTNode's
 	// _transition_in() short-circuits on a registered child, so this bypasses
 	// normal child selection for every remembered compound.
 	_pre_register(snapshot);
-	_enter(compound, snapshot, p_root);
+	_enter(compound, snapshot);
 	return true;
 }

@@ -329,7 +329,7 @@ NNSTBranchNodes *NNSTBranchNodes::_get_common_ancestor(NNSTTickedNodes *from_sta
  * transition see an empty active state list (and crash), or be overwritten when
  * the _transition_in() call returned.
  */
-void NNSTBranchNodes::_apply_active_states(std::vector<ObjectID> &new_active_states, NNSTRoot *p_root) {
+void NNSTBranchNodes::_apply_active_states(std::vector<ObjectID> &new_active_states) {
 	// A transition from on_enter_state() may already have transitioned this
 	// branch out. If so, leave the tree alone.
 	if (_internal_status != ST_INTERNAL_STATUS_ACTIVE) {
@@ -422,7 +422,6 @@ void NNSTBranchNodes::_apply_active_states(std::vector<ObjectID> &new_active_sta
 		if (state == nullptr) {
 			continue;
 		}
-		state->set_root(p_root);
 		state->_transition_in();
 	}
 }

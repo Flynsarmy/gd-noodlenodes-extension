@@ -125,8 +125,8 @@ NNSTTickedNodes::NNSTTickedNodes() {
 	_score = 0.0;
 	_invert_score = false;
 	_is_exiting = false;
-	_root = nullptr;
 	_activation_generation = 0;
+	_last_known_tree_root_id = ObjectID();
 	_pending_transition_id = ObjectID();
 	_pending_initial_delay = 0.0;
 	_pending_remaining_delay = 0.0;
@@ -137,22 +137,12 @@ NNSTTickedNodes::~NNSTTickedNodes() {
 
 // Getters and Setters.
 
-void NNSTTickedNodes::set_root(NNSTRoot *p_root) {
-	_root = p_root;
-
-	if (!Engine::get_singleton()->is_editor_hint()) {
-		const std::vector<ObjectID> child_state_ids = _child_states;
-		for (unsigned int i = 0; i < child_state_ids.size(); i++) {
-			NNSTTickedNodes *stnode = _get_child_state(child_state_ids[i]);
-			if (stnode != nullptr) {
-				stnode->set_root(p_root);
-			}
-		}
-	}
-}
-
 NNSTRoot *NNSTTickedNodes::get_root() const {
-	return _root;
+	NNSTRoot *tree_root = _resolve_tree_root();
+	if (tree_root != nullptr) {
+		return tree_root;
+	}
+	return godot::Object::cast_to<NNSTRoot>(ObjectDB::get_instance(_last_known_tree_root_id));
 }
 
 void NNSTTickedNodes::set_is_final(bool is_final) {
@@ -230,21 +220,26 @@ uint64_t NNSTTickedNodes::get_activation_generation() const {
 // Handling methods.
 
 NNSTRoot *NNSTTickedNodes::_resolve_tree_root() const {
-	// A reparented state can still hold the root of its previous chart until
-	// the new parent's child order notification updates it. Only trust the
-	// cached root while it is actually an ancestor.
-	if (_root != nullptr && _root->is_ancestor_of(const_cast<NNSTTickedNodes *>(this))) {
-		return _root;
+	NoodleNodes *ancestor_root = get_ancestor_root();
+	NNSTRoot *tree_root = godot::Object::cast_to<NNSTRoot>(ancestor_root);
+	if (tree_root != nullptr) {
+		_last_known_tree_root_id = ObjectID(tree_root->get_instance_id());
+		return tree_root;
 	}
 
-	Node *node = get_parent();
-	while (node != nullptr) {
-		NNSTRoot *root = godot::Object::cast_to<NNSTRoot>(node);
-		if (root != nullptr) {
-			return root;
+	if (ancestor_root != nullptr) {
+		// The nearest root is another root type (for example a behaviour tree
+		// hosted by a state). Only an NNSTRoot owns a chart, so keep looking
+		// past the roots that cannot own this state.
+		for (Node *node = get_parent(); node != nullptr; node = node->get_parent()) {
+			tree_root = godot::Object::cast_to<NNSTRoot>(node);
+			if (tree_root != nullptr) {
+				_last_known_tree_root_id = ObjectID(tree_root->get_instance_id());
+				return tree_root;
+			}
 		}
-		node = node->get_parent();
 	}
+
 	return nullptr;
 }
 
@@ -958,9 +953,6 @@ bool NNSTTickedNodes::_perform_transition(TransitionPlan &plan) {
 		}
 
 		if (lineage_child->get_internal_status() != ST_INTERNAL_STATUS_ACTIVE) {
-			if (tree_root != nullptr) {
-				lineage_child->set_root(tree_root);
-			}
 			lineage_child->_transition_in();
 		}
 	}
@@ -978,7 +970,7 @@ bool NNSTTickedNodes::_perform_transition(TransitionPlan &plan) {
 		if (restored_compound != nullptr && entry_branch != nullptr &&
 				restored_compound->get_internal_status() == ST_INTERNAL_STATUS_ACTIVE &&
 				restored_compound->_is_active_child_state(entry_state)) {
-			restored_history->_enter(entry_branch, plan.history_entry.children, tree_root);
+			restored_history->_enter(entry_branch, plan.history_entry.children);
 		} else {
 			// The entry state was replaced or the compound exited while it was
 			// being entered. Nothing will consume the pre-registered subtree.
@@ -1147,14 +1139,6 @@ void NNSTTickedNodes::_notification(int p_what) {
 	if (p_what == NOTIFICATION_READY || p_what == NOTIFICATION_CHILD_ORDER_CHANGED) {
 		if (Engine::get_singleton()->is_editor_hint()) {
 			return;
-		}
-
-		const std::vector<ObjectID> child_state_ids = _child_states;
-		for (unsigned int i = 0; i < child_state_ids.size(); i++) {
-			NNSTTickedNodes *stnode = _get_child_state(child_state_ids[i]);
-			if (stnode != nullptr) {
-				stnode->set_root(get_root());
-			}
 		}
 
 		// This will do nothing if we already have an active child. We want to

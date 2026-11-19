@@ -132,7 +132,7 @@ public:
 
 	// Adopts a new list of active child states and transitions out of / in to
 	// the states that changed. Used by the _transition_in() implementations.
-	void _apply_active_states(std::vector<ObjectID> &new_active_states, NNSTRoot *p_root);
+	void _apply_active_states(std::vector<ObjectID> &new_active_states);
 
 	GDVIRTUAL1(on_input, Ref<InputEvent>);
 	GDVIRTUAL1(on_unhandled_input, Ref<InputEvent>);
