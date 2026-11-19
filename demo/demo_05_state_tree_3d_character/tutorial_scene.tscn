@@ -1,6 +1,6 @@
 [gd_scene load_steps=10 format=3 uid="uid://bqkyqfigjxtil"]
 
-[ext_resource type="Script" uid="uid://c7b8nqv6jui2b" path="res://demo_05_state_tree_3d_character/tutorial_scene.tscn.gd" id="1_cv8ac"]
+[ext_resource type="Script" uid="uid://c7b8nqv6jui2b" path="res://demo_05_state_tree_3d_character/tutorial_scene.gd" id="1_cv8ac"]
 [ext_resource type="Texture2D" uid="uid://uw3adawdlstj" path="res://demo_05_state_tree_3d_character/visuals/ground.png" id="1_k6ea4"]
 [ext_resource type="PackedScene" uid="uid://digtgw0djj7ag" path="res://demo_05_state_tree_3d_character/ai_entity.tscn" id="2_cj5b0"]
 
