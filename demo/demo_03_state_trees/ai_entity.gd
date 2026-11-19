@@ -5,9 +5,13 @@ extends AnimatedSprite2D
 # Resolved on demand: the state tree enters states before @onready assignments run.
 var sensor_distance: NNDistanceVector2Sensor:
 	get:
-		return $NNSTRoot/MouseSensor
+		if _sensor_distance == null:
+			_sensor_distance = $NNSTRoot/MouseSensor
+		return _sensor_distance
 
 var movement_speed: float = 0.0
+
+var _sensor_distance: NNDistanceVector2Sensor
 
 
 func _physics_process(delta: float):
