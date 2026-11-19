@@ -39,8 +39,7 @@ Variant NNMetadataSearchCriterion::get_metadata_value() const {
 void NNMetadataSearchCriterion::apply_criterion(Node *node, bool &filter_out, float &score) {
 	_score = 1.0f;
 	_is_filtered = false;
-	godot::Variant metavar = node->get_meta(_metadata_name);
-	_is_filtered = (metavar != _metadata_value);
+	_is_filtered = !node->has_meta(_metadata_name) || node->get_meta(_metadata_name) != _metadata_value;
 	filter_out = _is_filtered;
 	score = _score;
 }

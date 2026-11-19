@@ -85,16 +85,15 @@ func test_metadata_criterion_filters_on_both_the_metadata_name_and_value() -> vo
 	var container: Node2D = add_child_autofree(Node2D.new())
 	_add_candidate(container, "red", Vector2.ZERO).set_meta("team", "red")
 	_add_candidate(container, "blue", Vector2.ZERO).set_meta("team", "blue")
-	var other_key: Node2D = _add_candidate(container, "other_key", Vector2.ZERO)
-	other_key.set_meta("team", "blue")
-	other_key.set_meta("squad", "red")
+	_add_candidate(container, "other_key", Vector2.ZERO).set_meta("squad", "red")
+	_add_candidate(container, "untagged", Vector2.ZERO)
 
 	var criterion: NNMetadataSearchCriterion = NNMetadataSearchCriterion.new()
 	criterion.metadata_name = &"team"
 	criterion.metadata_value = "red"
 	criterion.use_for_filtering = true
 
-	var query: NNNodeChildrenSearchSpace = NqsHelpers.make_query(self, container, criterion, 3)
+	var query: NNNodeChildrenSearchSpace = NqsHelpers.make_query(self, container, criterion, 4)
 	NqsHelpers.run_to_completion(self, NqsHelpers.make_nqs(self), query)
 
 	assert_eq(_result_names(query), ["red"], "A node must match both the metadata name and its value.")
