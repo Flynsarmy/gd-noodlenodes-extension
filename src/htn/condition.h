@@ -16,10 +16,14 @@ private:
 	String _expression;
 	PackedStringArray _read_keys;
 	PackedStringArray _input_names;
-	mutable NNCachedExpression _cache;
+	String _parse_error;
+	NNCachedExpression _cache;
 	bool _parse_error_reported = false;
 	bool _evaluation_error_reported = false;
 
+	void _refresh_parse_error();
+	bool _check_parse();
+	bool _execute(const Array &p_inputs);
 	void _report(const String &p_message) const;
 	void _report_evaluation_error(const String &p_message);
 
@@ -27,6 +31,8 @@ protected:
 	static void _bind_methods();
 
 public:
+	NNHTNCondition();
+
 	void set_expression(const String &p_expression);
 	String get_expression() const;
 
@@ -34,6 +40,8 @@ public:
 	String get_parse_error() const;
 
 	bool evaluate(const Dictionary &p_state, const Dictionary &p_args);
+	// Evaluates without copying; p_state and p_args must be entirely read-only.
+	bool evaluate_read_only(const Dictionary &p_state, const Dictionary &p_args);
 };
 
 } //namespace godot

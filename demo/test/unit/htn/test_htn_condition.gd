@@ -1,5 +1,7 @@
 extends GutTest
 
+const Domain = preload("res://test/unit/htn/support/htn_domain.gd")
+
 
 func _condition(expression: String) -> NNHTNCondition:
 	var condition := NNHTNCondition.new()
@@ -60,3 +62,23 @@ func test_an_evaluation_error_is_reported_once_until_the_condition_recovers() ->
 	assert_true(condition.evaluate({"health": 5}, {}))
 	assert_false(condition.evaluate({}, {}))
 	assert_engine_error_count(2, "a failure after a clean evaluation is reported again")
+
+
+# Expressions must not reach the containers the planner owns, so the write is rejected and the state is untouched.
+func test_a_condition_cannot_mutate_planner_state() -> void:
+	var root := Domain.make_root()
+	add_child_autofree(root)
+	root.get_blackboard_resource().set_value("inventory", [1])
+
+	var domain := Domain.compound(root, "Domain")
+	var greedy := Domain.method(domain, "Greedy")
+	Domain.task(greedy, "Stock", {"stocked": true}, ["inventory.push_back(2) == null and inventory.size() == 1"])
+	Domain.task(Domain.method(domain, "Safe"), "Idle", {"stocked": true})
+
+	var steps := Domain.tick_and_capture_plan(root)
+
+	assert_eq(Domain.step_names(steps), ["Stock"], "the write fails, so the condition still sees one entry")
+	assert_eq(root.get_blackboard_resource().get_value("inventory"), [1], "the planner's copy is not the board's array")
+	for error in get_errors():
+		assert_true(error.contains_text("read-only") or error.contains_text("read_only"), "only the rejected write is reported")
+		error.handled = true

@@ -108,5 +108,51 @@ String path_of(const Node *p_node) {
 	return String(p_node->get_path());
 }
 
+void make_read_only_deep(Variant &p_value) {
+	switch (p_value.get_type()) {
+		case Variant::DICTIONARY: {
+			Dictionary dictionary = p_value;
+			if (dictionary.is_read_only()) {
+				return;
+			}
+			const Array keys = dictionary.keys();
+			for (int i = 0; i < keys.size(); i++) {
+				Variant value = dictionary[keys[i]];
+				make_read_only_deep(value);
+				dictionary[keys[i]] = value;
+			}
+			dictionary.make_read_only();
+			p_value = dictionary;
+		} break;
+		case Variant::ARRAY: {
+			Array array = p_value;
+			if (array.is_read_only()) {
+				return;
+			}
+			for (int i = 0; i < array.size(); i++) {
+				Variant value = array[i];
+				make_read_only_deep(value);
+				array[i] = value;
+			}
+			array.make_read_only();
+			p_value = array;
+		} break;
+		default:
+			break;
+	}
+}
+
+Variant read_only_copy(const Variant &p_value) {
+	Variant copy = p_value.duplicate(true);
+	make_read_only_deep(copy);
+	return copy;
+}
+
+void make_read_only_deep(Dictionary &p_dictionary) {
+	Variant value = p_dictionary;
+	make_read_only_deep(value);
+	p_dictionary = value;
+}
+
 } //namespace NNExpressionUtil
 } //namespace godot

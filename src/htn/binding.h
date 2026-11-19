@@ -1,6 +1,6 @@
 #pragma once
 
-#include "condition.h"
+#include "nodes.h"
 
 #include <godot_cpp/classes/resource.hpp>
 #include <godot_cpp/templates/hash_set.hpp>
@@ -33,7 +33,7 @@ private:
 	void _report(const String &p_message) const;
 	bool _entry_position(const Variant &p_entry, const Variant &p_value, Vector3 &r_position) const;
 	bool _entry_number(const Variant &p_entry, const Variant &p_value, double &r_number) const;
-	bool _matches(const Dictionary &p_state, const Dictionary &p_args, const Variant &p_value) const;
+	bool _matches(const NNHTNStateView &p_state, const Dictionary &p_args, const Variant &p_value) const;
 
 protected:
 	static void _bind_methods();
@@ -65,7 +65,7 @@ public:
 	// values that pass the conditions, and sets r_truncated when a further one was left out.
 	// Returns false, after reporting, when the source or origin is unusable; malformed entries
 	// are reported and skipped.
-	bool collect_values(const Dictionary &p_state, const Dictionary &p_args, int p_cap, std::vector<Variant> &r_values, bool &r_truncated) const;
+	bool collect_values(const NNHTNStateView &p_state, const Dictionary &p_args, int p_cap, std::vector<Variant> &r_values, bool &r_truncated) const;
 };
 
 } //namespace godot

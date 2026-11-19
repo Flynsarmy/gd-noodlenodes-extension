@@ -17,6 +17,10 @@ void NNHTNCondition::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("evaluate", "state", "args"), &NNHTNCondition::evaluate, DEFVAL(Dictionary()));
 }
 
+NNHTNCondition::NNHTNCondition() {
+	_refresh_parse_error();
+}
+
 void NNHTNCondition::set_expression(const String &p_expression) {
 	if (_expression == p_expression) {
 		return;
@@ -31,9 +35,18 @@ void NNHTNCondition::set_expression(const String &p_expression) {
 	}
 	_input_names = _read_keys.duplicate();
 	_input_names.push_back(ARGS_INPUT);
+	_refresh_parse_error();
 	_parse_error_reported = false;
 	_evaluation_error_reported = false;
 	emit_changed();
+}
+
+void NNHTNCondition::_refresh_parse_error() {
+	if (_expression.strip_edges().is_empty()) {
+		_parse_error = "The expression is empty.";
+		return;
+	}
+	_cache.parse(_expression, _input_names, _parse_error);
 }
 
 String NNHTNCondition::get_expression() const {
@@ -45,12 +58,7 @@ PackedStringArray NNHTNCondition::get_read_keys() const {
 }
 
 String NNHTNCondition::get_parse_error() const {
-	if (_expression.strip_edges().is_empty()) {
-		return "The expression is empty.";
-	}
-	String error;
-	_cache.parse(_expression, _input_names, error);
-	return error;
+	return _parse_error;
 }
 
 void NNHTNCondition::_report(const String &p_message) const {
@@ -58,27 +66,44 @@ void NNHTNCondition::_report(const String &p_message) const {
 	ERR_PRINT(vformat("%s: %s", context, p_message));
 }
 
+bool NNHTNCondition::_check_parse() {
+	if (_parse_error.is_empty()) {
+		return true;
+	}
+	// Planning evaluates conditions many times per search; one report per source is enough.
+	if (!_parse_error_reported) {
+		_parse_error_reported = true;
+		_report(vformat("could not parse '%s': %s Evaluating to false.", _expression, _parse_error));
+	}
+	return false;
+}
+
 bool NNHTNCondition::evaluate(const Dictionary &p_state, const Dictionary &p_args) {
-	const String parse_error = get_parse_error();
-	if (!parse_error.is_empty()) {
-		// Planning evaluates conditions many times per search; one report per source is enough.
-		if (!_parse_error_reported) {
-			_parse_error_reported = true;
-			_report(vformat("could not parse '%s': %s Evaluating to false.", _expression, parse_error));
-		}
+	Dictionary state;
+	for (const String &key : _read_keys) {
+		state[key] = NNExpressionUtil::read_only_copy(p_state.get(key, Variant()));
+	}
+	return evaluate_read_only(state, Dictionary(NNExpressionUtil::read_only_copy(p_args)));
+}
+
+bool NNHTNCondition::evaluate_read_only(const Dictionary &p_state, const Dictionary &p_args) {
+	if (!_check_parse()) {
 		return false;
 	}
 
 	Array inputs;
 	for (const String &key : _read_keys) {
-		const Variant value = p_state.get(key, Variant());
-		inputs.push_back(value.duplicate(true));
+		inputs.push_back(p_state.get(key, Variant()));
 	}
-	inputs.push_back(p_args.duplicate(true));
+	inputs.push_back(p_args);
 
+	return _execute(inputs);
+}
+
+bool NNHTNCondition::_execute(const Array &p_inputs) {
 	Variant result;
 	String error;
-	if (!_cache.execute(inputs, result, error)) {
+	if (!_cache.execute(p_inputs, result, error)) {
 		_report_evaluation_error(vformat("could not evaluate '%s': %s Evaluating to false.", _expression, error));
 		return false;
 	}

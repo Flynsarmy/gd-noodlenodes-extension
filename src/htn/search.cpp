@@ -502,7 +502,7 @@ bool NNHTNSearch::_push_binding_level(MethodChoice &r_choice, const TypedArray<N
 	BindingLevel level;
 	level.parent_args = p_parent_args;
 	bool truncated = false;
-	binding->collect_values(_state.get_values(), p_parent_args, _settings->get_max_binding_candidates(), level.values, truncated);
+	binding->collect_values(_state, p_parent_args, _settings->get_max_binding_candidates(), level.values, truncated);
 	if (truncated) {
 		_candidates_truncated = true;
 		_trace_event(r_choice.trace_id, KIND_BINDING, p_method_path, TRUNCATED, "CANDIDATE_CAP", vformat("Binding '%s' has more values than max_binding_candidates.", binding->get_variable()), p_parent_args);

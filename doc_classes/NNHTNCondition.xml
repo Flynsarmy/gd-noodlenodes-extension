@@ -9,7 +9,7 @@
 		is_scared and not is_tired
 		health &lt; args.get("limit", 25)
 		[/codeblock]
-		A key that is absent from the state reads as [code]null[/code]. A board key literally named [code]args[/code] is shadowed by the arguments and cannot be read. [Array] and [Dictionary] values are deep-copied for each evaluation; [Object] values keep their identity, so expressions are trusted project code.
+		A key that is absent from the state reads as [code]null[/code]. A board key literally named [code]args[/code] is shadowed by the arguments and cannot be read. [Array] and [Dictionary] values are read-only, including their nested containers, so a call that would change one fails and returns [code]null[/code] without changing the state; [Object] values keep their identity, so expressions are trusted project code.
 		The expression must return a [bool]. A parse error, an execution error (for example comparing an absent key with a number) or any other result is reported as an error and evaluates to [code]false[/code], so a broken condition makes its node unavailable. A parse error is reported once per expression; execution errors are reported every time.
 		The keys an expression reads are inferred from its text (see [method get_read_keys]), so changes to them trigger replanning without being listed in [member NNHTNNodes.dependency_keys]. The parsed expression is cached and parsed again only when [member expression] changes.
 	</description>
@@ -21,7 +21,7 @@
 			<param index="0" name="state" type="Dictionary" />
 			<param index="1" name="args" type="Dictionary" default="{}" />
 			<description>
-				Evaluates [member expression] with the keys of [param state] and the arguments [param args]. Returns [code]false[/code] after reporting an error when the expression cannot be parsed or executed, or does not return a [bool].
+				Evaluates [member expression] with the keys of [param state] and the arguments [param args]. The values are copied as read-only containers, so the expression cannot change [param state] or [param args]. Returns [code]false[/code] after reporting an error when the expression cannot be parsed or executed, or does not return a [bool].
 			</description>
 		</method>
 		<method name="get_parse_error" qualifiers="const">

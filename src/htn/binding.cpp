@@ -1,5 +1,6 @@
 #include "binding.h"
 
+#include "../expression_util.h"
 #include "argument_reference.h"
 
 #include <algorithm>
@@ -247,32 +248,34 @@ bool NNHTNBinding::_entry_number(const Variant &p_entry, const Variant &p_value,
 	return true;
 }
 
-bool NNHTNBinding::_matches(const Dictionary &p_state, const Dictionary &p_args, const Variant &p_value) const {
+bool NNHTNBinding::_matches(const NNHTNStateView &p_state, const Dictionary &p_args, const Variant &p_value) const {
 	if (_conditions.is_empty()) {
 		return true;
 	}
 	Dictionary args = p_args.duplicate(true);
-	args[_variable] = p_value;
-	args.make_read_only();
+	// Sealed separately so the value kept as the bound argument stays writable.
+	args[_variable] = p_value.duplicate(true);
+	NNExpressionUtil::make_read_only_deep(args);
+	const Dictionary &state = p_state.get_read_only_state();
 	for (int i = 0; i < _conditions.size(); i++) {
 		Ref<NNHTNCondition> condition = _conditions[i];
-		if (condition.is_null() || !condition->evaluate(p_state, args)) {
+		if (condition.is_null() || !condition->evaluate_read_only(state, args)) {
 			return false;
 		}
 	}
 	return true;
 }
 
-bool NNHTNBinding::collect_values(const Dictionary &p_state, const Dictionary &p_args, int p_cap, std::vector<Variant> &r_values, bool &r_truncated) const {
+bool NNHTNBinding::collect_values(const NNHTNStateView &p_state, const Dictionary &p_args, int p_cap, std::vector<Variant> &r_values, bool &r_truncated) const {
 	r_truncated = false;
-	const Variant source_value = p_state.get(_state_key, Variant());
+	const Variant source_value = p_state.get_values().get(_state_key, Variant());
 	if (source_value.get_type() != Variant::ARRAY) {
 		_report(vformat("state key '%s' must hold an Array; got %s. The branch is rejected.", _state_key, Variant::get_type_name(source_value.get_type())));
 		return false;
 	}
 	Vector3 origin;
 	if (_order == NEAREST) {
-		const Variant origin_value = p_state.get(_origin_key, Variant());
+		const Variant origin_value = p_state.get_values().get(_origin_key, Variant());
 		if (origin_value.get_type() != Variant::VECTOR3) {
 			_report(vformat("origin_key '%s' must hold a Vector3; got %s. The branch is rejected.", _origin_key, Variant::get_type_name(origin_value.get_type())));
 			return false;

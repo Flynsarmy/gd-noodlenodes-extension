@@ -26,14 +26,18 @@ const Dictionary &NNHTNStateView::get_values() const {
 	return _values;
 }
 
-const Dictionary &NNHTNStateView::get_hook_state() const {
-	if (!_hook_state_valid) {
-		_hook_state = _values.duplicate(true);
-		_hook_state.make_read_only();
-		_hook_state_valid = true;
+const Dictionary &NNHTNStateView::get_read_only_state() const {
+	if (!_read_only_state_valid) {
+		_read_only_state = NNExpressionUtil::read_only_copy(_values);
+		_read_only_state_valid = true;
 	}
+	return _read_only_state;
+}
+
+const Dictionary &NNHTNStateView::get_hook_state() const {
+	const Dictionary &state = get_read_only_state();
 	_hook_state_reads++;
-	return _hook_state;
+	return state;
 }
 
 uint64_t NNHTNStateView::get_hook_state_reads() const {
@@ -47,12 +51,12 @@ void NNHTNStateView::set_value(const String &p_key, const Variant &p_value) {
 	} else {
 		_values[p_key] = p_value;
 	}
-	_hook_state_valid = false;
+	_read_only_state_valid = false;
 }
 
 void NNHTNStateView::reset(const Dictionary &p_values) {
 	_values = p_values;
-	_hook_state_valid = false;
+	_read_only_state_valid = false;
 }
 
 // NNHTNNodes.
@@ -139,14 +143,18 @@ String NNHTNNodes::_describe() const {
 }
 
 bool NNHTNNodes::check_preconditions(const NNHTNStateView &p_state, const Dictionary &p_args, Dictionary *r_failure) const {
-	for (int i = 0; i < _conditions.size(); i++) {
-		Ref<NNHTNCondition> condition = _conditions[i];
-		if (condition.is_null()) {
-			ERR_PRINT(vformat("%s: conditions[%d] is empty; the node is unavailable.", _describe(), i));
-			return _fail_precondition(r_failure, String(), i);
-		}
-		if (!condition->evaluate(p_state.get_values(), p_args)) {
-			return _fail_precondition(r_failure, condition->get_expression(), i);
+	if (!_conditions.is_empty()) {
+		const Dictionary &state = p_state.get_read_only_state();
+		const Dictionary args = NNExpressionUtil::read_only_copy(p_args);
+		for (int i = 0; i < _conditions.size(); i++) {
+			Ref<NNHTNCondition> condition = _conditions[i];
+			if (condition.is_null()) {
+				ERR_PRINT(vformat("%s: conditions[%d] is empty; the node is unavailable.", _describe(), i));
+				return _fail_precondition(r_failure, String(), i);
+			}
+			if (!condition->evaluate_read_only(state, args)) {
+				return _fail_precondition(r_failure, condition->get_expression(), i);
+			}
 		}
 	}
 

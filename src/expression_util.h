@@ -33,6 +33,15 @@ namespace NNExpressionUtil {
 // literals that are not keywords, type names, member accesses or calls.
 PackedStringArray scan_identifiers(const String &p_expression);
 
+// Deep copy of p_value whose Arrays and Dictionaries are all read-only, since
+// make_read_only() on its own only seals the container it is called on.
+Variant read_only_copy(const Variant &p_value);
+
+// Makes every Array and Dictionary in p_value read-only. p_value must own its
+// nested containers: one shared with a holder elsewhere is sealed for both.
+void make_read_only_deep(Variant &p_value);
+void make_read_only_deep(Dictionary &p_dictionary);
+
 // A readable path for p_node that is also safe outside the tree.
 String path_of(const Node *p_node);
 
