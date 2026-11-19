@@ -40,10 +40,3 @@ NNBTNodes::Status NNBTLeaf::_tick(float delta) {
 
 	return return_value;
 }
-
-// Godot virtuals.
-
-void NNBTLeaf::_notification(int p_what) {
-	if (p_what != NOTIFICATION_POST_ENTER_TREE)
-		return;
-}

@@ -155,27 +155,23 @@ func test_removing_the_running_child_resumes_a_random_composite_on_a_survivor() 
 
 func test_score_based_picker_ticks_the_highest_scoring_child() -> void:
 	var weak_consideration: NNConsideration = Fixtures.consideration(0.2)
-	var weak_leaf: BT.CountingLeaf = BT.make_leaf(NNBTNodes.SUCCESS)
-	var weak: NNBTPassThrough = NNBTPassThrough.new()
-	weak.add_child(weak_leaf)
+	var weak: BT.CountingLeaf = BT.make_leaf(NNBTNodes.SUCCESS)
 	weak.add_child(weak_consideration)
 	var strong_consideration: NNConsideration = Fixtures.consideration(0.8)
-	var strong_leaf: BT.CountingLeaf = BT.make_leaf(NNBTNodes.SUCCESS)
-	var strong: NNBTPassThrough = NNBTPassThrough.new()
-	strong.add_child(strong_leaf)
+	var strong: BT.CountingLeaf = BT.make_leaf(NNBTNodes.SUCCESS)
 	strong.add_child(strong_consideration)
 	var picker: NNBTScoreBasedPicker = NNBTScoreBasedPicker.new()
 	var root: NNBTRoot = BT.build_tree(picker, [weak, strong])
 
 	BT.tick_and_assert(self, root, picker, NNBTNodes.SUCCESS)
-	assert_eq(strong_leaf.tick_count, 1, "the highest scoring child is ticked")
-	assert_eq(weak_leaf.tick_count, 0, "the lower scoring child is not ticked")
+	assert_eq(strong.tick_count, 1, "the highest scoring child is ticked")
+	assert_eq(weak.tick_count, 0, "the lower scoring child is not ticked")
 
 	weak_consideration.activation_input_value = 0.9
 	strong_consideration.activation_input_value = 0.1
 	BT.tick_and_assert(self, root, picker, NNBTNodes.SUCCESS)
-	assert_eq(weak_leaf.tick_count, 1, "a new run picks the child with the new highest score")
-	assert_eq(strong_leaf.tick_count, 1, "the previously picked child is not ticked again")
+	assert_eq(weak.tick_count, 1, "a new run picks the child with the new highest score")
+	assert_eq(strong.tick_count, 1, "the previously picked child is not ticked again")
 
 	root.free()
 
