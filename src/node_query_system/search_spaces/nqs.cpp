@@ -30,6 +30,8 @@ NNNQSSearchSpaces::NNNQSSearchSpaces() {
 	_preprocessing_time_usec = 0;
 	_completed_signal_time_usec = 0;
 	_is_run_in_debug_mode = false;
+	_is_filtered_property = StringName("is_filtered");
+	_score_property = StringName("score");
 }
 
 NNNQSSearchSpaces::~NNNQSSearchSpaces() {
@@ -424,10 +426,8 @@ bool NNNQSSearchSpaces::apply_criterion_with_time_budget(NNNQSSearchCriteria *cr
 			++_work_in_progress_num_added_nodes;
 		}
 		if (_is_run_in_debug_mode) {
-			static const StringName is_filtered_property("is_filtered");
-			static const StringName score_property("score");
-			node->set(is_filtered_property, filter_out);
-			node->set(score_property, (previous_score * score));
+			node->set(_is_filtered_property, filter_out);
+			node->set(_score_property, (previous_score * score));
 		}
 
 		// Move to the next node.

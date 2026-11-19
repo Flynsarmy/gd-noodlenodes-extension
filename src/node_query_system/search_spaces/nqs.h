@@ -11,6 +11,10 @@ class NNNQSSearchSpaces : public NoodleNodes {
 	GDCLASS(NNNQSSearchSpaces, NoodleNodes)
 
 private:
+	// Members, not statics: static StringNames outlive the engine's StringName table.
+	StringName _is_filtered_property;
+	StringName _score_property;
+
 	bool _is_run_in_debug_mode;
 
 	int _top_n_to_find;
