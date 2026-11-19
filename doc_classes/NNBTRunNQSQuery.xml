@@ -30,7 +30,7 @@
 			The blackboard key that receives all results as an [Array] of nodes, sorted best first. An empty key writes nothing.
 		</member>
 		<member name="top_n_to_find" type="int" setter="set_top_n_to_find" getter="get_top_n_to_find" default="1">
-			The number of results the search should return. Overrides the setting on the search space.
+			The number of results the search should return. Overrides the setting on the search space. Must be at least [code]1[/code]; smaller values are rejected with an error.
 		</member>
 	</members>
 </class>

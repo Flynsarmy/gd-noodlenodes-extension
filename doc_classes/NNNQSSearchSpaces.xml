@@ -52,7 +52,7 @@
 			Read-only. The time it takes to fetch all the nodes that will be filtered and scored in the query.
 		</member>
 		<member name="top_n_to_find" type="int" setter="set_top_n_to_find" getter="get_top_n_to_find" default="1">
-			The number of nodes to return (at maximum)
+			The maximum number of nodes to return. Must be at least [code]1[/code]; smaller values are rejected with an error.
 		</member>
 		<member name="total_query_call_count" type="int" getter="get_total_query_call_count" default="0">
 			Read-only. The number of times the [method execute_query] method was called to finish the query.

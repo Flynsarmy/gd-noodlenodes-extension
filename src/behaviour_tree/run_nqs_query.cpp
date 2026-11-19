@@ -78,6 +78,7 @@ int NNBTRunNQSQuery::get_time_budget_usec() const {
 }
 
 void NNBTRunNQSQuery::set_top_n_to_find(int top_n_to_find) {
+	ERR_FAIL_COND_MSG(top_n_to_find < 1, "NNBTRunNQSQuery::set_top_n_to_find(): top_n_to_find must be at least 1.");
 	_top_n_to_find = top_n_to_find;
 }
 

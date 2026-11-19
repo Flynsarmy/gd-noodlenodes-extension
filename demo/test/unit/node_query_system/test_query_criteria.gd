@@ -106,3 +106,13 @@ func test_distance_criterion_rejects_invalid_min_distance() -> void:
 	assert_eq(criterion.min_distance, 0.0, "A negative min distance must be rejected.")
 	criterion.min_distance = 10.0
 	assert_eq(criterion.min_distance, 10.0, "A rejected value must not block later valid assignments.")
+
+
+func test_top_n_to_find_below_one_is_rejected() -> void:
+	var query: NNNodeChildrenSearchSpace = autofree(NNNodeChildrenSearchSpace.new())
+	query.top_n_to_find = 3
+
+	query.top_n_to_find = 0
+
+	assert_engine_error("NNNQSSearchSpaces::set_top_n_to_find(): top_n_to_find must be at least 1.")
+	assert_eq(query.top_n_to_find, 3)

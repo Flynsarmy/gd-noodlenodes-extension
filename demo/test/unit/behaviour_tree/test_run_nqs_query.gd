@@ -545,3 +545,13 @@ func test_root_interrupt_stops_a_running_query_and_is_idempotent() -> void:
 	assert_true(_search_space.is_query_still_running, "a fresh query is posted after the interrupt")
 
 	Engine.get_singleton("NodeQuerySystem").stop_query(_search_space)
+
+
+func test_top_n_to_find_below_one_is_rejected() -> void:
+	var leaf: NNBTRunNQSQuery = autofree(NNBTRunNQSQuery.new())
+	leaf.top_n_to_find = 3
+
+	leaf.top_n_to_find = 0
+
+	assert_engine_error("NNBTRunNQSQuery::set_top_n_to_find(): top_n_to_find must be at least 1.")
+	assert_eq(leaf.top_n_to_find, 3)
