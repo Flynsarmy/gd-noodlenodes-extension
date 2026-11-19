@@ -75,7 +75,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		KEY_P:
 			_toggle_pause()
 		KEY_ESCAPE:
-			get_tree().quit()
+			DemoQuit.quit()
 		_:
 			return
 

@@ -45,7 +45,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		KEY_F1:
 			_toggle_overlay()
 		KEY_ESCAPE:
-			get_tree().quit()
+			DemoQuit.quit()
 		_:
 			return
 
