@@ -112,18 +112,20 @@ private:
 		size_t plan_base = 0;
 	};
 
-	// Trail lengths a choice point rewinds to before each of its alternatives.
+	// Stack sizes, log lengths and trail length a choice point rewinds to before each alternative.
 	struct Mark {
 		size_t state_trail = 0;
 		size_t pending_size = 0;
 		size_t pending_trail = 0;
+		size_t frame_size = 0;
 		size_t frame_trail = 0;
+		size_t active_size = 0;
 		size_t active_trail = 0;
 		size_t plan_size = 0;
 		double plan_cost = 0.0;
 	};
 
-	// Undo records, replayed newest first: a push is undone by a pop and vice versa.
+	// Undo records for the pops that a live mark can still need, replayed newest first.
 	struct PendingUndo {
 		size_t depth = 0;
 		WorkItem item;
@@ -131,17 +133,17 @@ private:
 
 	struct FrameUndo {
 		enum Kind {
-			PUSHED,
 			POPPED,
 			CHILD_INDEX,
 		};
-		Kind kind = PUSHED;
+		Kind kind = POPPED;
+		size_t depth = 0;
 		int child_index = -1;
 		NNHTNProvenanceFrame frame;
 	};
 
 	struct ActiveUndo {
-		bool pushed = false;
+		size_t depth = 0;
 		NNHTNCompoundTask *compound = nullptr;
 	};
 
@@ -207,6 +209,13 @@ private:
 	std::vector<PendingUndo> _pending_undo;
 	std::vector<FrameUndo> _frame_undo;
 	std::vector<ActiveUndo> _active_undo;
+	// Lowest stack size since the newest mark: pops at or above it are still in place at the mark.
+	size_t _pending_low = 0;
+	size_t _frames_low = 0;
+	size_t _active_low = 0;
+	// Identifies the newest mark, so a frame logs its child index once per mark.
+	uint64_t _epoch = 0;
+	std::vector<uint64_t> _frame_child_epochs;
 	// Never reset, so a repair's new frames cannot collide with those of the steps it keeps.
 	uint64_t _next_frame_id = 1;
 	uint64_t _next_group_id = 1;
@@ -233,8 +242,10 @@ private:
 	bool _backtrack();
 	// Starts the choice point's next alternative. Returns false once none is left.
 	bool _resume(ChoicePoint &r_choice_point);
-	Mark _mark() const;
+	// Records the mark and makes it the one whose alternatives decide what is logged.
+	Mark _mark();
 	void _restore(const Mark &p_mark);
+	void _begin_epoch();
 	// Popped entries are kept in the undo logs so a choice point can put them back.
 	void _pop_active();
 	void _pop_frames(size_t p_depth);

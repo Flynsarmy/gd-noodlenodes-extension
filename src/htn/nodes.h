@@ -6,6 +6,7 @@
 #include <godot_cpp/classes/ref.hpp>
 #include <godot_cpp/core/binder_common.hpp>
 #include <godot_cpp/core/gdvirtual.gen.inc>
+#include <godot_cpp/templates/hash_map.hpp>
 #include <godot_cpp/templates/hash_set.hpp>
 #include <godot_cpp/variant/dictionary.hpp>
 #include <godot_cpp/variant/packed_string_array.hpp>
@@ -40,17 +41,26 @@ public:
 		String key;
 		Variant previous;
 		bool existed = false;
+		// Trail index of this key's previous change, so undoing this one re-points the key.
+		size_t previous_change = NO_CHANGE;
 	};
 	size_t get_trail_mark() const;
 	void restore_trail(size_t p_mark);
+	// Trail length at the newest choice point; a key already written since it needs no new entry.
+	void set_trail_floor(size_t p_floor);
 
 private:
+	static constexpr size_t NO_CHANGE = (size_t)-1;
+	static constexpr size_t NO_TRAIL_FLOOR = (size_t)-1;
+
 	Dictionary _values;
 	mutable Dictionary _read_only_values;
 	mutable Dictionary _hook_state;
 	mutable bool _hook_state_valid = false;
 	mutable uint64_t _hook_state_reads = 0;
 	std::vector<Change> _trail;
+	HashMap<String, size_t> _latest_change;
+	size_t _trail_floor = NO_TRAIL_FLOOR;
 };
 
 class NNHTNNodes : public NoodleNodes {

@@ -123,6 +123,10 @@ void NNHTNSearch::_begin(const Dictionary &p_state, const NNHTNSearchSettings &p
 	_pending_undo.clear();
 	_frame_undo.clear();
 	_active_undo.clear();
+	_pending_low = 0;
+	_frames_low = 0;
+	_active_low = 0;
+	_frame_child_epochs.clear();
 	_suffix_rejection = String();
 	_has_best = false;
 	_best_plan.clear();
@@ -152,6 +156,10 @@ void NNHTNSearch::_end() {
 	_pending_undo.clear();
 	_frame_undo.clear();
 	_active_undo.clear();
+	_pending_low = 0;
+	_frames_low = 0;
+	_active_low = 0;
+	_frame_child_epochs.clear();
 	_recorded_nodes.clear();
 }
 
@@ -176,23 +184,30 @@ bool NNHTNSearch::_run(std::vector<WorkItem> &&p_pending, const Terminal &p_term
 			continue;
 		}
 
-		_pending_undo.push_back(PendingUndo{ _pending.size() - 1, std::move(_pending.back()) });
+		const size_t depth = _pending.size() - 1;
+		WorkItem popped = std::move(_pending.back());
 		_pending.pop_back();
-		// Only this loop appends to the undo log, so the reference stays valid while the item runs.
-		const WorkItem &item = _pending_undo.back().item;
+		const WorkItem *item = &popped;
+		// A position that existed at the newest mark must be put back on backtracking.
+		if (depth < _pending_low) {
+			_pending_low = depth;
+			_pending_undo.push_back(PendingUndo{ depth, std::move(popped) });
+			// Only this loop appends to the undo log, so the pointer stays valid while the item runs.
+			item = &_pending_undo.back().item;
+		}
 		bool ok = true;
-		switch (item.kind) {
+		switch (item->kind) {
 			case WorkItem::NODE:
-				ok = _process_node(item);
+				ok = _process_node(*item);
 				break;
 			case WorkItem::END_METHOD:
-				_finish_method(item);
+				_finish_method(*item);
 				break;
 			case WorkItem::ORDER:
-				ok = _process_order(item);
+				ok = _process_order(*item);
 				break;
 			case WorkItem::END_SERIALIZED_GROUP:
-				_finish_serialized_group(item);
+				_finish_serialized_group(*item);
 				break;
 		}
 		if (!ok && !_backtrack()) {
@@ -240,16 +255,27 @@ bool NNHTNSearch::_resume(ChoicePoint &r_choice_point) {
 	return true;
 }
 
-NNHTNSearch::Mark NNHTNSearch::_mark() const {
+NNHTNSearch::Mark NNHTNSearch::_mark() {
 	Mark mark;
 	mark.state_trail = _state.get_trail_mark();
 	mark.pending_size = _pending.size();
 	mark.pending_trail = _pending_undo.size();
+	mark.frame_size = _frames.size();
 	mark.frame_trail = _frame_undo.size();
+	mark.active_size = _active.size();
 	mark.active_trail = _active_undo.size();
 	mark.plan_size = _plan.size();
 	mark.plan_cost = _plan_cost;
+	_begin_epoch();
 	return mark;
+}
+
+void NNHTNSearch::_begin_epoch() {
+	_pending_low = _pending.size();
+	_frames_low = _frames.size();
+	_active_low = _active.size();
+	_state.set_trail_floor(_state.get_trail_mark());
+	_epoch++;
 }
 
 void NNHTNSearch::_restore(const Mark &p_mark) {
@@ -257,8 +283,8 @@ void NNHTNSearch::_restore(const Mark &p_mark) {
 	_plan.resize(p_mark.plan_size);
 	_plan_cost = p_mark.plan_cost;
 
-	// Every pop of a position is logged, so replaying the newest first leaves the oldest
-	// item in that position and the stack comes back in its original order.
+	// Pushes are not logged, so the stack is truncated and only logged pops are re-seated.
+	// Replaying newest first leaves the oldest entry in each position, which is the one the mark saw.
 	_pending.resize(p_mark.pending_size);
 	while (_pending_undo.size() > p_mark.pending_trail) {
 		const PendingUndo &undo = _pending_undo.back();
@@ -268,43 +294,47 @@ void NNHTNSearch::_restore(const Mark &p_mark) {
 		_pending_undo.pop_back();
 	}
 
+	_frames.resize(p_mark.frame_size);
 	while (_frame_undo.size() > p_mark.frame_trail) {
 		const FrameUndo &undo = _frame_undo.back();
-		switch (undo.kind) {
-			case FrameUndo::PUSHED:
-				_frames.pop_back();
-				break;
-			case FrameUndo::POPPED:
-				_frames.push_back(undo.frame);
-				break;
-			case FrameUndo::CHILD_INDEX:
-				_frames.back().child_index = undo.child_index;
-				break;
+		if (undo.depth < p_mark.frame_size) {
+			if (undo.kind == FrameUndo::POPPED) {
+				_frames[undo.depth] = undo.frame;
+			} else {
+				_frames[undo.depth].child_index = undo.child_index;
+			}
 		}
 		_frame_undo.pop_back();
 	}
+
+	_active.resize(p_mark.active_size);
 	while (_active_undo.size() > p_mark.active_trail) {
 		const ActiveUndo &undo = _active_undo.back();
-		if (undo.pushed) {
-			_active.pop_back();
-		} else {
-			_active.push_back(undo.compound);
+		if (undo.depth < p_mark.active_size) {
+			_active[undo.depth] = undo.compound;
 		}
 		_active_undo.pop_back();
 	}
+	_begin_epoch();
 }
 
 void NNHTNSearch::_pop_active() {
-	_active_undo.push_back(ActiveUndo{ false, _active.back() });
+	const size_t depth = _active.size() - 1;
+	NNHTNCompoundTask *compound = _active.back();
 	_active.pop_back();
+	if (depth < _active_low) {
+		_active_low = depth;
+		_active_undo.push_back(ActiveUndo{ depth, compound });
+	}
 }
 
 void NNHTNSearch::_pop_frames(size_t p_depth) {
 	while (_frames.size() > p_depth) {
-		FrameUndo undo;
-		undo.kind = FrameUndo::POPPED;
-		undo.frame = _frames.back();
-		_frame_undo.push_back(std::move(undo));
+		const size_t depth = _frames.size() - 1;
+		if (depth < _frames_low) {
+			_frames_low = depth;
+			_frame_undo.push_back(FrameUndo{ FrameUndo::POPPED, depth, -1, _frames.back() });
+		}
 		_frames.pop_back();
 	}
 }
@@ -314,7 +344,16 @@ bool NNHTNSearch::_process_node(const WorkItem &p_item) {
 	String path = p_item.append_name ? p_item.path + String("/") + String(node->get_name()) : p_item.path;
 	Dictionary args = p_item.args;
 	if (!_frames.empty()) {
-		_frame_undo.push_back(FrameUndo{ FrameUndo::CHILD_INDEX, _frames.back().child_index });
+		const size_t depth = _frames.size() - 1;
+		// A frame popped since the mark is re-seated with its own child index, so only the
+		// still-in-place frames need their index restored, and only once per mark.
+		if (depth < _frames_low && (depth >= _frame_child_epochs.size() || _frame_child_epochs[depth] != _epoch)) {
+			if (depth >= _frame_child_epochs.size()) {
+				_frame_child_epochs.resize(depth + 1, 0);
+			}
+			_frame_child_epochs[depth] = _epoch;
+			_frame_undo.push_back(FrameUndo{ FrameUndo::CHILD_INDEX, depth, _frames.back().child_index });
+		}
 		_frames.back().child_index = p_item.child_index;
 	}
 	_record_dependencies(node);
@@ -387,7 +426,6 @@ bool NNHTNSearch::_process_compound(NNHTNCompoundTask *p_compound, const Diction
 	}
 
 	_active.push_back(p_compound);
-	_active_undo.push_back(ActiveUndo{ true, p_compound });
 	MethodChoice choice;
 	choice.compound = p_compound;
 	choice.args = p_args;
@@ -604,7 +642,6 @@ bool NNHTNSearch::_start_alternative(const MethodChoice &p_choice, const Alterna
 	frame.method_path = method_path;
 	frame.priority = p_alternative.priority;
 	_frames.push_back(frame);
-	_frame_undo.push_back(FrameUndo{ FrameUndo::PUSHED });
 
 	// The method's scope ends after its children, so a later sibling may reuse the compound without counting as recursion.
 	WorkItem end;

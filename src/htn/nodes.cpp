@@ -56,13 +56,20 @@ uint64_t NNHTNStateView::get_hook_state_reads() const {
 }
 
 void NNHTNStateView::set_value(const String &p_key, const Variant &p_value) {
-	Change change;
-	change.key = p_key;
-	change.existed = _values.has(p_key);
-	if (change.existed) {
-		change.previous = _values.get(p_key, Variant());
+	if (_trail_floor != NO_TRAIL_FLOOR) {
+		size_t *latest = _latest_change.getptr(p_key);
+		if (latest == nullptr || *latest < _trail_floor) {
+			Change change;
+			change.key = p_key;
+			change.existed = _values.has(p_key);
+			if (change.existed) {
+				change.previous = _values.get(p_key, Variant());
+			}
+			change.previous_change = latest != nullptr ? *latest : NO_CHANGE;
+			_trail.push_back(std::move(change));
+			_latest_change[p_key] = _trail.size() - 1;
+		}
 	}
-	_trail.push_back(std::move(change));
 	// A null value means the key is absent, as on NNBlackboard.
 	if (p_value.get_type() == Variant::NIL) {
 		_values.erase(p_key);
@@ -78,10 +85,16 @@ void NNHTNStateView::reset(const Dictionary &p_values) {
 	_read_only_values.clear();
 	_hook_state_valid = false;
 	_trail.clear();
+	_latest_change.clear();
+	_trail_floor = NO_TRAIL_FLOOR;
 }
 
 size_t NNHTNStateView::get_trail_mark() const {
 	return _trail.size();
+}
+
+void NNHTNStateView::set_trail_floor(size_t p_floor) {
+	_trail_floor = p_floor;
 }
 
 void NNHTNStateView::restore_trail(size_t p_mark) {
@@ -96,6 +109,11 @@ void NNHTNStateView::restore_trail(size_t p_mark) {
 			_values.erase(change.key);
 		}
 		_read_only_values.erase(change.key);
+		if (change.previous_change == NO_CHANGE) {
+			_latest_change.erase(change.key);
+		} else {
+			_latest_change[change.key] = change.previous_change;
+		}
 		_trail.pop_back();
 	}
 	_hook_state_valid = false;
