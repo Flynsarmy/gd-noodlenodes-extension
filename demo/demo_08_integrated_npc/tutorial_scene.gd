@@ -3,6 +3,7 @@ extends Node2D
 const OVERLAY_NAME := "NoodleNodesDebuggerOverlay"
 const AGENT_VIEW := 1
 const FIRST_ROOT_ITEM := 1
+const STATUS_INTERVAL := 0.1
 
 @onready var agent: NNAgent = $Npc/Movement/NNAgent
 @onready var movement: NNSTRoot = $Npc/Movement
@@ -10,6 +11,15 @@ const FIRST_ROOT_ITEM := 1
 @onready var status_label: Label = $HudLayer/StatusBar/Label
 @onready var title_label: Label = $Backdrop/Title
 @onready var subtitle_label: Label = $Backdrop/Subtitle
+@onready var _states: Array[NNSTNode] = [
+	$Npc/Movement/Idle,
+	$Npc/Movement/Walk,
+	$Npc/Movement/Run,
+]
+@onready var _debugger: Object = _find_debugger()
+
+var _status_cooldown := 0.0
+var _status_labels_visible := true
 
 
 func _ready() -> void:
@@ -17,8 +27,13 @@ func _ready() -> void:
 	_open_overlay()
 
 
-func _physics_process(_delta: float) -> void:
+func _physics_process(delta: float) -> void:
 	NodeQuerySystem.run_queries()
+
+	_status_cooldown -= delta
+	if _status_cooldown > 0.0:
+		return
+	_status_cooldown = STATUS_INTERVAL
 	_update_status()
 
 
@@ -41,6 +56,13 @@ func _exit_tree() -> void:
 	NodeQuerySystem.clear_queries()
 
 
+func _find_debugger() -> Object:
+	# The overlay singleton only exists in debug builds.
+	if not Engine.has_singleton("AIDebuggerOverlay"):
+		return null
+	return Engine.get_singleton("AIDebuggerOverlay")
+
+
 func _overlay_node() -> Node:
 	return debugger_layer.get_node_or_null(OVERLAY_NAME)
 
@@ -51,16 +73,12 @@ func _overlay_is_open() -> bool:
 
 
 func _open_overlay() -> void:
-	if not Engine.has_singleton("AIDebuggerOverlay"):
-		return
-
-	var debugger := Engine.get_singleton("AIDebuggerOverlay")
-	if debugger == null:
+	if _debugger == null:
 		return
 	if not _overlay_is_open():
-		debugger.call("add_as_child_of", debugger_layer)
-	debugger.call("on_type_item_selected", AGENT_VIEW)
-	debugger.call("on_root_item_selected", FIRST_ROOT_ITEM)
+		_debugger.call("add_as_child_of", debugger_layer)
+	_debugger.call("on_type_item_selected", AGENT_VIEW)
+	_debugger.call("on_root_item_selected", FIRST_ROOT_ITEM)
 
 
 func _toggle_overlay() -> void:
@@ -72,22 +90,22 @@ func _toggle_overlay() -> void:
 
 
 func _update_status() -> void:
-	if status_label == null:
-		return
-
 	var overlay_open := _overlay_is_open()
-	if title_label != null:
-		title_label.visible = not overlay_open
-	if subtitle_label != null:
-		subtitle_label.visible = not overlay_open
+	var show_labels := not overlay_open
+	if show_labels != _status_labels_visible:
+		_status_labels_visible = show_labels
+		title_label.visible = show_labels
+		subtitle_label.visible = show_labels
 
-	status_label.text = "Goal: %s  |  Movement: %s  |  Goal tree: %s  |  Alert: %.2f  |  F1 debugger (%s)  |  Esc quit" % [
+	var text := "Goal: %s  |  Movement: %s  |  Goal tree: %s  |  Alert: %.2f  |  F1 debugger (%s)  |  Esc quit" % [
 		_behaviour_name(),
 		_movement_state(),
 		_goal_tree_status(),
 		movement.get_blackboard("threat_alert", 0.0),
 		"open" if overlay_open else "closed",
 	]
+	if status_label.text != text:
+		status_label.text = text
 
 
 func _behaviour_name() -> String:
@@ -97,7 +115,7 @@ func _behaviour_name() -> String:
 
 
 func _movement_state() -> String:
-	for state in [$Npc/Movement/Idle, $Npc/Movement/Walk, $Npc/Movement/Run]:
+	for state in _states:
 		if state.get_is_active():
 			return state.name
 	return "-"
