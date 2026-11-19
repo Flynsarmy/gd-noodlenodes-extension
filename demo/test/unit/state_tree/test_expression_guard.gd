@@ -116,6 +116,17 @@ func test_null_transition_preserves_expression_errors() -> void:
 	assert_false(_guard.is_satisfied(null, _child))
 	assert_engine_error("(guard in ) Expression parse error")
 
-	# A key that is missing from the blackboard evaluates to null.
+func test_missing_blackboard_key_reads_as_null() -> void:
+	var _root: NNSTRoot = add_child_autofree(NNSTRoot.new())
+	var _child: NNSTNode = NNSTNode.new()
+	var _guard: NNSTExpressionGuard = NNSTExpressionGuard.new()
+	var board := NNBlackboard.new()
+	_root.add_child(_child)
+	_root.blackboard = board
+
+	_guard.expression = "missing_key == null"
+	assert_true(_guard.is_satisfied(null, _child))
+
 	_guard.expression = "missing_key"
 	assert_false(_guard.is_satisfied(null, _child))
+	assert_engine_error_count(0)

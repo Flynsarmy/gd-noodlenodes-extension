@@ -51,7 +51,7 @@
 	</methods>
 	<members>
 		<member name="delay_in_seconds" type="String" setter="set_delay_in_seconds" getter="get_delay_in_seconds" default="&quot;0.0&quot;">
-			An expression for the delay in seconds before this transition is taken. A plain number is used directly. The expression can use the keys of the root's [member NNSTRoot.blackboard] as input names. A variable the expression reads that is missing from the blackboard evaluates to [code]null[/code]. Invalid or negative results fall back to [code]0.0[/code], which takes the transition immediately. While a delay is pending, [signal NNSTTickedNodes.transition_pending] is emitted on the parent state every tick, and the pending transition is cancelled when the state exits.
+			An expression for the delay in seconds before this transition is taken. A plain number is used directly. The expression can use the keys of the root's [member NNSTRoot.blackboard] as input names. Identifiers the expression reads are looked up in the blackboard; a key that is missing from the blackboard is passed as [code]null[/code] and is not an error. A delay on a missing key therefore falls back to [code]0.0[/code]. Invalid or negative results also fall back to [code]0.0[/code], which takes the transition immediately. While a delay is pending, [signal NNSTTickedNodes.transition_pending] is emitted on the parent state every tick, and the pending transition is cancelled when the state exits.
 		</member>
 		<member name="event_name" type="String" setter="set_event_name" getter="get_event_name" default="&quot;&quot;">
 			Case sensitive event name that will trigger this [NNSTTransition]. An empty name makes the transition automatic.
