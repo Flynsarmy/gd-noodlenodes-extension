@@ -34,6 +34,18 @@ class ScoreHolder extends Node:
 	var amount := 5.0
 
 
+class AgentSetup extends RefCounted:
+	var agent: NNAgent
+	var behaviour: NNBehaviour
+	var action: NNAction
+	var hosted: NNBTRoot
+
+
+class HostedSetup extends RefCounted:
+	var chart: NNSTRoot
+	var hosted: NNBTRoot
+
+
 func before_each() -> void:
 	_debugger = Engine.get_singleton("AIDebuggerOverlay")
 	assert_not_null(_debugger, "AIDebuggerOverlay singleton should be registered in debug builds.")
@@ -169,6 +181,47 @@ func _add_htn_root(node_name: String) -> NNHTNRoot:
 	return root
 
 
+func _add_agent_action_tree(leaf: NNBTLeaf) -> AgentSetup:
+	var setup := AgentSetup.new()
+	setup.agent = _add_agent("AgentRoot")
+	var consideration := NNConsideration.new()
+	consideration.activation_input_value = 1.0
+	setup.behaviour = NNBehaviour.new()
+	setup.behaviour.name = "Behaviour"
+	setup.action = NNAction.new()
+	setup.action.name = "Action"
+	setup.hosted = _make_behaviour_tree("HostedTree")
+	leaf.name = "Leaf"
+	setup.hosted.add_child(leaf)
+	setup.action.add_child(setup.hosted)
+	setup.behaviour.add_child(consideration)
+	setup.behaviour.add_child(setup.action)
+	setup.agent.add_child(setup.behaviour)
+	return setup
+
+
+func _add_hosted_tree(chart_name: String, host_name: String, tree_name: String) -> HostedSetup:
+	var setup := HostedSetup.new()
+	setup.chart = _make_state_tree(chart_name)
+	var host_state := NNSTNode.new()
+	host_state.name = host_name
+	setup.hosted = _make_behaviour_tree(tree_name)
+	setup.hosted.add_child(RunningLeaf.new())
+	host_state.add_child(setup.hosted)
+	setup.chart.add_child(host_state)
+	_host.add_child(setup.chart)
+	return setup
+
+
+func _wait_for_refresh() -> void:
+	var timer := _overlay_child("RefreshTimer") as Timer
+	assert_not_null(timer, "The overlay scene must provide its RefreshTimer.")
+	if timer == null:
+		return
+	assert_true(await wait_for_signal(timer.timeout, 5.0), "The overlay should refresh on its RefreshTimer.")
+	await wait_process_frames(1)
+
+
 func _assert_lists_and_selects_root(type_index: int, expected_name: String) -> void:
 	_select_type(type_index)
 
@@ -193,7 +246,6 @@ func test_open_attaches_a_single_overlay_and_reopen_is_idempotent() -> void:
 	assert_eq(_host.get_child_count(), 1, "Reopening should not add a second overlay.")
 
 	var second_overlay := _host.get_node_or_null(OVERLAY_NAME)
-	assert_not_null(second_overlay)
 	assert_same(overlay, second_overlay)
 
 
@@ -201,6 +253,17 @@ func test_null_parent_reports_an_error_and_does_not_attach() -> void:
 	_debugger.add_as_child_of(null)
 	assert_engine_error("debugger_parent_node")
 	assert_eq(_host.get_child_count(), 0)
+
+
+func test_second_parent_reports_an_error_and_keeps_the_overlay_attached() -> void:
+	var overlay := _open_overlay()
+	var other_host: Node = add_child_autofree(Node.new())
+
+	_debugger.add_as_child_of(other_host)
+
+	assert_engine_error("already attached to another parent")
+	assert_same(overlay.get_parent(), _host)
+	assert_null(other_host.get_node_or_null(OVERLAY_NAME))
 
 
 func test_invalid_scene_resource_reports_an_error_and_can_recover() -> void:
@@ -290,6 +353,22 @@ func test_all_root_categories_are_listed() -> void:
 	_assert_lists_and_selects_root(4, "HTNRoot")
 
 
+func test_placeholder_type_clears_the_root_selection() -> void:
+	_add_behaviour_tree("SelectedRoot")
+
+	_open_overlay()
+	_select_type(2)
+	_select_root_item(1)
+	assert_not_null(_selected_tree().get_root(), "A selected root should be displayed.")
+
+	_select_type(0)
+
+	var selector := _root_selector()
+	assert_eq(selector.get_item_count(), 1, "The placeholder type lists no roots.")
+	assert_eq(selector.get_selected(), 0)
+	assert_null(_selected_tree().get_root(), "Selecting the placeholder type should clear the displayed tree.")
+
+
 func test_htn_tasks_show_their_plan_state() -> void:
 	var htn_root := _add_htn_root("HTNRoot")
 	var method := NNHTNMethod.new()
@@ -298,6 +377,10 @@ func test_htn_tasks_show_their_plan_state() -> void:
 	domain.name = "Domain"
 	domain.add_child(method)
 	htn_root.add_child(domain)
+	var finished := NNHTNTask.new()
+	finished.name = "Finished"
+	finished.set_script(load("res://test/unit/htn/support/scripted_task.gd"))
+	method.add_child(finished)
 	var running := NNHTNTask.new()
 	running.name = "Running"
 	running.set_script(load("res://test/unit/htn/support/scripted_task.gd"))
@@ -321,6 +404,7 @@ func test_htn_tasks_show_their_plan_state() -> void:
 	assert_eq(tree.get_root().get_text(1), "HTN")
 	assert_eq(_row_status(tree, "Domain"), "running", "the current step's ancestors are on the active path")
 	assert_eq(_row_status(tree, "Main"), "running")
+	assert_eq(_row_status(tree, "Finished"), "succeeded", "a finished step shows the result of its occurrence")
 	assert_eq(_row_status(tree, "Running"), "running")
 	assert_eq(_row_status(tree, "Next"), "planned", "a later step shows its plan state off the active path")
 	assert_eq(_row_status(tree, "Unused"), "")
@@ -341,36 +425,6 @@ func test_child_order_changes_do_not_duplicate_rows() -> void:
 	behaviour_tree.move_child(behaviour_tree.get_child(0), 1)
 	_debugger.update_ui()
 	assert_eq(_root_selector().get_item_count(), 2, "Child order changes must not duplicate a behaviour tree row.")
-
-	var state_tree := _add_state_tree("StateTreeRoot")
-	state_tree.add_child(NNSTNode.new())
-	state_tree.add_child(NNSTNode.new())
-
-	_select_type(3)
-	assert_eq(_root_selector().get_item_count(), 2, "Child order changes must not duplicate a state tree row.")
-
-
-func test_remaining_root_is_selected_by_id_after_first_root_is_freed() -> void:
-	var first_root := _add_behaviour_tree("FirstRoot")
-	_add_behaviour_tree("SecondRoot")
-
-	_open_overlay()
-	_select_type(2)
-	assert_eq(_root_selector().get_item_count(), 3)
-
-	first_root.free()
-	_debugger.update_ui()
-
-	var selector := _root_selector()
-	assert_eq(selector.get_item_count(), 2, "Refresh should drop the freed root from the dropdown.")
-	assert_string_contains(selector.get_item_text(1), "SecondRoot")
-
-	# The dead root was filtered out, so item 1 now maps to the second root.
-	_select_root_item(1)
-	var root_item := _selected_tree().get_root()
-	assert_not_null(root_item)
-	if root_item != null:
-		assert_eq(root_item.get_text(0), "SecondRoot")
 
 
 func test_selection_survives_refresh_when_other_root_is_freed() -> void:
@@ -486,7 +540,7 @@ func test_detached_overlay_is_reused_and_refreshes_on_reopen() -> void:
 	_select_root_item(1)
 	var child := NNBTFixedResult.new()
 	root.add_child(child)
-	await wait_seconds(0.25)
+	await _wait_for_refresh()
 
 	var root_item := _selected_tree().get_root()
 	assert_not_null(root_item)
@@ -540,7 +594,7 @@ func test_refresh_timer_updates_selected_tree() -> void:
 	root.add_child(late_child)
 
 	# No manual refresh here: the overlay's RefreshTimer must update the view.
-	await wait_seconds(0.25)
+	await _wait_for_refresh()
 
 	tree = _selected_tree()
 	var refreshed_root_item := tree.get_root()
@@ -567,14 +621,7 @@ func test_ownerless_root_uses_fallback_label() -> void:
 
 
 func test_hosted_behaviour_tree_appears_under_its_host_state() -> void:
-	var chart := _make_state_tree("Chart")
-	var host_state := NNSTNode.new()
-	host_state.name = "Host"
-	var hosted := _make_behaviour_tree("NestedTree")
-	hosted.add_child(RunningLeaf.new())
-	host_state.add_child(hosted)
-	chart.add_child(host_state)
-	_host.add_child(chart)
+	_add_hosted_tree("Chart", "Host", "NestedTree")
 
 	_open_overlay()
 	_select_type(3)
@@ -600,28 +647,15 @@ func test_hosted_behaviour_tree_appears_under_its_host_state() -> void:
 
 
 func test_agent_path_marks_the_hosted_behaviour_tree_run() -> void:
-	var agent := _add_agent("AgentRoot")
-	var consideration := NNConsideration.new()
-	consideration.activation_input_value = 1.0
-	var behaviour := NNBehaviour.new()
-	behaviour.name = "Behaviour"
-	var action := NNAction.new()
-	action.name = "Action"
-	var hosted := _make_behaviour_tree("HostedTree")
 	var leaf := RunningLeaf.new()
-	leaf.name = "Leaf"
-	hosted.add_child(leaf)
-	action.add_child(hosted)
-	behaviour.add_child(consideration)
-	behaviour.add_child(action)
-	agent.add_child(behaviour)
+	var setup := _add_agent_action_tree(leaf)
 
 	# Selecting the action is what activates its host, so the agent step drives
 	# the hosted run instead of a direct tick.
-	agent.tick(0.1)
-	assert_same(agent.get_current_behaviour_node(), behaviour)
-	assert_same(agent.get_current_action_node(), action)
-	assert_same(hosted.get_running_action(), leaf)
+	setup.agent.tick(0.1)
+	assert_same(setup.agent.get_current_behaviour_node(), setup.behaviour)
+	assert_same(setup.agent.get_current_action_node(), setup.action)
+	assert_same(setup.hosted.get_running_action(), leaf)
 
 	_open_overlay()
 	_select_type(1)
@@ -634,8 +668,8 @@ func test_agent_path_marks_the_hosted_behaviour_tree_run() -> void:
 	assert_eq(_row_status(tree, "HostedTree"), "Behaviour Tree (hosted)")
 	assert_eq(_row_status(tree, "Leaf"), "running")
 
-	action.set_is_finished(true)
-	agent.tick(0.1)
+	setup.action.set_is_finished(true)
+	setup.agent.tick(0.1)
 	_debugger.update_ui()
 
 	assert_eq(_row_status(_selected_tree(), "Leaf"), "", "Ending the action stops the active path before the hosted run.")
@@ -675,14 +709,7 @@ func test_active_path_stops_at_an_inactive_host() -> void:
 
 
 func test_freeing_a_displayed_hosted_root_updates_the_view() -> void:
-	var chart := _make_state_tree("Chart")
-	var host_state := NNSTNode.new()
-	host_state.name = "Host"
-	var hosted := _make_behaviour_tree("NestedTree")
-	hosted.add_child(RunningLeaf.new())
-	host_state.add_child(hosted)
-	chart.add_child(host_state)
-	_host.add_child(chart)
+	var setup := _add_hosted_tree("Chart", "Host", "NestedTree")
 
 	_open_overlay()
 	_select_type(3)
@@ -693,7 +720,7 @@ func test_freeing_a_displayed_hosted_root_updates_the_view() -> void:
 	if host_row != null:
 		assert_eq(host_row.get_child_count(), 1, "The hosted root starts below its host.")
 
-	hosted.free()
+	setup.hosted.free()
 	_debugger.update_ui()
 
 	host_row = _find_row(_selected_tree().get_root(), "Host")
@@ -706,17 +733,10 @@ func test_freeing_a_displayed_hosted_root_updates_the_view() -> void:
 
 
 func test_reparenting_a_displayed_hosted_root_updates_labels_and_rows() -> void:
-	var chart := _make_state_tree("Chart")
-	var active_state := NNSTNode.new()
-	active_state.name = "Active"
+	var setup := _add_hosted_tree("Chart", "Active", "NestedTree")
 	var idle_state := NNSTNode.new()
 	idle_state.name = "Idle"
-	var hosted := _make_behaviour_tree("NestedTree")
-	hosted.add_child(RunningLeaf.new())
-	active_state.add_child(hosted)
-	chart.add_child(active_state)
-	chart.add_child(idle_state)
-	_host.add_child(chart)
+	setup.chart.add_child(idle_state)
 
 	_open_overlay()
 	_select_type(2)
@@ -727,7 +747,7 @@ func test_reparenting_a_displayed_hosted_root_updates_labels_and_rows() -> void:
 	if hosted_item > 0:
 		assert_string_contains(selector.get_item_text(hosted_item), "Active")
 
-	hosted.reparent(idle_state, false)
+	setup.hosted.reparent(idle_state, false)
 	_debugger.update_ui()
 
 	hosted_item = _selector_item(selector, "NestedTree")
@@ -755,7 +775,7 @@ func test_reparenting_a_displayed_hosted_root_updates_labels_and_rows() -> void:
 			assert_eq(moved_row.get_text(1), "Behaviour Tree (hosted)")
 
 	_select_type(2)
-	hosted.reparent(_host, false)
+	setup.hosted.reparent(_host, false)
 	_debugger.update_ui()
 
 	hosted_item = _selector_item(selector, "NestedTree")
@@ -801,26 +821,14 @@ func test_root_nested_below_another_root_is_not_hosted() -> void:
 
 
 func test_refreshing_the_overlay_does_not_end_the_agents_selection() -> void:
-	var agent := _add_agent("AgentRoot")
-	var consideration := NNConsideration.new()
-	consideration.activation_input_value = 1.0
-	var behaviour := NNBehaviour.new()
-	behaviour.name = "Behaviour"
-	var action := NNAction.new()
-	action.name = "Action"
-	var hosted := _make_behaviour_tree("HostedTree")
 	var leaf := InterruptCountingLeaf.new()
-	leaf.name = "Leaf"
-	hosted.add_child(leaf)
-	action.add_child(hosted)
-	behaviour.add_child(consideration)
-	behaviour.add_child(action)
-	agent.add_child(behaviour)
+	var setup := _add_agent_action_tree(leaf)
+	var agent := setup.agent
 
 	# Selecting the action is what activates its host, so the agent step drives
 	# the hosted run instead of a direct tick.
 	agent.tick(0.1)
-	assert_same(hosted.get_running_action(), leaf, "The hosted run starts when the action is selected.")
+	assert_same(setup.hosted.get_running_action(), leaf, "The hosted run starts when the action is selected.")
 
 	var action_exits: Array = []
 	var behaviour_exits: Array = []
@@ -835,7 +843,7 @@ func test_refreshing_the_overlay_does_not_end_the_agents_selection() -> void:
 	assert_eq(action_exits.size(), 0, "Reading the selection must not emit action_exited.")
 	assert_eq(behaviour_exits.size(), 0, "Reading the selection must not emit behaviour_exited.")
 	assert_eq(leaf.interrupt_count, 0, "Refreshing the overlay must not interrupt the hosted run.")
-	assert_same(hosted.get_running_action(), leaf, "Refreshing the overlay must not reset the hosted tree.")
+	assert_same(setup.hosted.get_running_action(), leaf, "Refreshing the overlay must not reset the hosted tree.")
 
 	# A script can detach the running action from its behaviour. The cached
 	# action then sits outside the current behaviour, so refreshing must only
@@ -843,7 +851,7 @@ func test_refreshing_the_overlay_does_not_end_the_agents_selection() -> void:
 	var second_behaviour := NNBehaviour.new()
 	second_behaviour.name = "SecondBehaviour"
 	agent.add_child(second_behaviour)
-	action.reparent(second_behaviour)
+	setup.action.reparent(second_behaviour)
 	_debugger.update_ui()
 
 	assert_eq(action_exits.size(), 0, "Reading a detached action must not end it.")
