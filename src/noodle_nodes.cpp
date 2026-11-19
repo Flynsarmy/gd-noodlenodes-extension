@@ -9,6 +9,13 @@ using namespace godot;
 // Method binds.
 
 void NoodleNodes::_bind_methods() {
+	BIND_ENUM_CONSTANT(EVALUATION_SUM);
+	BIND_ENUM_CONSTANT(EVALUATION_MIN);
+	BIND_ENUM_CONSTANT(EVALUATION_MAX);
+	BIND_ENUM_CONSTANT(EVALUATION_MEAN);
+	BIND_ENUM_CONSTANT(EVALUATION_MULTIPLY);
+	BIND_ENUM_CONSTANT(EVALUATION_FIRST_NON_ZERO);
+
 	ClassDB::bind_method(D_METHOD("set_is_enabled", "is_enabled"), &NoodleNodes::set_is_enabled);
 	ClassDB::bind_method(D_METHOD("get_is_enabled"), &NoodleNodes::get_is_enabled);
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "is_enabled", PROPERTY_HINT_NONE), "set_is_enabled", "get_is_enabled");

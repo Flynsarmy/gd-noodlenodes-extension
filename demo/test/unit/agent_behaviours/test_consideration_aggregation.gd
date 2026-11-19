@@ -6,8 +6,8 @@ func _add_manual_agent(agent: NNAgent) -> NNAgent:
 	return add_child_autofree(agent)
 
 
-const MIN := 1
-const MEAN := 3
+const MIN := NoodleNodes.EVALUATION_MIN
+const MEAN := NoodleNodes.EVALUATION_MEAN
 
 
 func _make_consideration(value: float, enabled := true) -> NNConsideration:

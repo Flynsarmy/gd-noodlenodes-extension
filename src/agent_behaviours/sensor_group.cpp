@@ -5,6 +5,8 @@
 #include <godot_cpp/classes/time.hpp>
 #include <godot_cpp/core/class_db.hpp>
 
+#include "../score_aggregation.h"
+
 using namespace godot;
 
 // Method binds.
@@ -12,7 +14,7 @@ using namespace godot;
 void NNSensorGroup::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("set_evaluation_method", "evaluation_method"), &NNSensorGroup::set_evaluation_method);
 	ClassDB::bind_method(D_METHOD("get_evaluation_method"), &NNSensorGroup::get_evaluation_method);
-	ADD_PROPERTY(PropertyInfo(Variant::INT, "evaluation_method", PROPERTY_HINT_ENUM, "Sum:0,Min:1,Max:2,Mean:3,Multiply:4,FirstNonZero:5"), "set_evaluation_method", "get_evaluation_method");
+	ADD_PROPERTY(PropertyInfo(Variant::INT, "evaluation_method", PROPERTY_HINT_ENUM, "Sum,Min,Max,Mean,Multiply,First Non Zero", PROPERTY_USAGE_DEFAULT | PROPERTY_USAGE_CLASS_IS_ENUM, "NoodleNodes.EvaluationMethod"), "set_evaluation_method", "get_evaluation_method");
 
 	ClassDB::bind_method(D_METHOD("set_invert_sensor_value", "invert_sensor_value"), &NNSensorGroup::set_invert_sensor_value);
 	ClassDB::bind_method(D_METHOD("get_invert_sensor_value"), &NNSensorGroup::get_invert_sensor_value);
@@ -22,7 +24,7 @@ void NNSensorGroup::_bind_methods() {
 // Constructor and destructor.
 
 NNSensorGroup::NNSensorGroup() {
-	_evaluation_method = NNSensorGroupEvaluationMethod::Mean;
+	_evaluation_method = EVALUATION_MEAN;
 	_invert_sensor_value = false;
 }
 
@@ -36,72 +38,28 @@ float NNSensorGroup::evaluate_sensor_value() {
 	_last_evaluated_timestamp = godot::Time::get_singleton()->get_ticks_usec();
 #endif
 
-	if (!get_is_enabled())
+	if (!get_is_enabled()) {
 		return 0.0f;
-	if (Engine::get_singleton()->is_editor_hint())
+	}
+	if (Engine::get_singleton()->is_editor_hint()) {
 		return 0.0f;
-
-	float sensor_value = 0.0f;
-
-	// Evaluate the children.
-	int num_children = get_child_count();
-	if (num_children < 1)
+	}
+	if (_child_sensors.empty()) {
 		return 0.0f;
-	float child_sensor_value = 0.0f;
-	int num_evaluated = 0;
-	for (int i = 0; i < num_children; i++) {
-		Node *node = get_child(i);
-		if (node == nullptr)
-			continue;
-		NNSensors *sensorNode = godot::Object::cast_to<NNSensors>(node);
-		if (sensorNode == nullptr)
-			continue;
-		if (!sensorNode->get_is_enabled())
-			continue;
-		child_sensor_value = sensorNode->evaluate_sensor_value();
-
-		switch (_evaluation_method) {
-			case NNSensorGroupEvaluationMethod::Min: {
-				if (num_evaluated == 0)
-					sensor_value = child_sensor_value;
-				if (child_sensor_value < sensor_value)
-					sensor_value = child_sensor_value;
-			} break;
-			case NNSensorGroupEvaluationMethod::Max: {
-				if (num_evaluated == 0)
-					sensor_value = child_sensor_value;
-				if (child_sensor_value > sensor_value)
-					sensor_value = child_sensor_value;
-			} break;
-			case NNSensorGroupEvaluationMethod::Multiply: {
-				if (num_evaluated == 0)
-					sensor_value = child_sensor_value;
-				else
-					sensor_value *= child_sensor_value;
-			} break;
-			case NNSensorGroupEvaluationMethod::FirstNonZero: {
-				if (child_sensor_value > 0.0f) {
-					if (_invert_sensor_value) {
-						sensor_value = 1.0f - child_sensor_value;
-					} else {
-						sensor_value = child_sensor_value;
-					}
-
-					set_sensor_value(sensor_value);
-					return sensor_value;
-				}
-			} break;
-			default:
-				sensor_value += child_sensor_value;
-		} //end switch evaluation method
-		++num_evaluated;
-
-	} //endfor children
-
-	if (_evaluation_method == NNSensorGroupEvaluationMethod::Mean && num_evaluated > 0) {
-		sensor_value = sensor_value / ((float)num_evaluated);
 	}
 
+	ScoreAggregation aggregation(_evaluation_method);
+	for (unsigned int i = 0; i < _child_sensors.size(); i++) {
+		NNSensors *sensor = _child_sensors[i];
+		if (!sensor->get_is_enabled()) {
+			continue;
+		}
+		if (aggregation.add(sensor->evaluate_sensor_value())) {
+			break;
+		}
+	}
+
+	float sensor_value = aggregation.result();
 	if (_invert_sensor_value) {
 		sensor_value = 1.0f - sensor_value;
 	}
@@ -112,11 +70,11 @@ float NNSensorGroup::evaluate_sensor_value() {
 
 // Getters and Setters.
 
-void NNSensorGroup::set_evaluation_method(int evaluation_method) {
+void NNSensorGroup::set_evaluation_method(EvaluationMethod evaluation_method) {
 	_evaluation_method = evaluation_method;
 }
 
-int NNSensorGroup::get_evaluation_method() const {
+NoodleNodes::EvaluationMethod NNSensorGroup::get_evaluation_method() const {
 	return _evaluation_method;
 }
 
@@ -126,4 +84,19 @@ void NNSensorGroup::set_invert_sensor_value(bool invert_sensor_value) {
 
 bool NNSensorGroup::get_invert_sensor_value() const {
 	return _invert_sensor_value;
+}
+
+// Godot virtuals.
+
+void NNSensorGroup::_notification(int p_what) {
+	if (p_what != NOTIFICATION_CHILD_ORDER_CHANGED) {
+		return;
+	}
+
+	_child_sensors.clear();
+	for (int i = 0; i < get_child_count(); i++) {
+		if (NNSensors *sensor = godot::Object::cast_to<NNSensors>(get_child(i))) {
+			_child_sensors.push_back(sensor);
+		}
+	}
 }

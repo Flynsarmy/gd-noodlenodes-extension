@@ -27,20 +27,20 @@ func _score(evaluation_method: int, considerations: Array) -> float:
 
 func test_default_evaluation_method_is_multiply() -> void:
 	var node: NNBTFixedResult = NNBTFixedResult.new()
-	assert_eq(node.evaluation_method, NNBTNodes.Multiply)
+	assert_eq(node.evaluation_method, NoodleNodes.EVALUATION_MULTIPLY)
 	node.free()
 
 
 func test_evaluation_methods_aggregate_scores() -> void:
 	var cases: Array = [
-		[NNBTNodes.Sum, [0.5, 0.4], 0.9],
-		[NNBTNodes.Min, [0.5, 0.4], 0.4],
-		[NNBTNodes.Max, [0.3, 0.7, 0.2], 0.7],
-		[NNBTNodes.Mean, [0.5, 0.8], 0.65],
-		[NNBTNodes.Multiply, [0.5, 0.4], 0.2],
-		[NNBTNodes.Multiply, [0.5, 0.0, 0.8], 0.0],
-		[NNBTNodes.FirstNonZero, [0.0, 0.6], 0.6],
-		[NNBTNodes.FirstNonZero, [0.0, 0.0], 0.0],
+		[NoodleNodes.EVALUATION_SUM, [0.5, 0.4], 0.9],
+		[NoodleNodes.EVALUATION_MIN, [0.5, 0.4], 0.4],
+		[NoodleNodes.EVALUATION_MAX, [0.3, 0.7, 0.2], 0.7],
+		[NoodleNodes.EVALUATION_MEAN, [0.5, 0.8], 0.65],
+		[NoodleNodes.EVALUATION_MULTIPLY, [0.5, 0.4], 0.2],
+		[NoodleNodes.EVALUATION_MULTIPLY, [0.5, 0.0, 0.8], 0.0],
+		[NoodleNodes.EVALUATION_FIRST_NON_ZERO, [0.0, 0.6], 0.6],
+		[NoodleNodes.EVALUATION_FIRST_NON_ZERO, [0.0, 0.0], 0.0],
 	]
 
 	for case in cases:
@@ -50,6 +50,6 @@ func test_evaluation_methods_aggregate_scores() -> void:
 
 # A low disabled consideration first would drag Min to zero and Mean down if it were counted.
 func test_disabled_considerations_are_not_aggregated() -> void:
-	for case in [[NNBTNodes.Min, 0.5], [NNBTNodes.Mean, 0.65]]:
+	for case in [[NoodleNodes.EVALUATION_MIN, 0.5], [NoodleNodes.EVALUATION_MEAN, 0.65]]:
 		var considerations: Array = [_make_consideration(0.0, false), _make_consideration(0.5), _make_consideration(0.8)]
 		assert_almost_eq(_score(case[0], considerations), case[1], 0.0001, "method %d" % case[0])

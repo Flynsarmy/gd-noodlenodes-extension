@@ -3,6 +3,7 @@
 #include "considerations.h"
 
 #include <godot_cpp/classes/node.hpp>
+#include <vector>
 
 namespace godot {
 
@@ -10,8 +11,10 @@ class NNConsiderationGroup : public NNConsiderations {
 	GDCLASS(NNConsiderationGroup, NNConsiderations)
 
 private:
-	int _evaluation_method;
+	EvaluationMethod _evaluation_method;
 	bool _invert_score;
+
+	std::vector<NNConsiderations *> _child_considerations;
 
 protected:
 	static void _bind_methods();
@@ -22,17 +25,8 @@ public:
 
 	// Getters and setters for attributes.
 
-	void set_evaluation_method(int evaluation_method);
-	int get_evaluation_method() const;
-
-	enum NNConsiderationGroupEvaluationMethod {
-		Sum = 0,
-		Min = 1,
-		Max = 2,
-		Mean = 3,
-		Multiply = 4,
-		FirstNonZero = 5,
-	};
+	void set_evaluation_method(EvaluationMethod evaluation_method);
+	EvaluationMethod get_evaluation_method() const;
 
 	void set_invert_score(bool invert_score);
 	bool get_invert_score() const;
@@ -40,6 +34,9 @@ public:
 	// Handling functions.
 
 	virtual float evaluate() override;
+
+	// Godot virtuals.
+	void _notification(int p_what);
 };
 
 } //namespace godot

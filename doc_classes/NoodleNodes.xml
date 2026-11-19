@@ -57,4 +57,24 @@
 			If [code]false[/code], the node is disabled and is skipped when its parent evaluates, ticks or runs its children. A disabled root stops ticking.
 		</member>
 	</members>
+	<constants>
+		<constant name="EVALUATION_SUM" value="0" enum="EvaluationMethod">
+			Adds the values of the enabled child nodes.
+		</constant>
+		<constant name="EVALUATION_MIN" value="1" enum="EvaluationMethod">
+			Uses the lowest value of the enabled child nodes.
+		</constant>
+		<constant name="EVALUATION_MAX" value="2" enum="EvaluationMethod">
+			Uses the highest value of the enabled child nodes.
+		</constant>
+		<constant name="EVALUATION_MEAN" value="3" enum="EvaluationMethod">
+			Uses the average value of the enabled child nodes, dividing by the number of nodes evaluated.
+		</constant>
+		<constant name="EVALUATION_MULTIPLY" value="4" enum="EvaluationMethod">
+			Multiplies the values of the enabled child nodes. Evaluation stops as soon as the product reaches zero.
+		</constant>
+		<constant name="EVALUATION_FIRST_NON_ZERO" value="5" enum="EvaluationMethod">
+			Uses the first value greater than zero, ignoring child nodes that evaluate to zero.
+		</constant>
+	</constants>
 </class>

@@ -9,8 +9,8 @@
 	<tutorials>
 	</tutorials>
 	<members>
-		<member name="evaluation_method" type="int" setter="set_evaluation_method" getter="get_evaluation_method" default="4">
-			A choice of how the considerations and consideration groups that are childs of the node are aggregated. Can be one of the following: Sum:0,Min:1,Max:2,Mean:3,Multiply:4,FirstNonZero:5.
+		<member name="evaluation_method" type="int" setter="set_evaluation_method" getter="get_evaluation_method" enum="NoodleNodes.EvaluationMethod" default="4">
+			How the child considerations and consideration groups are aggregated into the group's score. The default is [constant NoodleNodes.EVALUATION_MULTIPLY].
 		</member>
 		<member name="invert_score" type="bool" setter="set_invert_score" getter="get_invert_score" default="false">
 			This inverts the group score by calculating: [code]score = 1.0 - score[/code]. It is applied after all the child nodes have been evaluated.

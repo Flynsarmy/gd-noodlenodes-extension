@@ -21,23 +21,14 @@ public:
 	inline uint64_t get_last_evaluated_timestamp() const { return _last_evaluated_timestamp; };
 #endif
 
-	void set_evaluation_method(int evaluation_method);
-	int get_evaluation_method() const;
+	void set_evaluation_method(EvaluationMethod evaluation_method);
+	EvaluationMethod get_evaluation_method() const;
 
 	enum Status {
 		SKIP = -2,
 		FAILURE = -1,
 		RUNNING = 0,
 		SUCCESS = 1,
-	};
-
-	enum NNBTNodesEvaluationMethod {
-		Sum = 0,
-		Min = 1,
-		Max = 2,
-		Mean = 3,
-		Multiply = 4,
-		FirstNonZero = 5,
 	};
 
 	void set_score(float score);
@@ -74,7 +65,7 @@ public:
 
 private:
 	float _score;
-	int _evaluation_method;
+	EvaluationMethod _evaluation_method;
 	Status _tick_result;
 	// Run lifecycle state. A run starts on the first tick after the node has no
 	// active run and ends on a terminal result or an interrupt.
@@ -120,4 +111,3 @@ protected:
 } //namespace godot
 
 VARIANT_ENUM_CAST(NNBTNodes::Status)
-VARIANT_ENUM_CAST(NNBTNodes::NNBTNodesEvaluationMethod)

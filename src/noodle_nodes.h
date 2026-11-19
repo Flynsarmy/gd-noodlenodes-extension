@@ -25,6 +25,15 @@ protected:
 	virtual void _on_is_enabled_changed(bool p_is_enabled);
 
 public:
+	enum EvaluationMethod {
+		EVALUATION_SUM = 0,
+		EVALUATION_MIN = 1,
+		EVALUATION_MAX = 2,
+		EVALUATION_MEAN = 3,
+		EVALUATION_MULTIPLY = 4,
+		EVALUATION_FIRST_NON_ZERO = 5,
+	};
+
 	NoodleNodes();
 	~NoodleNodes();
 
@@ -58,3 +67,5 @@ public:
 };
 
 } //namespace godot
+
+VARIANT_ENUM_CAST(NoodleNodes::EvaluationMethod)

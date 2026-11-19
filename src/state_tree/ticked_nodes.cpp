@@ -1,5 +1,6 @@
 #include "ticked_nodes.h"
 #include "../expression_util.h"
+#include "../score_aggregation.h"
 #include "history.h"
 #include "parallel.h"
 #include "transition.h"
@@ -87,7 +88,7 @@ void NNSTTickedNodes::_bind_methods() {
 
 	ClassDB::bind_method(D_METHOD("set_evaluation_method", "evaluation_method"), &NNSTTickedNodes::set_evaluation_method);
 	ClassDB::bind_method(D_METHOD("get_evaluation_method"), &NNSTTickedNodes::get_evaluation_method);
-	ADD_PROPERTY(PropertyInfo(Variant::INT, "evaluation_method", PROPERTY_HINT_ENUM, "Sum:0,Min:1,Max:2,Mean:3,Multiply:4,FirstNonZero:5"), "set_evaluation_method", "get_evaluation_method");
+	ADD_PROPERTY(PropertyInfo(Variant::INT, "evaluation_method", PROPERTY_HINT_ENUM, "Sum,Min,Max,Mean,Multiply,First Non Zero", PROPERTY_USAGE_DEFAULT | PROPERTY_USAGE_CLASS_IS_ENUM, "NoodleNodes.EvaluationMethod"), "set_evaluation_method", "get_evaluation_method");
 
 	ClassDB::bind_method(D_METHOD("set_on_entered_condition", "is_entered"), &NNSTTickedNodes::set_is_on_entered_condition_true);
 	ClassDB::bind_method(D_METHOD("get_on_entered_condition"), &NNSTTickedNodes::get_is_on_entered_condition_true);
@@ -121,7 +122,7 @@ NNSTTickedNodes::NNSTTickedNodes() {
 	_hosted_success_event = "hosted_succeeded";
 	_hosted_failure_event = "hosted_failed";
 	_is_on_entered_condition_true = true;
-	_evaluation_method = NNSTTickedNodesEvaluationMethod::Multiply;
+	_evaluation_method = EVALUATION_MULTIPLY;
 	_score = 0.0;
 	_invert_score = false;
 	_is_exiting = false;
@@ -225,11 +226,11 @@ float NNSTTickedNodes::get_score() const {
 	return _score;
 }
 
-void NNSTTickedNodes::set_evaluation_method(int evaluation_method) {
+void NNSTTickedNodes::set_evaluation_method(EvaluationMethod evaluation_method) {
 	_evaluation_method = evaluation_method;
 }
 
-int NNSTTickedNodes::get_evaluation_method() const {
+NoodleNodes::EvaluationMethod NNSTTickedNodes::get_evaluation_method() const {
 	return _evaluation_method;
 }
 
@@ -703,70 +704,22 @@ float NNSTTickedNodes::evaluate() {
 	if (_num_child_considerations == 0) {
 		return _score;
 	}
-	float child_score = 0.0;
-	unsigned int num_evaluated = 0;
-
+	ScoreAggregation aggregation(_evaluation_method);
 	for (unsigned int i = 0; i < _num_child_considerations; i++) {
 		NNConsiderations *considerationNode = _child_considerations[i];
 		if (!considerationNode->get_is_enabled())
 			continue;
-		child_score = considerationNode->evaluate();
+		float child_score = considerationNode->evaluate();
 		if (considerationNode->get_has_vetoed()) {
 			_score = 0.0f;
-			return 0.0f; // Veto zeroes out the score for the entire group.
+			return _score; // Veto zeroes out the score for the entire group.
 		}
-
-		switch (_evaluation_method) {
-			case NNSTTickedNodesEvaluationMethod::Min: {
-				if (num_evaluated == 0)
-					_score = child_score;
-				if (child_score < _score)
-					_score = child_score;
-			} break;
-			case NNSTTickedNodesEvaluationMethod::Max: {
-				if (num_evaluated == 0)
-					_score = child_score;
-				if (child_score > _score)
-					_score = child_score;
-			} break;
-			case NNSTTickedNodesEvaluationMethod::Multiply: {
-				if (num_evaluated == 0)
-					_score = child_score;
-				else
-					_score *= child_score;
-
-				// If after multiplication we are at 0.0, then none of the
-				// other considerations will ever change the result, so bail.
-				if (_score == 0.0f) {
-					if (_invert_score) {
-						_score = 1.0f;
-						return 1.0f;
-					}
-					_score = 0.0f;
-					return 0.0f;
-				}
-			} break;
-			case NNSTTickedNodesEvaluationMethod::FirstNonZero: {
-				if (child_score > 0.0f) {
-					if (_invert_score) {
-						_score = 1.0f - child_score;
-					} else {
-						_score = child_score;
-					}
-					return _score;
-				}
-			} break;
-			default:
-				_score += child_score;
-		} //end switch evaluation method
-		++num_evaluated;
-
+		if (aggregation.add(child_score)) {
+			break;
+		}
 	} //endfor children
 
-	if (_evaluation_method == NNSTTickedNodesEvaluationMethod::Mean && num_evaluated > 0) {
-		_score = _score / ((float)num_evaluated);
-	}
-
+	_score = aggregation.result();
 	if (_invert_score) {
 		_score = 1.0f - _score;
 	}

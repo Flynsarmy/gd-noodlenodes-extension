@@ -38,8 +38,8 @@
 		</method>
 	</methods>
 	<members>
-		<member name="evaluation_method" type="int" setter="set_evaluation_method" getter="get_evaluation_method" enum="NNBTNodesEvaluationMethod" default="4">
-			Used with Utility-based Behaviour Tree nodes. This defines how the [NNConsideration] nodes (assigned as child nodes of the behaviour tree node) are evaluated to calculate the score for the node. The default is [code]Multiply[/code] (4). In GDScript use the class constants, for example [code]NNBTNodes.Multiply[/code]. The enum-scoped form [code]NNBTNodes.NNBTNodesEvaluationMethod.Multiply[/code] is also accepted; there is no bare global enum name.
+		<member name="evaluation_method" type="int" setter="set_evaluation_method" getter="get_evaluation_method" enum="NoodleNodes.EvaluationMethod" default="4">
+			Used with Utility-based Behaviour Tree nodes. This defines how the [NNConsideration] nodes (assigned as child nodes of the behaviour tree node) are aggregated into the score for the node. The default is [constant NoodleNodes.EVALUATION_MULTIPLY].
 		</member>
 		<member name="score" type="float" setter="set_score" getter="get_score" default="0.0">
 			The score this node received from the Utility-based evaluation.
@@ -60,24 +60,6 @@
 		</constant>
 		<constant name="SKIP" value="-2" enum="Status">
 			The node did not run. [NNBTSequence] and [NNBTSelector] move on to their next child, and [NNBTParallel] counts it as a success. The result is not terminal, so the node's run stays active.
-		</constant>
-		<constant name="Sum" value="0" enum="NNBTNodesEvaluationMethod">
-			Adds the scores of the enabled considerations.
-		</constant>
-		<constant name="Min" value="1" enum="NNBTNodesEvaluationMethod">
-			Uses the lowest score of the enabled considerations.
-		</constant>
-		<constant name="Max" value="2" enum="NNBTNodesEvaluationMethod">
-			Uses the highest score of the enabled considerations.
-		</constant>
-		<constant name="Mean" value="3" enum="NNBTNodesEvaluationMethod">
-			Uses the average score of the enabled considerations.
-		</constant>
-		<constant name="Multiply" value="4" enum="NNBTNodesEvaluationMethod">
-			Multiplies the scores of the enabled considerations, which is the default.
-		</constant>
-		<constant name="FirstNonZero" value="5" enum="NNBTNodesEvaluationMethod">
-			Uses the first score greater than zero, ignoring considerations that score zero.
 		</constant>
 	</constants>
 </class>

@@ -20,7 +20,7 @@ protected:
 	uint64_t _last_visited_timestamp;
 #endif
 
-	int _evaluation_method;
+	EvaluationMethod _evaluation_method;
 
 	float _score;
 
@@ -36,8 +36,7 @@ protected:
 public:
 	NNBehaviours() {
 		_score = 0.0f;
-		_evaluation_method = 0;
-		_evaluation_method = 4;
+		_evaluation_method = EVALUATION_MULTIPLY;
 #ifdef DEBUG_ENABLED
 		_last_evaluated_timestamp = 0;
 		_last_visited_timestamp = 0;
@@ -46,8 +45,8 @@ public:
 
 	// Getters and setters for attributes.
 
-	void set_evaluation_method(int evaluation_method);
-	int get_evaluation_method() const;
+	void set_evaluation_method(EvaluationMethod evaluation_method);
+	EvaluationMethod get_evaluation_method() const;
 
 #ifdef DEBUG_ENABLED
 	inline uint64_t get_last_visited_timestamp() const { return _last_visited_timestamp; };

@@ -5,8 +5,8 @@
 #include <godot_cpp/classes/time.hpp>
 #include <godot_cpp/core/class_db.hpp>
 
+#include "../score_aggregation.h"
 #include "consideration.h"
-#include "consideration_group.h"
 
 using namespace godot;
 
@@ -54,14 +54,14 @@ float NNBehaviourGroup::evaluate() {
 #endif
 
 	int num_children = get_child_count();
+	_score = 0.0f;
 	if (num_children < 1)
-		return 0.0f;
+		return _score;
 
 	// For the behaviour groups the considerations are evaluated and
 	// compared to the set value to determine if the behaviours
 	// within the group should be evaluated.
-	_score = 0.0f;
-	unsigned int num_evaluated = 0;
+	ScoreAggregation aggregation(_evaluation_method);
 
 	// Evaluate the children.
 	for (unsigned int i = 0; i < _num_child_considerations; i++) {
@@ -73,45 +73,11 @@ float NNBehaviourGroup::evaluate() {
 			_score = 0.0f;
 			return _score;
 		}
-		switch (_evaluation_method) {
-			case NNConsiderationGroup::NNConsiderationGroupEvaluationMethod::Min: {
-				if (num_evaluated == 0)
-					_score = child_score;
-				if (child_score < _score)
-					_score = child_score;
-			} break;
-			case NNConsiderationGroup::NNConsiderationGroupEvaluationMethod::Max: {
-				if (num_evaluated == 0)
-					_score = child_score;
-				if (child_score > _score)
-					_score = child_score;
-			} break;
-			case NNConsiderationGroup::NNConsiderationGroupEvaluationMethod::Multiply: {
-				if (num_evaluated == 0)
-					_score = child_score;
-				else
-					_score *= child_score;
-				// If after multiplication we are at 0.0, then none of the
-				// other considerations will ever change the result, so bail.
-				if (_score == 0.0) {
-					return 0.0;
-				}
-			} break;
-			case NNConsiderationGroup::NNConsiderationGroupEvaluationMethod::FirstNonZero: {
-				if (child_score > 0.0) {
-					_score = child_score;
-					return _score;
-				}
-			} break;
-			default:
-				_score += child_score;
-		} //end switch evaluation method
-		++num_evaluated;
+		if (aggregation.add(child_score)) {
+			break;
+		}
 	} //endfor children
 
-	if (_evaluation_method == NNConsiderationGroup::NNConsiderationGroupEvaluationMethod::Mean && num_evaluated > 0) {
-		_score = _score / ((float)num_evaluated);
-	}
-
+	_score = aggregation.result();
 	return _score;
 }

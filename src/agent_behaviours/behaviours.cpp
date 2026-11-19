@@ -7,7 +7,7 @@ using namespace godot;
 void NNBehaviours::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("set_evaluation_method", "evaluation_method"), &NNBehaviours::set_evaluation_method);
 	ClassDB::bind_method(D_METHOD("get_evaluation_method"), &NNBehaviours::get_evaluation_method);
-	ADD_PROPERTY(PropertyInfo(Variant::INT, "evaluation_method", PROPERTY_HINT_ENUM, "Sum:0,Min:1,Max:2,Mean:3,Multiply:4,FirstNonZero:5"), "set_evaluation_method", "get_evaluation_method");
+	ADD_PROPERTY(PropertyInfo(Variant::INT, "evaluation_method", PROPERTY_HINT_ENUM, "Sum,Min,Max,Mean,Multiply,First Non Zero", PROPERTY_USAGE_DEFAULT | PROPERTY_USAGE_CLASS_IS_ENUM, "NoodleNodes.EvaluationMethod"), "set_evaluation_method", "get_evaluation_method");
 
 	ClassDB::bind_method(D_METHOD("set_score", "score"), &NNBehaviours::set_score);
 	ClassDB::bind_method(D_METHOD("get_score"), &NNBehaviours::get_score);
@@ -52,10 +52,10 @@ NNBehaviours *NNBehaviours::get_child_behaviour(unsigned int index) const {
 	return behaviour;
 }
 
-void NNBehaviours::set_evaluation_method(int evaluation_method) {
+void NNBehaviours::set_evaluation_method(EvaluationMethod evaluation_method) {
 	_evaluation_method = evaluation_method;
 }
 
-int NNBehaviours::get_evaluation_method() const {
+NoodleNodes::EvaluationMethod NNBehaviours::get_evaluation_method() const {
 	return _evaluation_method;
 }

@@ -69,8 +69,8 @@
 		</method>
 	</methods>
 	<members>
-		<member name="evaluation_method" type="int" setter="set_evaluation_method" getter="get_evaluation_method" default="4">
-			Defines how the considerations are aggregated. Can be one of the following: `Sum:0,Min:1,Max:2,Mean:3,Multiply:4,FirstNonZero:5`.
+		<member name="evaluation_method" type="int" setter="set_evaluation_method" getter="get_evaluation_method" enum="NoodleNodes.EvaluationMethod" default="4">
+			Defines how the child [NNConsiderations] nodes are aggregated into [member score]. The default is [constant NoodleNodes.EVALUATION_MULTIPLY].
 		</member>
 		<member name="hosted_failure_event" type="String" setter="set_hosted_failure_event" getter="get_hosted_failure_event" default="&quot;hosted_failed&quot;">
 			The event this state sends to its chart root with [method NNSTBranchNodes.send_event] when a root hosted under it reports failure. An empty name sends nothing. The event is queued and handled by ordinary [NNSTTransition] nodes exactly like any other event, including transitions on this state or any of its ancestors. Every report sends an event, and a hosted behaviour tree that reached a terminal result starts a new run on the next host tick and reports again, so transition out of this state if it should only run once.

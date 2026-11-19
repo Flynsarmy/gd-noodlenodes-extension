@@ -20,7 +20,7 @@ private:
 	String _hosted_success_event;
 	String _hosted_failure_event;
 	bool _is_on_entered_condition_true;
-	int _evaluation_method;
+	EvaluationMethod _evaluation_method;
 	float _score;
 	bool _invert_score;
 	// True while _transition_out() is running. on_exit_state() can request a
@@ -110,15 +110,6 @@ public:
 	NNSTTickedNodes();
 	~NNSTTickedNodes();
 
-	enum NNSTTickedNodesEvaluationMethod {
-		Sum = 0,
-		Min = 1,
-		Max = 2,
-		Mean = 3,
-		Multiply = 4,
-		FirstNonZero = 5,
-	};
-
 	// Getters and setters for attributes.
 
 	void set_root(NNSTRoot *p_root); // Setter
@@ -138,8 +129,8 @@ public:
 	void set_score(float score);
 	float get_score() const;
 
-	void set_evaluation_method(int evaluation_method);
-	int get_evaluation_method() const;
+	void set_evaluation_method(EvaluationMethod evaluation_method);
+	EvaluationMethod get_evaluation_method() const;
 
 	void set_is_on_entered_condition_true(bool is_on_entered_condition_true);
 	bool get_is_on_entered_condition_true() const;
