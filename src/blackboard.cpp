@@ -186,7 +186,8 @@ void NNBlackboard::_install_defaults() {
 // Handling functions.
 
 bool NNBlackboard::has_value(const String &key) const {
-	return _values.has(key) && _values.get(key, Variant()).get_type() != Variant::NIL;
+	// A NIL default cannot be told apart from a stored NIL, and both mean absent.
+	return _values.get(key, Variant()).get_type() != Variant::NIL;
 }
 
 Variant NNBlackboard::get_value(const String &key, const Variant &default_value) const {
@@ -202,7 +203,8 @@ bool NNBlackboard::set_value(const String &key, const Variant &value) {
 		return false;
 	}
 
-	if (_values.has(key) && _values.get(key, Variant()) == value) {
+	// Equality first: has() is then only needed to tell a stored NIL from an absent key.
+	if (_values.get(key, Variant()) == value && _values.has(key)) {
 		return true;
 	}
 
@@ -229,7 +231,7 @@ bool NNBlackboard::apply_values(const Dictionary &values) {
 	for (int i = 0; i < batch_keys.size(); i++) {
 		const String key = batch_keys[i];
 		const Variant value = values[key];
-		if (_values.has(key) && _values.get(key, Variant()) == value) {
+		if (_values.get(key, Variant()) == value && _values.has(key)) {
 			continue;
 		}
 		_values[key] = value;
@@ -244,11 +246,10 @@ bool NNBlackboard::apply_values(const Dictionary &values) {
 }
 
 bool NNBlackboard::erase_value(const String &key) {
-	if (!_values.has(key)) {
+	if (!_values.erase(key)) {
 		return false;
 	}
 
-	_values.erase(key);
 	emit_signal("value_erased", key);
 	return true;
 }

@@ -1,5 +1,6 @@
 #include "blackboard_compare.h"
 
+#include "../expression_util.h"
 #include "blackboard.h"
 
 #include <godot_cpp/core/class_db.hpp>
@@ -100,8 +101,7 @@ void NNBTBlackboardCompare::_report_configuration_error(const String &p_reason) 
 		return;
 	}
 	_has_reported_configuration_error = true;
-	String node_location = is_inside_tree() ? String(get_path()) : get_name() + String(" (not in tree)");
-	ERR_PRINT(vformat("%s node '%s' (%s) %s; returning FAILURE.", get_class(), get_name(), node_location, p_reason));
+	ERR_PRINT(vformat("%s node '%s' (%s) %s; returning FAILURE.", get_class(), get_name(), NNExpressionUtil::path_of(this), p_reason));
 }
 
 NNBTNodes::Status NNBTBlackboardCompare::_tick(float delta) {
@@ -111,15 +111,17 @@ NNBTNodes::Status NNBTBlackboardCompare::_tick(float delta) {
 		_report_configuration_error("requires a non-empty blackboard key");
 	} else if (board == nullptr) {
 		_report_configuration_error("has no NNBTRoot ancestor with a blackboard");
-	} else if (!board->has_value(_key)) {
-		// A missing key (or a null-valued key) simply fails the comparison.
-		result = Status::FAILURE;
 	} else {
-		Variant comparison_result;
-		bool comparison_valid = false;
-		Variant::evaluate(_to_variant_operator(_operator), board->get_value(_key, Variant()), _value, comparison_result, comparison_valid);
-		if (comparison_valid && comparison_result.booleanize()) {
-			result = Status::SUCCESS;
+		// Absent keys and NIL values both mean "missing", which is exactly
+		// get_value()'s fallback condition.
+		const Variant stored = board->get_value(_key, Variant());
+		if (stored.get_type() != Variant::NIL) {
+			Variant comparison_result;
+			bool comparison_valid = false;
+			Variant::evaluate(_to_variant_operator(_operator), stored, _value, comparison_result, comparison_valid);
+			if (comparison_valid && comparison_result.booleanize()) {
+				result = Status::SUCCESS;
+			}
 		}
 	}
 
