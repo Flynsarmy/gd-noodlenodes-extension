@@ -42,9 +42,3 @@ NNBTNodes::Status NNBTPassThrough::_tick(float delta) {
 	Status fallback_result = get_tick_result();
 	return fallback_result;
 }
-
-void NNBTPassThrough::_notification(int p_what) {
-	if (p_what == NOTIFICATION_CHILD_ORDER_CHANGED) {
-		update_child_vectors();
-	}
-}

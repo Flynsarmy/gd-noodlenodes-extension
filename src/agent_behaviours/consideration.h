@@ -38,7 +38,7 @@ public:
 	float get_activation_input_value() const;
 
 	// Godot virtuals.
-	virtual void _notification(int p_what);
+	void _notification(int p_what);
 
 	// Handling functions.
 

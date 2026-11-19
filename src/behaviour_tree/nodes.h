@@ -60,7 +60,7 @@ public:
 	NodePath get_tree_root() const;
 
 	// Godot virtuals.
-	virtual void _notification(int p_what);
+	void _notification(int p_what);
 
 private:
 	float _score;

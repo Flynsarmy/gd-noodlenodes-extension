@@ -382,8 +382,6 @@ void NNBTRoot::_reconcile_active_child() {
 }
 
 void NNBTRoot::_notification(int p_what) {
-	NNBTNodes::_notification(p_what);
-
 #ifdef DEBUG_ENABLED
 	if (p_what == NOTIFICATION_ENTER_TREE || p_what == NOTIFICATION_EXIT_TREE) {
 		if (!Engine::get_singleton()->is_editor_hint()) {

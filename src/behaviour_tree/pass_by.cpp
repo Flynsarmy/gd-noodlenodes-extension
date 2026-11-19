@@ -30,11 +30,3 @@ NNBTNodes::Status NNBTPassBy::_tick(float delta) {
 	}
 	return Status::SUCCESS;
 }
-
-// Godot virtuals.
-
-void NNBTPassBy::_notification(int p_what) {
-	if (p_what == NOTIFICATION_CHILD_ORDER_CHANGED) {
-		update_child_vectors();
-	}
-}

@@ -1133,8 +1133,6 @@ void NNSTTickedNodes::_notification(int p_what) {
 		return;
 	}
 
-	NNSTBranchNodes::_notification(p_what);
-
 	if (p_what == NOTIFICATION_READY || p_what == NOTIFICATION_CHILD_ORDER_CHANGED) {
 		if (Engine::get_singleton()->is_editor_hint()) {
 			return;

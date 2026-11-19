@@ -864,8 +864,6 @@ void NNSTRoot::_reset_chart() {
 // Godot virtuals.
 
 void NNSTRoot::_notification(int p_what) {
-	NNSTBranchNodes::_notification(p_what);
-
 #ifdef DEBUG_ENABLED
 	if (p_what == NOTIFICATION_ENTER_TREE || p_what == NOTIFICATION_EXIT_TREE) {
 		if (!Engine::get_singleton()->is_editor_hint()) {
