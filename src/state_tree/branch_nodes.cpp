@@ -447,19 +447,19 @@ void NNSTBranchNodes::_evaluate_child_activations(std::vector<ObjectID> &nodes) 
 }
 
 void NNSTBranchNodes::_input(const Ref<InputEvent> &p_event) {
-	if (get_internal_status() == 1) {
+	if (get_internal_status() == ST_INTERNAL_STATUS_ACTIVE) {
 		on_input(p_event);
 	}
 }
 
 void NNSTBranchNodes::_unhandled_input(const Ref<InputEvent> &p_event) {
-	if (get_internal_status() == 1) {
+	if (get_internal_status() == ST_INTERNAL_STATUS_ACTIVE) {
 		on_unhandled_input(p_event);
 	}
 }
 
 void NNSTBranchNodes::_unhandled_key_input(const Ref<InputEvent> &p_event) {
-	if (get_internal_status() == 1) {
+	if (get_internal_status() == ST_INTERNAL_STATUS_ACTIVE) {
 		on_unhandled_key_input(p_event);
 	}
 }
