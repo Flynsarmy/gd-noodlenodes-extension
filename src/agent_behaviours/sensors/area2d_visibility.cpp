@@ -36,7 +36,7 @@ void NNArea2DVisibilitySensor::_bind_methods() {
 
 	ClassDB::bind_method(D_METHOD("set_collision_mask", "collision_mask"), &NNArea2DVisibilitySensor::set_collision_mask);
 	ClassDB::bind_method(D_METHOD("get_collision_mask"), &NNArea2DVisibilitySensor::get_collision_mask);
-	ADD_PROPERTY(PropertyInfo(Variant::INT, "collision_mask", PROPERTY_HINT_LAYERS_3D_PHYSICS), "set_collision_mask", "get_collision_mask");
+	ADD_PROPERTY(PropertyInfo(Variant::INT, "collision_mask", PROPERTY_HINT_LAYERS_2D_PHYSICS), "set_collision_mask", "get_collision_mask");
 
 	ClassDB::bind_method(D_METHOD("set_occlusion_test_exclusion_list", "occlusion_test_exclusion_list"), &NNArea2DVisibilitySensor::set_occlusion_test_exclusion_list);
 	ClassDB::bind_method(D_METHOD("get_occlusion_test_exclusion_list"), &NNArea2DVisibilitySensor::get_occlusion_test_exclusion_list);
@@ -122,8 +122,6 @@ Area2D *NNArea2DVisibilitySensor::_resolve_visibility_volume() const {
 }
 
 void NNArea2DVisibilitySensor::initialize_sensor() {
-	if (!get_is_enabled())
-		return;
 	if (Engine::get_singleton()->is_editor_hint())
 		return;
 

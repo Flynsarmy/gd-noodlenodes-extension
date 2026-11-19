@@ -149,3 +149,23 @@ func test_freeing_the_volume_before_the_sensor_root_does_not_crash_teardown() ->
 	_root_3d.free()
 	assert_false(is_instance_valid(_root_2d), "the 2D root tears down after its volume is freed")
 	assert_false(is_instance_valid(_root_3d), "the 3D root tears down after its volume is freed")
+
+
+func test_sensor_disabled_at_ready_tracks_entities_once_enabled() -> void:
+	var _volume: Area2D = add_child_autofree(Area2D.new())
+	var _volume_shape: CollisionShape2D = CollisionShape2D.new()
+	var _circle: CircleShape2D = CircleShape2D.new()
+	_circle.radius = 10.0
+	_volume_shape.shape = _circle
+	_volume.add_child(_volume_shape)
+
+	var _sensor: NNArea2DVisibilitySensor = NNArea2DVisibilitySensor.new()
+	_sensor.visibility_volume = _volume
+	_sensor.is_enabled = false
+	_make_root_with(_sensor)
+	_sensor.is_enabled = true
+
+	var _body := _make_static_body_2d(Vector2.ZERO)
+	await _await_physics_frames(3)
+
+	assert_true(_sensor.intersecting_bodies.has(_body))
