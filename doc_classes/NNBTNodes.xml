@@ -45,7 +45,7 @@
 			The score this node received from the Utility-based evaluation. Read-only runtime state: it is written by evaluation and is never saved with the scene.
 		</member>
 		<member name="tick_result" type="int" setter="" getter="get_tick_result" enum="NNBTNodes.Status" default="1">
-			The result of this node's most recent tick, written automatically by the node's tick handling. Read-only: the running-action query derives from it, so scripts cannot set it.
+			The result of this node's most recent tick, written automatically by the node's tick handling. Read-only runtime state: the running-action query derives from it, so scripts cannot set it, and it is never saved with the scene.
 		</member>
 	</members>
 	<constants>

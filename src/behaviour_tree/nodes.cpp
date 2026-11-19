@@ -32,7 +32,7 @@ void NNBTNodes::_bind_methods() {
 	ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "score", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_EDITOR | PROPERTY_USAGE_READ_ONLY), "", "get_score");
 
 	ClassDB::bind_method(D_METHOD("get_tick_result"), &NNBTNodes::get_tick_result);
-	ADD_PROPERTY(PropertyInfo(Variant::INT, "tick_result", PROPERTY_HINT_ENUM, "Running:0,Success:1,Failure:-1,Skip:-2"), "", "get_tick_result");
+	ADD_PROPERTY(PropertyInfo(Variant::INT, "tick_result", PROPERTY_HINT_ENUM, "Running:0,Success:1,Failure:-1,Skip:-2", PROPERTY_USAGE_EDITOR | PROPERTY_USAGE_READ_ONLY), "", "get_tick_result");
 
 	// Signals.
 }
