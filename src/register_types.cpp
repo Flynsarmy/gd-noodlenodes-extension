@@ -343,19 +343,11 @@ void register_scene_classes() {
 #endif
 }
 
-void register_editor_classes() {
-#ifdef DEBUG_ENABLED
-
-#endif
-}
-
 void initialize_noodle_nodes_module(ModuleInitializationLevel p_level) {
 	// Add the classes here.
 	switch (p_level) {
 		case MODULE_INITIALIZATION_LEVEL_SCENE: {
 			register_scene_classes();
-		} break;
-		case MODULE_INITIALIZATION_LEVEL_EDITOR: {
 		} break;
 
 		default: {
