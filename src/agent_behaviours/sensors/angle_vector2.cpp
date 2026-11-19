@@ -51,7 +51,6 @@ NNAngleVector2Sensor::NNAngleVector2Sensor() {
 	_min_angle_degrees = godot::Math::rad_to_deg(_min_angle_radian);
 	_max_angle_radian = Math::PI;
 	_max_angle_degrees = godot::Math::rad_to_deg(_max_angle_radian);
-	_one_over_2_pi = 1.0f / (2.0f * Math::PI);
 }
 
 NNAngleVector2Sensor::~NNAngleVector2Sensor() {
@@ -67,7 +66,8 @@ float NNAngleVector2Sensor::evaluate_sensor_value() {
 		_angle_radian = _max_angle_radian;
 	}
 	_angle_degrees = godot::Math::rad_to_deg(_angle_radian);
-	set_sensor_value((_angle_radian + Math::PI) * _one_over_2_pi);
+	const float angle_range = _max_angle_radian - _min_angle_radian;
+	set_sensor_value(angle_range > 0.0f ? (_angle_radian - _min_angle_radian) / angle_range : 0.0f);
 
 	return get_sensor_value();
 }

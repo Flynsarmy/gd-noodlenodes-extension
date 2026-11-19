@@ -4,6 +4,7 @@
 		Accepts two vectors, calculates the angle between them and scales it to [code]0..1[/code] range.
 	</brief_description>
 	<description>
+		The angle between [member from_vector] and [member to_vector] is clamped to the configured range and then normalised so [member min_angle_radian] maps to [code]0.0[/code] and [member max_angle_radian] maps to [code]1.0[/code]. A range whose minimum equals its maximum scores [code]0.0[/code].
 	</description>
 	<tutorials>
 	</tutorials>
