@@ -176,3 +176,30 @@ func test_angle_criteria_expose_angle_to_direction_vector() -> void:
 	var criterion_3d: NNAngleToVector3SearchCriterion = autofree(NNAngleToVector3SearchCriterion.new())
 	criterion_3d.set("angle_to_direction_vector", Vector3(1.0, 0.0, 0.0))
 	assert_eq(criterion_3d.get_angle_to_direction_vector(), Vector3(1.0, 0.0, 0.0))
+
+
+# The default 2D window is -90..90 degrees, so a node facing the reference
+# scores mid-range rather than being filtered out.
+func test_2d_criterion_defaults_to_a_signed_90_degree_window() -> void:
+	var container: Node = add_child_autofree(Node.new())
+	var aligned: Node2D = Node2D.new()
+	aligned.name = "aligned"
+	container.add_child(aligned)
+	var opposite: Node2D = Node2D.new()
+	opposite.name = "opposite"
+	opposite.rotation = PI
+	container.add_child(opposite)
+
+	var criterion: NNAngleToVector2SearchCriterion = autofree(NNAngleToVector2SearchCriterion.new())
+	criterion.use_for_filtering = true
+
+	var query: NNNodeChildrenSearchSpace = NNNodeChildrenSearchSpace.new()
+	query.parent_node = container
+	query.top_n_to_find = 2
+	query.add_child(criterion)
+	add_child_autofree(query)
+
+	_run_to_completion(_make_nqs(), query)
+
+	assert_eq(_result_names(query), ["aligned"], "Only the node facing the default +X reference is within -90..90 degrees.")
+	assert_almost_eq(query.get_query_result_scores()[0], 0.5, SCORE_EPSILON, "Zero degrees sits in the middle of the -90..90 window.")
