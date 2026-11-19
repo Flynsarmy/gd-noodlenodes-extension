@@ -78,9 +78,6 @@ public:
 		closest_intersecting_body_index = -1;
 		closest_unoccluded_body_index = -1;
 		use_owner_global_position = false;
-
-		unoccluded_areas.resize(16);
-		unoccluded_bodies.resize(16);
 	}
 
 	Vec from_vector;
@@ -122,6 +119,10 @@ public:
 			if (space_state == nullptr) {
 				return false;
 			}
+			RayQuery *ray_query = ensure_ray_query();
+			ray_query->set_collision_mask(collision_mask);
+			ray_query->set_exclude(occlusion_test_exclusion_list);
+			ray_query->set_collide_with_bodies(true);
 		}
 
 		Vec offset_from_vector = from_vector + offset_vector;
@@ -168,6 +169,10 @@ private:
 		float closest_intersecting_distance = 0.0f;
 		float closest_unoccluded_distance = 0.0f;
 
+		if (!_ray_query.is_null()) {
+			_ray_query->set_collide_with_areas(collide_with_areas);
+		}
+
 		for (int i = 0; i < entities.size();) {
 			TEntity *entity = Object::cast_to<TEntity>(entities[i]);
 			if (entity == nullptr) {
@@ -185,7 +190,7 @@ private:
 
 			if (!do_occlusion_test) {
 				++num_entities_found;
-			} else if (is_unoccluded(entity_position, entities[i], collide_with_areas, offset_from_vector, space_state)) {
+			} else if (is_unoccluded(entity_position, entities[i], offset_from_vector, space_state)) {
 				unoccluded.push_back(entity);
 				unoccluded_distances.push_back(distance_squared);
 				if (closest_unoccluded_index == -1 || distance_squared < closest_unoccluded_distance) {
@@ -198,16 +203,9 @@ private:
 		}
 	}
 
-	bool is_unoccluded(const Vec &position, const Variant &target, bool collide_with_areas, const Vec &offset_from_vector, SpaceState *space_state) {
-		if (_ray_query.is_null()) {
-			_ray_query = RayQuery::create(Vec(), Vec());
-		}
+	bool is_unoccluded(const Vec &position, const Variant &target, const Vec &offset_from_vector, SpaceState *space_state) {
 		_ray_query->set_from(offset_from_vector);
 		_ray_query->set_to(position);
-		_ray_query->set_collision_mask(collision_mask);
-		_ray_query->set_exclude(occlusion_test_exclusion_list);
-		_ray_query->set_collide_with_bodies(true);
-		_ray_query->set_collide_with_areas(collide_with_areas);
 		Dictionary results = space_state->intersect_ray(_ray_query);
 		return results.is_empty() || results.get("collider", nullptr) == target;
 	}
@@ -238,6 +236,13 @@ private:
 	}
 
 	Ref<RayQuery> _ray_query;
+
+	RayQuery *ensure_ray_query() {
+		if (_ray_query.is_null()) {
+			_ray_query = RayQuery::create(Vec(), Vec());
+		}
+		return _ray_query.ptr();
+	}
 };
 
 } //namespace godot

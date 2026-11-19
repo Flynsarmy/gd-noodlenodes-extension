@@ -61,10 +61,10 @@
 		<member name="squared_distances_to_unoccluded_bodies" type="float[]" setter="set_squared_distances_to_unoccluded_bodies" getter="get_squared_distances_to_unoccluded_bodies" default="[]">
 			Squared distances from the [member from_vector] to an bodies [member Node3D.global_position] within or intersecting with the [member visibility_volume] and that are not blocked by any geometry that is set to the layer(s) defined in [member collision_mask].
 		</member>
-		<member name="unoccluded_areas" type="Area3D[]" setter="set_unoccluded_areas" getter="get_unoccluded_areas" default="[null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null]">
+		<member name="unoccluded_areas" type="Area3D[]" setter="set_unoccluded_areas" getter="get_unoccluded_areas" default="[]">
 			Populated if [member do_occlusion_test] is set to [code]true[/code]. Areas that are within or intersect with the [member visibility_volume] and that are not blocked by any geometry that is set to the layer(s) defined in [member collision_mask].
 		</member>
-		<member name="unoccluded_bodies" type="Node3D[]" setter="set_unoccluded_bodies" getter="get_unoccluded_bodies" default="[null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null]">
+		<member name="unoccluded_bodies" type="Node3D[]" setter="set_unoccluded_bodies" getter="get_unoccluded_bodies" default="[]">
 			Populated if [member do_occlusion_test] is set to [code]true[/code]. Bodies that are within or intersect with the [member visibility_volume] and that are not blocked by any geometry that is set to the layer(s) defined in [member collision_mask].
 		</member>
 		<member name="use_owner_global_position" type="bool" setter="set_use_owner_global_position" getter="get_use_owner_global_position" default="false">

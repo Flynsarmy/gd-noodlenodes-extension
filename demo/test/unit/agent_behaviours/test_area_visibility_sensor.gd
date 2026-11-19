@@ -113,3 +113,15 @@ func test_closest_indices_match_the_arrays_they_index() -> void:
 		assert_almost_eq(_body_distances[_body_index], 400.0, 0.0001)
 	else:
 		fail_test("closest_intersecting_body_index does not index squared_distances_to_intersecting_bodies")
+
+
+func test_fresh_sensor_has_empty_unoccluded_arrays() -> void:
+	var _sensor_2d: NNArea2DVisibilitySensor = NNArea2DVisibilitySensor.new()
+	_make_root_with_attached_volume_2d(_sensor_2d)
+	assert_eq(_sensor_2d.unoccluded_areas.size(), 0, "2D unoccluded_areas is empty before evaluate")
+	assert_eq(_sensor_2d.unoccluded_bodies.size(), 0, "2D unoccluded_bodies is empty before evaluate")
+
+	var _sensor_3d: NNArea3DVisibilitySensor = NNArea3DVisibilitySensor.new()
+	_make_root_with_attached_volume_3d(_sensor_3d)
+	assert_eq(_sensor_3d.unoccluded_areas.size(), 0, "3D unoccluded_areas is empty before evaluate")
+	assert_eq(_sensor_3d.unoccluded_bodies.size(), 0, "3D unoccluded_bodies is empty before evaluate")
