@@ -3,6 +3,7 @@
 #include <godot_cpp/classes/expression.hpp>
 #include <godot_cpp/classes/ref.hpp>
 #include <godot_cpp/variant/array.hpp>
+#include <godot_cpp/variant/dictionary.hpp>
 #include <godot_cpp/variant/packed_string_array.hpp>
 #include <godot_cpp/variant/string.hpp>
 #include <godot_cpp/variant/variant.hpp>
@@ -18,6 +19,10 @@ public:
 	bool parse(const String &p_source, const PackedStringArray &p_input_names, String &r_error);
 	// Executes the last successful parse. Returns false and fills r_error on failure.
 	bool execute(const Array &p_input_values, Variant &r_result, String &r_error);
+	// Parses and executes p_source with p_read_keys looked up in p_values as
+	// inputs. Returns false and fills r_error with a message naming the error
+	// and the expression when the expression cannot be evaluated.
+	bool evaluate(const String &p_source, const PackedStringArray &p_read_keys, const Dictionary &p_values, Variant &r_result, String &r_error);
 
 private:
 	Ref<Expression> _expression;

@@ -147,19 +147,11 @@ float NNSTTransition::evaluate_delay() const {
 	}
 
 	const Dictionary values = state_chart->get_blackboard_resource()->get_values();
-	Array inputs;
-	for (const String &key : _delay_read_keys) {
-		inputs.push_back(values.get(key, Variant()));
-	}
 
 	Variant result;
 	String error;
-	if (!_delay_cache.parse(delay_expression, _delay_read_keys, error)) {
-		ERR_PRINT(vformat("(delay of %s) Expression parse error : %s for expression %s", NNExpressionUtil::path_of(this), error, delay_expression));
-		return 0.0f;
-	}
-	if (!_delay_cache.execute(inputs, result, error)) {
-		ERR_PRINT(vformat("(delay of %s) Expression execute error: %s for expression: %s", NNExpressionUtil::path_of(this), error, delay_expression));
+	if (!_delay_cache.evaluate(delay_expression, _delay_read_keys, values, result, error)) {
+		ERR_PRINT(vformat("(delay of %s) %s", NNExpressionUtil::path_of(this), error));
 		return 0.0f;
 	}
 

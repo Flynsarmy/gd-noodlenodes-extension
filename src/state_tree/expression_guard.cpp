@@ -35,19 +35,11 @@ bool NNSTExpressionGuard::is_satisfied(NNSTTransition *p_transition, NNSTTickedN
 	}
 
 	const Dictionary values = p_root->get_blackboard_resource()->get_values();
-	Array inputs;
-	for (const String &key : _read_keys) {
-		inputs.push_back(values.get(key, Variant()));
-	}
 
 	Variant result;
 	String error;
-	if (!_cache.parse(expression, _read_keys, error)) {
-		ERR_PRINT("(guard in " + NNExpressionUtil::path_of(p_transition) + ") Expression parse error : " + error + " for expression " + expression);
-		return false;
-	}
-	if (!_cache.execute(inputs, result, error)) {
-		ERR_PRINT("(guard in " + NNExpressionUtil::path_of(p_transition) + ") Expression execute error: " + error + " for expression: " + expression);
+	if (!_cache.evaluate(expression, _read_keys, values, result, error)) {
+		ERR_PRINT(vformat("(guard in %s) %s", NNExpressionUtil::path_of(p_transition), error));
 		return false;
 	}
 

@@ -29,6 +29,23 @@ bool NNCachedExpression::execute(const Array &p_input_values, Variant &r_result,
 	return true;
 }
 
+bool NNCachedExpression::evaluate(const String &p_source, const PackedStringArray &p_read_keys, const Dictionary &p_values, Variant &r_result, String &r_error) {
+	Array inputs;
+	for (const String &key : p_read_keys) {
+		inputs.push_back(p_values.get(key, Variant()));
+	}
+
+	if (!parse(p_source, p_read_keys, r_error)) {
+		r_error = "Expression parse error : " + r_error + " for expression " + p_source;
+		return false;
+	}
+	if (!execute(inputs, r_result, r_error)) {
+		r_error = "Expression execute error: " + r_error + " for expression: " + p_source;
+		return false;
+	}
+	return true;
+}
+
 namespace NNExpressionUtil {
 
 static bool _is_reserved_identifier(const String &p_name) {
