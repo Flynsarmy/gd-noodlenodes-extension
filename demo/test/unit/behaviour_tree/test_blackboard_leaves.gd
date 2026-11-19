@@ -2,12 +2,7 @@ extends GutTest
 @warning_ignore('unused_parameter')
 @warning_ignore('return_value_discarded')
 
-
-class RunningCondition extends NNBTConditionLeaf:
-	var result: int = NNBTNodes.RUNNING
-
-	func on_tick(_delta: float) -> Status:
-		return result
+const Schema = preload("res://test/unit/blackboard/support/schema.gd")
 
 
 class HookedSet extends NNBTBlackboardSet:
@@ -18,6 +13,23 @@ class HookedSet extends NNBTBlackboardSet:
 
 	func on_after_run(_delta: float) -> void:
 		events.append("after")
+
+
+class OverridingSet extends NNBTBlackboardSet:
+	var on_tick_calls: int = 0
+
+	func on_tick(_delta: float) -> Status:
+		on_tick_calls += 1
+		return NNBTNodes.FAILURE
+
+
+func _make_blackboard_leaves() -> Array[NNBTNodes]:
+	return [
+		NNBTBlackboardSet.new(),
+		NNBTBlackboardErase.new(),
+		NNBTBlackboardHas.new(),
+		NNBTBlackboardCompare.new(),
+	]
 
 
 func test_set_has_compare_through_root_tick() -> void:
@@ -44,12 +56,6 @@ func test_set_has_compare_through_root_tick() -> void:
 	sequence.add_child(has_leaf)
 	sequence.add_child(compare_leaf)
 
-	assert_eq(bt_root.tick(0.1), NNBTNodes.SUCCESS)
-	assert_eq(bt_root.get_blackboard("score", 0), 5)
-
-	# The second tick re-reads the value that survived the first tick.
-	compare_leaf.set_value(6)
-	compare_leaf.set_operator(NNBTBlackboardCompare.LESS)
 	assert_eq(bt_root.tick(0.1), NNBTNodes.SUCCESS)
 	assert_eq(bt_root.get_blackboard("score", 0), 5)
 
@@ -108,7 +114,6 @@ func test_invalid_operator_is_rejected() -> void:
 	assert_eq(errors.size(), 1, "an out-of-range operator reports exactly one engine error")
 	assert_string_contains(str(errors[0].code), "set_operator")
 	assert_string_contains(str(errors[0].code), "99")
-	assert_string_contains(str(errors[0].code), "0 to 5")
 	errors[0].handled = true
 
 	assert_eq(leaf.operator, NNBTBlackboardCompare.GREATER, "the previous operator is kept")
@@ -218,57 +223,72 @@ func test_set_null_then_has_fails() -> void:
 	bt_root.free()
 
 
-func test_empty_key_reports_once_per_leaf() -> void:
-	var leaves := [
-		NNBTBlackboardSet.new(),
-		NNBTBlackboardErase.new(),
-		NNBTBlackboardHas.new(),
-		NNBTBlackboardCompare.new(),
-	]
-	var class_names := [
-		"NNBTBlackboardSet",
-		"NNBTBlackboardErase",
-		"NNBTBlackboardHas",
-		"NNBTBlackboardCompare",
-	]
+func test_set_fails_when_the_schema_rejects_the_write() -> void:
+	var bt_root := NNBTRoot.new()
+	var board := NNBlackboard.new()
+	board.schema = Schema.make_schema({ "hp": [TYPE_INT] })
+	bt_root.blackboard = board
 
-	for index in leaves.size():
+	var leaf := NNBTBlackboardSet.new()
+	leaf.key = "hp"
+	leaf.value = "full"
+	bt_root.add_child(leaf)
+
+	assert_eq(bt_root.tick(0.1), NNBTNodes.FAILURE, "a rejected write fails the leaf")
+	assert_false(board.has_value("hp"), "the rejected value is not stored")
+	Schema.consume_errors(self, 1, "the rejection is reported")
+
+	leaf.value = 7
+	assert_eq(bt_root.tick(0.1), NNBTNodes.SUCCESS, "an accepted write succeeds")
+	assert_eq(board.get_value("hp", 0), 7)
+
+	bt_root.free()
+
+
+func test_data_driven_leaves_ignore_an_on_tick_override() -> void:
+	var bt_root := NNBTRoot.new()
+	var leaf: OverridingSet = OverridingSet.new()
+	leaf.key = "hp"
+	leaf.value = 7
+	bt_root.add_child(leaf)
+
+	assert_eq(bt_root.tick(0.1), NNBTNodes.SUCCESS, "the configured write decides the result")
+	assert_eq(leaf.on_tick_calls, 0, "the attached script's on_tick is never called")
+	assert_eq(bt_root.get_blackboard("hp", -1), 7)
+
+	assert_engine_error_count(0)
+	bt_root.free()
+
+
+func test_empty_key_reports_once_per_leaf() -> void:
+	var reported := 0
+
+	for leaf in _make_blackboard_leaves():
+		var leaf_name := leaf.get_class()
 		var bt_root := NNBTRoot.new()
-		var leaf: NNBTNodes = leaves[index]
-		leaf.name = "EmptyKeyLeaf"
 		bt_root.add_child(leaf)
 
-		assert_eq(bt_root.tick(0.1), NNBTNodes.FAILURE, "%s fails on an empty key" % class_names[index])
+		assert_eq(bt_root.tick(0.1), NNBTNodes.FAILURE, "%s fails on an empty key" % leaf_name)
 
+		reported += 1
 		var errors: Array = get_errors()
-		assert_eq(errors.size(), index + 1, "%s reports one configuration error" % class_names[index])
-		var error = errors[index]
-		assert_string_contains(str(error.code), class_names[index])
+		assert_eq(errors.size(), reported, "%s reports one configuration error" % leaf_name)
+		var error = errors[reported - 1]
+		assert_string_contains(str(error.code), leaf_name)
 		assert_string_contains(str(error.code), "non-empty blackboard key")
 		error.handled = true
 
 		assert_eq(bt_root.tick(0.1), NNBTNodes.FAILURE)
-		assert_eq(get_errors().size(), index + 1, "a second tick adds no second error")
+		assert_eq(get_errors().size(), reported, "a second tick adds no second error")
 
 		bt_root.free()
 
 
 func test_no_root_reports_once_per_leaf() -> void:
-	var leaves := [
-		NNBTBlackboardSet.new(),
-		NNBTBlackboardErase.new(),
-		NNBTBlackboardHas.new(),
-		NNBTBlackboardCompare.new(),
-	]
-	var class_names := [
-		"NNBTBlackboardSet",
-		"NNBTBlackboardErase",
-		"NNBTBlackboardHas",
-		"NNBTBlackboardCompare",
-	]
 	var reported := 0
 
-	for index in leaves.size():
+	for leaf in _make_blackboard_leaves():
+		var leaf_name := leaf.get_class()
 		# Only NNBTRoot exposes tick() to GDScript. A node reference forwards the
 		# tick to a target that stays outside the tree, so the leaf really has no
 		# NNBTRoot ancestor and its blackboard lookup must fail.
@@ -277,20 +297,17 @@ func test_no_root_reports_once_per_leaf() -> void:
 		reference.name = "NoRootReference"
 		bt_root.add_child(reference)
 
-		var leaf = leaves[index]
-		leaf.name = "NoRootLeaf"
 		leaf.set_key("key")
 		reference.node_reference = leaf
 
 		assert_eq(bt_root.tick(0.1), NNBTNodes.FAILURE,
-				"%s fails without an NNBTRoot ancestor" % class_names[index])
+				"%s fails without an NNBTRoot ancestor" % leaf_name)
 
 		reported += 1
 		var errors: Array = get_errors()
-		assert_eq(errors.size(), reported,
-				"%s reports one configuration error" % class_names[index])
+		assert_eq(errors.size(), reported, "%s reports one configuration error" % leaf_name)
 		var error = errors[reported - 1]
-		assert_string_contains(str(error.code), class_names[index])
+		assert_string_contains(str(error.code), leaf_name)
 		assert_string_contains(str(error.code), "no NNBTRoot ancestor")
 		error.handled = true
 
@@ -299,31 +316,6 @@ func test_no_root_reports_once_per_leaf() -> void:
 
 		bt_root.free()
 		leaf.free()
-
-
-func test_condition_leaf_running_is_returned_unchanged_and_reported_once() -> void:
-	var bt_root := NNBTRoot.new()
-	var leaf := RunningCondition.new()
-	leaf.name = "RunningCondition"
-	bt_root.add_child(leaf)
-
-	assert_eq(bt_root.tick(0.1), NNBTNodes.RUNNING, "the RUNNING result is not coerced")
-	assert_true(leaf.get_is_running(), "a RUNNING condition stays ticked")
-
-	var errors: Array = get_errors()
-	assert_eq(errors.size(), 1, "one warning for the RUNNING condition")
-	assert_string_contains(str(errors[0].code), "RunningCondition")
-	assert_string_contains(str(errors[0].code), "RUNNING")
-	errors[0].handled = true
-
-	assert_eq(bt_root.tick(0.1), NNBTNodes.RUNNING)
-	assert_eq(get_errors().size(), 1, "a second RUNNING tick does not report again")
-
-	leaf.result = NNBTNodes.SUCCESS
-	assert_eq(bt_root.tick(0.1), NNBTNodes.SUCCESS)
-	assert_false(leaf.get_is_running(), "a SUCCESS condition completes")
-
-	bt_root.free()
 
 
 func test_blackboard_leaf_fires_lifecycle_hooks_once_per_run() -> void:

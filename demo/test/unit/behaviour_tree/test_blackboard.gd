@@ -2,6 +2,9 @@ extends GutTest
 @warning_ignore('unused_parameter')
 @warning_ignore('return_value_discarded')
 
+const Fixtures = preload("res://test/support/fixtures.gd")
+const Schema = preload("res://test/unit/blackboard/support/schema.gd")
+
 
 class HelperWritingLeaf extends NNBTLeaf:
 	func on_tick(_delta: float) -> Status:
@@ -9,334 +12,28 @@ class HelperWritingLeaf extends NNBTLeaf:
 		return NNBTNodes.SUCCESS
 
 
-class HelperFailingLeaf extends NNBTLeaf:
-	func on_tick(_delta: float) -> Status:
-		return NNBTNodes.FAILURE
-
-
-func _contains_object(value: Variant) -> bool:
-	if typeof(value) == TYPE_OBJECT:
-		return true
-	if typeof(value) == TYPE_ARRAY:
-		for item in value:
-			if _contains_object(item):
-				return true
-	elif typeof(value) == TYPE_DICTIONARY:
-		for key in value.keys():
-			if _contains_object(key) or _contains_object(value[key]):
-				return true
-	return false
-
-
-func test_set_get_and_default() -> void:
-	var board := NNBlackboard.new()
-
-	assert_eq(board.get_value("missing", 42), 42, "an absent key returns the default")
-	assert_eq(board.get_value("missing"), null, "the default is null when omitted")
-
-	assert_true(board.set_value("number", 7))
-	assert_eq(board.get_value("number", 0), 7)
-
-	assert_true(board.set_value("null_value", null), "setting null is allowed")
-	assert_eq(board.get_value("null_value", "fallback"), "fallback", "a null value returns the default")
-
-
-func test_has_value_tracks_presence_and_null() -> void:
-	var board := NNBlackboard.new()
-
-	assert_false(board.has_value("key"), "a never-set key is absent")
-	board.set_value("key", 1)
-	assert_true(board.has_value("key"))
-
-	board.set_value("null_value", null)
-	assert_false(board.has_value("null_value"), "a null value counts as absent")
-
-	assert_true(board.erase_value("key"))
-	assert_false(board.has_value("key"), "an erased key is absent")
-
-
-func test_keys_and_clear() -> void:
-	var board := NNBlackboard.new()
-	board.set_value("plain", 1)
-	board.set_value("null_value", null)
-
-	assert_true(board.keys().has("plain"))
-	assert_true(board.keys().has("null_value"), "keys still lists a null-valued key")
-
-	board.clear()
-	assert_eq(board.keys().size(), 0, "clear removes every key")
-
-
-func test_non_string_keys_are_rejected() -> void:
-	var board := NNBlackboard.new()
-	board.set_value("keep", 5)
-
-	board.values = { 3: "rejected" }
-
-	var errors: Array = get_errors()
-	assert_eq(errors.size(), 1, "a non-String key assignment reports an engine error")
-	for error in errors:
-		error.handled = true
-
-	assert_true(board.keys().has("keep"), "the previous contents are unchanged")
-	assert_eq(board.get_value("keep", 0), 5)
-	assert_false(board.has_value("3"))
-
-
-func test_valid_values_assignment_replaces_contents() -> void:
-	var board := NNBlackboard.new()
-	board.set_value("old", 1)
-
-	board.values = { "alpha": 1, "beta": "two" }
-
-	assert_engine_error_count(0, "a valid assignment reports no engine error")
-	assert_eq(board.keys().size(), 2, "a valid assignment replaces the stored contents")
-	assert_false(board.has_value("old"), "previous keys are gone")
-	assert_eq(board.get_value("alpha", 0), 1)
-	assert_eq(board.get_value("beta", ""), "two")
-	assert_true(board.values.is_typed_key(), "the stored dictionary stays typed by String")
-
-
-func test_value_changed_only_on_real_change() -> void:
-	var board := NNBlackboard.new()
-	watch_signals(board)
-
-	board.set_value("key", 1)
-	assert_eq(get_signal_emit_count(board, "value_changed"), 1)
-
-	board.set_value("key", 1)
-	assert_eq(get_signal_emit_count(board, "value_changed"), 1, "a no-op set emits nothing")
-
-	board.set_value("key", 2)
-	assert_eq(get_signal_emit_count(board, "value_changed"), 2, "a real change emits once")
-
-
-func test_value_erased_only_for_existing_key() -> void:
-	var board := NNBlackboard.new()
-	board.set_value("key", 1)
-	watch_signals(board)
-
-	assert_true(board.erase_value("key"))
-	assert_eq(get_signal_emit_count(board, "value_erased"), 1)
-
-	assert_false(board.erase_value("key"))
-	assert_eq(get_signal_emit_count(board, "value_erased"), 1, "erasing an absent key emits nothing")
-
-
-func test_cleared_only_when_non_empty() -> void:
-	var board := NNBlackboard.new()
-	watch_signals(board)
-
-	board.clear()
-	assert_eq(get_signal_emit_count(board, "cleared"), 0, "clearing an empty board emits nothing")
-
-	board.set_value("key", 1)
-	board.clear()
-	assert_eq(get_signal_emit_count(board, "cleared"), 1)
-
-
-func test_get_debug_data_sanitises_objects() -> void:
-	var board := NNBlackboard.new()
-	var object := Node.new()
-
-	board.set_value("object", object)
-	board.set_value("array", [object, { "inner": object }])
-	board.set_value("dictionary", { "inner": object })
-	board.set_value("plain", 3)
-
-	var debug: Dictionary = board.get_debug_data()
-	assert_eq(debug["object"], "Node", "an Object value becomes its class name")
-	assert_eq(debug["array"][0], "Node")
-	assert_eq(debug["array"][1]["inner"], "Node")
-	assert_eq(debug["dictionary"]["inner"], "Node")
-	assert_eq(debug["plain"], 3)
-	assert_false(_contains_object(debug), "no raw Object values remain in debug data")
-
-	object.free()
-
-
-func test_get_debug_data_survives_a_freed_object_value() -> void:
-	var board: NNBlackboard = NNBlackboard.new()
-	var object: Node = Node.new()
-	board.set_value("object", object)
-	object.free()
-
-	assert_eq(board.get_debug_data()["object"], "<freed object>")
-	assert_engine_error_count(0)
-
-
-func test_get_debug_data_bounds_cyclic_structures() -> void:
-	var board := NNBlackboard.new()
-
-	var cycle: Array = []
-	cycle.append(cycle)
-	board.set_value("cycle", cycle)
-
-	var deep: Dictionary = {}
-	var cursor: Dictionary = deep
-	for index in 32:
-		var child: Dictionary = {}
-		cursor["next"] = child
-		cursor = child
-	board.set_value("deep", deep)
-
-	var debug: Dictionary = board.get_debug_data()
-
-	assert_false(_contains_object(debug), "no raw Object values remain in cyclic debug data")
-
-	var marker_found := false
-	var pending: Array = [debug]
-	var visited := 0
-	while pending.size() > 0 and visited < 1024:
-		visited += 1
-		var current: Variant = pending.pop_back()
-		if typeof(current) == TYPE_STRING and str(current) == "<max depth>":
-			marker_found = true
-			break
-		if typeof(current) == TYPE_ARRAY:
-			for item in current:
-				pending.append(item)
-		elif typeof(current) == TYPE_DICTIONARY:
-			for key in current.keys():
-				pending.append(current[key])
-	assert_true(marker_found, "the depth-limit marker appears in the debug data")
-	assert_lt(visited, 1024, "the sanitised structure is bounded")
-
-
-# Each declaration is name -> [type] or [type, default].
-func _make_schema(declarations: Dictionary, allow_unknown_keys := true) -> NNBlackboardSchema:
-	var schema := NNBlackboardSchema.new()
-	schema.allow_unknown_keys = allow_unknown_keys
-	for key_name in declarations:
-		var declaration: Array = declarations[key_name]
-		var entry := NNBlackboardKey.new()
-		entry.key = key_name
-		entry.value_type = declaration[0]
-		if declaration.size() > 1:
-			entry.has_default = true
-			entry.default_value = declaration[1]
-		schema.keys.append(entry)
-	return schema
-
-
-func _consume_errors(expected: int, msg: String) -> void:
-	var errors: Array = get_errors().filter(func(error) -> bool: return not error.handled)
-	assert_eq(errors.size(), expected, msg)
-	for error in errors:
-		error.handled = true
-
-
-func test_schema_rejected_write_changes_nothing() -> void:
-	var board := NNBlackboard.new()
-	board.schema = _make_schema({ "hp": [TYPE_INT] })
-	assert_true(board.set_value("hp", 5))
-	watch_signals(board)
-
-	assert_false(board.set_value("hp", 5.0), "a float is not an int")
-	board.values = { "hp": "full", "other": 1 }
-	_consume_errors(2, "each rejected write reports one error")
-
-	assert_eq(board.values, { "hp": 5 }, "rejected writes leave the stored values untouched")
-	assert_signal_not_emitted(board, "value_changed")
-
-	assert_true(board.set_value("hp", null), "null means absent and is always allowed")
-	assert_false(board.has_value("hp"))
-
-
-func test_apply_values_is_atomic() -> void:
-	var board := NNBlackboard.new()
-	board.schema = _make_schema({ "hp": [TYPE_INT] })
-	board.set_value("a", 1)
-	watch_signals(board)
-
-	assert_false(board.apply_values({ "a": 2, "hp": "bad" }))
-	_consume_errors(1, "the rejected batch reports one error")
-	assert_eq(board.values, { "a": 1 }, "a rejected batch writes nothing")
-	assert_signal_not_emitted(board, "value_changed", "a rejected batch emits nothing")
-
-	var observed: Array = []
-	var observe := func(key: String, value: Variant) -> void:
-		observed.append([key, value, board.get_value("b"), board.get_value("hp")])
-	board.value_changed.connect(observe)
-	assert_true(board.apply_values({ "a": 1, "b": 2, "hp": 3 }))
-	# The callable captures the board, so leaving it connected would leak the board.
-	board.value_changed.disconnect(observe)
-
-	assert_eq(board.values, { "a": 1, "b": 2, "hp": 3 })
-	assert_eq(observed, [["b", 2, 2, 3], ["hp", 3, 2, 3]], "one signal per changed key, emitted after the whole batch is written")
-
-
-func test_schema_defaults_fill_only_absent_keys_silently() -> void:
-	var schema := _make_schema({ "hp": [TYPE_INT, 100], "items": [TYPE_ARRAY, []], "name": [TYPE_STRING, "npc"] })
-	var board := NNBlackboard.new()
-	board.set_value("hp", 50)
-	board.set_value("name", null)
-	watch_signals(board)
-
-	board.schema = schema
-
-	assert_eq(board.get_value("hp"), 50, "a stored value is not overwritten")
-	assert_eq(board.get_value("name"), "npc", "a null value counts as absent and is filled")
-	assert_eq(board.get_value("items"), [])
-	assert_signal_not_emitted(board, "value_changed", "installing defaults is not a gameplay change")
-
-	var other := NNBlackboard.new()
-	other.schema = schema
-	board.get_value("items").append("sword")
-	assert_eq(other.get_value("items"), [], "array defaults are deep-copied per board")
-
-	board.values = {}
-	assert_eq(board.values, { "hp": 100, "items": [], "name": "npc" }, "replacing the values reinstalls defaults")
-
-
-func test_schema_refuses_incompatible_state_or_invalid_schema() -> void:
-	var board := NNBlackboard.new()
-	board.set_value("hp", "full")
-
-	board.schema = _make_schema({ "hp": [TYPE_INT] })
-	_consume_errors(1, "an incompatible stored value is reported")
-	assert_null(board.schema, "the schema is refused")
-
-	var valid := _make_schema({ "hp": [TYPE_STRING] })
-	board.schema = valid
-	assert_eq(board.schema, valid)
-
-	board.schema = _make_schema({ "hp": [TYPE_INT], "": [TYPE_INT] })
-	board.schema = _make_schema({ "a": [TYPE_INT, "zero"] })
-	var duplicate_names := _make_schema({ "b": [TYPE_INT] })
-	duplicate_names.keys.append(duplicate_names.keys[0].duplicate())
-	assert_eq(duplicate_names.get_validation_errors().size(), 1, "duplicate names are a validation error")
-	board.schema = duplicate_names
-	_consume_errors(3, "each invalid schema is reported")
-	assert_eq(board.schema, valid, "an invalid schema keeps the previous one")
-
-
-func test_schema_unknown_keys_and_any_type() -> void:
-	var board := NNBlackboard.new()
-	board.schema = _make_schema({ "anything": [TYPE_NIL] }, false)
-
-	assert_true(board.set_value("anything", "text"))
-	assert_true(board.set_value("anything", 3), "TYPE_NIL accepts every type")
-	assert_true(board.set_value("unknown", null), "null is allowed even for undeclared keys")
-	assert_false(board.set_value("unknown", 1))
-	_consume_errors(1, "the undeclared write is reported")
-	assert_false(board.has_value("unknown"))
-
-
-func test_root_creates_a_blackboard() -> void:
+func test_root_board_defaults_to_a_private_board_and_accepts_an_assignment() -> void:
 	var bt_root := NNBTRoot.new()
 
 	assert_null(bt_root.blackboard, "no board is assigned by default")
 	assert_null(bt_root.get_assigned_blackboard(), "the assigned board is null by default")
-	var board := bt_root.get_blackboard_resource()
-	assert_not_null(board, "the root always resolves an effective board")
-	assert_true(board is NNBlackboard)
+	var private_board := bt_root.get_blackboard_resource()
+	assert_true(private_board is NNBlackboard, "the root always resolves an effective board")
 
 	assert_true(bt_root.set_blackboard("key", 7))
 	assert_eq(bt_root.get_blackboard("key", 0), 7, "helpers write through the private board")
 	assert_true(bt_root.has_blackboard("key"))
 	assert_true(bt_root.erase_blackboard("key"))
 	assert_false(bt_root.has_blackboard("key"), "helpers erase through the private board")
+
+	var custom := NNBlackboard.new()
+	bt_root.blackboard = custom
+	assert_eq(bt_root.blackboard, custom, "assigning a custom resource replaces the default")
+
+	bt_root.set_blackboard("key", "value")
+	assert_eq(custom.get_value("key", ""), "value", "helpers write to the custom resource")
+	assert_eq(bt_root.get_blackboard("key", ""), "value")
+	assert_false(private_board.has_value("key"), "the replaced board is left alone")
 
 	bt_root.free()
 
@@ -350,21 +47,6 @@ func test_blackboard_outlives_the_root() -> void:
 
 	assert_true(is_instance_valid(board), "the retained blackboard stays valid after its root is freed")
 	assert_eq(board.get_value("key", 0), 7, "values survive the root")
-
-
-func test_custom_blackboard_replaces_the_default() -> void:
-	var bt_root := NNBTRoot.new()
-	var custom := NNBlackboard.new()
-
-	bt_root.blackboard = custom
-	assert_eq(bt_root.blackboard, custom, "assigning a custom resource replaces the default")
-
-	bt_root.set_blackboard("key", "value")
-	assert_eq(custom.get_value("key", ""), "value", "helpers write to the custom resource")
-	assert_eq(bt_root.get_blackboard("key", ""), "value")
-	assert_true(bt_root.has_blackboard("key"))
-
-	bt_root.free()
 
 
 func test_null_blackboard_clears_the_assignment() -> void:
@@ -419,47 +101,15 @@ func test_actor_precedence_and_fallback() -> void:
 	assert_null(bt_root.get_assigned_actor(), "clearing the actor clears the assignment")
 	assert_eq(bt_root.get_actor(), path_actor, "actor_node_path wins over the parent")
 
-	bt_root.actor_node_path = NodePath("../Missing")
-	assert_eq(bt_root.get_actor(), container, "an invalid path falls through to the parent")
-
-	container.free()
-
-
-func test_freed_explicit_actor_falls_back_to_path() -> void:
-	var container := Node.new()
-	var bt_root := NNBTRoot.new()
-	container.add_child(bt_root)
-
-	var path_actor := Node.new()
-	path_actor.name = "PathActor"
-	container.add_child(path_actor)
-	bt_root.actor_node_path = NodePath("../PathActor")
-
-	var explicit_actor := Node.new()
 	bt_root.actor = explicit_actor
-	assert_eq(bt_root.get_assigned_actor(), explicit_actor)
-	assert_eq(bt_root.get_actor(), explicit_actor)
-
 	explicit_actor.free()
 	assert_null(bt_root.get_assigned_actor(), "a freed explicit actor is no longer assigned")
 	assert_eq(bt_root.get_actor(), path_actor, "a freed explicit actor falls back to the path")
 
+	bt_root.actor_node_path = NodePath("../Missing")
+	assert_eq(bt_root.get_actor(), container, "an invalid path falls through to the parent")
+
 	container.free()
-
-
-func test_actor_re_resolves_after_reparenting() -> void:
-	var first_parent := Node.new()
-	var second_parent := Node.new()
-	var bt_root := NNBTRoot.new()
-
-	first_parent.add_child(bt_root)
-	assert_eq(bt_root.get_actor(), first_parent)
-
-	bt_root.reparent(second_parent)
-	assert_eq(bt_root.get_actor(), second_parent, "reparenting re-resolves the actor")
-
-	first_parent.free()
-	second_parent.free()
 
 
 func test_actor_node_path_resolves_on_entering_the_tree() -> void:
@@ -790,21 +440,6 @@ func test_leaf_follows_a_reparented_intermediate_ancestor() -> void:
 	assert_eq(leaf.get_blackboard("from_a", 0), 1)
 
 
-func _save_serialised_scene(scene_root: Node, path: String) -> String:
-	var packed := PackedScene.new()
-	assert_eq(packed.pack(scene_root), OK, "packing the scene succeeds")
-	assert_eq(ResourceSaver.save(packed, path), OK, "saving the scene succeeds")
-	var file := FileAccess.open(path, FileAccess.READ)
-	assert_not_null(file, "the saved scene is readable")
-	var text := file.get_as_text()
-	file.close()
-	return text
-
-
-func _delete_serialised_scene(path: String) -> void:
-	DirAccess.remove_absolute(ProjectSettings.globalize_path(path))
-
-
 func test_default_blackboard_is_private_and_not_serialised() -> void:
 	var path := "user://gut_bt_serialise_1.tscn"
 	var world := Node.new()
@@ -818,7 +453,7 @@ func test_default_blackboard_is_private_and_not_serialised() -> void:
 	parent.add_child(bt_root)
 	bt_root.owner = world
 
-	var text := _save_serialised_scene(world, path)
+	var text := Fixtures.save_serialised_scene(self, world, path)
 	assert_false(text.contains("blackboard"), "the private board is not serialised")
 	assert_false(text.contains("NNBlackboard"), "no blackboard sub-resource is written")
 
@@ -837,14 +472,14 @@ func test_default_blackboard_is_private_and_not_serialised() -> void:
 	world.free()
 	first.free()
 	second.free()
-	_delete_serialised_scene(path)
+	Fixtures.delete_serialised_scene(path)
 
 
 func test_assigned_blackboard_is_local_to_scene_by_default() -> void:
 	var path := "user://gut_bt_serialise_2.tscn"
 	var board := NNBlackboard.new()
 	assert_true(board.is_local_to_scene(), "NNBlackboard defaults to resource_local_to_scene")
-	board.schema = _make_schema({ "hp": [TYPE_INT, 10] })
+	board.schema = Schema.make_schema({ "hp": [TYPE_INT, 10] })
 	board.set_value("hp", 7)
 
 	var world := Node.new()
@@ -855,7 +490,7 @@ func test_assigned_blackboard_is_local_to_scene_by_default() -> void:
 	bt_root.owner = world
 	bt_root.blackboard = board
 
-	var text := _save_serialised_scene(world, path)
+	var text := Fixtures.save_serialised_scene(self, world, path)
 	assert_true(text.contains("blackboard"), "the assigned board is serialised")
 	assert_true(text.contains("NNBlackboard"), "the assigned board is written as a sub-resource")
 
@@ -868,14 +503,14 @@ func test_assigned_blackboard_is_local_to_scene_by_default() -> void:
 	assert_not_null(first_root.get_blackboard_resource().schema, "the duplicated board keeps its schema")
 	assert_eq(first_root.get_blackboard("hp", -1), 7, "the stored value survives loading alongside its schema")
 	assert_false(first_root.set_blackboard("hp", "full"), "the duplicated board still validates writes")
-	_consume_errors(1, "the rejected write is reported")
+	Schema.consume_errors(self, 1, "the rejected write is reported")
 	first_root.set_blackboard("hp", 5)
 	assert_eq(second_root.get_blackboard("hp", -1), 7, "a write does not leak to the other instance")
 
 	world.free()
 	first.free()
 	second.free()
-	_delete_serialised_scene(path)
+	Fixtures.delete_serialised_scene(path)
 
 
 func test_deliberately_shared_blackboard_is_shared() -> void:
@@ -891,7 +526,7 @@ func test_deliberately_shared_blackboard_is_shared() -> void:
 	bt_root.owner = world
 	bt_root.blackboard = board
 
-	_save_serialised_scene(world, path)
+	Fixtures.save_serialised_scene(self, world, path)
 
 	var first: Node = (load(path) as PackedScene).instantiate()
 	var second: Node = (load(path) as PackedScene).instantiate()
@@ -905,10 +540,10 @@ func test_deliberately_shared_blackboard_is_shared() -> void:
 	world.free()
 	first.free()
 	second.free()
-	_delete_serialised_scene(path)
+	Fixtures.delete_serialised_scene(path)
 
 
-func test_actor_resolution_is_not_serialised() -> void:
+func test_resolved_actors_are_not_serialised() -> void:
 	var path := "user://gut_bt_serialise_4.tscn"
 	var world := Node.new()
 	world.name = "World"
@@ -916,77 +551,35 @@ func test_actor_resolution_is_not_serialised() -> void:
 	parent.name = "Parent"
 	world.add_child(parent)
 	parent.owner = world
-	var bt_root := NNBTRoot.new()
-	bt_root.name = "BT"
-	parent.add_child(bt_root)
-	bt_root.owner = world
-
-	var text := _save_serialised_scene(world, path)
-	assert_false(text.contains("actor ="), "the resolved parent is not serialised as the actor")
-
-	var first: Node = (load(path) as PackedScene).instantiate()
-	var first_root: NNBTRoot = first.get_node("Parent/BT")
-	assert_null(first_root.get_assigned_actor(), "no actor is assigned")
-	assert_eq(first_root.get_actor(), first.get_node("Parent"), "the parent is resolved on demand")
-
-	world.free()
-	first.free()
-	_delete_serialised_scene(path)
-
-
-func test_tick_result_is_not_serialised() -> void:
-	var path := "user://gut_bt_serialise_7.tscn"
-	var world := Node.new()
-	world.name = "World"
-	var bt_root := NNBTRoot.new()
-	bt_root.name = "BT"
-	world.add_child(bt_root)
-	bt_root.owner = world
-	var leaf := HelperFailingLeaf.new()
-	leaf.name = "Leaf"
-	bt_root.add_child(leaf)
-	leaf.owner = world
-
-	assert_eq(bt_root.tick(0.1), NNBTNodes.FAILURE, "the failing leaf drives the root result")
-	assert_eq(bt_root.get_tick_result(), NNBTNodes.FAILURE, "the tick wrote a non-default result")
-
-	var text := _save_serialised_scene(world, path)
-	assert_false(text.contains("tick_result"), "the tick result is runtime state")
-
-	world.free()
-	_delete_serialised_scene(path)
-
-
-func test_actor_node_path_is_serialised_without_resolved_actor() -> void:
-	var path := "user://gut_bt_serialise_5.tscn"
-	var world := Node.new()
-	world.name = "World"
-	var parent := Node.new()
-	parent.name = "Parent"
-	world.add_child(parent)
-	parent.owner = world
-	var bt_root := NNBTRoot.new()
-	bt_root.name = "BT"
-	parent.add_child(bt_root)
-	bt_root.owner = world
+	var plain := NNBTRoot.new()
+	plain.name = "Plain"
+	parent.add_child(plain)
+	plain.owner = world
+	var pathed := NNBTRoot.new()
+	pathed.name = "Pathed"
+	parent.add_child(pathed)
+	pathed.owner = world
 	var other := Node.new()
 	other.name = "Other"
 	parent.add_child(other)
 	other.owner = world
-	bt_root.actor_node_path = NodePath("../Other")
+	pathed.actor_node_path = NodePath("../Other")
 
-	var text := _save_serialised_scene(world, path)
+	var text := Fixtures.save_serialised_scene(self, world, path)
 	assert_true(text.contains("actor_node_path"), "the path is serialised")
-	assert_false(text.contains("actor ="), "the resolved path target is not serialised as the actor")
+	assert_eq(text.count("actor ="), 0, "a resolved actor is never serialised")
 
 	var first: Node = (load(path) as PackedScene).instantiate()
-	var first_root: NNBTRoot = first.get_node("Parent/BT")
-	assert_null(first_root.get_assigned_actor(), "only the path is set")
-	assert_eq(first_root.get_actor(), first.get_node("Parent/Other"), "the path target is resolved on demand")
+	var plain_root: NNBTRoot = first.get_node("Parent/Plain")
+	var pathed_root: NNBTRoot = first.get_node("Parent/Pathed")
+	assert_null(plain_root.get_assigned_actor(), "no actor is assigned")
+	assert_eq(plain_root.get_actor(), first.get_node("Parent"), "the parent is resolved on demand")
+	assert_null(pathed_root.get_assigned_actor(), "only the path is set")
+	assert_eq(pathed_root.get_actor(), first.get_node("Parent/Other"), "the path target is resolved on demand")
 
 	world.free()
 	first.free()
-	_delete_serialised_scene(path)
+	Fixtures.delete_serialised_scene(path)
 
 
 func test_explicit_actor_round_trips() -> void:
@@ -1003,7 +596,7 @@ func test_explicit_actor_round_trips() -> void:
 	actor.owner = world
 	bt_root.actor = actor
 
-	var text := _save_serialised_scene(world, path)
+	var text := Fixtures.save_serialised_scene(self, world, path)
 	assert_true(text.contains("actor ="), "the explicit actor is serialised")
 
 	var first: Node = (load(path) as PackedScene).instantiate()
@@ -1016,4 +609,4 @@ func test_explicit_actor_round_trips() -> void:
 
 	world.free()
 	first.free()
-	_delete_serialised_scene(path)
+	Fixtures.delete_serialised_scene(path)

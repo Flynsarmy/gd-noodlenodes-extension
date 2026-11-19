@@ -118,3 +118,30 @@ func test_sequence_stops_at_invalid_leaf() -> void:
 	_consume_single_error(["on_tick", "42"])
 
 	root.free()
+
+
+class RunningCondition extends NNBTConditionLeaf:
+	var result: int = NNBTNodes.RUNNING
+
+	func on_tick(_delta: float) -> Status:
+		return result
+
+
+func test_running_condition_is_returned_unchanged_and_reported_once() -> void:
+	var leaf: RunningCondition = RunningCondition.new()
+	leaf.name = "RunningCondition"
+	var root: NNBTRoot = _build_root(leaf)
+
+	assert_eq(root.tick(0.1), NNBTNodes.RUNNING, "the RUNNING result is not coerced")
+	assert_true(leaf.get_is_running(), "a RUNNING condition stays ticked")
+	_consume_single_error(["RunningCondition", "RUNNING"])
+
+	var errors_before := get_errors().size()
+	assert_eq(root.tick(0.1), NNBTNodes.RUNNING)
+	assert_eq(get_errors().size(), errors_before, "a second RUNNING tick does not report again")
+
+	leaf.result = NNBTNodes.SUCCESS
+	assert_eq(root.tick(0.1), NNBTNodes.SUCCESS)
+	assert_false(leaf.get_is_running(), "a SUCCESS condition completes")
+
+	root.free()
