@@ -229,7 +229,7 @@ void NNSTRoot::tick(float delta) {
 	uint64_t method_start_time_usec = godot::Time::get_singleton()->get_ticks_usec();
 #endif
 
-	if (_num_active_states == 0) {
+	if (_active_states.empty()) {
 		_needs_reselection = false;
 		// Entering the initial states runs on_enter_state() callbacks. Events
 		// they send must wait until the whole transition in has finished.
@@ -809,7 +809,7 @@ void NNSTRoot::_transition_in() {
 	_needs_reselection = false;
 	set_internal_status(ST_INTERNAL_STATUS_ACTIVE);
 
-	if (_num_active_states == 0) {
+	if (_active_states.empty()) {
 		std::vector<ObjectID> new_active_states;
 		_evaluate_child_activations(new_active_states);
 		_apply_active_states(new_active_states, this);
@@ -848,11 +848,9 @@ void NNSTRoot::_reset_chart() {
 			}
 		}
 		_active_states = remaining;
-		_num_active_states = (unsigned int)_active_states.size();
 	}
 
 	_active_states.clear();
-	_num_active_states = 0;
 	set_internal_status(ST_INTERNAL_STATUS_INACTIVE);
 
 	_needs_reselection = false;

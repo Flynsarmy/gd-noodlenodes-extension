@@ -34,20 +34,16 @@ protected:
 	int _child_state_selection_rule;
 
 	std::vector<NNConsiderations *> _child_considerations;
-	unsigned int _num_child_considerations;
 
 	std::vector<ObjectID> _child_states;
-	unsigned int _num_child_states;
 
 	std::vector<NNSTTransition *> _child_transitions;
-	unsigned int _num_child_transitions;
 
 	// Active states are tracked by instance ID. A child state can be freed by
 	// user code (or removed/reparented) while its ancestors still hold cached
 	// state lists, so the pointers themselves must never be dereferenced until
 	// they have been resolved through ObjectDB again.
 	std::vector<ObjectID> _active_states;
-	unsigned int _num_active_states;
 
 	// Set by the CHILD_ORDER_CHANGED handler when a state child disappeared.
 	// Teardown must not synchronously enter new states while the tree is being

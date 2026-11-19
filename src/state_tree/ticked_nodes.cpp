@@ -458,7 +458,7 @@ bool NNSTTickedNodes::_process_transitions(int trigger_type) {
 	// transition is never applied on behalf of a stale one.
 	const ActivationIdentity activation = _capture_activation_identity();
 
-	for (unsigned int i = 0; i < _num_child_transitions; i++) {
+	for (unsigned int i = 0; i < _child_transitions.size(); i++) {
 		NNSTTransition *transition = _child_transitions[i];
 		if (transition == nullptr || transition->get_to().is_empty() ||
 				!transition->is_triggered_by(trigger_type)) {
@@ -693,11 +693,11 @@ float NNSTTickedNodes::evaluate() {
 	_score = 0.0f;
 
 	// Evaluate the children.
-	if (_num_child_considerations == 0) {
+	if (_child_considerations.empty()) {
 		return _score;
 	}
 	ScoreAggregation aggregation(_evaluation_method);
-	for (unsigned int i = 0; i < _num_child_considerations; i++) {
+	for (unsigned int i = 0; i < _child_considerations.size(); i++) {
 		NNConsiderations *considerationNode = _child_considerations[i];
 		if (!considerationNode->get_is_enabled())
 			continue;
@@ -1058,7 +1058,6 @@ void NNSTTickedNodes::_transition_out() {
 	_clear_pending_transition();
 	set_internal_status(ST_INTERNAL_STATUS_INACTIVE);
 	_active_states.clear();
-	_num_active_states = 0;
 	_is_exiting = false;
 };
 

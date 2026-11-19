@@ -40,10 +40,6 @@ NNSTBranchNodes::NNSTBranchNodes() {
 	_child_state_selection_rule = NNSTNodeChildStateSelectionRule::ON_ENTER_CONDITION_METHOD;
 	_activation_epoch = 0;
 
-	_num_child_states = 0;
-	_num_child_considerations = 0;
-	_num_child_transitions = 0;
-	_num_active_states = 0;
 	_last_notification_had_child_removal = false;
 	_needs_reselection = false;
 
@@ -222,7 +218,6 @@ void NNSTBranchNodes::_add_active_child_state(NNSTTickedNodes *child_state) {
 	}
 
 	_active_states.push_back(state_id);
-	_num_active_states++;
 }
 
 void NNSTBranchNodes::_remove_active_child_state(NNSTTickedNodes *child_state) {
@@ -234,7 +229,6 @@ void NNSTBranchNodes::_remove_active_child_state(NNSTTickedNodes *child_state) {
 	for (unsigned int i = 0; i < _active_states.size(); i++) {
 		if (_active_states[i] == state_id) {
 			_active_states.erase(_active_states.begin() + i);
-			_num_active_states--;
 			break;
 		}
 	}
@@ -246,7 +240,6 @@ void NNSTBranchNodes::_on_child_predelete(NNSTTickedNodes *child_state) {
 
 void NNSTBranchNodes::_reconcile_active_child_states() {
 	if (_active_states.empty()) {
-		_num_active_states = 0;
 		return;
 	}
 
@@ -266,7 +259,6 @@ void NNSTBranchNodes::_reconcile_active_child_states() {
 	}
 
 	_active_states = retained_states;
-	_num_active_states = (unsigned int)_active_states.size();
 
 	for (unsigned int i = 0; i < removed_states.size(); i++) {
 		NNSTTickedNodes *state = _resolve_state(removed_states[i]);
@@ -397,7 +389,6 @@ void NNSTBranchNodes::_apply_active_states(std::vector<ObjectID> &new_active_sta
 	}
 
 	_active_states = next_active_states;
-	_num_active_states = (unsigned int)_active_states.size();
 
 	// do on_exit for any states no longer active
 	for (unsigned int i = 0; i < states_to_exit.size(); i++) {
@@ -559,9 +550,6 @@ void NNSTBranchNodes::_notification(int p_what) {
 				_child_states.push_back(ObjectID(stnode->get_instance_id()));
 			}
 		} //endfor child nodes
-		_num_child_states = (unsigned int)_child_states.size();
-		_num_child_considerations = (unsigned int)_child_considerations.size();
-		_num_child_transitions = (unsigned int)_child_transitions.size();
 
 		bool child_state_removed = false;
 		if (p_what == NOTIFICATION_CHILD_ORDER_CHANGED) {

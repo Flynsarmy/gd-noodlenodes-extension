@@ -59,7 +59,7 @@ void NNSTNode::_transition_in() {
 		on_enter_state();
 	}
 
-	if (_num_active_states > 0) {
+	if (!_active_states.empty()) {
 		return;
 	}
 
