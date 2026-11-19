@@ -240,7 +240,7 @@ public:
 
 	// Walks the active hierarchy and lets its transitions handle the trigger.
 	// Returns true when a transition handled the trigger.
-	virtual bool _process_transitions(int trigger_type, const String &event_name = String());
+	virtual bool _process_transitions(int trigger_type);
 
 	void tick(float delta);
 

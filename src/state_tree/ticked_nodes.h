@@ -150,7 +150,7 @@ public:
 	// at that state (or, for a parallel node, after every active region was
 	// visited). STATE_ENTER is dispatched only to the state whose activation
 	// generated the queued request; descendants enter (and queue) themselves.
-	virtual bool _process_transitions(int trigger_type, const String &event_name = String());
+	virtual bool _process_transitions(int trigger_type);
 
 	// Returns true if the transition was applied.
 	virtual bool transition_to(NodePath path_to_node);

@@ -448,7 +448,7 @@ bool NNSTTickedNodes::is_parallel() const {
 	return false;
 }
 
-bool NNSTTickedNodes::_process_transitions(int trigger_type, const String &event_name) {
+bool NNSTTickedNodes::_process_transitions(int trigger_type) {
 	if (!get_is_active()) {
 		return false;
 	}
@@ -462,9 +462,6 @@ bool NNSTTickedNodes::_process_transitions(int trigger_type, const String &event
 		NNSTTransition *transition = _child_transitions[i];
 		if (transition == nullptr || transition->get_to().is_empty() ||
 				!transition->is_triggered_by(trigger_type)) {
-			continue;
-		}
-		if (trigger_type == NNSTRoot::TriggerType::EVENT && transition->get_event_name() != event_name) {
 			continue;
 		}
 		if (!transition->_can_transition()) {
@@ -509,7 +506,7 @@ bool NNSTTickedNodes::_process_transitions(int trigger_type, const String &event
 	const std::vector<ObjectID> active_state_ids = _active_states;
 	for (unsigned int i = 0; i < active_state_ids.size(); i++) {
 		NNSTTickedNodes *state = _get_active_state(active_state_ids[i]);
-		if (state == nullptr || !state->_process_transitions(trigger_type, event_name)) {
+		if (state == nullptr || !state->_process_transitions(trigger_type)) {
 			continue;
 		}
 		if (!is_parallel()) {

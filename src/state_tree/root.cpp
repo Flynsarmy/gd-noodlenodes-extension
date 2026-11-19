@@ -711,7 +711,7 @@ void NNSTRoot::_run_queued_state_enters() {
 			continue;
 		}
 
-		state->_process_transitions(TriggerType::STATE_ENTER, String());
+		state->_process_transitions(TriggerType::STATE_ENTER);
 	}
 
 	_transitions_processing_active = false;
@@ -746,14 +746,14 @@ void NNSTRoot::_run_changes() {
 		// 1. State changes (a transition finished).
 		if (_state_change_pending) {
 			_state_change_pending = false;
-			_process_transitions(TriggerType::STATE_CHANGE, String());
+			_process_transitions(TriggerType::STATE_CHANGE);
 			continue;
 		}
 
 		// 2. Property changes (an expression property was set).
 		if (_property_change_pending) {
 			_property_change_pending = false;
-			_process_transitions(TriggerType::PROPERTY_CHANGE, String());
+			_process_transitions(TriggerType::PROPERTY_CHANGE);
 			continue;
 		}
 
@@ -769,7 +769,7 @@ void NNSTRoot::_run_changes() {
 	_locked_down = false;
 }
 
-bool NNSTRoot::_process_transitions(int trigger_type, const String &event_name) {
+bool NNSTRoot::_process_transitions(int trigger_type) {
 	if (!get_is_active()) {
 		return false;
 	}
@@ -783,7 +783,7 @@ bool NNSTRoot::_process_transitions(int trigger_type, const String &event_name) 
 		if (stnode == nullptr) {
 			continue;
 		}
-		if (stnode->_process_transitions(trigger_type, event_name)) {
+		if (stnode->_process_transitions(trigger_type)) {
 			// A parallel child fans out to all of its own active regions before
 			// reporting handled. Keep visiting the root's other active children
 			// so a parallel node never cuts short a wider fan-out; normal states
