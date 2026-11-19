@@ -24,6 +24,7 @@ const TYPE_COLORS := {
 @onready var status_label: Label = $HudLayer/StatusBar/Label
 @onready var title_label: Label = $Backdrop/Title
 @onready var subtitle_label: Label = $Backdrop/Subtitle
+@onready var _debugger: Object = _find_debugger()
 
 var mouse_position: Vector2
 var ai_paused := false
@@ -184,6 +185,13 @@ func _live_entity_count() -> int:
 	return count
 
 
+func _find_debugger() -> Object:
+	# The overlay singleton only exists in debug builds.
+	if not Engine.has_singleton("AIDebuggerOverlay"):
+		return null
+	return Engine.get_singleton("AIDebuggerOverlay")
+
+
 func _overlay_node() -> Node:
 	return debugger_layer.get_node_or_null(OVERLAY_NAME)
 
@@ -194,40 +202,35 @@ func _overlay_is_open() -> bool:
 
 
 func _open_overlay() -> void:
-	if not Engine.has_singleton("AIDebuggerOverlay"):
+	if _debugger == null:
 		return
 
 	if not _overlay_is_open():
-		var debugger := Engine.get_singleton("AIDebuggerOverlay")
-		if debugger == null:
-			return
-		debugger.call("add_as_child_of", debugger_layer)
+		_debugger.call("add_as_child_of", debugger_layer)
 
 	# Start on Agent Behaviours with its first root selected so the overlay shows
 	# a live hierarchy immediately instead of an empty tree.
-	var debugger := Engine.get_singleton("AIDebuggerOverlay")
-	if debugger != null:
-		debugger.call("on_type_item_selected", AGENT)
-		debugger.call("on_root_item_selected", 1)
+	_debugger.call("on_type_item_selected", AGENT)
+	_debugger.call("on_root_item_selected", 1)
 	_update_status()
 
 
 func _toggle_overlay() -> void:
 	if _overlay_is_open():
 		_overlay_node().queue_free()
+		_update_status()
 	else:
 		_open_overlay()
-	_update_status()
 
 
 func _select_overlay_category(kind: int) -> void:
 	if not _overlay_is_open():
 		_open_overlay()
 
-	var debugger := Engine.get_singleton("AIDebuggerOverlay")
-	if debugger != null:
-		debugger.call("on_type_item_selected", kind)
-		debugger.call("on_root_item_selected", 1)
+	if _debugger == null:
+		return
+	_debugger.call("on_type_item_selected", kind)
+	_debugger.call("on_root_item_selected", 1)
 
 
 func _toggle_pause() -> void:
@@ -239,14 +242,9 @@ func _toggle_pause() -> void:
 
 
 func _update_status() -> void:
-	if status_label == null:
-		return
-
 	var overlay_open := _overlay_is_open()
-	if title_label != null:
-		title_label.visible = not overlay_open
-	if subtitle_label != null:
-		subtitle_label.visible = not overlay_open
+	title_label.visible = not overlay_open
+	subtitle_label.visible = not overlay_open
 
 	var overlay_state := "open" if overlay_open else "closed"
 	var pause_state := "on" if ai_paused else "off"
