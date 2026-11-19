@@ -1,18 +1,12 @@
 extends GutTest
 
-
-func _make_root_with(sensor: Node) -> NNSTRoot:
-	var _root: NNSTRoot = NNSTRoot.new()
-	_root.add_child(sensor)
-	# These tests drive the root by hand, so automatic ticking is off.
-	_root.process_thread = NNSTRoot.MANUAL
-	add_child_autofree(_root)
-	return _root
+const Fixtures = preload("res://test/support/fixtures.gd")
 
 
 func test_sensor_value_is_the_squared_distance_over_max_distance_squared() -> void:
 	var _sensor: NNDistanceVector2Sensor = NNDistanceVector2Sensor.new()
-	var _root := _make_root_with(_sensor)
+	var _root := Fixtures.add_manual_st_root(self)
+	_root.add_child(_sensor)
 	_sensor.from_vector = Vector2.ZERO
 	_sensor.to_vector = Vector2(3.0, 4.0)
 
@@ -26,7 +20,8 @@ func test_sensor_value_is_the_squared_distance_over_max_distance_squared() -> vo
 
 func test_distance_and_direction_are_only_calculated_when_enabled() -> void:
 	var _sensor: NNDistanceVector3Sensor = NNDistanceVector3Sensor.new()
-	var _root := _make_root_with(_sensor)
+	var _root := Fixtures.add_manual_st_root(self)
+	_root.add_child(_sensor)
 	_sensor.from_vector = Vector3.ZERO
 	_sensor.to_vector = Vector3(3.0, 4.0, 0.0)
 

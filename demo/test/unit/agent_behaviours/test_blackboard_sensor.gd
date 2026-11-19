@@ -1,6 +1,8 @@
 extends GutTest
 @warning_ignore('unused_parameter')
 
+const Fixtures = preload("res://test/support/fixtures.gd")
+
 
 class WaitingLeaf extends NNBTLeaf:
 	func on_tick(_delta: float) -> Status:
@@ -136,3 +138,24 @@ func test_action_written_fact_changes_the_next_behaviour_pick() -> void:
 	agent.tick(0.1)
 	assert_almost_eq(sensor.sensor_value, 1.0, 0.0001, "the next evaluation re-reads the written fact")
 	assert_same(agent.get_current_behaviour_node(), flee, "flee now outscores patrol")
+
+
+func test_blackboard_sensor_uses_the_shared_range_model() -> void:
+	var _sensor: NNBlackboardSensor = NNBlackboardSensor.new()
+	_sensor.key = "distance"
+	_sensor.range_min_value = 0.0
+	_sensor.range_max_value = 100.0
+	var _root := Fixtures.add_manual_st_root(self)
+	_root.add_child(_sensor)
+
+	_root.set_blackboard("distance", 50.0)
+	_root.tick(0.1)
+	assert_almost_eq(_sensor.sensor_value, 0.5, 0.0001)
+
+	_root.set_blackboard("distance", 150)
+	_root.tick(0.1)
+	assert_almost_eq(_sensor.sensor_value, 1.0, 0.0001)
+
+	_root.set_blackboard("distance", -5.0)
+	_root.tick(0.1)
+	assert_almost_eq(_sensor.sensor_value, 0.0, 0.0001)

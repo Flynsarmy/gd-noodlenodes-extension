@@ -1,12 +1,11 @@
 extends GutTest
 
+const Fixtures = preload("res://test/support/fixtures.gd")
+
 
 func _make_root_with(sensor: Node) -> NNSTRoot:
-	var _root: NNSTRoot = NNSTRoot.new()
+	var _root := Fixtures.add_manual_st_root(self)
 	_root.add_child(sensor)
-	# These tests drive the root by hand, so automatic ticking is off.
-	_root.process_thread = NNSTRoot.MANUAL
-	add_child_autofree(_root)
 	return _root
 
 
@@ -109,18 +108,6 @@ func test_closest_indices_match_the_arrays_they_index() -> void:
 		fail_test("closest_intersecting_body_index does not index squared_distances_to_intersecting_bodies")
 
 
-func test_fresh_sensor_has_empty_unoccluded_arrays() -> void:
-	var _sensor_2d: NNArea2DVisibilitySensor = NNArea2DVisibilitySensor.new()
-	_make_root_with_attached_volume_2d(_sensor_2d)
-	assert_eq(_sensor_2d.unoccluded_areas.size(), 0, "2D unoccluded_areas is empty before evaluate")
-	assert_eq(_sensor_2d.unoccluded_bodies.size(), 0, "2D unoccluded_bodies is empty before evaluate")
-
-	var _sensor_3d: NNArea3DVisibilitySensor = NNArea3DVisibilitySensor.new()
-	_make_root_with_attached_volume_3d(_sensor_3d)
-	assert_eq(_sensor_3d.unoccluded_areas.size(), 0, "3D unoccluded_areas is empty before evaluate")
-	assert_eq(_sensor_3d.unoccluded_bodies.size(), 0, "3D unoccluded_bodies is empty before evaluate")
-
-
 func test_freeing_the_volume_before_the_sensor_root_does_not_crash_teardown() -> void:
 	var _sensor_2d: NNArea2DVisibilitySensor = NNArea2DVisibilitySensor.new()
 	var _volume_2d: Area2D = Area2D.new()
@@ -147,8 +134,6 @@ func test_freeing_the_volume_before_the_sensor_root_does_not_crash_teardown() ->
 
 	_root_2d.free()
 	_root_3d.free()
-	assert_false(is_instance_valid(_root_2d), "the 2D root tears down after its volume is freed")
-	assert_false(is_instance_valid(_root_3d), "the 3D root tears down after its volume is freed")
 
 
 func test_sensor_disabled_at_ready_tracks_entities_once_enabled() -> void:

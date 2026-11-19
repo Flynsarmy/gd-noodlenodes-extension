@@ -1,10 +1,6 @@
 extends GutTest
 
-
-# These tests tick the chart by hand, so automatic ticking is off.
-func _add_manual_root(root: NNSTRoot) -> NNSTRoot:
-	root.process_thread = NNSTRoot.MANUAL
-	return add_child_autofree(root)
+const Fixtures = preload("res://test/support/fixtures.gd")
 
 
 func _make_sensor() -> NNAngleVector3Sensor:
@@ -15,11 +11,9 @@ func _make_sensor() -> NNAngleVector3Sensor:
 
 
 func test_default_max_angle_normalizes_a_quarter_turn() -> void:
-	var _root: NNSTRoot = NNSTRoot.new()
 	var _sensor := _make_sensor()
-
+	var _root := Fixtures.add_manual_st_root(self)
 	_root.add_child(_sensor)
-	_add_manual_root(_root)
 
 	_root.tick(0.1)
 
@@ -27,11 +21,9 @@ func test_default_max_angle_normalizes_a_quarter_turn() -> void:
 
 
 func test_custom_max_angle_still_normalizes() -> void:
-	var _root: NNSTRoot = NNSTRoot.new()
 	var _sensor := _make_sensor()
-
+	var _root := Fixtures.add_manual_st_root(self)
 	_root.add_child(_sensor)
-	_add_manual_root(_root)
 
 	_sensor.max_angle_degrees = 180.0
 	_root.tick(0.1)
