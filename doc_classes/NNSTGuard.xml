@@ -22,7 +22,7 @@
 			<return type="int" />
 			<description>
 				Returns a bit mask of [enum NNSTRoot.TriggerType] values describing which changes can affect this guard's result. Automatic transitions use this to decide when they need to be re-evaluated.
-				The base implementation reports [constant NNSTRoot.NONE] and prints an error. Custom GDScript guards that do not override this method therefore default to [constant NNSTRoot.NONE]; their transitions are only checked on [constant NNSTRoot.STATE_ENTER] unless the transition's guard composition reports additional trigger types.
+				The base implementation reports [constant NNSTRoot.NONE] and prints an error. Override this method in a GDScript guard to report the trigger types it depends on; without an override the guard's transitions are only checked on [constant NNSTRoot.STATE_ENTER] unless the transition's guard composition reports additional trigger types.
 			</description>
 		</method>
 	</methods>

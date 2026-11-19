@@ -17,6 +17,18 @@ class Counter extends RefCounted:
 		return count >= threshold
 
 
+# Reports PROPERTY_CHANGE from a script, so the transition is only re-evaluated
+# when an expression property changes.
+class ScriptedPropertyGuard extends NNSTGuard:
+	@warning_ignore('native_method_override')
+	func get_supported_trigger_types() -> int:
+		return NNSTRoot.TriggerType.PROPERTY_CHANGE
+
+	@warning_ignore('native_method_override')
+	func is_satisfied(_transition: NNSTTransition, p_state: NNSTTickedNodes) -> bool:
+		return p_state.get_root().get_expression_property("flag", false)
+
+
 # Sets an expression property while it exits. Used to prove that a property
 # change raised from on_exit_state() is deferred until the active transition
 # has finished, so the exiting state's own automatic transition cannot fire.
@@ -236,6 +248,31 @@ func test_non_automatic_transitions_remain_event_driven() -> void:
 	_root.send_event("go")
 	assert_false(_start.get_is_active())
 	assert_true(_target.get_is_active())
+
+
+func test_scripted_guard_reports_property_change_trigger() -> void:
+	var _root: NNSTRoot = NNSTRoot.new()
+	var _start: NNSTNode = NNSTNode.new()
+	var _target: NNSTNode = NNSTNode.new()
+	var _transition: NNSTTransition = NNSTTransition.new()
+	_root.initial_expression_properties = {"flag": false}
+
+	_root.add_child(_start)
+	_root.add_child(_target)
+	_start.add_child(_transition)
+	_transition.to = _transition.get_path_to(_target)
+	_transition.guard = ScriptedPropertyGuard.new()
+
+	Fixtures.add_manual_st_root(self, _root)
+	assert_engine_error_count(0)
+	assert_true(_start.get_is_active())
+	assert_false(_target.get_is_active())
+
+	_root.set_expression_property("flag", true)
+
+	assert_false(_start.get_is_active(), "the scripted guard's PROPERTY_CHANGE trigger re-evaluates the transition")
+	assert_true(_target.get_is_active())
+	assert_engine_error_count(0)
 
 
 func test_automatic_transition_cycle_terminates_without_crashing() -> void:
