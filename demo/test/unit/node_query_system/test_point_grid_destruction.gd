@@ -112,7 +112,9 @@ func test_2d_parent_free_while_space_detached() -> void:
 	for point in points:
 		assert_false(is_instance_valid(point), "Points are still parented to the freed parent.")
 
-	# The space still holds a stale parent pointer and stale point entries.
+	# The space still holds stale point entries.
+	assert_null(space.point_grid_parent_node, "a freed parent node is forgotten")
+	space.initialize_search_space()
 	space.free()
 	assert_false(is_instance_valid(space), "Destroying a detached space with a stale parent must not crash.")
 
@@ -203,7 +205,9 @@ func test_3d_parent_free_while_space_detached() -> void:
 	for point in points:
 		assert_false(is_instance_valid(point), "Points are still parented to the freed parent.")
 
-	# The space still holds a stale parent pointer and stale point entries.
+	# The space still holds stale point entries.
+	assert_null(space.point_grid_parent_node, "a freed parent node is forgotten")
+	space.initialize_search_space()
 	space.free()
 	assert_false(is_instance_valid(space), "Destroying a detached space with a stale parent must not crash.")
 

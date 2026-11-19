@@ -11,21 +11,15 @@ func _make_root_with(sensor: Node) -> NNSTRoot:
 
 
 func _make_root_with_attached_volume_2d(sensor: NNArea2DVisibilitySensor) -> NNSTRoot:
-	var _volume: Area2D = Area2D.new()
+	var _volume: Area2D = add_child_autofree(Area2D.new())
 	sensor.visibility_volume = _volume
-	var _root := _make_root_with(sensor)
-	# Added after its root, so the sensor disconnects before the volume is freed.
-	add_child_autofree(_volume)
-	return _root
+	return _make_root_with(sensor)
 
 
 func _make_root_with_attached_volume_3d(sensor: NNArea3DVisibilitySensor) -> NNSTRoot:
-	var _volume: Area3D = Area3D.new()
+	var _volume: Area3D = add_child_autofree(Area3D.new())
 	sensor.visibility_volume = _volume
-	var _root := _make_root_with(sensor)
-	# Added after its root, so the sensor disconnects before the volume is freed.
-	add_child_autofree(_volume)
-	return _root
+	return _make_root_with(sensor)
 
 
 func _make_static_body_2d(position: Vector2) -> StaticBody2D:
@@ -125,3 +119,33 @@ func test_fresh_sensor_has_empty_unoccluded_arrays() -> void:
 	_make_root_with_attached_volume_3d(_sensor_3d)
 	assert_eq(_sensor_3d.unoccluded_areas.size(), 0, "3D unoccluded_areas is empty before evaluate")
 	assert_eq(_sensor_3d.unoccluded_bodies.size(), 0, "3D unoccluded_bodies is empty before evaluate")
+
+
+func test_freeing_the_volume_before_the_sensor_root_does_not_crash_teardown() -> void:
+	var _sensor_2d: NNArea2DVisibilitySensor = NNArea2DVisibilitySensor.new()
+	var _volume_2d: Area2D = Area2D.new()
+	_sensor_2d.visibility_volume = _volume_2d
+	var _root_2d: NNSTRoot = NNSTRoot.new()
+	_root_2d.add_child(_sensor_2d)
+	_root_2d.process_thread = NNSTRoot.MANUAL
+	add_child(_root_2d)
+	add_child(_volume_2d)
+
+	var _sensor_3d: NNArea3DVisibilitySensor = NNArea3DVisibilitySensor.new()
+	var _volume_3d: Area3D = Area3D.new()
+	_sensor_3d.visibility_volume = _volume_3d
+	var _root_3d: NNSTRoot = NNSTRoot.new()
+	_root_3d.add_child(_sensor_3d)
+	_root_3d.process_thread = NNSTRoot.MANUAL
+	add_child(_root_3d)
+	add_child(_volume_3d)
+
+	_volume_2d.free()
+	_volume_3d.free()
+	assert_null(_sensor_2d.visibility_volume, "the 2D sensor forgets a freed volume")
+	assert_null(_sensor_3d.visibility_volume, "the 3D sensor forgets a freed volume")
+
+	_root_2d.free()
+	_root_3d.free()
+	assert_false(is_instance_valid(_root_2d), "the 2D root tears down after its volume is freed")
+	assert_false(is_instance_valid(_root_3d), "the 3D root tears down after its volume is freed")

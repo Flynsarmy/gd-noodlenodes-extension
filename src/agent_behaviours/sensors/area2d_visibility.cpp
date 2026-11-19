@@ -2,8 +2,8 @@
 
 #include <godot_cpp/classes/engine.hpp>
 #include <godot_cpp/core/class_db.hpp>
+#include <godot_cpp/core/object.hpp>
 #include <godot_cpp/variant/callable_method_pointer.hpp>
-#include <godot_cpp/variant/utility_functions.hpp>
 
 using namespace godot;
 
@@ -108,7 +108,6 @@ void NNArea2DVisibilitySensor::_bind_methods() {
 // Constructor and destructor.
 
 NNArea2DVisibilitySensor::NNArea2DVisibilitySensor() {
-	_visibility_volume = nullptr;
 }
 
 NNArea2DVisibilitySensor::~NNArea2DVisibilitySensor() {
@@ -118,11 +117,8 @@ NNArea2DVisibilitySensor::~NNArea2DVisibilitySensor() {
 
 // Handling functions.
 
-void NNArea2DVisibilitySensor::_update_cache() {
-	_cache = ObjectID();
-	if (_visibility_volume != nullptr) {
-		_cache = _visibility_volume->get_instance_id();
-	}
+Area2D *NNArea2DVisibilitySensor::_resolve_visibility_volume() const {
+	return Object::cast_to<Area2D>(ObjectDB::get_instance(_visibility_volume_id));
 }
 
 void NNArea2DVisibilitySensor::initialize_sensor() {
@@ -131,37 +127,37 @@ void NNArea2DVisibilitySensor::initialize_sensor() {
 	if (Engine::get_singleton()->is_editor_hint())
 		return;
 
-	ERR_FAIL_COND_MSG(_visibility_volume == nullptr, "NNArea2DVisibilitySensor::initialize_sensor() - Error, the visibility volume is not set.");
+	Area2D *visibility_volume = _resolve_visibility_volume();
+	ERR_FAIL_COND_MSG(visibility_volume == nullptr, "NNArea2DVisibilitySensor::initialize_sensor() - Error, the visibility volume is not set.");
 
 	// Connect to the area and body entered and exited signals.
-	Error error_visibility_volume_on_area_entered = _visibility_volume->connect("area_entered", callable_mp(this, &NNArea2DVisibilitySensor::on_area_entered));
-	Error error_visibility_volume_on_area_exited = _visibility_volume->connect("area_exited", callable_mp(this, &NNArea2DVisibilitySensor::on_area_exited));
-	Error error_visibility_volume_on_body_entered = _visibility_volume->connect("body_entered", callable_mp(this, &NNArea2DVisibilitySensor::on_body_entered));
-	Error error_visibility_volume_on_body_exited = _visibility_volume->connect("body_exited", callable_mp(this, &NNArea2DVisibilitySensor::on_body_exited));
+	Error error_visibility_volume_on_area_entered = visibility_volume->connect("area_entered", callable_mp(this, &NNArea2DVisibilitySensor::on_area_entered));
+	Error error_visibility_volume_on_area_exited = visibility_volume->connect("area_exited", callable_mp(this, &NNArea2DVisibilitySensor::on_area_exited));
+	Error error_visibility_volume_on_body_entered = visibility_volume->connect("body_entered", callable_mp(this, &NNArea2DVisibilitySensor::on_body_entered));
+	Error error_visibility_volume_on_body_exited = visibility_volume->connect("body_exited", callable_mp(this, &NNArea2DVisibilitySensor::on_body_exited));
 }
 
 void NNArea2DVisibilitySensor::uninitialize_sensor() {
 	if (Engine::get_singleton()->is_editor_hint())
 		return;
-	if (_visibility_volume != nullptr) {
-		_visibility_volume->disconnect("area_entered", callable_mp(this, &NNArea2DVisibilitySensor::on_area_entered));
-		_visibility_volume->disconnect("area_exited", callable_mp(this, &NNArea2DVisibilitySensor::on_area_exited));
-		_visibility_volume->disconnect("body_entered", callable_mp(this, &NNArea2DVisibilitySensor::on_body_entered));
-		_visibility_volume->disconnect("body_exited", callable_mp(this, &NNArea2DVisibilitySensor::on_body_exited));
-		_visibility_volume = nullptr;
+	Area2D *visibility_volume = _resolve_visibility_volume();
+	if (visibility_volume != nullptr) {
+		visibility_volume->disconnect("area_entered", callable_mp(this, &NNArea2DVisibilitySensor::on_area_entered));
+		visibility_volume->disconnect("area_exited", callable_mp(this, &NNArea2DVisibilitySensor::on_area_exited));
+		visibility_volume->disconnect("body_entered", callable_mp(this, &NNArea2DVisibilitySensor::on_body_entered));
+		visibility_volume->disconnect("body_exited", callable_mp(this, &NNArea2DVisibilitySensor::on_body_exited));
 	}
+	_visibility_volume_id = ObjectID();
 }
 
 float NNArea2DVisibilitySensor::evaluate_sensor_value() {
-	if (_visibility_volume == nullptr) {
-		return get_sensor_value();
-	}
-	if (!UtilityFunctions::is_instance_id_valid(_cache)) {
-		_visibility_volume = nullptr;
+	Area2D *visibility_volume = _resolve_visibility_volume();
+	if (visibility_volume == nullptr) {
+		_visibility_volume_id = ObjectID();
 		return get_sensor_value();
 	}
 
-	if (!_core.evaluate(_visibility_volume, get_owner())) {
+	if (!_core.evaluate(visibility_volume, get_owner())) {
 		return get_sensor_value();
 	}
 
@@ -214,13 +210,13 @@ Vector2 NNArea2DVisibilitySensor::get_offset_vector2() const {
 }
 
 void NNArea2DVisibilitySensor::set_visibility_volume(Area2D *visibility_volume) {
-	_has_sensor_value_changed = _has_sensor_value_changed || (_visibility_volume != visibility_volume);
-	_visibility_volume = visibility_volume;
-	_update_cache();
+	ObjectID visibility_volume_id = visibility_volume != nullptr ? ObjectID(visibility_volume->get_instance_id()) : ObjectID();
+	_has_sensor_value_changed = _has_sensor_value_changed || (_visibility_volume_id != visibility_volume_id);
+	_visibility_volume_id = visibility_volume_id;
 }
 
 Area2D *NNArea2DVisibilitySensor::get_visibility_volume() const {
-	return _visibility_volume;
+	return _resolve_visibility_volume();
 }
 
 void NNArea2DVisibilitySensor::set_do_occlusion_test(bool do_occlusion_test) {

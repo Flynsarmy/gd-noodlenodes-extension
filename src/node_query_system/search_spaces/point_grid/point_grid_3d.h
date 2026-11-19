@@ -85,13 +85,16 @@ protected:
 	// to call when points or the point grid parent node are already gone.
 	void destroy_generated_point_grid_nodes();
 
+	Node3D *_resolve_point_grid_parent_node() const;
+
 	Vector3 _grid_size;
 	Vector3 _point_grid_base_spacing_vector;
 	int _point_grid_lattice_type;
 	Vector3 _point_grid_lattice_vector;
 
 	int _point_grid_type;
-	Node3D *_point_grid_parent_node;
+	// An ObjectID, not a pointer: the parent node may be freed before this search space.
+	ObjectID _point_grid_parent_node_id;
 	TypedArray<Node3D> _point_grid;
 
 	std::vector<Vector3> _point_grid_default_positions;

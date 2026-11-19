@@ -110,7 +110,7 @@ inline void point_grid_create(Node *p_owner, const char *p_owner_name, NodeT *p_
 }
 
 template <typename NodeT>
-inline void point_grid_destroy_nodes(std::vector<uint64_t> &r_generated_node_ids, TypedArray<NodeT> &r_point_grid, NodeT *&r_parent) {
+inline void point_grid_destroy_nodes(std::vector<uint64_t> &r_generated_node_ids, TypedArray<NodeT> &r_point_grid, ObjectID &r_parent_id) {
 	// Swap the ids into a local vector so a reentrant call (for example from a
 	// node being deleted) finds an empty list and cannot free anything twice.
 	std::vector<uint64_t> generated_node_ids;
@@ -134,9 +134,9 @@ inline void point_grid_destroy_nodes(std::vector<uint64_t> &r_generated_node_ids
 	}
 
 	// The point grid may hold user supplied nodes; drop the references without
-	// deleting them, and never dereference the (possibly stale) parent pointer.
+	// deleting them, and never dereference the (possibly stale) parent.
 	r_point_grid.clear();
-	r_parent = nullptr;
+	r_parent_id = ObjectID();
 }
 
 template <typename VectorT, typename NodeT, typename NavigationServerT>

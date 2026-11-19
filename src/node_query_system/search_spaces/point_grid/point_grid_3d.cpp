@@ -19,7 +19,6 @@ const NNPointGridLatticePreset<Vector3> POINT_GRID_LATTICE_PRESETS[4] = {
 NNPointGrid3DSearchSpace::NNPointGrid3DSearchSpace() {
 	_offset_vector = Vector3(0.0, 0.0, 0.0);
 	_grid_size = Vector3(15.0f, 0.0f, 15.0f);
-	_point_grid_parent_node = nullptr;
 	_use_navigation_mesh_positions = true;
 	_navigation_map_rid = RID();
 	_point_grid_base_spacing_vector = Vector3(2.0f, 1.0f, 1.0f);
@@ -32,7 +31,7 @@ NNPointGrid3DSearchSpace::~NNPointGrid3DSearchSpace() {
 }
 
 void NNPointGrid3DSearchSpace::destroy_generated_point_grid_nodes() {
-	point_grid_destroy_nodes(_generated_point_grid_node_ids, _point_grid, _point_grid_parent_node);
+	point_grid_destroy_nodes(_generated_point_grid_node_ids, _point_grid, _point_grid_parent_node_id);
 }
 
 void NNPointGrid3DSearchSpace::_bind_methods() {
@@ -158,12 +157,16 @@ Vector3 NNPointGrid3DSearchSpace::get_offset_vector3() const {
 	return _offset_vector;
 }
 
+Node3D *NNPointGrid3DSearchSpace::_resolve_point_grid_parent_node() const {
+	return Object::cast_to<Node3D>(ObjectDB::get_instance(_point_grid_parent_node_id));
+}
+
 void NNPointGrid3DSearchSpace::set_point_grid_parent_node(Node3D *point_grid_parent_node) {
-	_point_grid_parent_node = point_grid_parent_node;
+	_point_grid_parent_node_id = point_grid_parent_node != nullptr ? ObjectID(point_grid_parent_node->get_instance_id()) : ObjectID();
 }
 
 Node3D *NNPointGrid3DSearchSpace::get_point_grid_parent_node() const {
-	return _point_grid_parent_node;
+	return _resolve_point_grid_parent_node();
 }
 
 void NNPointGrid3DSearchSpace::set_point_grid(TypedArray<Node3D> point_grid) {
@@ -179,6 +182,11 @@ TypedArray<Node3D> NNPointGrid3DSearchSpace::get_point_grid() const {
 void NNPointGrid3DSearchSpace::create_point_grid() {
 	// This creates the Node3D nodes as hidden child nodes.
 
+	Node3D *point_grid_parent_node = _resolve_point_grid_parent_node();
+	if (point_grid_parent_node == nullptr) {
+		return;
+	}
+
 	// First create the Vector array for the ideal grid.
 	_point_grid_default_positions.clear();
 	switch (_point_grid_type) {
@@ -190,11 +198,15 @@ void NNPointGrid3DSearchSpace::create_point_grid() {
 		}
 	} //end switch point grid type
 
-	point_grid_create(this, "NNPointGrid3DSearchSpace", _point_grid_parent_node, _point_grid_default_positions, _offset_vector, _point_grid, _generated_point_grid_node_ids);
+	point_grid_create(this, "NNPointGrid3DSearchSpace", point_grid_parent_node, _point_grid_default_positions, _offset_vector, _point_grid, _generated_point_grid_node_ids);
 }
 
 void NNPointGrid3DSearchSpace::create_point_grid_nodes(Node3D *template_node) {
-	point_grid_create_nodes("NNPointGrid3DSearchSpace", _point_grid_parent_node, template_node, _point_grid_default_positions, _offset_vector, _point_grid, _generated_point_grid_node_ids);
+	Node3D *point_grid_parent_node = _resolve_point_grid_parent_node();
+	if (point_grid_parent_node == nullptr) {
+		return;
+	}
+	point_grid_create_nodes("NNPointGrid3DSearchSpace", point_grid_parent_node, template_node, _point_grid_default_positions, _offset_vector, _point_grid, _generated_point_grid_node_ids);
 }
 
 void NNPointGrid3DSearchSpace::create_rectangular_point_grid() {
@@ -210,7 +222,7 @@ void NNPointGrid3DSearchSpace::create_rectangular_point_grid() {
 }
 
 void NNPointGrid3DSearchSpace::_initialize_search_space() {
-	if (_point_grid_parent_node == nullptr)
+	if (_resolve_point_grid_parent_node() == nullptr)
 		return;
 
 	// Create the node3d's for the grid.
@@ -219,8 +231,9 @@ void NNPointGrid3DSearchSpace::_initialize_search_space() {
 }
 
 bool NNPointGrid3DSearchSpace::preprocess_search_space(uint64_t time_limit_timestamp_usec) {
-	if (!_use_navigation_mesh_positions || !_navigation_map_rid.is_valid()) {
+	Node3D *point_grid_parent_node = _resolve_point_grid_parent_node();
+	if (!_use_navigation_mesh_positions || !_navigation_map_rid.is_valid() || point_grid_parent_node == nullptr) {
 		return true;
 	}
-	return point_grid_snap_to_navigation(_current_preprocessing_node_index, _point_grid, _point_grid_default_positions, _offset_vector, _point_grid_parent_node, _navigation_map_rid, NavigationServer3D::get_singleton(), time_limit_timestamp_usec);
+	return point_grid_snap_to_navigation(_current_preprocessing_node_index, _point_grid, _point_grid_default_positions, _offset_vector, point_grid_parent_node, _navigation_map_rid, NavigationServer3D::get_singleton(), time_limit_timestamp_usec);
 }

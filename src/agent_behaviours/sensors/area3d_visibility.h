@@ -12,12 +12,13 @@ class NNArea3DVisibilitySensor : public NNSensor {
 
 private:
 	AreaVisibilitySensorCore<AreaVisibilitySensor3D> _core;
-	Area3D *_visibility_volume;
-	ObjectID _cache;
+	// An ObjectID, not a pointer: the volume may be freed before this sensor.
+	ObjectID _visibility_volume_id;
+
+	Area3D *_resolve_visibility_volume() const;
 
 protected:
 	static void _bind_methods();
-	void _update_cache();
 
 public:
 	NNArea3DVisibilitySensor();

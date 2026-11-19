@@ -2,9 +2,9 @@
 
 #include <godot_cpp/classes/node.hpp>
 #include <godot_cpp/core/error_macros.hpp>
+#include <godot_cpp/core/object.hpp>
 #include <godot_cpp/variant/callable.hpp>
 #include <godot_cpp/variant/typed_array.hpp>
-#include <godot_cpp/variant/utility_functions.hpp>
 
 namespace godot {
 
@@ -36,11 +36,11 @@ public:
 	}
 
 	TArea *get_area() const {
-		return _area;
+		return Object::cast_to<TArea>(ObjectDB::get_instance(_area_id));
 	}
 
 	void set_area(TArea *p_area) {
-		_area = p_area;
+		_area_id = p_area != nullptr ? ObjectID(p_area->get_instance_id()) : ObjectID();
 	}
 
 	TypedArray<TArea> get_intersecting_areas() const {
@@ -56,21 +56,23 @@ public:
 	}
 
 	void initialize(const char *p_not_set_error, const Callable &p_on_area_entered, const Callable &p_on_area_exited) {
-		ERR_FAIL_COND_MSG(_area == nullptr || !UtilityFunctions::is_instance_id_valid(_area->get_instance_id()), p_not_set_error);
-		_area->connect("area_entered", p_on_area_entered);
-		_area->connect("area_exited", p_on_area_exited);
+		TArea *area = get_area();
+		ERR_FAIL_COND_MSG(area == nullptr, p_not_set_error);
+		area->connect("area_entered", p_on_area_entered);
+		area->connect("area_exited", p_on_area_exited);
 	}
 
 	void uninitialize(const Callable &p_on_area_entered, const Callable &p_on_area_exited) {
-		if (_area != nullptr) {
-			_area->disconnect("area_entered", p_on_area_entered);
-			_area->disconnect("area_exited", p_on_area_exited);
+		TArea *area = get_area();
+		if (area != nullptr) {
+			area->disconnect("area_entered", p_on_area_entered);
+			area->disconnect("area_exited", p_on_area_exited);
 		}
-		_area = nullptr;
+		_area_id = ObjectID();
 	}
 
 private:
-	TArea *_area = nullptr;
+	ObjectID _area_id;
 	TypedArray<TArea> _intersecting_areas;
 };
 

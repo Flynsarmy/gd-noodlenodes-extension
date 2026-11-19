@@ -39,11 +39,10 @@ func test_2d_search_space_returns_only_the_areas_inside_the_volume() -> void:
 	var far_area: Area2D = _make_area_2d()
 	var space: NNArea2DSearchSpace = NNArea2DSearchSpace.new()
 	space.area2d = volume
-	# Added before the areas so the search space disconnects before they are freed.
-	add_child_autofree(space)
 	add_child_autofree(volume)
 	add_child_autofree(near_area)
 	add_child_autofree(far_area)
+	add_child_autofree(space)
 
 	near_area.position = Vector2(0.5, 0.0)
 	far_area.position = Vector2(OUTSIDE, 0.0)
@@ -67,11 +66,10 @@ func test_3d_search_space_returns_only_the_areas_inside_the_volume() -> void:
 	var far_area: Area3D = _make_area_3d()
 	var space: NNArea3DSearchSpace = NNArea3DSearchSpace.new()
 	space.area3d = volume
-	# Added before the areas so the search space disconnects before they are freed.
-	add_child_autofree(space)
 	add_child_autofree(volume)
 	add_child_autofree(near_area)
 	add_child_autofree(far_area)
+	add_child_autofree(space)
 
 	near_area.position = Vector3(0.5, 0.0, 0.0)
 	far_area.position = Vector3(OUTSIDE, 0.0, 0.0)
@@ -87,3 +85,27 @@ func test_3d_search_space_returns_only_the_areas_inside_the_volume() -> void:
 	near_area.position = Vector3(OUTSIDE, 0.0, 0.0)
 	await _await_physics_frames(2)
 	assert_eq(space.intersecting_areas, [far_area], "an area that leaves is removed and the other areas stay")
+
+
+func test_freeing_the_area_before_the_search_space_does_not_crash_teardown() -> void:
+	var volume_2d: Area2D = _make_area_2d()
+	var space_2d: NNArea2DSearchSpace = NNArea2DSearchSpace.new()
+	space_2d.area2d = volume_2d
+	add_child(space_2d)
+	add_child(volume_2d)
+
+	var volume_3d: Area3D = _make_area_3d()
+	var space_3d: NNArea3DSearchSpace = NNArea3DSearchSpace.new()
+	space_3d.area3d = volume_3d
+	add_child(space_3d)
+	add_child(volume_3d)
+
+	volume_2d.free()
+	volume_3d.free()
+	assert_null(space_2d.area2d, "the 2D search space forgets a freed area")
+	assert_null(space_3d.area3d, "the 3D search space forgets a freed area")
+
+	space_2d.free()
+	space_3d.free()
+	assert_false(is_instance_valid(space_2d), "the 2D search space tears down after its area is freed")
+	assert_false(is_instance_valid(space_3d), "the 3D search space tears down after its area is freed")
