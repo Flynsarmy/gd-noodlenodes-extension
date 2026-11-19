@@ -1,6 +1,7 @@
 #pragma once
 
 #include "../sensor.h"
+#include "area_visibility_sensor.h"
 #include <godot_cpp/classes/area2d.hpp>
 
 namespace godot {
@@ -9,36 +10,9 @@ class NNArea2DVisibilitySensor : public NNSensor {
 	GDCLASS(NNArea2DVisibilitySensor, NNSensor)
 
 private:
+	AreaVisibilitySensorCore<AreaVisibilitySensor2D> _core;
 	Area2D *_visibility_volume;
 	ObjectID _cache;
-
-	Vector2 _from_vector;
-	Vector2 _offset_vector;
-
-	TypedArray<RID> _occlusion_test_exclusion_list;
-	TypedArray<Area2D> _intersecting_areas;
-	TypedArray<Node2D> _intersecting_bodies;
-	TypedArray<Area2D> _unoccluded_areas;
-	TypedArray<Node2D> _unoccluded_bodies;
-	TypedArray<float> _squared_distances_to_intersecting_areas;
-	TypedArray<float> _squared_distances_to_unoccluded_areas;
-	TypedArray<float> _squared_distances_to_intersecting_bodies;
-	TypedArray<float> _squared_distances_to_unoccluded_bodies;
-	int _closest_intersecting_area_index;
-	int _closest_intersecting_body_index;
-	int _closest_unoccluded_area_index;
-	int _closest_unoccluded_body_index;
-
-	int _expected_number_of_areas_to_track;
-	int _expected_number_of_bodies_to_track;
-	bool _do_occlusion_test;
-	uint32_t _collision_mask;
-
-	int _num_entities_found;
-	int _max_expected_entities_found;
-	float _one_over_max_expected_entities_found;
-
-	bool _use_owner_global_position;
 
 protected:
 	static void _bind_methods();

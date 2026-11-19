@@ -20,7 +20,7 @@
 			Index of the closest area to [member from_vector] within the [member unoccluded_areas] array.
 		</member>
 		<member name="closest_unoccluded_body_index" type="int" setter="set_closest_unoccluded_body_index" getter="get_closest_unoccluded_body_index" default="-1">
-			Index of the closest body to [member from_vector] within the [member unoccluded_areas] array.
+			Index of the closest body to [member from_vector] within the [member unoccluded_bodies] array.
 		</member>
 		<member name="collision_mask" type="int" setter="set_collision_mask" getter="get_collision_mask" default="1">
 			The collision mask used for occlusion. Usually this is set to match the layers for your level geometry and props.
