@@ -8,12 +8,14 @@
 #include "performance_monitor_singleton.h"
 #include <godot_cpp/classes/node.hpp>
 #include <godot_cpp/classes/random_number_generator.hpp>
+#include <godot_cpp/classes/time.hpp>
 
 #include "action.h"
 #include "behaviour.h"
 #include "behaviour_group.h"
 #include "sensors.h"
 #include <godot_cpp/core/object_id.hpp>
+#include <memory>
 #include <vector>
 
 #define NN_AGENT_MAX_TOP_SCORING_BEHAVIOURS 16
@@ -52,15 +54,37 @@ private:
 	NNHostedRoot _hosted_root;
 
 #ifdef DEBUG_ENABLED
+	// Records the elapsed usec on scope exit, so every early return reports once.
+	class NNTimingScope {
+	public:
+		NNTimingScope(uint64_t &total_usec, void (NNPerformanceMonitorSingleton::*increment)(uint64_t)) :
+				_start_usec(godot::Time::get_singleton()->get_ticks_usec()), _total_usec(total_usec), _increment(increment) {}
+		~NNTimingScope() {
+			_total_usec = godot::Time::get_singleton()->get_ticks_usec() - _start_usec;
+			(NNPerformanceMonitorSingleton::get_singleton()->*_increment)(_total_usec);
+		}
+
+		inline uint64_t get_start_usec() const { return _start_usec; }
+
+	private:
+		uint64_t _start_usec;
+		uint64_t &_total_usec;
+		void (NNPerformanceMonitorSingleton::*_increment)(uint64_t);
+	};
+
 	uint64_t _total_evaluate_options_usec;
 	uint64_t _total_update_behaviour_usec;
 #endif
 
-	std::vector<ObjectID> _child_sensor_ids;
-	std::vector<ObjectID> _child_behaviour_ids;
+	// Immutable snapshots: a refresh rebinds the pointer and leaves any list
+	// still being iterated alive.
+	std::shared_ptr<const std::vector<ObjectID>> _child_sensor_ids;
+	std::shared_ptr<const std::vector<ObjectID>> _child_behaviour_ids;
 	void _refresh_child_caches();
 	void _reconcile_selected_nodes();
 	void _end_current_action(bool emit_action_changed);
+	void _exit_current_behaviour(bool emit_behaviour_exited, bool clear_name_before_end = true);
+	void _exit_behaviour_group(ObjectID behaviour_group_id, bool require_direct_child = false);
 	void _tick_selected_nodes(const char *signal_name, double delta);
 	void _advance_behaviour_cooldowns(double delta);
 

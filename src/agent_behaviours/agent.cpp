@@ -117,6 +117,9 @@ NNAgent::NNAgent() {
 	_current_action_id = ObjectID();
 	_current_action_change_pending = false;
 
+	_child_sensor_ids = std::make_shared<std::vector<ObjectID>>();
+	_child_behaviour_ids = std::make_shared<std::vector<ObjectID>>();
+
 	_tick_scheduler.configure(this, [this](double p_delta, double p_tick_delta, bool p_due) -> bool {
 		return _auto_tick_step_callback(p_delta, p_tick_delta, p_due);
 	});
@@ -235,18 +238,21 @@ void NNAgent::_emit_node_signal(const char *signal_name, const ObjectID &node_id
 }
 
 void NNAgent::_refresh_child_caches() {
-	_child_sensor_ids.clear();
-	_child_behaviour_ids.clear();
+	auto sensor_ids = std::make_shared<std::vector<ObjectID>>();
+	auto behaviour_ids = std::make_shared<std::vector<ObjectID>>();
 
 	int num_children = get_child_count();
 	for (int i = 0; i < num_children; i++) {
 		Node *child = get_child(i);
 		if (NNBehaviours *behaviour = godot::Object::cast_to<NNBehaviours>(child)) {
-			_child_behaviour_ids.push_back(ObjectID(behaviour->get_instance_id()));
+			behaviour_ids->push_back(ObjectID(behaviour->get_instance_id()));
 		} else if (NNSensors *sensor = godot::Object::cast_to<NNSensors>(child)) {
-			_child_sensor_ids.push_back(ObjectID(sensor->get_instance_id()));
+			sensor_ids->push_back(ObjectID(sensor->get_instance_id()));
 		}
 	}
+
+	_child_behaviour_ids = behaviour_ids;
+	_child_sensor_ids = sensor_ids;
 }
 
 void NNAgent::_reconcile_selected_nodes() {
@@ -268,28 +274,11 @@ void NNAgent::_reconcile_selected_nodes() {
 	}
 
 	if (!behaviour_available && !_current_behaviour_id.is_null()) {
-		ObjectID behaviour_id = _current_behaviour_id;
-		_current_behaviour_id = ObjectID();
-		_current_behaviour_name = "";
-		// Re-resolve: the action exit callback above may have freed or
-		// reparented this behaviour.
-		NNBehaviour *live_behaviour = _resolve_behaviour(behaviour_id);
-		if (live_behaviour != nullptr) {
-			live_behaviour->end_behaviour();
-		}
-		_emit_node_signal("behaviour_exited", behaviour_id);
+		_exit_current_behaviour(true);
 	}
 
 	if (!behaviour_group_available && !_current_behaviour_group_id.is_null()) {
-		ObjectID behaviour_group_id = _current_behaviour_group_id;
-		_current_behaviour_group_id = ObjectID();
-		// Re-resolve: the action/behaviour exit callbacks above may have freed
-		// or reparented this group.
-		NNBehaviourGroup *live_behaviour_group = _resolve_behaviour_group(behaviour_group_id);
-		if (live_behaviour_group != nullptr) {
-			live_behaviour_group->emit_signal("behaviour_group_exited");
-		}
-		_emit_node_signal("behaviour_group_exited", behaviour_group_id);
+		_exit_behaviour_group(_current_behaviour_group_id);
 	}
 }
 
@@ -318,13 +307,50 @@ void NNAgent::_end_current_action(bool emit_action_changed) {
 	}
 }
 
+void NNAgent::_exit_current_behaviour(bool emit_behaviour_exited, bool clear_name_before_end) {
+	// Clear the tracked ID before end_behaviour(): its callbacks are user code
+	// and may re-enter the agent.
+	ObjectID behaviour_id = _current_behaviour_id;
+	_current_behaviour_id = ObjectID();
+	if (clear_name_before_end) {
+		_current_behaviour_name = "";
+	}
+
+	NNBehaviour *behaviour = _resolve_behaviour(behaviour_id);
+	if (behaviour != nullptr) {
+		behaviour->end_behaviour();
+	}
+
+	if (!clear_name_before_end) {
+		_current_behaviour_name = "";
+	}
+	if (emit_behaviour_exited) {
+		_emit_node_signal("behaviour_exited", behaviour_id);
+	} else {
+		emit_signal("behaviour_changed", Variant());
+	}
+}
+
+void NNAgent::_exit_behaviour_group(ObjectID behaviour_group_id, bool require_direct_child) {
+	_current_behaviour_group_id = ObjectID();
+
+	NNBehaviourGroup *behaviour_group = _resolve_behaviour_group(behaviour_group_id);
+	if (behaviour_group != nullptr && (!require_direct_child || behaviour_group->get_parent() == this)) {
+		behaviour_group->emit_signal("behaviour_group_exited");
+		_emit_node_signal("behaviour_group_exited", behaviour_group_id);
+	} else if (!require_direct_child) {
+		// A freed group is signalled as null, never as a stale pointer.
+		_emit_node_signal("behaviour_group_exited", behaviour_group_id);
+	}
+}
+
 // Handling functions.
 
 void NNAgent::evaluate_options(float delta) {
 	(void)delta;
-	uint64_t method_start_time_usec = godot::Time::get_singleton()->get_ticks_usec();
 #ifdef DEBUG_ENABLED
-	_last_evaluated_timestamp = method_start_time_usec;
+	NNTimingScope timing(_total_evaluate_options_usec, &NNPerformanceMonitorSingleton::increment_total_time_elapsed_ai_agents_usec);
+	_last_evaluated_timestamp = timing.get_start_usec();
 #endif
 	if (Engine::get_singleton()->is_editor_hint())
 		return;
@@ -343,10 +369,6 @@ void NNAgent::evaluate_options(float delta) {
 	if (current_behaviour != nullptr) {
 		// If the current behaviour cannot be interrupted, don't evaluate.
 		if (!current_behaviour->get_can_be_interrupted()) {
-#ifdef DEBUG_ENABLED
-			_total_evaluate_options_usec = godot::Time::get_singleton()->get_ticks_usec() - method_start_time_usec;
-			NNPerformanceMonitorSingleton::get_singleton()->increment_total_time_elapsed_ai_agents_usec(_total_evaluate_options_usec);
-#endif
 			return;
 		}
 	}
@@ -363,7 +385,8 @@ void NNAgent::evaluate_options(float delta) {
 	// Snapshot the cached child IDs so a callback that adds or removes children
 	// cannot invalidate the loop. Every entry is resolved and revalidated
 	// immediately before use.
-	std::vector<ObjectID> sensor_ids = _child_sensor_ids;
+	std::shared_ptr<const std::vector<ObjectID>> sensor_ids_snapshot = _child_sensor_ids;
+	const std::vector<ObjectID> &sensor_ids = *sensor_ids_snapshot;
 	for (unsigned int i = 0; i < sensor_ids.size(); i++) {
 		NNSensors *sensor_node = _get_child_sensor(sensor_ids[i]);
 		if (sensor_node != nullptr && sensor_node->get_is_enabled()) {
@@ -371,7 +394,8 @@ void NNAgent::evaluate_options(float delta) {
 		}
 	} //endfor child sensors.
 
-	std::vector<ObjectID> behaviour_ids = _child_behaviour_ids;
+	std::shared_ptr<const std::vector<ObjectID>> behaviour_ids_snapshot = _child_behaviour_ids;
+	const std::vector<ObjectID> &behaviour_ids = *behaviour_ids_snapshot;
 	for (unsigned int i = 0; i < behaviour_ids.size(); i++) {
 		ObjectID behaviour_id = behaviour_ids[i];
 		NNBehaviours *behaviours_node = _get_child_behaviour(behaviour_id);
@@ -454,26 +478,11 @@ void NNAgent::evaluate_options(float delta) {
 		ObjectID behaviour_group_id = _current_behaviour_group_id;
 		_end_current_action(true);
 		if (!behaviour_id.is_null() && _current_behaviour_id == behaviour_id) {
-			_current_behaviour_id = ObjectID();
-			_current_behaviour_name = "";
-			NNBehaviour *behaviour = _resolve_behaviour(behaviour_id);
-			if (behaviour != nullptr) {
-				behaviour->end_behaviour();
-			}
-			_emit_node_signal("behaviour_exited", behaviour_id);
+			_exit_current_behaviour(true);
 		}
 		if (!behaviour_group_id.is_null() && _current_behaviour_group_id == behaviour_group_id) {
-			_current_behaviour_group_id = ObjectID();
-			NNBehaviourGroup *behaviour_group = _resolve_behaviour_group(behaviour_group_id);
-			if (behaviour_group != nullptr) {
-				behaviour_group->emit_signal("behaviour_group_exited");
-			}
-			_emit_node_signal("behaviour_group_exited", behaviour_group_id);
+			_exit_behaviour_group(behaviour_group_id);
 		}
-#ifdef DEBUG_ENABLED
-		_total_evaluate_options_usec = godot::Time::get_singleton()->get_ticks_usec() - method_start_time_usec;
-		NNPerformanceMonitorSingleton::get_singleton()->increment_total_time_elapsed_ai_agents_usec(_total_evaluate_options_usec);
-#endif
 		return; // No behaviour chosen.
 	}
 
@@ -510,35 +519,15 @@ void NNAgent::evaluate_options(float delta) {
 	ObjectID chosen_behaviour_group_id = _top_scoring_behaviour_group_ids[chosen_behaviour_index];
 
 	if (chosen_behaviour_id == _current_behaviour_id) {
-#ifdef DEBUG_ENABLED
-		_total_evaluate_options_usec = godot::Time::get_singleton()->get_ticks_usec() - method_start_time_usec;
-		NNPerformanceMonitorSingleton::get_singleton()->increment_total_time_elapsed_ai_agents_usec(_total_evaluate_options_usec);
-#endif
 		return; // No change.
 	}
 
-	// Exit the current nodes. Clear each cached ID before running user
-	// callbacks so re-entrant calls see consistent state, and resolve again
-	// before emitting so a freed node is signalled as null.
 	_end_current_action(false);
 	if (!_current_behaviour_id.is_null()) {
-		ObjectID behaviour_id = _current_behaviour_id;
-		_current_behaviour_id = ObjectID();
-		_current_behaviour_name = "";
-		NNBehaviour *behaviour = _resolve_behaviour(behaviour_id);
-		if (behaviour != nullptr) {
-			behaviour->end_behaviour();
-		}
-		_emit_node_signal("behaviour_exited", behaviour_id);
+		_exit_current_behaviour(true);
 	}
 	if (!_current_behaviour_group_id.is_null() && _current_behaviour_group_id != chosen_behaviour_group_id) {
-		ObjectID behaviour_group_id = _current_behaviour_group_id;
-		_current_behaviour_group_id = ObjectID();
-		NNBehaviourGroup *behaviour_group = _resolve_behaviour_group(behaviour_group_id);
-		if (behaviour_group != nullptr) {
-			behaviour_group->emit_signal("behaviour_group_exited");
-		}
-		_emit_node_signal("behaviour_group_exited", behaviour_group_id);
+		_exit_behaviour_group(_current_behaviour_group_id);
 	}
 
 	// Exit callbacks may have freed or reparented the chosen candidate. Fall
@@ -566,10 +555,6 @@ void NNAgent::evaluate_options(float delta) {
 
 	if (new_behaviour == nullptr) {
 		_top_scoring_behaviour_name = "";
-#ifdef DEBUG_ENABLED
-		_total_evaluate_options_usec = godot::Time::get_singleton()->get_ticks_usec() - method_start_time_usec;
-		NNPerformanceMonitorSingleton::get_singleton()->increment_total_time_elapsed_ai_agents_usec(_total_evaluate_options_usec);
-#endif
 		return; // Every candidate disappeared while exiting.
 	}
 
@@ -581,22 +566,14 @@ void NNAgent::evaluate_options(float delta) {
 		// the group or the chosen child. Re-resolve both before touching them.
 		new_behaviour = _get_candidate(new_behaviour_group_id, new_behaviour_id);
 		if (new_behaviour == nullptr) {
-			NNBehaviourGroup *still_valid_group = _resolve_behaviour_group(new_behaviour_group_id);
 			_current_behaviour_group_id = ObjectID();
 			_current_behaviour_id = ObjectID();
 			_current_action_id = ObjectID();
 			_current_behaviour_name = "";
 			_top_scoring_behaviour_name = "";
-			if (still_valid_group != nullptr && still_valid_group->get_parent() == this) {
-				// The group was entered but no child could start. Balance the
-				// group enter callback with an exit before clearing it.
-				still_valid_group->emit_signal("behaviour_group_exited");
-				_emit_node_signal("behaviour_group_exited", new_behaviour_group_id);
-			}
-#ifdef DEBUG_ENABLED
-			_total_evaluate_options_usec = godot::Time::get_singleton()->get_ticks_usec() - method_start_time_usec;
-			NNPerformanceMonitorSingleton::get_singleton()->increment_total_time_elapsed_ai_agents_usec(_total_evaluate_options_usec);
-#endif
+			// The group was entered but no child could start. Balance the group
+			// enter callback with an exit before clearing it.
+			_exit_behaviour_group(new_behaviour_group_id, true);
 			return;
 		}
 	}
@@ -629,11 +606,6 @@ void NNAgent::evaluate_options(float delta) {
 
 	_emit_node_signal("behaviour_group_changed", new_behaviour_group_id);
 	_emit_node_signal("behaviour_changed", new_behaviour_id);
-
-#ifdef DEBUG_ENABLED
-	_total_evaluate_options_usec = godot::Time::get_singleton()->get_ticks_usec() - method_start_time_usec;
-	NNPerformanceMonitorSingleton::get_singleton()->increment_total_time_elapsed_ai_agents_usec(_total_evaluate_options_usec);
-#endif
 }
 
 void NNAgent::place_into_top_n_behaviour_list(const ObjectID &behaviour_group_id, const ObjectID &behaviour_id, float score) {
@@ -671,7 +643,9 @@ void NNAgent::place_into_top_n_behaviour_list(const ObjectID &behaviour_group_id
 }
 
 void NNAgent::update_current_behaviour() {
-	uint64_t method_start_time_usec = godot::Time::get_singleton()->get_ticks_usec();
+#ifdef DEBUG_ENABLED
+	NNTimingScope timing(_total_update_behaviour_usec, &NNPerformanceMonitorSingleton::increment_total_time_elapsed_ai_agents_update_behaviour_usec);
+#endif
 
 	_reconcile_selected_nodes();
 
@@ -679,10 +653,6 @@ void NNAgent::update_current_behaviour() {
 	if (current_behaviour == nullptr) {
 		// No behaviour, so make sure the current action node is null as well.
 		_end_current_action(true);
-#ifdef DEBUG_ENABLED
-		_total_update_behaviour_usec = godot::Time::get_singleton()->get_ticks_usec() - method_start_time_usec;
-		NNPerformanceMonitorSingleton::get_singleton()->increment_total_time_elapsed_ai_agents_update_behaviour_usec(_total_update_behaviour_usec);
-#endif
 		return;
 	}
 
@@ -705,21 +675,9 @@ void NNAgent::update_current_behaviour() {
 	}
 
 	if (_current_action_id.is_null()) {
-		// The behaviour completed. Clear its ID before the end callback so a
-		// re-entrant call cannot act on it twice.
-		ObjectID behaviour_id = _current_behaviour_id;
-		_current_behaviour_id = ObjectID();
-		current_behaviour = _resolve_behaviour(behaviour_id);
-		if (current_behaviour != nullptr) {
-			current_behaviour->end_behaviour();
-		}
-		_current_behaviour_name = "";
-		emit_signal("behaviour_changed", Variant());
+		// The completed behaviour keeps its name through end_behaviour().
+		_exit_current_behaviour(false, false);
 	}
-#ifdef DEBUG_ENABLED
-	_total_update_behaviour_usec = godot::Time::get_singleton()->get_ticks_usec() - method_start_time_usec;
-	NNPerformanceMonitorSingleton::get_singleton()->increment_total_time_elapsed_ai_agents_update_behaviour_usec(_total_update_behaviour_usec);
-#endif
 }
 
 void NNAgent::set_current_action_is_finished(bool is_finished) {
@@ -741,13 +699,7 @@ void NNAgent::abort_current_behaviour() {
 	ObjectID behaviour_id = _current_behaviour_id;
 	_end_current_action(false);
 	if (!behaviour_id.is_null() && _current_behaviour_id == behaviour_id) {
-		_current_behaviour_id = ObjectID();
-		_current_behaviour_name = "";
-		NNBehaviour *current_behaviour = _resolve_behaviour(behaviour_id);
-		if (current_behaviour != nullptr) {
-			current_behaviour->end_behaviour();
-		}
-		emit_signal("behaviour_changed", Variant());
+		_exit_current_behaviour(false);
 	} else if (_current_behaviour_id.is_null()) {
 		// A re-entrant action_exited listener already ended the behaviour; do
 		// not end it twice. If it selected a replacement instead, leave that
@@ -1006,7 +958,8 @@ void NNAgent::_tick_selected_nodes(const char *signal_name, double delta) {
 }
 
 void NNAgent::_advance_behaviour_cooldowns(double delta) {
-	std::vector<ObjectID> behaviour_ids = _child_behaviour_ids;
+	std::shared_ptr<const std::vector<ObjectID>> behaviour_ids_snapshot = _child_behaviour_ids;
+	const std::vector<ObjectID> &behaviour_ids = *behaviour_ids_snapshot;
 	for (unsigned int i = 0; i < behaviour_ids.size(); ++i) {
 		NNBehaviours *behaviours_node = _get_child_behaviour(behaviour_ids[i]);
 		if (behaviours_node == nullptr || !behaviours_node->get_is_enabled())
