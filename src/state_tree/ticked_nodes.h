@@ -70,9 +70,6 @@ private:
 	uint64_t _activation_generation;
 
 	bool _finish_transition(NNSTRoot *p_root);
-	// Resolves the owning chart root (including through ancestors for the root's
-	// own children). Returns nullptr when no NNSTRoot owns this state.
-	NNSTRoot *_get_tree_root() const;
 
 protected:
 	static void _bind_methods();
@@ -96,8 +93,10 @@ protected:
 		return _is_dispatch_activation_valid(p_identity.epoch, p_identity.parent_id, p_identity.root_id);
 	}
 
-	// Returns the tree root this state belongs to, resolving it from the
-	// parent chain when set_root() has not run yet.
+	// Resolves the owning chart root. The cached root is only trusted while it
+	// is actually an ancestor, so a reparented state falls back to the parent
+	// chain. Returns nullptr when no NNSTRoot owns this state (including the
+	// root itself, which has no root pointer).
 	NNSTRoot *_resolve_tree_root() const;
 
 	virtual void _on_internal_status_changed(bool p_is_active) override;

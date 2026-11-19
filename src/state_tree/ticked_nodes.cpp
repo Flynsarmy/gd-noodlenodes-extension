@@ -203,20 +203,6 @@ void NNSTTickedNodes::_on_hosted_root_finished(bool p_succeeded, Node *p_root) {
 	send_event(event_name);
 }
 
-NNSTRoot *NNSTTickedNodes::_get_tree_root() const {
-	if (_root != nullptr) {
-		return _root;
-	}
-	// The root node itself has no root pointer; walk ancestors so its children
-	// can still open change scopes during entry.
-	for (Node *ancestor = get_parent(); ancestor != nullptr; ancestor = ancestor->get_parent()) {
-		if (NNSTRoot *chart_root = godot::Object::cast_to<NNSTRoot>(ancestor)) {
-			return chart_root;
-		}
-	}
-	return nullptr;
-}
-
 float NNSTTickedNodes::get_score() const {
 	return _score;
 }
@@ -739,7 +725,7 @@ bool NNSTTickedNodes::_transition_to_resolved_target(NNSTTickedNodes *to_state, 
 	// return path leaves this wrapper, so callbacks that set expression
 	// properties, send events or mark state changes only queue work until the
 	// transition has finished and the hierarchy is settled.
-	NNSTRoot *scope_root = _get_tree_root();
+	NNSTRoot *scope_root = _resolve_tree_root();
 	if (scope_root == nullptr) {
 		return _transition_to_state(to_state, nullptr, history_id, history_entry);
 	}
@@ -1079,7 +1065,7 @@ void NNSTTickedNodes::on_enter_state() {
 	// Hold an entry scope across the user callback and the automatic-transition
 	// request. A guard or on_enter_state() that queues changes must not run the
 	// pipeline while the state's entry is still in progress.
-	NNSTRoot *root = _get_tree_root();
+	NNSTRoot *root = _resolve_tree_root();
 	if (root == nullptr || Engine::get_singleton()->is_editor_hint()) {
 		call("on_enter_state");
 		emit_signal("state_entered");
@@ -1092,7 +1078,7 @@ void NNSTTickedNodes::on_enter_state() {
 
 	if (_is_final) {
 		// Re-resolve: the callbacks above can free or reparent the chart.
-		NNSTRoot *report_root = _get_tree_root();
+		NNSTRoot *report_root = _resolve_tree_root();
 		if (report_root != nullptr) {
 			report_root->_report_finished(true);
 		}
