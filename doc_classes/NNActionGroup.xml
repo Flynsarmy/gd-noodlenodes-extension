@@ -17,7 +17,7 @@
 			Exposed for the use with a custom eval method to choose a child action/action group node to execute.
 		</member>
 		<member name="error_handling_rule" type="int" setter="set_error_handling_rule" getter="get_error_handling_rule" default="0">
-			A choice of how the has_failed property of the child nodes is handled: EndExecution:0,ContinueExecution:1.
+			How a child that finishes with [member NNActions.has_failed] set is handled: EndExecution:0,ContinueExecution:1. EndExecution stops the group and marks it as failed, so its parent treats the whole group as failed. ContinueExecution reports the failure through [signal action_failed] and carries on with the execution rule; the group itself does not fail.
 		</member>
 		<member name="if_else_boolean_value" type="bool" setter="set_if_else_boolean_value" getter="get_if_else_boolean_value" default="true">
 			The condition used by the [code]IfElse[/code] execution rule: [code]true[/code] runs the first child action, [code]false[/code] runs the second.
@@ -28,7 +28,7 @@
 			<param index="0" name="action_node" type="Object" />
 			<param index="1" name="action_group_node" type="Object" />
 			<description>
-				Emitted when a child [param action_node] of this group finishes with [member NNActions.has_failed] set. The group is marked as failed before the signal is emitted.
+				Emitted when a child [param action_node] of this group finishes with [member NNActions.has_failed] set. With the EndExecution [member error_handling_rule] the group is marked as failed before the signal is emitted.
 			</description>
 		</signal>
 	</signals>

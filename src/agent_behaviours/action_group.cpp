@@ -144,9 +144,10 @@ Node *NNActionGroup::step_actions() {
 					// Failed, so fail the group and end/continue based on error handling rule.
 					action_node->end_action();
 					_current_action_started = false;
-					set_has_failed(true);
+					const bool end_execution = _error_handling_rule == NNActionGroupErrorHandlingRule::EndExecution;
+					set_has_failed(end_execution);
 					emit_signal("action_failed", action_node, this);
-					if (_error_handling_rule == NNActionGroupErrorHandlingRule::EndExecution) {
+					if (end_execution) {
 						return nullptr;
 					}
 				} else {
@@ -177,8 +178,8 @@ Node *NNActionGroup::step_actions() {
 					if (current_action_group->get_has_failed()) {
 						current_action_group->end_action();
 						_current_action_started = false;
-						set_has_failed(true);
 						if (_error_handling_rule == NNActionGroupErrorHandlingRule::EndExecution) {
+							set_has_failed(true);
 							return nullptr;
 						}
 					} else {

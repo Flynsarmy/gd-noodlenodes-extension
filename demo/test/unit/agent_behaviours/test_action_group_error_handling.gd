@@ -23,6 +23,8 @@ func _make_failing_sequence(error_handling_rule: int) -> Dictionary:
 	group.add_child(failed_action)
 	group.add_child(next_action)
 	behaviour.add_child(group)
+	var after_group_action: NNAction = NNAction.new()
+	behaviour.add_child(after_group_action)
 	var agent := Fixtures.add_manual_agent(self, [behaviour])
 
 	AgentHelpers.select(agent)
@@ -34,6 +36,7 @@ func _make_failing_sequence(error_handling_rule: int) -> Dictionary:
 		"group": group,
 		"failed_action": failed_action,
 		"next_action": next_action,
+		"after_group_action": after_group_action,
 		"next_entries": next_entries,
 		"failures": failures,
 	}
@@ -77,3 +80,21 @@ func test_continue_execution_starts_the_next_action_after_a_failure() -> void:
 	assert_eq(next_entries[0], 1, "ContinueExecution starts the next action")
 	assert_eq(agent.get_current_action_node(), next_action)
 	assert_eq(agent.get_current_behaviour_node(), behaviour)
+
+
+func test_continue_execution_does_not_fail_the_group_for_its_parent() -> void:
+	var fixture := _make_failing_sequence(HANDLING_CONTINUE_EXECUTION)
+	var agent: NNAgent = fixture["agent"]
+	var group: NNActionGroup = fixture["group"]
+	var failed_action: NNAction = fixture["failed_action"]
+	var next_action: NNAction = fixture["next_action"]
+
+	failed_action.set_has_failed(true)
+	failed_action.set_is_finished(true)
+	agent.update_current_behaviour()
+	assert_false(group.get_has_failed(), "a tolerated failure does not fail the group")
+
+	next_action.set_is_finished(true)
+	agent.update_current_behaviour()
+
+	assert_eq(agent.get_current_action_node(), fixture["after_group_action"], "the behaviour carries on past the group")
