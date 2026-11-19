@@ -257,6 +257,44 @@ func test_sequence_failure_interrupts_a_still_running_child() -> void:
 	assert_engine_error_count(0)
 
 
+func test_advancing_past_a_skipping_child_interrupts_that_child() -> void:
+	var skipper: LifecycleLeaf = _make_leaf(NNBTNodes.SKIP)
+	var runner: LifecycleLeaf = _make_leaf(NNBTNodes.RUNNING)
+	var sequence: NNBTSequence = NNBTSequence.new()
+	sequence.add_child(skipper)
+	sequence.add_child(runner)
+	var root: NNBTRoot = _make_root_with(sequence)
+
+	assert_eq(root.tick(0.1), NNBTNodes.RUNNING)
+	assert_eq(skipper.before_run_count, 1)
+	assert_eq(skipper.interrupt_count, 1, "SKIP leaves the run active, so advancing past it closes that run")
+	assert_eq(runner.interrupt_count, 0, "the child that is still running keeps its run")
+
+	assert_engine_error_count(0)
+
+
+func test_removing_an_earlier_child_still_interrupts_the_running_child() -> void:
+	var done: LifecycleLeaf = _make_leaf(NNBTNodes.SUCCESS)
+	var running: LifecycleLeaf = _make_leaf(NNBTNodes.RUNNING)
+	var next: LifecycleLeaf = _make_leaf(NNBTNodes.RUNNING)
+	var sequence: NNBTSequence = NNBTSequence.new()
+	sequence.add_child(done)
+	sequence.add_child(running)
+	sequence.add_child(next)
+	var root: NNBTRoot = _make_root_with(sequence)
+
+	assert_eq(root.tick(0.1), NNBTNodes.RUNNING)
+	sequence.remove_child(done)
+	done.free()
+
+	# The cursor index now lands on the next child without advancing.
+	assert_eq(root.tick(0.1), NNBTNodes.RUNNING)
+	assert_eq(next.before_run_count, 1)
+	assert_eq(running.interrupt_count, 1, "the previously running child loses its run")
+
+	assert_engine_error_count(0)
+
+
 func test_terminal_completion_interrupts_a_running_descendant() -> void:
 	var a: LifecycleLeaf = _make_leaf(NNBTNodes.FAILURE)
 	var running: LifecycleLeaf = _make_leaf(NNBTNodes.RUNNING)

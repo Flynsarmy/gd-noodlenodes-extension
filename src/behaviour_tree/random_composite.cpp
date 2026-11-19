@@ -40,13 +40,18 @@ void NNBTRandomComposite::_on_before_run(float delta) {
 }
 
 NNBTNodes::Status NNBTRandomComposite::_tick(float delta) {
+	NNBTNodes *resumed_child = _child_node_order.empty() ? nullptr : _child_node_order.front();
 	while (!_child_node_order.empty()) {
 		NNBTNodes *btnode = _child_node_order.front();
 		Status result = btnode->tick(delta);
 		if (result == _short_circuit_status) {
 			return _short_circuit_status;
 		} else if (result == Status::RUNNING) {
-			_interrupt_other_active_children(btnode);
+			// A SKIP leaves a child's run active, so only a tick that popped a
+			// finished child before this one can have left another child running.
+			if (btnode != resumed_child) {
+				_interrupt_other_active_children(btnode);
+			}
 			return Status::RUNNING;
 		}
 		_child_node_order.erase(_child_node_order.begin());
