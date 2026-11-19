@@ -274,7 +274,7 @@ void NNAgent::_reconcile_selected_nodes() {
 	}
 
 	if (!behaviour_available && !_current_behaviour_id.is_null()) {
-		_exit_current_behaviour(true);
+		_exit_current_behaviour(BehaviourExit::DESELECTED);
 	}
 
 	if (!behaviour_group_available && !_current_behaviour_group_id.is_null()) {
@@ -307,12 +307,15 @@ void NNAgent::_end_current_action(bool emit_action_changed) {
 	}
 }
 
-void NNAgent::_exit_current_behaviour(bool emit_behaviour_exited, bool clear_name_before_end) {
+void NNAgent::_exit_current_behaviour(BehaviourExit exit) {
 	// Clear the tracked ID before end_behaviour(): its callbacks are user code
 	// and may re-enter the agent.
 	ObjectID behaviour_id = _current_behaviour_id;
 	_current_behaviour_id = ObjectID();
-	if (clear_name_before_end) {
+	// A completed behaviour keeps its name through end_behaviour() so its
+	// listeners can still read it.
+	bool clear_name_late = exit == BehaviourExit::COMPLETED;
+	if (!clear_name_late) {
 		_current_behaviour_name = "";
 	}
 
@@ -321,10 +324,10 @@ void NNAgent::_exit_current_behaviour(bool emit_behaviour_exited, bool clear_nam
 		behaviour->end_behaviour();
 	}
 
-	if (!clear_name_before_end) {
+	if (clear_name_late) {
 		_current_behaviour_name = "";
 	}
-	if (emit_behaviour_exited) {
+	if (exit == BehaviourExit::DESELECTED) {
 		_emit_node_signal("behaviour_exited", behaviour_id);
 	} else {
 		emit_signal("behaviour_changed", Variant());
@@ -478,7 +481,7 @@ void NNAgent::evaluate_options(float delta) {
 		ObjectID behaviour_group_id = _current_behaviour_group_id;
 		_end_current_action(true);
 		if (!behaviour_id.is_null() && _current_behaviour_id == behaviour_id) {
-			_exit_current_behaviour(true);
+			_exit_current_behaviour(BehaviourExit::DESELECTED);
 		}
 		if (!behaviour_group_id.is_null() && _current_behaviour_group_id == behaviour_group_id) {
 			_exit_behaviour_group(behaviour_group_id);
@@ -524,7 +527,7 @@ void NNAgent::evaluate_options(float delta) {
 
 	_end_current_action(false);
 	if (!_current_behaviour_id.is_null()) {
-		_exit_current_behaviour(true);
+		_exit_current_behaviour(BehaviourExit::DESELECTED);
 	}
 	if (!_current_behaviour_group_id.is_null() && _current_behaviour_group_id != chosen_behaviour_group_id) {
 		_exit_behaviour_group(_current_behaviour_group_id);
@@ -675,8 +678,7 @@ void NNAgent::update_current_behaviour() {
 	}
 
 	if (_current_action_id.is_null()) {
-		// The completed behaviour keeps its name through end_behaviour().
-		_exit_current_behaviour(false, false);
+		_exit_current_behaviour(BehaviourExit::COMPLETED);
 	}
 }
 
@@ -699,7 +701,7 @@ void NNAgent::abort_current_behaviour() {
 	ObjectID behaviour_id = _current_behaviour_id;
 	_end_current_action(false);
 	if (!behaviour_id.is_null() && _current_behaviour_id == behaviour_id) {
-		_exit_current_behaviour(false);
+		_exit_current_behaviour(BehaviourExit::ABORTED);
 	} else if (_current_behaviour_id.is_null()) {
 		// A re-entrant action_exited listener already ended the behaviour; do
 		// not end it twice. If it selected a replacement instead, leave that

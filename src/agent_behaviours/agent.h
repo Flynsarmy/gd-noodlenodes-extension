@@ -83,7 +83,12 @@ private:
 	void _refresh_child_caches();
 	void _reconcile_selected_nodes();
 	void _end_current_action(bool emit_action_changed);
-	void _exit_current_behaviour(bool emit_behaviour_exited, bool clear_name_before_end = true);
+	enum class BehaviourExit {
+		DESELECTED,
+		ABORTED,
+		COMPLETED,
+	};
+	void _exit_current_behaviour(BehaviourExit exit);
 	void _exit_behaviour_group(ObjectID behaviour_group_id, bool require_direct_child = false);
 	void _tick_selected_nodes(const char *signal_name, double delta);
 	void _advance_behaviour_cooldowns(double delta);
