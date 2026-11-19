@@ -1,8 +1,8 @@
-[gd_scene load_steps=2 format=3 uid="uid://cxdnms85j3rw1"]
+[gd_scene format=3 uid="uid://cxdnms85j3rw1"]
 
 [ext_resource type="Script" uid="uid://taqayhwwql3q" path="res://main.gd" id="1_0xm2m"]
 
-[node name="Main" type="Control"]
+[node name="Main" type="Control" unique_id=193554757]
 layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
@@ -11,7 +11,7 @@ grow_horizontal = 2
 grow_vertical = 2
 script = ExtResource("1_0xm2m")
 
-[node name="Center" type="CenterContainer" parent="."]
+[node name="Center" type="CenterContainer" parent="." unique_id=200940679]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -19,21 +19,21 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 
-[node name="Menu" type="VBoxContainer" parent="Center"]
+[node name="Menu" type="VBoxContainer" parent="Center" unique_id=885605484]
 layout_mode = 2
 theme_override_constants/separation = 12
 
-[node name="Title" type="Label" parent="Center/Menu"]
+[node name="Title" type="Label" parent="Center/Menu" unique_id=781089935]
 layout_mode = 2
 theme_override_font_sizes/font_size = 32
 text = "Noodle Nodes Demos"
 horizontal_alignment = 1
 
-[node name="Buttons" type="VBoxContainer" parent="Center/Menu"]
+[node name="Buttons" type="VBoxContainer" parent="Center/Menu" unique_id=1552419413]
 unique_name_in_owner = true
 layout_mode = 2
 
-[node name="Hint" type="Label" parent="Center/Menu"]
+[node name="Hint" type="Label" parent="Center/Menu" unique_id=846117853]
 layout_mode = 2
 text = "Esc returns to this menu from a demo, or quits from here."
 horizontal_alignment = 1
