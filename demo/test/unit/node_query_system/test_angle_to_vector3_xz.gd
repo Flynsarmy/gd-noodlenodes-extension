@@ -203,3 +203,9 @@ func test_2d_criterion_defaults_to_a_signed_90_degree_window() -> void:
 
 	assert_eq(_result_names(query), ["aligned"], "Only the node facing the default +X reference is within -90..90 degrees.")
 	assert_almost_eq(query.get_query_result_scores()[0], 0.5, SCORE_EPSILON, "Zero degrees sits in the middle of the -90..90 window.")
+
+
+func test_angle_criterion_rejects_min_angle_below_minus_180() -> void:
+	var criterion: NNAngleToVector2SearchCriterion = autofree(NNAngleToVector2SearchCriterion.new())
+	criterion.min_angle_degrees = -270.0
+	assert_eq(criterion.min_angle_degrees, -90.0, "A min angle below -180 degrees must be rejected.")

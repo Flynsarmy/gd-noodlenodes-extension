@@ -253,3 +253,11 @@ func test_2d_navmesh_snapping_tolerates_a_shorter_assigned_point_grid() -> void:
 	assert_eq(criterion.apply_count, 1, "only the assigned point should be scored")
 
 	_cleanup(nqs, parent)
+
+
+func test_distance_criterion_rejects_invalid_min_distance() -> void:
+	var criterion: NNDistanceToVector3SearchCriterion = autofree(NNDistanceToVector3SearchCriterion.new())
+	criterion.min_distance = -5.0
+	assert_eq(criterion.min_distance, 0.0, "A negative min distance must be rejected.")
+	criterion.min_distance = 10.0
+	assert_eq(criterion.min_distance, 10.0, "A rejected value must not block later valid assignments.")

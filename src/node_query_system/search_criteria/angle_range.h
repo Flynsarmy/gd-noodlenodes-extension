@@ -53,7 +53,7 @@ inline void NNAngleRange::initialize(bool p_fix_degenerate_range) {
 }
 
 inline void NNAngleRange::set_min_degrees(float p_min_degrees) {
-	if (_min_degrees < -180.0f) {
+	if (p_min_degrees < -180.0f) {
 		return;
 	}
 	_min_degrees = p_min_degrees;

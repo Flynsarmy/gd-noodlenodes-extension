@@ -37,10 +37,7 @@ inline NNDistanceRange::NNDistanceRange() :
 }
 
 inline void NNDistanceRange::set_min_distance(float p_min_distance) {
-	if (_min_distance < 0.0f) {
-		return;
-	}
-	if (_min_distance >= _max_distance) {
+	if (p_min_distance < 0.0f || p_min_distance >= _max_distance) {
 		return;
 	}
 	_min_distance = p_min_distance;
