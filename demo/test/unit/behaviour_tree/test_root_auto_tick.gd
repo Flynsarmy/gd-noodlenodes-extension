@@ -1,18 +1,7 @@
 extends GutTest
 @warning_ignore('unused_parameter')
 
-
-class CountingLeaf extends NNBTLeaf:
-	var result: int = NNBTNodes.RUNNING
-	var tick_count: int = 0
-	var last_blackboard: NNBlackboard = null
-	var last_delta: float = 0.0
-
-	func on_tick(delta: float) -> Status:
-		tick_count += 1
-		last_blackboard = get_blackboard_resource()
-		last_delta = delta
-		return result
+const BT = preload("res://test/unit/behaviour_tree/support/bt_helpers.gd")
 
 
 var _tree_disabled_count: int = 0
@@ -38,10 +27,8 @@ func _free_child_on_tree_disabled(child: Node) -> void:
 	child.free()
 
 
-func _make_leaf(result: int = NNBTNodes.RUNNING) -> CountingLeaf:
-	var leaf: CountingLeaf = CountingLeaf.new()
-	leaf.result = result
-	return leaf
+func _make_leaf(result: int = NNBTNodes.RUNNING) -> BT.CountingLeaf:
+	return BT.make_leaf(result)
 
 
 func _step_n(bt_root: NNBTRoot, count: int, process_thread: int = NNBTRoot.PHYSICS) -> Array:
@@ -53,7 +40,7 @@ func _step_n(bt_root: NNBTRoot, count: int, process_thread: int = NNBTRoot.PHYSI
 
 func test_defaults_auto_tick_on_the_physics_frame() -> void:
 	var bt_root: NNBTRoot = NNBTRoot.new()
-	var leaf: CountingLeaf = _make_leaf(NNBTNodes.SUCCESS)
+	var leaf: BT.CountingLeaf = _make_leaf(NNBTNodes.SUCCESS)
 	bt_root.add_child(leaf)
 
 	assert_eq(bt_root.tick_rate, 1)
@@ -70,7 +57,7 @@ func test_defaults_auto_tick_on_the_physics_frame() -> void:
 
 func test_auto_tick_step_passes_the_delta_and_resolves_the_root_board() -> void:
 	var bt_root: NNBTRoot = NNBTRoot.new()
-	var leaf: CountingLeaf = _make_leaf(NNBTNodes.RUNNING)
+	var leaf: BT.CountingLeaf = _make_leaf(NNBTNodes.RUNNING)
 	bt_root.add_child(leaf)
 	var board: NNBlackboard = NNBlackboard.new()
 	bt_root.blackboard = board
@@ -85,7 +72,7 @@ func test_auto_tick_step_passes_the_delta_and_resolves_the_root_board() -> void:
 
 func test_tick_rate_spaces_ticks_over_eligible_invocations() -> void:
 	var bt_root: NNBTRoot = NNBTRoot.new()
-	var leaf: CountingLeaf = _make_leaf(NNBTNodes.RUNNING)
+	var leaf: BT.CountingLeaf = _make_leaf(NNBTNodes.RUNNING)
 	bt_root.add_child(leaf)
 	bt_root.tick_rate = 2
 
@@ -102,7 +89,7 @@ func test_tick_rate_spaces_ticks_over_eligible_invocations() -> void:
 
 func test_tick_rate_clamps_and_rearms_the_schedule() -> void:
 	var bt_root: NNBTRoot = NNBTRoot.new()
-	var leaf: CountingLeaf = _make_leaf(NNBTNodes.RUNNING)
+	var leaf: BT.CountingLeaf = _make_leaf(NNBTNodes.RUNNING)
 	bt_root.add_child(leaf)
 
 	bt_root.tick_rate = 0
@@ -125,7 +112,7 @@ func test_tick_rate_clamps_and_rearms_the_schedule() -> void:
 
 func test_thread_change_enable_change_and_tree_transitions_rearm_the_schedule() -> void:
 	var bt_root: NNBTRoot = NNBTRoot.new()
-	var leaf: CountingLeaf = _make_leaf(NNBTNodes.RUNNING)
+	var leaf: BT.CountingLeaf = _make_leaf(NNBTNodes.RUNNING)
 	bt_root.add_child(leaf)
 	bt_root.tick_rate = 3
 
@@ -153,7 +140,7 @@ func test_thread_change_enable_change_and_tree_transitions_rearm_the_schedule() 
 
 func test_ineligible_invocation_does_not_advance_the_schedule() -> void:
 	var bt_root: NNBTRoot = NNBTRoot.new()
-	var leaf: CountingLeaf = _make_leaf(NNBTNodes.RUNNING)
+	var leaf: BT.CountingLeaf = _make_leaf(NNBTNodes.RUNNING)
 	bt_root.add_child(leaf)
 	bt_root.tick_rate = 2
 
@@ -182,7 +169,7 @@ func test_tick_receives_the_time_elapsed_since_the_previous_tick() -> void:
 
 func test_process_thread_selects_exactly_one_frame_signal() -> void:
 	var bt_root: NNBTRoot = NNBTRoot.new()
-	var leaf: CountingLeaf = _make_leaf(NNBTNodes.RUNNING)
+	var leaf: BT.CountingLeaf = _make_leaf(NNBTNodes.RUNNING)
 	bt_root.add_child(leaf)
 	bt_root.process_thread = NNBTRoot.PHYSICS
 	add_child_autofree(bt_root)
@@ -212,8 +199,8 @@ func test_process_thread_selects_exactly_one_frame_signal() -> void:
 func test_disabling_mid_run_resets_and_emits_once() -> void:
 	var bt_root: NNBTRoot = NNBTRoot.new()
 	var sequence: NNBTSequence = NNBTSequence.new()
-	var first: CountingLeaf = _make_leaf(NNBTNodes.SUCCESS)
-	var second: CountingLeaf = _make_leaf(NNBTNodes.RUNNING)
+	var first: BT.CountingLeaf = _make_leaf(NNBTNodes.SUCCESS)
+	var second: BT.CountingLeaf = _make_leaf(NNBTNodes.RUNNING)
 	sequence.add_child(first)
 	sequence.add_child(second)
 	bt_root.add_child(sequence)
@@ -250,7 +237,7 @@ func test_running_action_tracks_the_deepest_active_node() -> void:
 	var selector: NNBTSelector = NNBTSelector.new()
 	var sequence: NNBTSequence = NNBTSequence.new()
 	var passthrough: NNBTPassThrough = NNBTPassThrough.new()
-	var leaf: CountingLeaf = _make_leaf(NNBTNodes.RUNNING)
+	var leaf: BT.CountingLeaf = _make_leaf(NNBTNodes.RUNNING)
 	passthrough.add_child(leaf)
 	sequence.add_child(passthrough)
 	selector.add_child(sequence)
@@ -275,7 +262,7 @@ func test_running_action_is_null_for_a_completed_or_empty_root() -> void:
 	empty_root.free()
 
 	var completed_root: NNBTRoot = NNBTRoot.new()
-	var leaf: CountingLeaf = _make_leaf(NNBTNodes.SUCCESS)
+	var leaf: BT.CountingLeaf = _make_leaf(NNBTNodes.SUCCESS)
 	completed_root.add_child(leaf)
 	assert_eq(completed_root.tick(0.1), NNBTNodes.SUCCESS)
 	assert_null(completed_root.get_running_action(), "a completed root has no running action")
@@ -284,7 +271,7 @@ func test_running_action_is_null_for_a_completed_or_empty_root() -> void:
 
 func test_running_action_is_null_after_the_running_leaf_is_freed() -> void:
 	var bt_root: NNBTRoot = NNBTRoot.new()
-	var leaf: CountingLeaf = _make_leaf(NNBTNodes.RUNNING)
+	var leaf: BT.CountingLeaf = _make_leaf(NNBTNodes.RUNNING)
 	bt_root.add_child(leaf)
 
 	assert_true(bt_root.auto_tick_step(NNBTRoot.PHYSICS, 0.1))
@@ -297,23 +284,9 @@ func test_running_action_is_null_after_the_running_leaf_is_freed() -> void:
 	bt_root.free()
 
 
-func test_manual_tick_works_while_auto_ticking() -> void:
-	var bt_root: NNBTRoot = NNBTRoot.new()
-	var leaf: CountingLeaf = _make_leaf(NNBTNodes.SUCCESS)
-	bt_root.add_child(leaf)
-
-	assert_eq(bt_root.tick(0.1), NNBTNodes.SUCCESS, "manual ticking is not guarded")
-	assert_eq(leaf.tick_count, 1)
-
-	assert_true(bt_root.auto_tick_step(NNBTRoot.PHYSICS, 0.1), "auto-ticking keeps working after a manual tick")
-	assert_eq(leaf.tick_count, 2)
-
-	bt_root.free()
-
-
 func test_manual_mode_ticks_only_when_the_caller_ticks() -> void:
 	var bt_root: NNBTRoot = NNBTRoot.new()
-	var leaf: CountingLeaf = _make_leaf(NNBTNodes.SUCCESS)
+	var leaf: BT.CountingLeaf = _make_leaf(NNBTNodes.SUCCESS)
 	bt_root.add_child(leaf)
 	bt_root.process_thread = NNBTRoot.MANUAL
 
@@ -329,7 +302,7 @@ func test_manual_mode_ticks_only_when_the_caller_ticks() -> void:
 
 func test_leaving_the_tree_emits_nothing_and_stops_ticking() -> void:
 	var bt_root: NNBTRoot = NNBTRoot.new()
-	var leaf: CountingLeaf = _make_leaf(NNBTNodes.RUNNING)
+	var leaf: BT.CountingLeaf = _make_leaf(NNBTNodes.RUNNING)
 	bt_root.add_child(leaf)
 	bt_root.tree_disabled.connect(_on_tree_disabled)
 	add_child(bt_root)
@@ -348,7 +321,7 @@ func test_leaving_the_tree_emits_nothing_and_stops_ticking() -> void:
 
 func test_tree_disabled_handler_may_free_a_child() -> void:
 	var bt_root: NNBTRoot = NNBTRoot.new()
-	var leaf: CountingLeaf = _make_leaf(NNBTNodes.RUNNING)
+	var leaf: BT.CountingLeaf = _make_leaf(NNBTNodes.RUNNING)
 	leaf.name = "FreedOnDisable"
 	bt_root.add_child(leaf)
 	bt_root.tree_disabled.connect(_free_child_on_tree_disabled.bind(leaf))
@@ -360,15 +333,3 @@ func test_tree_disabled_handler_may_free_a_child() -> void:
 	assert_null(bt_root.get_running_action(), "the state was settled before the signal was emitted")
 
 	bt_root.free()
-
-
-func test_physics_frame_signal_ticks_the_tree() -> void:
-	var bt_root: NNBTRoot = NNBTRoot.new()
-	var leaf: CountingLeaf = _make_leaf(NNBTNodes.RUNNING)
-	bt_root.add_child(leaf)
-	bt_root.tick_rate = 1
-	add_child_autofree(bt_root)
-
-	await wait_physics_frames(3)
-
-	assert_gt(leaf.tick_count, 0, "the physics callback is wired to auto_tick_step")

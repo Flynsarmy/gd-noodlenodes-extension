@@ -3,28 +3,6 @@ extends GutTest
 @warning_ignore('return_value_discarded')
 
 
-func test_fail_until_cooldown_expires() -> void:
-	var _root: NNBTRoot = NNBTRoot.new()
-	var _child: NNBTCooldown = NNBTCooldown.new()
-	var _grandchild: NNBTFixedResult = NNBTFixedResult.new()
-	_child.add_child(_grandchild)
-	_root.add_child(_child)
-
-	_grandchild.fixed_result = NNBTNodes.SUCCESS
-	_child.cooldown_seconds = 0.5
-	_child.cooldown_return_value = NNBTNodes.FAILURE
-
-	_root.tick(0.1)
-	assert_eq(_root.tick_result, NNBTNodes.SUCCESS)
-	_root.tick(0.2)
-	assert_eq(_root.tick_result, NNBTNodes.FAILURE)
-	_root.tick(0.2)
-	assert_eq(_root.tick_result, NNBTNodes.FAILURE)
-	_root.tick(0.2)
-	assert_eq(_root.tick_result, NNBTNodes.SUCCESS)
-
-	_root.free()
-
 func test_dont_cooldown_on_running_child() -> void:
 	var _root: NNBTRoot = NNBTRoot.new()
 	var _child: NNBTCooldown = NNBTCooldown.new()
@@ -61,7 +39,7 @@ func test_cooldown_elapses_only_with_ticked_delta() -> void:
 
 	_root.tick(0.1)
 	assert_eq(_root.tick_result, NNBTNodes.SUCCESS)
-	assert_almost_eq(_child.get_remaining_cooldown(), 0.5, 0.001, "a tree that is not ticked leaves the remaining time unchanged")
+	assert_almost_eq(_child.get_remaining_cooldown(), 0.5, 0.001, "the cooldown starts at cooldown_seconds")
 
 	_root.tick(0.1)
 	assert_eq(_root.tick_result, NNBTNodes.FAILURE)

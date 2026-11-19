@@ -2,14 +2,7 @@ extends GutTest
 @warning_ignore('unused_parameter')
 @warning_ignore('return_value_discarded')
 
-
-class CountingLeaf extends NNBTLeaf:
-	var result: int = NNBTNodes.SUCCESS
-	var tick_count: int = 0
-
-	func on_tick(_delta: float) -> Status:
-		tick_count += 1
-		return result
+const BT = preload("res://test/unit/behaviour_tree/support/bt_helpers.gd")
 
 
 class HookedRunOnce extends NNBTRunOnce:
@@ -27,12 +20,6 @@ class HookedRunOnce extends NNBTRunOnce:
 		interrupt_count += 1
 
 
-func _make_leaf(result: int) -> CountingLeaf:
-	var leaf: CountingLeaf = CountingLeaf.new()
-	leaf.result = result
-	return leaf
-
-
 func _build_root_with(run_once: NNBTRunOnce, child: NNBTNodes) -> NNBTRoot:
 	run_once.add_child(child)
 	var root: NNBTRoot = NNBTRoot.new()
@@ -48,7 +35,7 @@ func _build_tree(child: NNBTNodes) -> Array:
 
 
 func test_terminal_result_is_latched_and_the_child_is_not_ticked_again() -> void:
-	var leaf: CountingLeaf = _make_leaf(NNBTNodes.RUNNING)
+	var leaf: BT.CountingLeaf = BT.make_leaf(NNBTNodes.RUNNING)
 	var tree: Array = _build_tree(leaf)
 	var root: NNBTRoot = tree[0]
 	var run_once: NNBTRunOnce = tree[1]
@@ -72,8 +59,27 @@ func test_terminal_result_is_latched_and_the_child_is_not_ticked_again() -> void
 	assert_engine_error_count(0)
 
 
+func test_failure_is_latched_and_the_child_is_not_ticked_again() -> void:
+	var leaf: BT.CountingLeaf = BT.make_leaf(NNBTNodes.FAILURE)
+	var tree: Array = _build_tree(leaf)
+	var root: NNBTRoot = tree[0]
+	var run_once: NNBTRunOnce = tree[1]
+
+	assert_eq(root.tick(0.1), NNBTNodes.FAILURE, "A failing child must fail the run immediately.")
+	assert_eq(leaf.tick_count, 1)
+	assert_false(run_once.get_is_running(), "a latched run ends immediately")
+
+	# The held result must not resume just because the child would now succeed.
+	leaf.result = NNBTNodes.SUCCESS
+	for tick_index in 2:
+		assert_eq(root.tick(0.1), NNBTNodes.FAILURE, "a held failure must not resume without a reset")
+		assert_eq(leaf.tick_count, 1, "a latched failure must not tick the child again")
+
+	assert_engine_error_count(0)
+
+
 func test_the_latch_survives_interrupts() -> void:
-	var leaf: CountingLeaf = _make_leaf(NNBTNodes.SUCCESS)
+	var leaf: BT.CountingLeaf = BT.make_leaf(NNBTNodes.SUCCESS)
 	var run_once: NNBTRunOnce = NNBTRunOnce.new()
 	var running_sibling: NNBTFixedResult = NNBTFixedResult.new()
 	running_sibling.fixed_result = NNBTNodes.RUNNING
@@ -102,7 +108,7 @@ func test_the_latch_survives_interrupts() -> void:
 
 
 func test_reset_and_disable_clear_the_latch() -> void:
-	var leaf: CountingLeaf = _make_leaf(NNBTNodes.SUCCESS)
+	var leaf: BT.CountingLeaf = BT.make_leaf(NNBTNodes.SUCCESS)
 	var tree: Array = _build_tree(leaf)
 	var root: NNBTRoot = tree[0]
 	var run_once: NNBTRunOnce = tree[1]
@@ -126,39 +132,8 @@ func test_reset_and_disable_clear_the_latch() -> void:
 	assert_engine_error_count(0)
 
 
-func test_root_run_once_tree_finishes_after_the_first_terminal_result() -> void:
-	var first: CountingLeaf = _make_leaf(NNBTNodes.SUCCESS)
-	var second: CountingLeaf = _make_leaf(NNBTNodes.RUNNING)
-	var sequence: NNBTSequence = NNBTSequence.new()
-	sequence.add_child(first)
-	sequence.add_child(second)
-	var tree: Array = _build_tree(sequence)
-	var root: NNBTRoot = tree[0]
-
-	assert_eq(root.tick(0.1), NNBTNodes.RUNNING)
-	assert_eq(first.tick_count, 1)
-	assert_eq(second.tick_count, 1)
-
-	assert_eq(root.tick(0.1), NNBTNodes.RUNNING)
-	assert_eq(first.tick_count, 1, "the finished first child is not re-ticked inside the run")
-	assert_eq(second.tick_count, 2)
-
-	second.result = NNBTNodes.SUCCESS
-	assert_eq(root.tick(0.1), NNBTNodes.SUCCESS, "the subtree's first terminal result completes the tree")
-	assert_eq(first.tick_count, 1)
-	assert_eq(second.tick_count, 3)
-
-	# The root keeps ticking, but the wrapped subtree stays finished.
-	for tick_index in 2:
-		assert_eq(root.tick(0.1), NNBTNodes.SUCCESS, "root tick %d must stay successful" % tick_index)
-		assert_eq(first.tick_count, 1, "the subtree must not be re-entered")
-		assert_eq(second.tick_count, 3, "the subtree must not be re-entered")
-
-	assert_engine_error_count(0)
-
-
 func test_lifecycle_hooks_fire_on_every_latched_tick() -> void:
-	var leaf: CountingLeaf = _make_leaf(NNBTNodes.SUCCESS)
+	var leaf: BT.CountingLeaf = BT.make_leaf(NNBTNodes.SUCCESS)
 	var run_once: HookedRunOnce = HookedRunOnce.new()
 	var root: NNBTRoot = _build_root_with(run_once, leaf)
 

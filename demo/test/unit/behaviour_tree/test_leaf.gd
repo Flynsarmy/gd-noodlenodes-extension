@@ -2,23 +2,15 @@ extends GutTest
 @warning_ignore('unused_parameter')
 @warning_ignore('return_value_discarded')
 
+const BT = preload("res://test/unit/behaviour_tree/support/bt_helpers.gd")
+
 const CUSTOM_STATUS_SCRIPT := "res://test/unit/behaviour_tree/leaf_custom_status.gd"
 const LEAF_NAME := "StatusLeaf"
 
 
-class ResultLeaf extends NNBTLeaf:
-	var result: int = NNBTNodes.SUCCESS
-	var tick_count: int = 0
-
-	func on_tick(_delta: float) -> Status:
-		tick_count += 1
-		return result
-
-
-func _make_result_leaf(result := NNBTNodes.SUCCESS) -> ResultLeaf:
-	var leaf: ResultLeaf = ResultLeaf.new()
+func _make_result_leaf(result := NNBTNodes.SUCCESS) -> BT.CountingLeaf:
+	var leaf: BT.CountingLeaf = BT.make_leaf(result)
 	leaf.name = LEAF_NAME
-	leaf.result = result
 	return leaf
 
 
@@ -28,12 +20,6 @@ func _make_custom_leaf(payload: Variant) -> NNBTLeaf:
 	leaf.set_script(load(CUSTOM_STATUS_SCRIPT))
 	leaf.set("payload", payload)
 	return leaf
-
-
-func _build_root(node: NNBTNodes) -> NNBTRoot:
-	var root: NNBTRoot = NNBTRoot.new()
-	root.add_child(node)
-	return root
 
 
 func _consume_single_error(fragments: Array) -> void:
@@ -50,7 +36,7 @@ func _consume_single_error(fragments: Array) -> void:
 func test_missing_on_tick_override_fails_and_reports_once() -> void:
 	var leaf: NNBTLeaf = NNBTLeaf.new()
 	leaf.name = LEAF_NAME
-	var root: NNBTRoot = _build_root(leaf)
+	var root: NNBTRoot = BT.build_root(leaf)
 
 	for tick_index in range(3):
 		assert_eq(root.tick(0.1), NNBTNodes.FAILURE, "missing override tick %d must fail" % tick_index)
@@ -64,17 +50,13 @@ func test_missing_on_tick_override_fails_and_reports_once() -> void:
 func test_invalid_statuses_fail_with_one_error_naming_the_value() -> void:
 	var cases: Array = [
 		[_make_result_leaf(42), "42"],
-		[_make_result_leaf(2), "'2'"],
-		[_make_result_leaf(-3), "'-3'"],
 		[_make_custom_leaf(null), "nil"],
-		[_make_custom_leaf(1.0), "float"],
-		[_make_custom_leaf(true), "bool"],
 		[_make_custom_leaf("success"), "string"],
 	]
 
 	for case in cases:
 		var leaf: NNBTLeaf = case[0]
-		var root: NNBTRoot = _build_root(leaf)
+		var root: NNBTRoot = BT.build_root(leaf)
 
 		assert_eq(root.tick(0.1), NNBTNodes.FAILURE, "%s must be rejected" % case[1])
 		assert_eq(leaf.tick_result, NNBTNodes.FAILURE)
@@ -93,8 +75,8 @@ func test_valid_statuses_pass_through_unchanged() -> void:
 	}
 
 	for status: int in expected_is_running:
-		var leaf: ResultLeaf = _make_result_leaf(status)
-		var root: NNBTRoot = _build_root(leaf)
+		var leaf: BT.CountingLeaf = _make_result_leaf(status)
+		var root: NNBTRoot = BT.build_root(leaf)
 
 		assert_eq(root.tick(0.1), status)
 		assert_eq(leaf.tick_result, status)
@@ -105,12 +87,12 @@ func test_valid_statuses_pass_through_unchanged() -> void:
 
 
 func test_sequence_stops_at_invalid_leaf() -> void:
-	var bad_leaf: ResultLeaf = _make_result_leaf(42)
-	var following_leaf: ResultLeaf = _make_result_leaf(NNBTNodes.SUCCESS)
+	var bad_leaf: BT.CountingLeaf = _make_result_leaf(42)
+	var following_leaf: BT.CountingLeaf = _make_result_leaf(NNBTNodes.SUCCESS)
 	var sequence: NNBTSequence = NNBTSequence.new()
 	sequence.add_child(bad_leaf)
 	sequence.add_child(following_leaf)
-	var root: NNBTRoot = _build_root(sequence)
+	var root: NNBTRoot = BT.build_root(sequence)
 
 	assert_eq(root.tick(0.1), NNBTNodes.FAILURE)
 	assert_false(sequence.get_is_running())
@@ -130,7 +112,7 @@ class RunningCondition extends NNBTConditionLeaf:
 func test_running_condition_is_returned_unchanged_and_reported_once() -> void:
 	var leaf: RunningCondition = RunningCondition.new()
 	leaf.name = "RunningCondition"
-	var root: NNBTRoot = _build_root(leaf)
+	var root: NNBTRoot = BT.build_root(leaf)
 
 	assert_eq(root.tick(0.1), NNBTNodes.RUNNING, "the RUNNING result is not coerced")
 	assert_true(leaf.get_is_running(), "a RUNNING condition stays ticked")

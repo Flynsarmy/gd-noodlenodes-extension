@@ -28,13 +28,6 @@ class LifecycleLeaf extends NNBTLeaf:
 		last_interrupt_delta = delta
 
 
-class PlainLeaf extends NNBTLeaf:
-	var result: int = NNBTNodes.SUCCESS
-
-	func on_tick(_delta: float) -> Status:
-		return result
-
-
 # Records every lifecycle hook so a test can assert the exact order of events.
 class TraceLeaf extends NNBTLeaf:
 	var events: Array = []
@@ -87,24 +80,6 @@ class LifecycleReference extends NNBTNodeReference:
 		interrupt_count += 1
 
 
-class LifecycleQuery extends NNBTRunNQSQuery:
-	var interrupt_count: int = 0
-
-	func on_interrupt(_delta: float) -> void:
-		interrupt_count += 1
-
-
-# The NodeQuerySystem used by the query leaf is the engine-wide singleton. Drop
-# anything a previous test left scheduled so these tests only observe their own
-# queries.
-func before_each() -> void:
-	Engine.get_singleton("NodeQuerySystem").clear_queries()
-
-
-func after_each() -> void:
-	Engine.get_singleton("NodeQuerySystem").clear_queries()
-
-
 func _make_leaf(result: int = NNBTNodes.SUCCESS) -> LifecycleLeaf:
 	var leaf: LifecycleLeaf = LifecycleLeaf.new()
 	leaf.result = result
@@ -132,12 +107,6 @@ func _make_sequence() -> NNBTSequence:
 	var sequence: NNBTSequence = NNBTSequence.new()
 	sequence.reactive = true
 	return sequence
-
-
-func _make_search_space() -> NNNodeChildrenSearchSpace:
-	var search_space: NNNodeChildrenSearchSpace = NNNodeChildrenSearchSpace.new()
-	search_space.add_child(NNDistanceToVector2SearchCriterion.new())
-	return search_space
 
 
 func test_clean_success_runs_before_and_after_once() -> void:
@@ -383,71 +352,6 @@ func test_disabling_a_running_leaf_interrupts_once() -> void:
 	leaf.is_enabled = true
 	assert_eq(root.tick(0.1), NNBTNodes.RUNNING)
 	assert_eq(leaf.before_run_count, 2, "re-enabling starts a fresh run")
-
-	assert_engine_error_count(0)
-
-
-func test_root_disable_stops_a_running_query_and_reenable_posts_again() -> void:
-	var search_space: NNNodeChildrenSearchSpace = _make_search_space()
-	add_child_autofree(search_space)
-	var query: LifecycleQuery = LifecycleQuery.new()
-	query.nqs_search_space = search_space
-	var root: NNBTRoot = _make_root_with(query)
-
-	assert_eq(root.tick(0.1), NNBTNodes.RUNNING)
-	assert_true(search_space.is_query_still_running)
-
-	root.is_enabled = false
-	assert_eq(query.interrupt_count, 1, "disabling the root interrupts the query")
-	assert_false(search_space.is_query_still_running, "the interrupted query is stopped")
-
-	root.is_enabled = true
-	assert_eq(root.tick(0.1), NNBTNodes.RUNNING)
-	assert_true(search_space.is_query_still_running, "a fresh query is posted after re-enabling")
-
-	Engine.get_singleton("NodeQuerySystem").stop_query(search_space)
-
-
-func test_root_interrupt_stops_a_running_query_and_is_idempotent() -> void:
-	var search_space: NNNodeChildrenSearchSpace = _make_search_space()
-	add_child_autofree(search_space)
-	var query: LifecycleQuery = LifecycleQuery.new()
-	query.nqs_search_space = search_space
-	var root: NNBTRoot = _make_root_with(query)
-
-	assert_eq(root.tick(0.1), NNBTNodes.RUNNING)
-	assert_true(search_space.is_query_still_running)
-
-	root.interrupt()
-	assert_eq(query.interrupt_count, 1)
-	assert_false(search_space.is_query_still_running)
-
-	root.interrupt()
-	assert_eq(query.interrupt_count, 1, "interrupt is idempotent")
-
-	assert_eq(root.tick(0.1), NNBTNodes.RUNNING)
-	assert_true(search_space.is_query_still_running, "a fresh query is posted after the interrupt")
-
-	Engine.get_singleton("NodeQuerySystem").stop_query(search_space)
-
-
-func test_root_reset_interrupts_the_active_leaf() -> void:
-	var leaf: LifecycleLeaf = _make_leaf(NNBTNodes.RUNNING)
-	var root: NNBTRoot = _make_root_with(leaf)
-
-	assert_eq(root.tick(0.1), NNBTNodes.RUNNING)
-	assert_eq(leaf.before_run_count, 1)
-
-	# Disabling the root resets the whole tree, which interrupts the active
-	# leaf. Re-enabling starts a fresh run on the next tick.
-	root.is_enabled = false
-	assert_eq(leaf.interrupt_count, 1, "the root reset interrupts the active leaf")
-	assert_eq(leaf.after_run_count, 0)
-
-	root.is_enabled = true
-	leaf.result = NNBTNodes.SUCCESS
-	assert_eq(root.tick(0.1), NNBTNodes.SUCCESS)
-	assert_eq(leaf.before_run_count, 2)
 
 	assert_engine_error_count(0)
 

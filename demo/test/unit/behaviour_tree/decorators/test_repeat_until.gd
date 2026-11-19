@@ -2,14 +2,7 @@ extends GutTest
 @warning_ignore('unused_parameter')
 @warning_ignore('return_value_discarded')
 
-
-class CountingLeaf extends NNBTLeaf:
-	var result: int = NNBTNodes.SUCCESS
-	var tick_count: int = 0
-
-	func on_tick(_delta: float) -> Status:
-		tick_count += 1
-		return result
+const BT = preload("res://test/unit/behaviour_tree/support/bt_helpers.gd")
 
 
 func _build_tree(max_repeat_times: int, expected_tick_result: int, child: NNBTNodes) -> Array:
@@ -22,37 +15,23 @@ func _build_tree(max_repeat_times: int, expected_tick_result: int, child: NNBTNo
 	return [root, repeat_until]
 
 
-func test_exhaustion_returns_failure() -> void:
-	var leaf: CountingLeaf = CountingLeaf.new()
-	leaf.result = NNBTNodes.FAILURE
-	var tree: Array = _build_tree(2, NNBTNodes.SUCCESS, leaf)
-	var root: NNBTRoot = tree[0]
-	var repeat_until: NNBTRepeatUntil = tree[1]
+func test_exhaustion_without_reaching_the_expected_result_fails() -> void:
+	for case in [[NNBTNodes.FAILURE, NNBTNodes.SUCCESS], [NNBTNodes.SUCCESS, NNBTNodes.FAILURE]]:
+		var leaf: BT.CountingLeaf = BT.make_leaf(case[0])
+		var tree: Array = _build_tree(2, case[1], leaf)
+		var root: NNBTRoot = tree[0]
+		var repeat_until: NNBTRepeatUntil = tree[1]
 
-	assert_eq(root.tick(0.1), NNBTNodes.RUNNING)
-	assert_eq(repeat_until.get_times_repeated(), 1)
-	assert_eq(root.tick(0.1), NNBTNodes.FAILURE, "Exhausting the budget without a match must fail.")
-	assert_eq(leaf.tick_count, 2, "The budget must tick the child exactly twice.")
+		assert_eq(root.tick(0.1), NNBTNodes.RUNNING)
+		assert_eq(repeat_until.get_times_repeated(), 1)
+		assert_eq(root.tick(0.1), NNBTNodes.FAILURE, "Exhausting the budget without a match must fail.")
+		assert_eq(leaf.tick_count, 2, "The budget must tick the child exactly twice.")
 
-	root.free()
-
-
-func test_exhaustion_returns_failure_when_expected_failure() -> void:
-	var leaf: CountingLeaf = CountingLeaf.new()
-	leaf.result = NNBTNodes.SUCCESS
-	var tree: Array = _build_tree(2, NNBTNodes.FAILURE, leaf)
-	var root: NNBTRoot = tree[0]
-
-	assert_eq(root.tick(0.1), NNBTNodes.RUNNING)
-	assert_eq(root.tick(0.1), NNBTNodes.FAILURE, "Never reaching the expected failure must exhaust the budget.")
-	assert_eq(leaf.tick_count, 2)
-
-	root.free()
+		root.free()
 
 
 func test_new_run_ticks_child_again_after_completion() -> void:
-	var leaf: CountingLeaf = CountingLeaf.new()
-	leaf.result = NNBTNodes.SUCCESS
+	var leaf: BT.CountingLeaf = BT.make_leaf(NNBTNodes.SUCCESS)
 	var tree: Array = _build_tree(2, NNBTNodes.SUCCESS, leaf)
 	var root: NNBTRoot = tree[0]
 	var repeat_until: NNBTRepeatUntil = tree[1]
@@ -72,8 +51,7 @@ func test_new_run_ticks_child_again_after_completion() -> void:
 
 
 func test_infinite_repeat_while_child_never_matches() -> void:
-	var leaf: CountingLeaf = CountingLeaf.new()
-	leaf.result = NNBTNodes.FAILURE
+	var leaf: BT.CountingLeaf = BT.make_leaf(NNBTNodes.FAILURE)
 	var tree: Array = _build_tree(-1, NNBTNodes.SUCCESS, leaf)
 	var root: NNBTRoot = tree[0]
 	var repeat_until: NNBTRepeatUntil = tree[1]
@@ -86,25 +64,8 @@ func test_infinite_repeat_while_child_never_matches() -> void:
 	root.free()
 
 
-func test_infinite_repeat_stops_on_expected_result() -> void:
-	var leaf: CountingLeaf = CountingLeaf.new()
-	leaf.result = NNBTNodes.SUCCESS
-	var tree: Array = _build_tree(-1, NNBTNodes.SUCCESS, leaf)
-	var root: NNBTRoot = tree[0]
-
-	assert_eq(root.tick(0.1), NNBTNodes.SUCCESS)
-	assert_eq(leaf.tick_count, 1)
-
-	leaf.result = NNBTNodes.FAILURE
-	assert_eq(root.tick(0.1), NNBTNodes.RUNNING, "An unlimited budget must keep a fresh run going.")
-	assert_eq(leaf.tick_count, 2)
-
-	root.free()
-
-
 func test_zero_max_repeat_times_fails_without_ticking_child() -> void:
-	var leaf: CountingLeaf = CountingLeaf.new()
-	leaf.result = NNBTNodes.SUCCESS
+	var leaf: BT.CountingLeaf = BT.make_leaf(NNBTNodes.SUCCESS)
 	var tree: Array = _build_tree(0, NNBTNodes.SUCCESS, leaf)
 	var root: NNBTRoot = tree[0]
 

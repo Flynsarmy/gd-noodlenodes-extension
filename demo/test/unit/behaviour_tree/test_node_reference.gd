@@ -2,20 +2,7 @@ extends GutTest
 @warning_ignore('unused_parameter')
 @warning_ignore('return_value_discarded')
 
-
-class CountingLeaf extends NNBTLeaf:
-	var result: int = NNBTNodes.SUCCESS
-	var tick_count: int = 0
-
-	func on_tick(_delta: float) -> Status:
-		tick_count += 1
-		return result
-
-
-func _make_leaf(result := NNBTNodes.SUCCESS) -> CountingLeaf:
-	var leaf: CountingLeaf = CountingLeaf.new()
-	leaf.result = result
-	return leaf
+const BT = preload("res://test/unit/behaviour_tree/support/bt_helpers.gd")
 
 
 func _assert_cycle_errors(expected_count: int) -> void:
@@ -126,7 +113,7 @@ func test_valid_reference_chain_resets_and_ticks() -> void:
 	var a: NNBTNodeReference = NNBTNodeReference.new()
 	var b: NNBTNodeReference = NNBTNodeReference.new()
 	var composite: NNBTSequence = NNBTSequence.new()
-	var leaf: CountingLeaf = _make_leaf()
+	var leaf: BT.CountingLeaf = BT.make_leaf()
 
 	composite.add_child(leaf)
 	a.node_reference = b
@@ -163,7 +150,7 @@ func test_shared_subtree_referenced_twice_is_traversed() -> void:
 	var parallel: NNBTParallel = NNBTParallel.new()
 	var first_reference: NNBTNodeReference = NNBTNodeReference.new()
 	var second_reference: NNBTNodeReference = NNBTNodeReference.new()
-	var shared_leaf: CountingLeaf = _make_leaf()
+	var shared_leaf: BT.CountingLeaf = BT.make_leaf()
 
 	# A DAG: both references point at the same valid subtree. This must be
 	# accepted by the setter and traversed once per reference.

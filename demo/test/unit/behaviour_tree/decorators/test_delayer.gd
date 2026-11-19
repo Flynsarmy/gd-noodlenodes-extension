@@ -2,14 +2,7 @@ extends GutTest
 @warning_ignore('unused_parameter')
 @warning_ignore('return_value_discarded')
 
-
-class CountingLeaf extends NNBTLeaf:
-	var result: int = NNBTNodes.SUCCESS
-	var tick_count: int = 0
-
-	func on_tick(_delta: float) -> Status:
-		tick_count += 1
-		return result
+const BT = preload("res://test/unit/behaviour_tree/support/bt_helpers.gd")
 
 
 func _build_tree(wait_time: float, child: NNBTNodes) -> Array:
@@ -22,8 +15,7 @@ func _build_tree(wait_time: float, child: NNBTNodes) -> Array:
 
 
 func test_zero_wait_time_ticks_child_on_first_tick() -> void:
-	var leaf: CountingLeaf = CountingLeaf.new()
-	leaf.result = NNBTNodes.SUCCESS
+	var leaf: BT.CountingLeaf = BT.make_leaf(NNBTNodes.SUCCESS)
 	var tree: Array = _build_tree(0.0, leaf)
 	var root: NNBTRoot = tree[0]
 	var delayer: NNBTDelayer = tree[1]
@@ -36,8 +28,7 @@ func test_zero_wait_time_ticks_child_on_first_tick() -> void:
 
 
 func test_waits_for_accumulated_delta() -> void:
-	var leaf: CountingLeaf = CountingLeaf.new()
-	leaf.result = NNBTNodes.SUCCESS
+	var leaf: BT.CountingLeaf = BT.make_leaf(NNBTNodes.SUCCESS)
 	var tree: Array = _build_tree(1.0, leaf)
 	var root: NNBTRoot = tree[0]
 	var delayer: NNBTDelayer = tree[1]
@@ -57,26 +48,25 @@ func test_waits_for_accumulated_delta() -> void:
 	root.free()
 
 
-func test_child_failure_is_not_skipped() -> void:
-	var leaf: CountingLeaf = CountingLeaf.new()
-	leaf.result = NNBTNodes.FAILURE
-	var tree: Array = _build_tree(0.5, leaf)
-	var root: NNBTRoot = tree[0]
-	var delayer: NNBTDelayer = tree[1]
+func test_child_result_is_reported_when_the_delay_elapses() -> void:
+	for result in [NNBTNodes.SUCCESS, NNBTNodes.FAILURE]:
+		var leaf: BT.CountingLeaf = BT.make_leaf(result)
+		var tree: Array = _build_tree(0.2, leaf)
+		var root: NNBTRoot = tree[0]
+		var delayer: NNBTDelayer = tree[1]
 
-	assert_eq(root.tick(0.4), NNBTNodes.RUNNING)
-	assert_eq(leaf.tick_count, 0)
+		assert_eq(root.tick(0.1), NNBTNodes.RUNNING, "The delay must hold the child.")
+		assert_eq(leaf.tick_count, 0)
 
-	assert_eq(root.tick(0.4), NNBTNodes.FAILURE, "A failing child must fail the delayer on the tick the delay elapses.")
-	assert_eq(leaf.tick_count, 1, "The child's first failure must not be skipped.")
-	assert_false(delayer.get_is_running())
+		assert_eq(root.tick(0.1), result, "The child's first result must be reported when the delay elapses.")
+		assert_eq(leaf.tick_count, 1)
+		assert_false(delayer.get_is_running())
 
-	root.free()
+		root.free()
 
 
 func test_delay_reapplies_after_completion() -> void:
-	var leaf: CountingLeaf = CountingLeaf.new()
-	leaf.result = NNBTNodes.SUCCESS
+	var leaf: BT.CountingLeaf = BT.make_leaf(NNBTNodes.SUCCESS)
 	var tree: Array = _build_tree(0.5, leaf)
 	var root: NNBTRoot = tree[0]
 
@@ -92,24 +82,8 @@ func test_delay_reapplies_after_completion() -> void:
 	root.free()
 
 
-func test_success_child_result_is_not_skipped() -> void:
-	var leaf: CountingLeaf = CountingLeaf.new()
-	leaf.result = NNBTNodes.SUCCESS
-	var tree: Array = _build_tree(0.2, leaf)
-	var root: NNBTRoot = tree[0]
-	var delayer: NNBTDelayer = tree[1]
-
-	assert_eq(root.tick(0.1), NNBTNodes.RUNNING)
-	assert_eq(root.tick(0.1), NNBTNodes.SUCCESS, "The child's first success must be reported on the tick the delay elapses.")
-	assert_eq(leaf.tick_count, 1)
-	assert_false(delayer.get_is_running())
-
-	root.free()
-
-
 func test_zero_wait_time_keeps_ticking_running_child() -> void:
-	var leaf: CountingLeaf = CountingLeaf.new()
-	leaf.result = NNBTNodes.RUNNING
+	var leaf: BT.CountingLeaf = BT.make_leaf(NNBTNodes.RUNNING)
 	var tree: Array = _build_tree(0.0, leaf)
 	var root: NNBTRoot = tree[0]
 	var delayer: NNBTDelayer = tree[1]
@@ -123,8 +97,7 @@ func test_zero_wait_time_keeps_ticking_running_child() -> void:
 
 
 func test_delay_is_not_reapplied_while_child_is_running() -> void:
-	var leaf: CountingLeaf = CountingLeaf.new()
-	leaf.result = NNBTNodes.RUNNING
+	var leaf: BT.CountingLeaf = BT.make_leaf(NNBTNodes.RUNNING)
 	var tree: Array = _build_tree(1.0, leaf)
 	var root: NNBTRoot = tree[0]
 	var delayer: NNBTDelayer = tree[1]
@@ -148,8 +121,7 @@ func test_delay_is_not_reapplied_while_child_is_running() -> void:
 
 
 func test_root_disable_restarts_delay() -> void:
-	var leaf: CountingLeaf = CountingLeaf.new()
-	leaf.result = NNBTNodes.SUCCESS
+	var leaf: BT.CountingLeaf = BT.make_leaf(NNBTNodes.SUCCESS)
 	var tree: Array = _build_tree(1.0, leaf)
 	var root: NNBTRoot = tree[0]
 	var delayer: NNBTDelayer = tree[1]
@@ -179,8 +151,7 @@ class HookDelayer extends NNBTDelayer:
 
 
 func test_parent_interrupt_restarts_delay() -> void:
-	var leaf: CountingLeaf = CountingLeaf.new()
-	leaf.result = NNBTNodes.SUCCESS
+	var leaf: BT.CountingLeaf = BT.make_leaf(NNBTNodes.SUCCESS)
 	var root: NNBTRoot = NNBTRoot.new()
 	var sequence: NNBTSequence = NNBTSequence.new()
 	var delayer: NNBTDelayer = NNBTDelayer.new()
@@ -207,8 +178,7 @@ func test_parent_interrupt_restarts_delay() -> void:
 
 
 func test_on_interrupt_hook_restarts_delay() -> void:
-	var leaf: CountingLeaf = CountingLeaf.new()
-	leaf.result = NNBTNodes.SUCCESS
+	var leaf: BT.CountingLeaf = BT.make_leaf(NNBTNodes.SUCCESS)
 	var root: NNBTRoot = NNBTRoot.new()
 	var delayer: HookDelayer = HookDelayer.new()
 	delayer.wait_time = 1.0

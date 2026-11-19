@@ -2,23 +2,9 @@ extends GutTest
 @warning_ignore('unused_parameter')
 @warning_ignore('return_value_discarded')
 
+const BT = preload("res://test/unit/behaviour_tree/support/bt_helpers.gd")
+
 const STRUCTURE_ERROR_TEXT := "exactly one behaviour-tree child"
-
-
-class CountingLeaf extends NNBTLeaf:
-	var result: int = NNBTNodes.SUCCESS
-	var tick_count: int = 0
-
-	func on_tick(_delta: float) -> Status:
-		tick_count += 1
-		return result
-
-
-func _make_leaf(result: int = NNBTNodes.SUCCESS, enabled: bool = true) -> CountingLeaf:
-	var leaf: CountingLeaf = CountingLeaf.new()
-	leaf.result = result
-	leaf.is_enabled = enabled
-	return leaf
 
 
 func _consume_structural_errors(expected_count: int) -> Array:
@@ -38,10 +24,10 @@ func _assert_error_mentions(errors: Array, class_name_text: String) -> void:
 		error.handled = true
 
 
-func test_root_with_two_enabled_children_ticks_only_first() -> void:
+func test_root_with_two_enabled_children_ticks_only_first_and_reports_once() -> void:
 	var bt_root: NNBTRoot = NNBTRoot.new()
-	var first: CountingLeaf = _make_leaf(NNBTNodes.SUCCESS)
-	var second: CountingLeaf = _make_leaf(NNBTNodes.FAILURE)
+	var first: BT.CountingLeaf = BT.make_leaf(NNBTNodes.SUCCESS)
+	var second: BT.CountingLeaf = BT.make_leaf(NNBTNodes.FAILURE)
 	first.name = "First"
 	second.name = "Second"
 	bt_root.add_child(first)
@@ -50,6 +36,12 @@ func test_root_with_two_enabled_children_ticks_only_first() -> void:
 	assert_eq(bt_root.tick(0.1), NNBTNodes.SUCCESS, "the result comes from the first enabled child")
 	assert_eq(first.tick_count, 1, "the first enabled child is ticked once")
 	assert_eq(second.tick_count, 0, "extra enabled children are ignored")
+	assert_eq(get_errors().size(), 1, "the first tick reports the extra enabled child")
+
+	assert_eq(bt_root.tick(0.1), NNBTNodes.SUCCESS)
+	assert_eq(get_errors().size(), 1, "a second tick must not report again")
+	assert_eq(first.tick_count, 2, "the first enabled child keeps ticking")
+	assert_eq(second.tick_count, 0, "the extra child is still ignored")
 
 	var errors: Array = _consume_structural_errors(1)
 	_assert_error_mentions(errors, "NNBTRoot")
@@ -59,31 +51,10 @@ func test_root_with_two_enabled_children_ticks_only_first() -> void:
 	bt_root.free()
 
 
-func test_root_reports_extra_child_only_once() -> void:
-	var bt_root: NNBTRoot = NNBTRoot.new()
-	var first: CountingLeaf = _make_leaf(NNBTNodes.SUCCESS)
-	var second: CountingLeaf = _make_leaf(NNBTNodes.SUCCESS)
-	first.name = "First"
-	second.name = "Second"
-	bt_root.add_child(first)
-	bt_root.add_child(second)
-
-	assert_eq(bt_root.tick(0.1), NNBTNodes.SUCCESS)
-	assert_eq(get_errors().size(), 1, "the first tick reports the extra enabled child")
-
-	assert_eq(bt_root.tick(0.1), NNBTNodes.SUCCESS)
-	assert_eq(get_errors().size(), 1, "a second tick must not report again")
-	assert_eq(first.tick_count, 2, "the first enabled child keeps ticking")
-	assert_eq(second.tick_count, 0, "the extra child is still ignored")
-
-	_consume_structural_errors(1)
-	bt_root.free()
-
-
 func test_root_ignores_disabled_extra_child() -> void:
 	var bt_root: NNBTRoot = NNBTRoot.new()
-	var enabled: CountingLeaf = _make_leaf(NNBTNodes.SUCCESS)
-	var disabled: CountingLeaf = _make_leaf(NNBTNodes.SUCCESS, false)
+	var enabled: BT.CountingLeaf = BT.make_leaf(NNBTNodes.SUCCESS)
+	var disabled: BT.CountingLeaf = BT.make_leaf(NNBTNodes.SUCCESS, false)
 	bt_root.add_child(enabled)
 	bt_root.add_child(disabled)
 
@@ -97,8 +68,8 @@ func test_root_ignores_disabled_extra_child() -> void:
 
 func test_root_ticks_first_enabled_child_when_first_is_disabled() -> void:
 	var bt_root: NNBTRoot = NNBTRoot.new()
-	var disabled: CountingLeaf = _make_leaf(NNBTNodes.FAILURE, false)
-	var enabled: CountingLeaf = _make_leaf(NNBTNodes.SUCCESS)
+	var disabled: BT.CountingLeaf = BT.make_leaf(NNBTNodes.FAILURE, false)
+	var enabled: BT.CountingLeaf = BT.make_leaf(NNBTNodes.SUCCESS)
 	bt_root.add_child(disabled)
 	bt_root.add_child(enabled)
 
@@ -121,20 +92,27 @@ func test_root_without_children_still_fails() -> void:
 
 func test_decorators_tick_only_first_enabled_child() -> void:
 	var decorator_types: Array = [
-		NNBTLimiter,
+		NNBTCooldown,
+		NNBTDelayer,
+		NNBTFailer,
+		NNBTFixedResult,
 		NNBTInverter,
+		NNBTLimiter,
+		NNBTPassThrough,
 		NNBTRepeater,
 		NNBTRepeatUntil,
+		NNBTRunOnce,
+		NNBTSucceeder,
+		NNBTTimeLimiter,
+		NNBTUntilFail,
 		NNBTCooldownTicks,
-		NNBTCooldown,
-		NNBTFixedResult,
 	]
 
 	for decorator_type in decorator_types:
 		var bt_root: NNBTRoot = NNBTRoot.new()
 		var decorator: NNBTDecoratorNodes = decorator_type.new()
-		var first: CountingLeaf = _make_leaf(NNBTNodes.RUNNING)
-		var second: CountingLeaf = _make_leaf(NNBTNodes.SUCCESS)
+		var first: BT.CountingLeaf = BT.make_leaf(NNBTNodes.RUNNING)
+		var second: BT.CountingLeaf = BT.make_leaf(NNBTNodes.SUCCESS)
 		first.name = "First"
 		second.name = "Second"
 		decorator.add_child(first)
@@ -182,7 +160,7 @@ func test_decorators_without_an_enabled_child_fail() -> void:
 			var decorator: NNBTNodes = decorator_type.new()
 			for property in configured.get(decorator_type, {}):
 				decorator.set(property, configured[decorator_type][property])
-			var leaf: CountingLeaf = _make_leaf(NNBTNodes.SUCCESS, false)
+			var leaf: BT.CountingLeaf = BT.make_leaf(NNBTNodes.SUCCESS, false)
 			if with_disabled_child:
 				decorator.add_child(leaf)
 			bt_root.add_child(decorator)

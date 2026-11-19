@@ -2,14 +2,7 @@ extends GutTest
 @warning_ignore('unused_parameter')
 @warning_ignore('return_value_discarded')
 
-
-class CountingLeaf extends NNBTLeaf:
-	var result: int = NNBTNodes.SUCCESS
-	var tick_count: int = 0
-
-	func on_tick(_delta: float) -> Status:
-		tick_count += 1
-		return result
+const BT = preload("res://test/unit/behaviour_tree/support/bt_helpers.gd")
 
 
 func _build_tree(child: NNBTNodes) -> Array:
@@ -21,8 +14,7 @@ func _build_tree(child: NNBTNodes) -> Array:
 
 
 func test_failure_child_succeeds() -> void:
-	var leaf: CountingLeaf = CountingLeaf.new()
-	leaf.result = NNBTNodes.FAILURE
+	var leaf: BT.CountingLeaf = BT.make_leaf(NNBTNodes.FAILURE)
 	var tree: Array = _build_tree(leaf)
 	var root: NNBTRoot = tree[0]
 	var until_fail: NNBTUntilFail = tree[1]
@@ -35,8 +27,7 @@ func test_failure_child_succeeds() -> void:
 
 
 func test_success_child_repeats_on_next_tick() -> void:
-	var leaf: CountingLeaf = CountingLeaf.new()
-	leaf.result = NNBTNodes.SUCCESS
+	var leaf: BT.CountingLeaf = BT.make_leaf(NNBTNodes.SUCCESS)
 	var tree: Array = _build_tree(leaf)
 	var root: NNBTRoot = tree[0]
 	var until_fail: NNBTUntilFail = tree[1]
@@ -57,8 +48,7 @@ func test_success_child_repeats_on_next_tick() -> void:
 
 
 func test_running_child_keeps_running() -> void:
-	var leaf: CountingLeaf = CountingLeaf.new()
-	leaf.result = NNBTNodes.RUNNING
+	var leaf: BT.CountingLeaf = BT.make_leaf(NNBTNodes.RUNNING)
 	var tree: Array = _build_tree(leaf)
 	var root: NNBTRoot = tree[0]
 	var until_fail: NNBTUntilFail = tree[1]

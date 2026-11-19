@@ -2,21 +2,7 @@ extends GutTest
 @warning_ignore('unused_parameter')
 @warning_ignore('return_value_discarded')
 
-
-class CountingLeaf extends NNBTLeaf:
-	var result: int = NNBTNodes.SUCCESS
-	var tick_count: int = 0
-
-	func on_tick(_delta: float) -> Status:
-		tick_count += 1
-		return result
-
-
-func _build_tree(decorator: NNBTNodes, child: NNBTNodes) -> Array:
-	var root: NNBTRoot = NNBTRoot.new()
-	decorator.add_child(child)
-	root.add_child(decorator)
-	return [root, decorator]
+const BT = preload("res://test/unit/behaviour_tree/support/bt_helpers.gd")
 
 
 func test_child_result_is_forced_unless_running() -> void:
@@ -30,9 +16,8 @@ func test_child_result_is_forced_unless_running() -> void:
 	]
 
 	for case in cases:
-		var leaf: CountingLeaf = CountingLeaf.new()
-		leaf.result = case[1]
-		var tree: Array = _build_tree(case[0].new(), leaf)
+		var leaf: BT.CountingLeaf = BT.make_leaf(case[1])
+		var tree: Array = BT.build_decorator(case[0].new(), leaf)
 		var root: NNBTRoot = tree[0]
 		var decorator: NNBTNodes = tree[1]
 		var label := "%s with child %d" % [decorator.get_class(), case[1]]

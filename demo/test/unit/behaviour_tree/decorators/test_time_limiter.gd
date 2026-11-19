@@ -2,21 +2,7 @@ extends GutTest
 @warning_ignore('unused_parameter')
 @warning_ignore('return_value_discarded')
 
-
-class CountingLeaf extends NNBTLeaf:
-	var result: int = NNBTNodes.RUNNING
-	var tick_count: int = 0
-
-	func on_tick(_delta: float) -> Status:
-		tick_count += 1
-		return result
-
-
-class HookCountingLeaf extends CountingLeaf:
-	var interrupt_count: int = 0
-
-	func on_interrupt(_delta: float) -> void:
-		interrupt_count += 1
+const BT = preload("res://test/unit/behaviour_tree/support/bt_helpers.gd")
 
 
 func _build_tree(time_limit: float, child: NNBTNodes) -> Array:
@@ -28,32 +14,8 @@ func _build_tree(time_limit: float, child: NNBTNodes) -> Array:
 	return [root, time_limiter]
 
 
-func test_fails_when_running_child_exceeds_limit() -> void:
-	var leaf: CountingLeaf = CountingLeaf.new()
-	leaf.result = NNBTNodes.RUNNING
-	var tree: Array = _build_tree(1.0, leaf)
-	var root: NNBTRoot = tree[0]
-	var time_limiter: NNBTTimeLimiter = tree[1]
-
-	assert_eq(root.tick(0.4), NNBTNodes.RUNNING)
-	assert_almost_eq(time_limiter.get_time_spent(), 0.4, 0.0001)
-	assert_eq(leaf.tick_count, 1)
-
-	assert_eq(root.tick(0.4), NNBTNodes.RUNNING)
-	assert_almost_eq(time_limiter.get_time_spent(), 0.8, 0.0001)
-	assert_eq(leaf.tick_count, 2)
-
-	assert_eq(root.tick(0.4), NNBTNodes.FAILURE, "Exceeding the limit must fail the time limiter.")
-	assert_almost_eq(time_limiter.get_time_spent(), 0.0, 0.0001, "A timeout must clear the accumulated time.")
-	assert_false(time_limiter.get_is_running())
-	assert_false(leaf.get_is_running(), "A timeout must reset the child subtree.")
-
-	root.free()
-
-
 func test_terminal_result_after_timeout_passes_through() -> void:
-	var leaf: CountingLeaf = CountingLeaf.new()
-	leaf.result = NNBTNodes.RUNNING
+	var leaf: BT.CountingLeaf = BT.make_leaf(NNBTNodes.RUNNING)
 	var tree: Array = _build_tree(1.0, leaf)
 	var root: NNBTRoot = tree[0]
 	var time_limiter: NNBTTimeLimiter = tree[1]
@@ -70,8 +32,7 @@ func test_terminal_result_after_timeout_passes_through() -> void:
 
 
 func test_limit_reapplies_to_the_next_run() -> void:
-	var leaf: CountingLeaf = CountingLeaf.new()
-	leaf.result = NNBTNodes.RUNNING
+	var leaf: BT.CountingLeaf = BT.make_leaf(NNBTNodes.RUNNING)
 	var tree: Array = _build_tree(1.0, leaf)
 	var root: NNBTRoot = tree[0]
 	var time_limiter: NNBTTimeLimiter = tree[1]
@@ -92,8 +53,7 @@ func test_limit_reapplies_to_the_next_run() -> void:
 
 func test_zero_and_negative_limits_never_time_out() -> void:
 	for limit in [0.0, -1.0]:
-		var leaf: CountingLeaf = CountingLeaf.new()
-		leaf.result = NNBTNodes.RUNNING
+		var leaf: BT.CountingLeaf = BT.make_leaf(NNBTNodes.RUNNING)
 		var tree: Array = _build_tree(limit, leaf)
 		var root: NNBTRoot = tree[0]
 		var time_limiter: NNBTTimeLimiter = tree[1]
@@ -105,37 +65,22 @@ func test_zero_and_negative_limits_never_time_out() -> void:
 		root.free()
 
 
-func test_fast_success_passes_through_tiny_limit() -> void:
-	var leaf: CountingLeaf = CountingLeaf.new()
-	leaf.result = NNBTNodes.SUCCESS
-	var tree: Array = _build_tree(0.001, leaf)
-	var root: NNBTRoot = tree[0]
-	var time_limiter: NNBTTimeLimiter = tree[1]
+func test_fast_terminal_result_passes_through_tiny_limit() -> void:
+	for result in [NNBTNodes.SUCCESS, NNBTNodes.FAILURE]:
+		var leaf: BT.CountingLeaf = BT.make_leaf(result)
+		var tree: Array = _build_tree(0.001, leaf)
+		var root: NNBTRoot = tree[0]
+		var time_limiter: NNBTTimeLimiter = tree[1]
 
-	assert_eq(root.tick(0.001), NNBTNodes.SUCCESS, "A fast success must pass through untouched.")
-	assert_almost_eq(time_limiter.get_time_spent(), 0.0, 0.0001)
-	assert_eq(leaf.tick_count, 1)
+		assert_eq(root.tick(0.001), result, "A fast terminal result must pass through untouched.")
+		assert_almost_eq(time_limiter.get_time_spent(), 0.0, 0.0001)
+		assert_eq(leaf.tick_count, 1)
 
-	root.free()
-
-
-func test_fast_failure_passes_through_tiny_limit() -> void:
-	var leaf: CountingLeaf = CountingLeaf.new()
-	leaf.result = NNBTNodes.FAILURE
-	var tree: Array = _build_tree(0.001, leaf)
-	var root: NNBTRoot = tree[0]
-	var time_limiter: NNBTTimeLimiter = tree[1]
-
-	assert_eq(root.tick(0.001), NNBTNodes.FAILURE, "A fast failure must pass through untouched.")
-	assert_almost_eq(time_limiter.get_time_spent(), 0.0, 0.0001)
-	assert_eq(leaf.tick_count, 1)
-
-	root.free()
+		root.free()
 
 
 func test_child_is_not_ticked_past_its_deadline() -> void:
-	var leaf: HookCountingLeaf = HookCountingLeaf.new()
-	leaf.result = NNBTNodes.RUNNING
+	var leaf: BT.CountingLeaf = BT.make_leaf(NNBTNodes.RUNNING)
 	var tree: Array = _build_tree(0.25, leaf)
 	var root: NNBTRoot = tree[0]
 	var time_limiter: NNBTTimeLimiter = tree[1]
@@ -159,8 +104,7 @@ func test_child_is_not_ticked_past_its_deadline() -> void:
 
 
 func test_tick_landing_exactly_on_the_limit_still_ticks_the_child() -> void:
-	var leaf: CountingLeaf = CountingLeaf.new()
-	leaf.result = NNBTNodes.RUNNING
+	var leaf: BT.CountingLeaf = BT.make_leaf(NNBTNodes.RUNNING)
 	var tree: Array = _build_tree(1.0, leaf)
 	var root: NNBTRoot = tree[0]
 	var time_limiter: NNBTTimeLimiter = tree[1]
@@ -181,8 +125,7 @@ func test_tick_landing_exactly_on_the_limit_still_ticks_the_child() -> void:
 
 
 func test_first_tick_beyond_the_limit_never_ticks_the_child() -> void:
-	var leaf: CountingLeaf = CountingLeaf.new()
-	leaf.result = NNBTNodes.RUNNING
+	var leaf: BT.CountingLeaf = BT.make_leaf(NNBTNodes.RUNNING)
 	var tree: Array = _build_tree(0.5, leaf)
 	var root: NNBTRoot = tree[0]
 	var time_limiter: NNBTTimeLimiter = tree[1]
@@ -197,8 +140,7 @@ func test_first_tick_beyond_the_limit_never_ticks_the_child() -> void:
 
 
 func test_root_disable_restarts_time_limit() -> void:
-	var leaf: CountingLeaf = CountingLeaf.new()
-	leaf.result = NNBTNodes.RUNNING
+	var leaf: BT.CountingLeaf = BT.make_leaf(NNBTNodes.RUNNING)
 	var tree: Array = _build_tree(1.0, leaf)
 	var root: NNBTRoot = tree[0]
 	var time_limiter: NNBTTimeLimiter = tree[1]
@@ -230,8 +172,7 @@ class HookTimeLimiter extends NNBTTimeLimiter:
 
 
 func test_parent_interrupt_clears_time_limit() -> void:
-	var leaf: CountingLeaf = CountingLeaf.new()
-	leaf.result = NNBTNodes.RUNNING
+	var leaf: BT.CountingLeaf = BT.make_leaf(NNBTNodes.RUNNING)
 	var root: NNBTRoot = NNBTRoot.new()
 	var selector: NNBTSelector = NNBTSelector.new()
 	var time_limiter: NNBTTimeLimiter = NNBTTimeLimiter.new()
@@ -257,8 +198,7 @@ func test_parent_interrupt_clears_time_limit() -> void:
 
 
 func test_on_interrupt_hook_clears_time_limit() -> void:
-	var leaf: CountingLeaf = CountingLeaf.new()
-	leaf.result = NNBTNodes.RUNNING
+	var leaf: BT.CountingLeaf = BT.make_leaf(NNBTNodes.RUNNING)
 	var root: NNBTRoot = NNBTRoot.new()
 	var time_limiter: HookTimeLimiter = HookTimeLimiter.new()
 	time_limiter.time_limit = 1.0

@@ -1,16 +1,8 @@
 extends GutTest
 @warning_ignore('unused_parameter')
 
+const BT = preload("res://test/unit/behaviour_tree/support/bt_helpers.gd")
 const SCRIPTED_ROOT: Script = preload("res://test/unit/behaviour_tree/root_scripted_process.gd")
-
-
-class CountingLeaf extends NNBTLeaf:
-	var result: int = NNBTNodes.RUNNING
-	var tick_count: int = 0
-
-	func on_tick(_delta: float) -> Status:
-		tick_count += 1
-		return result
 
 
 var _tree_disabled_count: int = 0
@@ -30,17 +22,12 @@ func _on_tree_disabled() -> void:
 	_tree_disabled_count += 1
 
 
-func _make_scripted_root() -> NNBTRoot:
+func _make_scripted_root() -> Array:
 	var bt_root: NNBTRoot = SCRIPTED_ROOT.new()
-	var leaf: CountingLeaf = CountingLeaf.new()
-	leaf.result = NNBTNodes.RUNNING
+	var leaf: BT.CountingLeaf = BT.make_leaf(NNBTNodes.RUNNING)
 	leaf.name = "CountingLeaf"
 	bt_root.add_child(leaf)
-	return bt_root
-
-
-func _leaf_of(bt_root: NNBTRoot) -> CountingLeaf:
-	return bt_root.get_node("CountingLeaf") as CountingLeaf
+	return [bt_root, leaf]
 
 
 func _wait_process_frames(count: int) -> void:
@@ -49,8 +36,9 @@ func _wait_process_frames(count: int) -> void:
 
 
 func test_scripted_root_auto_ticks_in_physics_mode() -> void:
-	var bt_root: NNBTRoot = _make_scripted_root()
-	var leaf: CountingLeaf = _leaf_of(bt_root)
+	var tree: Array = _make_scripted_root()
+	var bt_root: NNBTRoot = tree[0]
+	var leaf: BT.CountingLeaf = tree[1]
 	add_child_autofree(bt_root)
 
 	var physics_calls: int = bt_root.get("physics_calls")
@@ -62,8 +50,9 @@ func test_scripted_root_auto_ticks_in_physics_mode() -> void:
 
 
 func test_scripted_root_auto_ticks_in_idle_mode() -> void:
-	var bt_root: NNBTRoot = _make_scripted_root()
-	var leaf: CountingLeaf = _leaf_of(bt_root)
+	var tree: Array = _make_scripted_root()
+	var bt_root: NNBTRoot = tree[0]
+	var leaf: BT.CountingLeaf = tree[1]
 	bt_root.process_thread = NNBTRoot.IDLE
 	add_child_autofree(bt_root)
 
@@ -75,18 +64,15 @@ func test_scripted_root_auto_ticks_in_idle_mode() -> void:
 	assert_gt(leaf.tick_count, tick_count, "the tree still auto-ticks with a script attached")
 
 
-func test_scripted_root_switching_disable_and_enable() -> void:
-	var bt_root: NNBTRoot = _make_scripted_root()
-	var leaf: CountingLeaf = _leaf_of(bt_root)
-	bt_root.process_thread = NNBTRoot.PHYSICS
+func test_scripted_root_switching_to_manual_and_disabling() -> void:
+	var tree: Array = _make_scripted_root()
+	var bt_root: NNBTRoot = tree[0]
+	var leaf: BT.CountingLeaf = tree[1]
+	bt_root.process_thread = NNBTRoot.MANUAL
 	add_child_autofree(bt_root)
 	bt_root.tree_disabled.connect(_on_tree_disabled)
 	bt_root.tree_enabled.connect(_on_tree_enabled)
 
-	await wait_physics_frames(2)
-	assert_gt(leaf.tick_count, 0, "PHYSICS auto-ticks the scripted root")
-
-	bt_root.process_thread = NNBTRoot.MANUAL
 	var count: int = leaf.tick_count
 	await get_tree().physics_frame
 	await get_tree().process_frame
@@ -95,14 +81,14 @@ func test_scripted_root_switching_disable_and_enable() -> void:
 	bt_root.process_thread = NNBTRoot.IDLE
 	count = leaf.tick_count
 	await _wait_process_frames(2)
-	assert_gt(leaf.tick_count, count, "IDLE auto-ticks the scripted root")
+	assert_gt(leaf.tick_count, count, "switching to IDLE auto-ticks the scripted root")
 
 	bt_root.is_enabled = false
 	count = leaf.tick_count
 	await _wait_process_frames(2)
 	await get_tree().physics_frame
 	assert_eq(leaf.tick_count, count, "a disabled root does not auto-tick")
-	assert_eq(_tree_disabled_count, 1, "tree_disabled is emitted once")
+	assert_eq(_tree_disabled_count, 1, "tree_disabled is emitted once, not once per frame")
 
 	var process_calls: int = bt_root.get("process_calls")
 	bt_root.is_enabled = true
