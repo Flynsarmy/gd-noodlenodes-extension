@@ -1,5 +1,6 @@
 #include "cooldown.h"
 
+#include "../ancestor_search.h"
 #include "root.h"
 #include <godot_cpp/core/class_db.hpp>
 
@@ -67,12 +68,7 @@ NNBTNodes::Status NNBTCooldown::get_cooldown_return_value() const {
 // Handling methods.
 
 NNBTRoot *NNBTCooldown::_find_root() const {
-	for (Node *node = const_cast<NNBTCooldown *>(this); node != nullptr; node = node->get_parent()) {
-		if (NNBTRoot *root = Object::cast_to<NNBTRoot>(node)) {
-			return root;
-		}
-	}
-	return nullptr;
+	return nn_find_ancestor<NNBTRoot>(this, true);
 }
 
 void NNBTCooldown::reset() {

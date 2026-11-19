@@ -1,5 +1,6 @@
 #include "nodes.h"
 
+#include "../ancestor_search.h"
 #include "../expression_util.h"
 #include "root.h"
 
@@ -269,12 +270,7 @@ void NNHTNNodes::collect_dependency_keys(HashSet<String> &r_keys) const {
 }
 
 NNHTNRoot *NNHTNNodes::get_htn_root() const {
-	for (Node *node = get_parent(); node != nullptr; node = node->get_parent()) {
-		if (NNHTNRoot *root = Object::cast_to<NNHTNRoot>(node)) {
-			return root;
-		}
-	}
-	return nullptr;
+	return nn_find_ancestor<NNHTNRoot>(this);
 }
 
 PackedStringArray NNHTNNodes::_get_configuration_warnings() const {

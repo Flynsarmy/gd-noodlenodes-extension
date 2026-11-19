@@ -1,4 +1,5 @@
 #include "ticked_nodes.h"
+#include "../ancestor_search.h"
 #include "../expression_util.h"
 #include "../score_aggregation.h"
 #include "history.h"
@@ -231,12 +232,10 @@ NNSTRoot *NNSTTickedNodes::_resolve_tree_root() const {
 		// The nearest root is another root type (for example a behaviour tree
 		// hosted by a state). Only an NNSTRoot owns a chart, so keep looking
 		// past the roots that cannot own this state.
-		for (Node *node = get_parent(); node != nullptr; node = node->get_parent()) {
-			tree_root = godot::Object::cast_to<NNSTRoot>(node);
-			if (tree_root != nullptr) {
-				_last_known_tree_root_id = ObjectID(tree_root->get_instance_id());
-				return tree_root;
-			}
+		tree_root = nn_find_ancestor<NNSTRoot>(this);
+		if (tree_root != nullptr) {
+			_last_known_tree_root_id = ObjectID(tree_root->get_instance_id());
+			return tree_root;
 		}
 	}
 
