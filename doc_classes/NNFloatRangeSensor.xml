@@ -4,6 +4,7 @@
 		Accepts a minimum and maximum value that defines a value range. The input value given is scaled to 0..1 range within the given min and max values.
 	</brief_description>
 	<description>
+		Normalises [member range_value] linearly across the interval from [member range_min_value] ([code]0.0[/code]) to [member range_max_value] ([code]1.0[/code]) when evaluated, clamping the resulting [member NNSensors.sensor_value] to [code]0.0..1.0[/code]. If [member range_min_value] is greater than or equal to [member range_max_value] (equal or reversed bounds), or the span is non-finite, [member NNSensors.sensor_value] evaluates to [code]0.0[/code].
 	</description>
 	<tutorials>
 	</tutorials>
@@ -15,7 +16,7 @@
 			The minimum value for the range.
 		</member>
 		<member name="range_value" type="float" setter="set_range_value" getter="get_range_value" default="0.0">
-			Input value for the sensor.
+			Input value for the sensor. Assignments outside [member range_min_value] and [member range_max_value] are immediately clamped to those bounds.
 		</member>
 	</members>
 </class>

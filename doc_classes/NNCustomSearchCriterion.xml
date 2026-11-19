@@ -1,10 +1,11 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <class name="NNCustomSearchCriterion" inherits="NNNQSSearchCriteria" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
 	<brief_description>
-		Defines a method [code]apply_criterion()[/code] that will be called to execute the filtering.
+		Calls a script-defined [code]apply_criterion(node)[/code] method to filter and score candidate nodes.
 	</brief_description>
 	<description>
-		With the custom search criterion you can define a method [code]apply_criterion()[/code] that will be called to execute the filtering. You need to set the [member NNNQSSearchCriteria.is_filtered] and [member NNNQSSearchCriteria.score] properties in the method.
+		With the custom search criterion, you attach a script that defines [code]apply_criterion(node: Node)[/code]. For each candidate node in the search space, [member NNNQSSearchCriteria.is_filtered] is reset to [code]false[/code] and [member NNNQSSearchCriteria.score] is reset to [code]1.0[/code] before [code]apply_criterion(node)[/code] is called with the candidate [Node].
+		Inside [code]apply_criterion(node)[/code], set [member NNNQSSearchCriteria.is_filtered] to [code]true[/code] to filter the node out, and set [member NNNQSSearchCriteria.score] to the desired score. If no [code]apply_criterion[/code] method is defined on the script, nodes are left unfiltered with a score of [code]1.0[/code].
 	</description>
 	<tutorials>
 	</tutorials>

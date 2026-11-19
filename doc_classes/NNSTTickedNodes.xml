@@ -18,7 +18,7 @@
 		<method name="get_on_entered_condition" qualifiers="const">
 			<return type="bool" />
 			<description>
-				Returns the value used to determine if the state may be entered. Change by calling [method set_on_entered_condition]
+				Returns the value used to determine if the state may be entered. Change by calling [method set_on_entered_condition].
 			</description>
 		</method>
 		<method name="get_root" qualifiers="const">
@@ -30,26 +30,26 @@
 		<method name="on_enter_condition" qualifiers="virtual">
 			<return type="bool" />
 			<description>
-				Do your logic here to decide when this node should be activated. Return [code]true[/code] or [code]false[/code] based on your logic. If this method isn't implemented in your node and no event is defined, this will return [code]true[/code].  This will execute before the corrosponding signal.
+				Do your logic here to decide when this node should be activated. Return [code]true[/code] or [code]false[/code] based on your logic. When this method is implemented, [signal state_check_enter_condition] is not emitted. If this method is not implemented on your node, [signal state_check_enter_condition] is emitted and the value set by [method set_on_entered_condition] is returned (defaulting to [code]true[/code]).
 			</description>
 		</method>
 		<method name="on_enter_state" qualifiers="virtual">
 			<return type="void" />
 			<description>
-				Logic to initialize your state. This will execute before the corrosponding signal.
+				Logic to initialize your state. This will execute before the corresponding signal.
 			</description>
 		</method>
 		<method name="on_exit_state" qualifiers="virtual">
 			<return type="void" />
 			<description>
-				Logic to clean up before exiting. This will execute before the corrosponding signal. A valid [method transition_to] call from this method replaces the transition that triggered the exit. Targets whose state or ancestors are still exiting are rejected to prevent activation of a lineage that the ongoing exit would undo.
+				Logic to clean up before exiting. This will execute before the corresponding signal. A valid [method transition_to] call from this method replaces the transition that triggered the exit. Targets whose state or ancestors are still exiting are rejected to prevent activation of a lineage that the ongoing exit would undo.
 			</description>
 		</method>
 		<method name="on_tick" qualifiers="virtual">
 			<return type="void" />
 			<param index="0" name="delta" type="float" />
 			<description>
-				Logic to run when a state is ticked. This will execute before the corrosponding signal.
+				Logic to run when a state is ticked. This will execute before the corresponding signal.
 			</description>
 		</method>
 		<method name="set_on_entered_condition">
@@ -63,7 +63,7 @@
 			<return type="bool" />
 			<param index="0" name="new_state_nodepath" type="NodePath" />
 			<description>
-				Transitions between states in the Stae Tree. Requires a [NodePath] (relative to the node calling this method) for the target state. During a transition, all active children of the *from* state will be exited and any children of the *to* state will be evaluated for entering. Returns [code]true[/code] if the transition was applied, or [code]false[/code] if it could not be (for example an invalid target, an inapplicable guard, or a branch that has not been entered yet).
+				Transitions between states in the State Tree. Requires a [NodePath] (relative to the node calling this method) for the target state. During a transition, all active children of the [i]from[/i] state will be exited and any children of the [i]to[/i] state will be evaluated for entering. Returns [code]true[/code] if the transition was applied, or [code]false[/code] if it could not be (for example an invalid target, an inapplicable guard, or a branch that has not been entered yet).
 				The transition runs synchronously, including the [method on_exit_state] and [method on_enter_state] callbacks of the states it leaves and enters. Events sent from those callbacks with [method NNSTBranchNodes.send_event] are queued on the [NNSTRoot] and only processed after this transition and every nested transition it caused have finished.
 			</description>
 		</method>
@@ -82,8 +82,8 @@
 			Marks this state as a final state of the chart. Entering it reports the chart as finished by emitting [signal NNSTRoot.finished] with [code]succeeded[/code] set to [code]true[/code]. This applies to every state type. A final state keeps ticking like any other state: it does not stop the chart or exit itself, so the chart keeps running until a host deactivates it or it is transitioned out.
 		</member>
 		<member name="score" type="float" setter="" getter="get_score" default="0.0">
-			A value (usually between 0 and 1) that affects the likelihood of this node being entered when the parent's [member NNSTBranchNodes.child_state_selection_rule] property is set to `UtilityScoring`. The highest scored child of the parent node will be selected.
-			[b]Note:[/b] This value isn't set manually. It's calculated by adding [NNSTConsiderations] children that will be evaluated at time of scoring. Read-only runtime state that is never saved with the scene.
+			A value (usually between 0 and 1) that affects the likelihood of this node being entered when the parent's [member NNSTBranchNodes.child_state_selection_rule] property is set to [code]UtilityScoring[/code]. The highest scored child of the parent node will be selected.
+			[b]Note:[/b] This value isn't set manually. It's calculated by adding [NNConsiderations] children that will be evaluated at time of scoring. Read-only runtime state that is never saved with the scene.
 		</member>
 	</members>
 	<signals>
@@ -102,7 +102,7 @@
 		</signal>
 		<signal name="state_check_enter_condition">
 			<description>
-				Emitted when the the [method on_enter_condition] check needs to be done. The signal must call the [method set_on_entered_condition] method with either [code]true[/code] or [code]false[/code] as the parameter to indicate if the state should be entered or not.
+				Emitted when the [method on_enter_condition] check needs to be done and [method on_enter_condition] is not implemented on this node. A handler can call [method set_on_entered_condition] with either [code]true[/code] or [code]false[/code] as the parameter to indicate if the state should be entered or not.
 			</description>
 		</signal>
 		<signal name="state_entered">

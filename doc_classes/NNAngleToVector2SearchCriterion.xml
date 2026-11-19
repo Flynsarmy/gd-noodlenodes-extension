@@ -4,13 +4,14 @@
 		Scores and filters based on the node minimum and maximum angle compared to the set [member angle_to_direction_vector].
 	</brief_description>
 	<description>
-		The [Vector2] angle search criterion can be used to score and filter based on the node minimum and maximum angle compared to the set [member angle_to_direction_vector]. The search space direction is the (1,0) vector rotated by the global rotation amount.
+		The [Vector2] angle search criterion scores and filters [Node2D] candidates based on the signed angle (in [code]-180..180[/code] degrees) from [member angle_to_direction_vector] to the node's facing direction ([code]Vector2(1, 0)[/code] rotated by its global rotation).
+		When used for scoring, the angle is mapped linearly from [code]0.0[/code] at or below [member min_angle_degrees] to [code]1.0[/code] at or above [member max_angle_degrees], then passed through [member NNNQSSearchCriteria.activation_curve] if one is set.
 	</description>
 	<tutorials>
 	</tutorials>
 	<members>
 		<member name="angle_to_direction_vector" type="Vector2" setter="set_angle_to_direction_vector" getter="get_angle_to_direction_vector" default="Vector2(1, 0)">
-			The direction vector compare the search space node facing to.
+			The direction vector to compare the search space node facing direction to.
 		</member>
 		<member name="max_angle_degrees" type="float" setter="set_max_angle_degrees" getter="get_max_angle_degrees" default="90.0">
 			Maximum angle in degrees. If the angle is more than this and filtering is applied, the tested node is filtered out.

@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <class name="NNBTCooldownTicks" inherits="NNBTDecoratorNodes" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
 	<brief_description>
-		Sets a branch of the behaviour tree into an x number of ticks cooldown after it has been ticked.
+		Sets a branch of the behaviour tree into a cooldown for a number of ticks after its child returns a result other than [constant NNBTNodes.RUNNING].
 	</brief_description>
 	<description>
-		The cooldown nodes can be used to set a branch of the behaviour tree into a cooldown after it has been ticked. When the cooldown node is ticked, it ticks its child node, starts the cooldown and returns what ever the child node returned. It will return the set [member cooldown_return_value] until the cooldown expires.
+		When ticked while not cooling down, the cooldown node ticks its first enabled child and returns whatever the child returned. Any result other than [constant NNBTNodes.RUNNING] ([constant NNBTNodes.SUCCESS], [constant NNBTNodes.FAILURE] or [constant NNBTNodes.SKIP]) starts the cooldown, and the node then returns [member cooldown_return_value] without ticking its child for the next [member cooldown_ticks] ticks. A [constant NNBTNodes.RUNNING] child does not start the cooldown. If no behaviour tree child is enabled, the node starts the cooldown and returns [constant NNBTNodes.FAILURE].
 	</description>
 	<tutorials>
 	</tutorials>

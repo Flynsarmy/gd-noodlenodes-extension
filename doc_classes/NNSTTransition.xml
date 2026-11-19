@@ -4,8 +4,9 @@
 		Transition between active states through [method NNSTBranchNodes.send_event], [method take], or automatically on state/property changes.
 	</brief_description>
 	<description>
-		Provides [member event_name], [member to] and [member delay_in_seconds] export variables to be consumed by [method NNSTBranchNodes.send_event]. The transition is performed on the parent of this node.
-		When [member event_name] is empty the transition is automatic: it is tried when its state is entered and remains in play while that state is active. Automatic transitions are re-evaluated on the trigger types reported by their guard, never every frame.
+		Defines a transition to [member to], optionally gated by [member guard] and delayed by [member delay_in_seconds]. Add this node as a child of a state ([NNSTTickedNodes]), or directly under [NNSTRoot] for fallback event transitions.
+		A transition can be triggered in three ways: by sending a matching [member event_name] with [method NNSTBranchNodes.send_event], automatically when [member event_name] is empty, or directly from code with [method take] (which skips [member guard] and can bypass [member delay_in_seconds]).
+		When [member event_name] is empty, the transition is automatic: it is tried when its parent state is entered and remains in play while that state is active. Automatic transitions are re-evaluated on the trigger types reported by [member guard], never every frame.
 	</description>
 	<tutorials>
 	</tutorials>

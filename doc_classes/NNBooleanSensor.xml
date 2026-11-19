@@ -4,6 +4,7 @@
 		Accepts a boolean value and scales it to [code]0..1[/code] range.
 	</brief_description>
 	<description>
+		Converts [member boolean_value] to a float [member NNSensors.sensor_value] when evaluated: [code]false[/code] maps to [code]0.0[/code] and [code]true[/code] maps to [code]1.0[/code].
 	</description>
 	<tutorials>
 	</tutorials>

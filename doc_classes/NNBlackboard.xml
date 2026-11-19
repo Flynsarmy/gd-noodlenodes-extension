@@ -1,14 +1,14 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <class name="NNBlackboard" inherits="Resource" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
 	<brief_description>
-		A typed key/value store used as the behaviour tree and state tree blackboard.
+		A typed key/value store used as the blackboard for Noodle Nodes agents, behaviour trees, state trees and HTN planners.
 	</brief_description>
 	<description>
-		[NNBlackboard] stores values in a typed [Dictionary] with [String] keys and [Variant] values. It is the effective blackboard for the [NNBTNodes] and [NNSTBranchNodes] blackboard helpers and the world state of an [NNHTNRoot], either assigned to an [NNBTRoot], [NNSTRoot] or [NNHTNRoot] through its [code]blackboard[/code] property, or created privately by that root.
+		[NNBlackboard] stores values in a typed [Dictionary] with [String] keys and [Variant] values. It is the effective blackboard resolved by every [NoodleNodes] node's blackboard helpers and the world state of an [NNHTNRoot]: either assigned to an [NNAgent], [NNBTRoot], [NNSTRoot] or [NNHTNRoot] through its [code]blackboard[/code] property, inherited from an ancestor root, or created privately by the outermost root.
 		[code]resource_local_to_scene[/code] defaults to [code]true[/code] for every [NNBlackboard]. When a board is embedded in a scene or assigned in the inspector, each scene instance gets its own copy of it. Untick [code]resource_local_to_scene[/code] deliberately to share one board across all instances of the scene.
 		A key whose stored value is [code]null[/code] counts as absent for [method has_value] and [method get_value], but the key is still reported by [method keys] and is removed normally by [method erase_value] and [method clear].
 		[signal value_changed] is emitted exactly once per actual change. Setting a value that is already stored emits nothing. [signal value_erased] is only emitted when an existing key is erased, and [signal cleared] only when the dictionary was non-empty.
-		[method get_debug_data] returns a copy in which every [Object] value is replaced by its class name (or [code]&lt;null&gt;[/code]) and nested [Array] and [Dictionary] values are sanitised recursively, so the result never contains a raw [Object]. Values nested deeper than 16 levels are replaced by [code]&lt;max depth&gt;[/code], so cyclic or very deeply nested containers cannot recurse indefinitely.
+		[method get_debug_data] returns a sanitised copy in which every [Object] value is replaced by its class name (or [code]&lt;null&gt;[/code] for a null object and [code]&lt;freed object&gt;[/code] for a freed one) and nested [Array] and [Dictionary] containers are copied and sanitised recursively, so the result never contains a raw [Object]. Values nested deeper than 16 levels are replaced by [code]&lt;max depth&gt;[/code], so cyclic or very deeply nested containers cannot recurse indefinitely.
 		An optional [member schema] type-checks writes. [method set_value], [method set_values] and [method apply_values] report an error and change nothing when the schema rejects a value. Writing [code]null[/code] is always allowed, and [method erase_value] and [method clear] are never restricted.
 	</description>
 	<tutorials>
@@ -37,7 +37,7 @@
 		<method name="get_debug_data" qualifiers="const">
 			<return type="Dictionary" />
 			<description>
-				Returns a shallow copy of the blackboard for debugging. Every [Object] value is replaced by a [String] containing its class name, with a null object replaced by [code]&lt;null&gt;[/code]. Nested [Array] and [Dictionary] values are sanitised recursively, so the result contains no raw [Object] values. Values nested deeper than 16 levels are replaced by [code]&lt;max depth&gt;[/code], which bounds cyclic and very deep structures.
+				Returns a sanitised copy of the blackboard for debugging. Every [Object] value is replaced by a [String] containing its class name, a null object by [code]&lt;null&gt;[/code], and a freed object by [code]&lt;freed object&gt;[/code]. Nested [Array] and [Dictionary] containers (including dictionary keys) are copied and sanitised recursively, so the result contains no raw [Object] values. Values nested deeper than 16 levels are replaced by [code]&lt;max depth&gt;[/code], which bounds cyclic and very deep structures.
 			</description>
 		</method>
 		<method name="get_value" qualifiers="const">

@@ -5,9 +5,9 @@
 	</brief_description>
 	<description>
 		The search space nodes are used to define the set of nodes that will be included in the search when a query is executed.
-		The search space nodes need to have the [NNSearchCriteria] nodes as their children. When the query finishes, the search spaces emit the [signal query_completed] signal. The search spaces fill in a TypedArray [member _query_results] and a PackedFloat64Array [member _query_result_scores]. These are sorted by the score in a descending order. This means that the first node in the [member _query_results] array is also the one with the highest score.
+		The search space nodes need to have [NNNQSSearchCriteria] nodes as their children. When the query finishes, the search spaces emit the [signal query_completed] signal. The search spaces fill in a TypedArray [member query_results] and a PackedFloat64Array [member query_result_scores]. These are sorted by the score in a descending order. This means that the first node in the [member query_results] array is also the one with the highest score.
 		The [method execute_query] method average runtime and other metrics (see below) are available for debugging and finetuning your queries.
-		Each search space can be run by itself, by calling its [method execute_query] method until it returns [code]true[/code] (completed), or by using the NodeQuerySystem singleton. If the singleton is used, you should not use the [method execute_query] method at all, but simply post the query using NodeQuerySystem.post_query()-method instead. The NodeQuerySystem singleton is the recommended way of executing the queries for search spaces, as it allows the use of time budgeting.
+		Each search space can be run by itself, by calling its [method execute_query] method until it returns [code]true[/code] (completed), or by using the [code]NodeQuerySystem[/code] singleton. If the singleton is used, you should not use the [method execute_query] method at all, but simply post the query using [method NNNodeQuerySystem.post_query] instead. The [code]NodeQuerySystem[/code] singleton is the recommended way of executing the queries for search spaces, as it allows the use of time budgeting.
 	</description>
 	<tutorials>
 	</tutorials>
@@ -22,7 +22,7 @@
 		<method name="initialize_search_space">
 			<return type="void" />
 			<description>
-				If you override the _ready() method, you have to call initialize_search_space() in your overridden _ready() method.
+				Runs the search space's internal initialization (for example, generating point-grid nodes or connecting area signals). This is called automatically from the native [method Node._ready] implementation. If a script attached to this node overrides [method Node._ready], the native [method Node._ready] will not run and you must call [method initialize_search_space] yourself.
 			</description>
 		</method>
 	</methods>
@@ -40,7 +40,7 @@
 			Read-only. Whether the query is still in progress. This is set to [code]true[/code] when the query is posted with [method NNNodeQuerySystem.post_query] and to [code]false[/code] when it completes or is stopped with [method NNNodeQuerySystem.stop_query].
 		</member>
 		<member name="is_run_in_debug_mode" type="bool" setter="set_is_run_in_debug_mode" getter="get_is_run_in_debug_mode" default="false">
-			If [code]true[/code], the search spaces add two variables in to the nodes they process: [member NNNQSSearchCriteria.is_filtered] and [member NNNQSSearchCriteria.score] and set their values based on the criteria.
+			If [code]true[/code], after each criterion evaluates a candidate node, the search space calls [method Object.set] on that node to write [code]is_filtered[/code] ([bool], whether the criterion filtered it out) and [code]score[/code] ([float], the node's accumulated score so far). This does not create new properties; the candidate node (or its script) must already define those properties for the values to be stored.
 		</member>
 		<member name="query_result_scores" type="PackedFloat64Array" getter="get_query_result_scores" default="PackedFloat64Array()">
 			Read-only. The resulting array of node scores.
@@ -68,7 +68,7 @@
 		<signal name="query_completed">
 			<param index="0" name="search_space" type="Object" />
 			<description>
-				Emitted when the query execution is completed.
+				Emitted when the query execution is completed. [param search_space] is this [NNNQSSearchSpaces] node, whose [member query_results] and [member query_result_scores] hold the completed results.
 			</description>
 		</signal>
 	</signals>

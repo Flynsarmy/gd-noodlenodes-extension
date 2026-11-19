@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <class name="NNArea3DSearchSpace" inherits="NNNQSSearchSpaces" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
 	<brief_description>
-		Returns all nodes within an [Area3D] as a search space.
+		Returns overlapping [Area3D] nodes within an [Area3D] as a search space.
 	</brief_description>
 	<description>
-		This node uses an [Area3D] to define the search space. All the nodes that are within or intersecting with the [Area3D] are returned as the search space. The search space uses the [signal Area3D.area_entered] and [signal Area3D.area_exited] signals to determine which other [Area3D] nodes are intersecting with the set area.
+		This node uses an [Area3D] to define the search space. It connects to the [signal Area3D.area_entered] and [signal Area3D.area_exited] signals of [member area3d] to track overlapping [Area3D] nodes in [member intersecting_areas], and returns those [Area3D] nodes as the search space. Physics bodies are not tracked or included.
 	</description>
 	<tutorials>
 	</tutorials>

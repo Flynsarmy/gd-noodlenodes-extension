@@ -11,16 +11,16 @@
 	</tutorials>
 	<members>
 		<member name="closest_intersecting_area_index" type="int" setter="set_closest_intersecting_area_index" getter="get_closest_intersecting_area_index" default="-1">
-			Index of the closest area to [member from_vector] within the intersecting_areas array.
+			Index of the closest area to [member from_vector] + [member offset_vector] within the [member intersecting_areas] array.
 		</member>
 		<member name="closest_intersecting_body_index" type="int" setter="set_closest_intersecting_body_index" getter="get_closest_intersecting_body_index" default="-1">
-			Index of the closest body to [member from_vector] within the [member intersecting_bodies] array.
+			Index of the closest body to [member from_vector] + [member offset_vector] within the [member intersecting_bodies] array.
 		</member>
 		<member name="closest_unoccluded_area_index" type="int" setter="set_closest_unoccluded_area_index" getter="get_closest_unoccluded_area_index" default="-1">
-			Index of the closest area to [member from_vector] within the [member unoccluded_areas] array.
+			Index of the closest area to [member from_vector] + [member offset_vector] within the [member unoccluded_areas] array.
 		</member>
 		<member name="closest_unoccluded_body_index" type="int" setter="set_closest_unoccluded_body_index" getter="get_closest_unoccluded_body_index" default="-1">
-			Index of the closest body to [member from_vector] within the [member unoccluded_bodies] array.
+			Index of the closest body to [member from_vector] + [member offset_vector] within the [member unoccluded_bodies] array.
 		</member>
 		<member name="collision_mask" type="int" setter="set_collision_mask" getter="get_collision_mask" default="1">
 			The collision mask used for occlusion. Usually this is set to match the layers for your level geometry and props.
@@ -50,16 +50,16 @@
 			Offset added to [member from_vector] to get the origin used for distances and occlusion rays, for example the eye position of an entity.
 		</member>
 		<member name="squared_distances_to_intersecting_areas" type="float[]" setter="set_squared_distances_to_intersecting_areas" getter="get_squared_distances_to_intersecting_areas" default="[]">
-			Squared distances from the [member from_vector] to an areas [member Node2D.global_position] within or intersecting with the [member visibility_volume].
+			Squared distances from [member from_vector] + [member offset_vector] to each area's [member Node2D.global_position] within or intersecting [member visibility_volume].
 		</member>
 		<member name="squared_distances_to_intersecting_bodies" type="float[]" setter="set_squared_distances_to_intersecting_bodies" getter="get_squared_distances_to_intersecting_bodies" default="[]">
-			Squared distances from the [member from_vector] to an bodies [member Node2D.global_position] within or intersecting with the [member visibility_volume].
+			Squared distances from [member from_vector] + [member offset_vector] to each body's [member Node2D.global_position] within or intersecting [member visibility_volume].
 		</member>
 		<member name="squared_distances_to_unoccluded_areas" type="float[]" setter="set_squared_distances_to_unoccluded_areas" getter="get_squared_distances_to_unoccluded_areas" default="[]">
-			Squared distances from the [member from_vector] to an areas [member Node2D.global_position] within or intersecting with the [member visibility_volume] and that are not blocked by any geometry that is set to the layer(s) defined in [member collision_mask].
+			Squared distances from [member from_vector] + [member offset_vector] to each area's [member Node2D.global_position] within or intersecting [member visibility_volume] and not blocked by any geometry matching [member collision_mask].
 		</member>
 		<member name="squared_distances_to_unoccluded_bodies" type="float[]" setter="set_squared_distances_to_unoccluded_bodies" getter="get_squared_distances_to_unoccluded_bodies" default="[]">
-			Squared distances from the [member from_vector] to an bodies [member Node2D.global_position] within or intersecting with the [member visibility_volume] and that are not blocked by any geometry that is set to the layer(s) defined in [member collision_mask].
+			Squared distances from [member from_vector] + [member offset_vector] to each body's [member Node2D.global_position] within or intersecting [member visibility_volume] and not blocked by any geometry matching [member collision_mask].
 		</member>
 		<member name="unoccluded_areas" type="Area2D[]" setter="set_unoccluded_areas" getter="get_unoccluded_areas" default="[]">
 			Populated if [member do_occlusion_test] is set to [code]true[/code]. Areas that are within or intersect with the [member visibility_volume] and that are not blocked by any geometry that is set to the layer(s) defined in [member collision_mask].
@@ -68,7 +68,7 @@
 			Populated if [member do_occlusion_test] is set to [code]true[/code]. Bodies that are within or intersect with the [member visibility_volume] and that are not blocked by any geometry that is set to the layer(s) defined in [member collision_mask].
 		</member>
 		<member name="use_owner_global_position" type="bool" setter="set_use_owner_global_position" getter="get_use_owner_global_position" default="false">
-			If set, the [member Node.owner] node's global position is used. [b]IMPORTANT![/b] The scene root node must in that case be a node that has the global_position property.
+			If [code]true[/code] and [member Node.owner] is a [Node2D], copies [member Node2D.global_position] into [member from_vector] on each evaluation. If [member Node.owner] is [code]null[/code] or not a [Node2D], [member from_vector] is left unchanged.
 		</member>
 		<member name="visibility_volume" type="Area2D" setter="set_visibility_volume" getter="get_visibility_volume">
 			An [Area2D] node defining the visibility volume for the sensor.

@@ -15,13 +15,13 @@
 			<param index="0" name="p_transition" type="NNSTTransition" />
 			<param index="1" name="p_state" type="NNSTTickedNodes" />
 			<description>
-				Checks if the [member state] is active. Returns [code]true[/code] if the state is active, [code]false[/code] otherwise.
+				Checks if the [NNSTTickedNodes] at [member state] (resolved relative to [param p_transition]) is active. Returns [code]true[/code] if [member state] is empty or the resolved state is active, and [code]false[/code] if the state is inactive or the path does not resolve to an [NNSTTickedNodes] node (which also prints an error).
 			</description>
 		</method>
 	</methods>
 	<members>
 		<member name="state" type="NodePath" setter="set_state" getter="get_state" default="NodePath(&quot;&quot;)">
-			The state to be checked.
+			The [NodePath] to the [NNSTTickedNodes] state to check, resolved relative to the [NNSTTransition] node evaluating this guard. If empty, the guard is satisfied and returns [code]true[/code]. If the path does not resolve to an [NNSTTickedNodes] node, an error is printed and the guard returns [code]false[/code].
 		</member>
 	</members>
 </class>

@@ -1,10 +1,11 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <class name="NNDistanceToVector3SearchCriterion" inherits="NNNQSSearchCriteria" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
 	<brief_description>
-		Scores and filters based on minimum and maximum distance to the set [member distance_to] vector.
+		Scores and filters based on minimum and maximum distance to [member distance_to_vector].
 	</brief_description>
 	<description>
-		The [Vector3] distance search criterion can be used to score and filter based on minimum and maximum distance to the set [member distance_to] vector.
+		The [Vector3] distance search criterion scores and filters [Node3D] candidates based on their global distance to [member distance_to_vector].
+		Both filtering and scoring use squared distances. When used for scoring, the raw score is mapped linearly in squared distance as [code](distance_squared - min_distance^2) / (max_distance^2 - min_distance^2)[/code], clamped to [code]0.0[/code] at or below [member min_distance] and [code]1.0[/code] at or above [member max_distance], then passed through [member NNNQSSearchCriteria.activation_curve] if one is set.
 	</description>
 	<tutorials>
 	</tutorials>

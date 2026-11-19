@@ -4,19 +4,20 @@
 		Scores and filters based on the angle on the xz-plane between the search space node direction ([code]-global_transform.basis.z[/code]) compared to the given [member angle_to_direction_vector].
 	</brief_description>
 	<description>
-		The [Vector3] XZ angle search criterion can be used to score and filter based on the angle on the xz-plane between the search space node direction ([code]-global_transform.basis.z[/code]) compared to the given [member angle_to_direction_vector].
+		The [Vector3] XZ angle search criterion scores and filters [Node3D] candidates based on the signed angle on the XZ plane (in [code]-180..180[/code] degrees) from [member angle_to_direction_vector] to the node's forward direction ([code]-global_transform.basis.z[/code]).
+		When used for scoring, the angle is mapped linearly from [code]0.0[/code] at or below [member min_angle_degrees] to [code]1.0[/code] at or above [member max_angle_degrees], then passed through [member NNNQSSearchCriteria.activation_curve] if one is set.
 	</description>
 	<tutorials>
 	</tutorials>
 	<members>
 		<member name="angle_to_direction_vector" type="Vector3" setter="set_angle_to_direction_vector" getter="get_angle_to_direction_vector" default="Vector3(0, 0, -1)">
-			The direction vector compare the search space node facing to.
+			The direction vector to compare the search space node facing direction to.
 		</member>
 		<member name="max_angle_degrees" type="float" setter="set_max_angle_degrees" getter="get_max_angle_degrees" default="90.0">
-			Minimum angle in degrees. If the angle is less than this and filtering is applied, the tested node is filtered out.
+			Maximum angle in degrees. If the angle is more than this and filtering is applied, the tested node is filtered out.
 		</member>
 		<member name="min_angle_degrees" type="float" setter="set_min_angle_degrees" getter="get_min_angle_degrees" default="-90.0">
-			Maximum angle in degrees. If the angle is more than this and filtering is applied, the tested node is filtered out.
+			Minimum angle in degrees. If the angle is less than this and filtering is applied, the tested node is filtered out.
 		</member>
 	</members>
 </class>

@@ -4,6 +4,7 @@
 		Distance sensor. Uses the squared distance when scaling the values to 0..1 range.
 	</brief_description>
 	<description>
+		Computes the vector [member from_to_vector] ([code]from_vector - to_vector[/code]) and [member distance_squared] on evaluation, setting [member NNSensors.sensor_value] to [code]distance_squared / (max_distance * max_distance)[/code]. Optionally computes the non-squared [member distance] and normalised [member direction_vector].
 	</description>
 	<tutorials>
 	</tutorials>
@@ -12,7 +13,7 @@
 			The normalised [member from_to_vector]. Requires [member is_direction_vector_calculated] to be [code]true[/code]. A zero vector when [member from_vector] and [member to_vector] are equal.
 		</member>
 		<member name="distance" type="float" setter="set_distance" getter="get_distance" default="0.0">
-			Optionally calculated non-squared distance. Requires [member is_distance_calculated] to be [code]true[/code]
+			Optionally calculated non-squared distance. Updated during evaluation when either [member is_distance_calculated] or [member is_direction_vector_calculated] is [code]true[/code].
 		</member>
 		<member name="distance_squared" type="float" setter="set_distance_squared" getter="get_distance_squared" default="0.0">
 			Squared distance.
@@ -24,7 +25,7 @@
 			The start point of the distance vector.
 		</member>
 		<member name="is_direction_vector_calculated" type="bool" setter="set_is_direction_vector_calculated" getter="get_is_direction_vector_calculated" default="false">
-			Optionally calculated direction vector.
+			If [code]true[/code], calculates [member direction_vector] (and [member distance]).
 		</member>
 		<member name="is_distance_calculated" type="bool" setter="set_is_distance_calculated" getter="get_is_distance_calculated" default="false">
 			If [code]true[/code], the non-squared distance is calculated.

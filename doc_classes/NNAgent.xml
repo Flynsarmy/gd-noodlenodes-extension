@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <class name="NNAgent" inherits="NoodleNodes" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
 	<brief_description>
-		Main node that is used to manage the NN.
+		Main node that drives a utility AI agent, evaluating sensors and behaviours to select and run actions.
 	</brief_description>
 	<description>
-		This is the main node that is used to manage the NN. A [NNAgent] node represents an AI entity that can reason based in sensor input and then choose behaviours to react to the sensor input based on scores that are calculated with considerations. Behaviours can contain optional actions that allow reuse of action logic.
+		This is the main node for a utility AI agent. A [NNAgent] node represents an AI entity that can reason based on sensor input and choose behaviours to react to that input using scores calculated with considerations. Behaviours can contain optional actions that allow reuse of action logic.
 		The agent updates itself automatically. Every eligible step of the frame signal selected with [member process_thread] performs the thinking step with [method evaluate_options] and [method update_current_behaviour], and then emits [code]frame_tick[/code] on the selected behaviour group, behaviour and action. Thinking happens first, so an action chosen on a step receives its frame tick in that same step. [member tick_rate] is the single thinking throttle: a rate of [code]N[/code] thinks on every [code]N[/code]th eligible step, while [code]frame_tick[/code] still fires on every eligible step.
 		Frame steps are driven by the SceneTree's [code]process_frame[/code] and [code]physics_frame[/code] signals rather than by this node's own [code]_process[/code]/[code]_physics_process[/code] overrides, so a script attached to the agent keeps its own callbacks and cannot shadow the automatic steps. The signal connections exist only while the agent is in the tree and enabled, and no step happens while the agent cannot process (paused or process mode disabled). Because stepping no longer depends on this node's process callbacks, [code]set_process()[/code] and [code]set_physics_process()[/code] do not stop the agent.
 		Both thinking primitives stay callable by hand. Set [member process_thread] to [code]Manual[/code] and call [method tick] from a custom scheduler, or call [method auto_tick_step] to reuse the scheduler's guards and rate schedule.
@@ -46,7 +46,7 @@
 			<return type="void" />
 			<param index="0" name="delta" type="float" />
 			<description>
-				Gathers input from sensors and evaluates all the available behaviours by calculating a score for each of them, then keeps the top [member num_behaviours_to_select] behaviours as candidates. The running behaviour keeps running while it is still one of those candidates; otherwise a new candidate is picked with a probability proportional to its score. Candidates must still be enabled and belong to this agent after evaluation and exit callbacks run. The automatic step calls this on every step selected by [member tick_rate], passing the time elapsed since the previous thinking step; it remains callable by hand for custom schedulers.
+				Gathers input from enabled child sensors and evaluates enabled behaviours by calculating a score for each of them, then keeps up to the top [member num_behaviours_to_select] behaviours whose final score is greater than [code]0.0[/code] as candidates. Evaluation is skipped completely while the currently running behaviour has [member NNBehaviour.can_be_interrupted] set to [code]false[/code]. For each enabled [NNBehaviourGroup], the group is scored first and its enabled child behaviours are evaluated only when the group's score is greater than or equal to [member NNBehaviourGroup.activation_score]. The running behaviour keeps running while it is still one of the candidates; otherwise a new candidate is picked with a probability proportional to its score. Candidates must still be enabled and belong to this agent after evaluation and exit callbacks run. The automatic step calls this on every step selected by [member tick_rate], passing the time elapsed since the previous thinking step; it remains callable by hand for custom schedulers.
 			</description>
 		</method>
 		<method name="get_current_action_node" qualifiers="const">
@@ -90,7 +90,7 @@
 		<method name="update_current_behaviour">
 			<return type="void" />
 			<description>
-				Updates the currently selected behaviour and if the current action has been marked as finished, returns the next action. If no actions are left or no actions have been defined for the current behaviour, ends the behaviour.
+				Updates the currently selected behaviour, advancing to the next enabled action when the current action has been marked as finished and emitting [signal action_changed] when the active action changes (or when reporting the initial action started during [method evaluate_options]). If no actions are left, an action fails, or no actions have been defined for the current behaviour, ends the behaviour and emits [signal behaviour_changed] with [code]null[/code].
 			</description>
 		</method>
 	</methods>
@@ -133,7 +133,7 @@
 		<signal name="action_changed">
 			<param index="0" name="action_node" type="Object" />
 			<description>
-				Emitted when the current action changes during a update_current_behaviour call.
+				Emitted when the current action changes: during [method update_current_behaviour] when the behaviour advances to another action, reports the initial action started during [method evaluate_options], or runs out of actions ([code]null[/code]); during [method evaluate_options] with [code]null[/code] if no valid candidates remain while an action was running; and during [method abort_current_behaviour] with [code]null[/code] when no replacement action was selected by callbacks.
 			</description>
 		</signal>
 		<signal name="action_exited">
@@ -145,25 +145,25 @@
 		<signal name="behaviour_changed">
 			<param index="0" name="behaviour_node" type="Object" />
 			<description>
-				Emitted when the behaviour changes during [method evaluate_options] or after a behaviour has completed during the update_current_behaviour call.
+				Emitted when a new behaviour is selected during [method evaluate_options] (passing the selected [NNBehaviour], or [code]null[/code] if it was freed by callbacks before emission), and with [code]null[/code] when the running behaviour completes during [method update_current_behaviour] or is stopped with [method abort_current_behaviour].
 			</description>
 		</signal>
 		<signal name="behaviour_exited">
 			<param index="0" name="behaviour_node" type="Object" />
 			<description>
-				Emitted when exits during [method evaluate_options] or after a behaviour has completed during the update_current_behaviour call.
+				Emitted when the running behaviour is deselected: when another behaviour replaces it or no valid candidates remain during [method evaluate_options], or when the tracked behaviour is freed, removed, or reparented away (passing [code]null[/code] if freed). Not emitted when a behaviour completes during [method update_current_behaviour] or is stopped with [method abort_current_behaviour]; those paths emit [signal behaviour_changed] with [code]null[/code] instead.
 			</description>
 		</signal>
 		<signal name="behaviour_group_changed">
 			<param index="0" name="behaviour_group_node" type="Object" />
 			<description>
-				Emitted when the behaviour group changes during [method evaluate_options] or after a behaviour has completed during the update_current_behaviour call.
+				Emitted when a new behaviour is selected during [method evaluate_options], passing the selected behaviour's [NNBehaviourGroup] or [code]null[/code] if the behaviour is ungrouped (or the group was freed before emission). Not emitted when a behaviour completes during [method update_current_behaviour] or is aborted.
 			</description>
 		</signal>
 		<signal name="behaviour_group_exited">
 			<param index="0" name="behaviour_group_node" type="Object" />
 			<description>
-				Emitted when the behaviour group exits during [method evaluate_options] or after a behaviour has completed during the update_current_behaviour call.
+				Emitted when the tracked behaviour group exits: during [method evaluate_options] when a behaviour in another group or an ungrouped behaviour is selected, when no valid candidates remain, or when a newly entered group's chosen child becomes unavailable during [signal NNBehaviourGroup.behaviour_group_entered]; also emitted when the tracked group is freed, removed, or reparented away (passing [code]null[/code] if freed). Not emitted when a behaviour completes during [method update_current_behaviour] or is aborted.
 			</description>
 		</signal>
 	</signals>

@@ -4,7 +4,7 @@
 		Ticks the first behaviour tree child node it has and returns its [member fixed_result] property back to its parent.
 	</brief_description>
 	<description>
-		The fixed result node ticks the first behaviour tree child node it has and regardless of what the child returns, the fixed result node returns what ever value you have set as its [member fixed_result] property back to its parent. This node can also be used as a leaf-node.
+		The fixed result node ticks its first enabled behaviour tree child node and, regardless of what the child returns, returns whatever value is set in [member fixed_result] to its parent. Any additional enabled behaviour tree children are ignored, with a one-time error reported on the first tick. With no enabled behaviour tree child it returns [member fixed_result] directly, so it can also be used as a leaf node at runtime (though because it inherits [NNBTDecoratorNodes], the editor shows a configuration warning when it does not have exactly one enabled behaviour tree child).
 	</description>
 	<tutorials>
 	</tutorials>

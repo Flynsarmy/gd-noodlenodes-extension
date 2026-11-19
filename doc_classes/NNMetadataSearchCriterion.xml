@@ -4,7 +4,8 @@
 		Filters nodes based on their metadata.
 	</brief_description>
 	<description>
-		The metadata search criterion can be used to filter nodes based on their metadata. Currently only metadata with type [String] is supported. Both the [param name] and [param value] of the metadata must match, otherwise the node will be filtered out.
+		The metadata search criterion filters nodes based on their metadata. A candidate node must have a metadata entry named [member metadata_name] whose value equals [member metadata_value]; nodes that lack the key or have a different value are filtered out.
+		[member metadata_value] is compared as a [Variant], so any [Variant] type can be set from code (the editor inspector exposes it as a [String]). This criterion only filters and always outputs a score of [code]1.0[/code].
 	</description>
 	<tutorials>
 	</tutorials>

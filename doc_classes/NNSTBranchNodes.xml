@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <class name="NNSTBranchNodes" inherits="NNSTNodes" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
 	<brief_description>
-		Base class for all State Tree nodes.
+		Base class for State Tree nodes that can hold active child states ([NNSTRoot] and [NNSTTickedNodes]).
 	</brief_description>
 	<description>
 		Input events are only delivered to active states. A script on an active state receives them through [method on_input], [method on_unhandled_input] and [method on_unhandled_key_input], or through the engine input virtuals it overrides itself.
@@ -20,21 +20,21 @@
 			<return type="void" />
 			<param index="0" name="event" type="InputEvent" />
 			<description>
-				See [method Node._input]. The [member internal_status] property must also be set to `Active` for this function to fire.
+				See [method Node._input]. Input processing for this callback is enabled automatically while this state is active (see [method get_is_active]) and the script implements this method.
 			</description>
 		</method>
 		<method name="on_unhandled_input" qualifiers="virtual">
 			<return type="void" />
 			<param index="0" name="event" type="InputEvent" />
 			<description>
-				See [method Node._unhandled_input]. The [member internal_status] property must also be set to `Active` for this function to fire.
+				See [method Node._unhandled_input]. Unhandled input processing for this callback is enabled automatically while this state is active (see [method get_is_active]) and the script implements this method.
 			</description>
 		</method>
 		<method name="on_unhandled_key_input" qualifiers="virtual">
 			<return type="void" />
 			<param index="0" name="event" type="InputEvent" />
 			<description>
-				See [method Node._unhandled_key_input]. The [member internal_status] property must also be set to `Active` for this function to fire.
+				See [method Node._unhandled_key_input]. Unhandled key input processing for this callback is enabled automatically while this state is active (see [method get_is_active]) and the script implements this method.
 			</description>
 		</method>
 		<method name="send_event">
@@ -50,8 +50,8 @@
 	</methods>
 	<members>
 		<member name="child_state_selection_rule" type="int" setter="set_child_state_selection_rule" getter="get_child_state_selection_rule" default="0">
-			Defines how the child state is chosen. Can be one of the following: "OnEnterConditionMethod:0,UtilityScoring:1", where "OnEnterConditionMethod" means that the user-defined [method NNSTTickedNodes.on_enter_condition] method is called and if it returns [code]true[/code], the state is selected. "UtilityScoring" option uses the considerations set in the properties of the state and/or as child nodes. The highest-scoring state will be chosen.
-			[b]Note:[/b] This setting has no affect on [NNSTParallel] which will always attempt to enter all children in order.
+			Defines how the child state is chosen. Can be one of the following: [code]OnEnterConditionMethod:0[/code] or [code]UtilityScoring:1[/code]. With [code]OnEnterConditionMethod[/code], each enabled child's [method NNSTTickedNodes.on_enter_condition] method is called in order and the first one that returns [code]true[/code] is selected. With [code]UtilityScoring[/code], each enabled child is scored from its child [NNConsiderations] nodes (aggregated using [member NNSTTickedNodes.evaluation_method]) and the highest-scoring state is chosen.
+			[b]Note:[/b] This setting has no effect on [NNSTParallel], which always evaluates all enabled child states in order with [method NNSTTickedNodes.on_enter_condition].
 		</member>
 	</members>
 </class>

@@ -6,7 +6,7 @@
 	<description>
 		This node type should be added as child node of the [NNAgent] node or the [NNBehaviourGroup], preferably after any sensor and sensor group nodes. There can be several behaviour nodes as childs of the [NNAgent] or the [NNBehaviourGroup] node.
 		The purpose of the behaviour nodes is to define what the AI agent will do based on different inputs given using the sensor nodes. To accomplish this each behaviour node must have one or more consideration or consideration group nodes as its childs, and also one or more action or action group nodes.
-		The behaviour node will use the consideration nodes that are its childs to determine a score for itself. Basically it just sums up the scores from the considerations. When the behaviour is chosen by the AI agent as the one to execute, the action nodes are stepped through.
+		The behaviour node evaluates its enabled child considerations and consideration groups and combines their scores using [member NNBehaviours.evaluation_method] (multiplying them by default). If any enabled child consideration vetoes ([member NNConsiderations.has_vetoed] is [code]true[/code]), evaluation stops immediately and the behaviour scores [code]0.0[/code]. When the behaviour is chosen by the AI agent as the one to execute, the action nodes are stepped through.
 		On selection or restart, the first enabled action or action group is started regardless of where consideration nodes appear among the children. Subsequent updates continue the running action without starting it again.
 		When the behaviour becomes selected, an optional event can be sent to the [NNSTRoot] at [member on_selected_event_path] by setting [member on_selected_event]. This is the moment the behaviour is entered, so use it to hand the goal to a state chart. An empty [member on_selected_event_path] targets the nearest ancestor [NNSTRoot]; when there is no ancestor chart no event is sent, and an explicit path that does not resolve to an [NNSTRoot] reports an error.
 		The behaviour has also two "cooldown" properties: [member cooldown_seconds] and [member cooldown_turns]. These can be used to temporarily exclude some behaviours from subsequent AI agent's [member NNAgent.evaluate_options] calls once they have been chosen. The [member cooldown_seconds] is meant to be used with real-time games and the [member cooldown_turns] with turn based games but both can be used even at the same time. The difference in the cooldown countdown is that the [member cooldown_seconds] counts down as the owning [NNAgent] ticks (on each processed frame, or on each [method NNAgent.tick] call in [constant NNAgent.MANUAL] mode), independently of how many times the AI agent's [member NNAgent.evaluate_options] method is called, and the [member cooldown_turns] counts down only when the [member NNAgent.evaluate_options] method is called.
@@ -18,16 +18,16 @@
 			A user-definable ID for the behaviour. Useful for identifying which behaviour is currently running.
 		</member>
 		<member name="can_be_interrupted" type="bool" setter="set_can_be_interrupted" getter="get_can_be_interrupted" default="true">
-			A boolean value to determine if the behaviour can be interrupted or not. If a behaviour cannot be interrupted, the [member NNAgent.evaluate_options] method of the NNAgent will not execute until the behaviour has completed all its actions. As of version [code]1.5[/code] the default value for this property is [code]true[/code].
+			Determines whether the behaviour can be interrupted. When [code]false[/code], the owning [NNAgent] skips [method NNAgent.evaluate_options] until this behaviour finishes its actions, fails an action, or is stopped with [method NNAgent.abort_current_behaviour].
 		</member>
 		<member name="cooldown_seconds" type="float" setter="set_cooldown_seconds" getter="get_cooldown_seconds" default="0.0">
 			If &gt; 0.0, after the behaviour is chosen it scores 0.0 during the [member NNAgent.evaluate_options] calls until the cooldown has elapsed. The cooldown counts down as the owning [NNAgent] ticks: on each processed frame, or on each [method NNAgent.tick] call in [constant NNAgent.MANUAL] mode.
 		</member>
 		<member name="cooldown_turns" type="int" setter="set_cooldown_turns" getter="get_cooldown_turns" default="0">
-			If &gt; 0, after the behaviour is chosen it will a score of 0 during the [member NNAgent.evaluate_options] until the given number of calls to the evaluation function has been done.
+			If &gt; 0, after the behaviour is chosen it returns a score of [code]0.0[/code] for the next [code]cooldown_turns[/code] times this behaviour is evaluated during [method NNAgent.evaluate_options]. Each evaluation decrements the remaining turn counter by one once any [member cooldown_seconds] cooldown has elapsed. Evaluations skipped because a non-interruptible behaviour is running or because an owning [NNBehaviourGroup] did not activate do not decrement the counter.
 		</member>
 		<member name="current_action_index" type="int" setter="set_current_action_index" getter="get_current_action_index" default="0">
-			The child index of the action the behaviour is running, or [code]-1[/code] when no action is running.
+			The child index of the currently active [NNAction] or [NNActionGroup]. It is [code]0[/code] when the behaviour is idle or after it ends, and [code]-1[/code] during [signal behaviour_entered] before the first action starts.
 		</member>
 		<member name="on_selected_event" type="String" setter="set_on_selected_event" getter="get_on_selected_event" default="&quot;&quot;">
 			The name of the event sent to the [NNSTRoot] at [member on_selected_event_path] when this behaviour becomes selected. Empty sends nothing.
@@ -44,7 +44,7 @@
 		</signal>
 		<signal name="behaviour_exited">
 			<description>
-				Emitted for the current behaviour when some other behaviour gets selected during the NNAgent [member NNAgent.evaluate_options] call.
+				Emitted whenever this behaviour ends: when it is deselected during [method NNAgent.evaluate_options] (another behaviour is chosen or no valid candidates remain), when it completes or an action fails during [method NNAgent.update_current_behaviour], when it is stopped with [method NNAgent.abort_current_behaviour], or when it is removed or reparented away from the agent while still alive.
 			</description>
 		</signal>
 		<signal name="frame_tick">

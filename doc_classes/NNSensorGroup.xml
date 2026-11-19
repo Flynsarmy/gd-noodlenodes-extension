@@ -4,7 +4,7 @@
 		Aggregates input from several sensors (or sensor groups) for a higher-level input to the consideration nodes.
 	</brief_description>
 	<description>
-		This node type should be added as child nodes of the [NNAgent] node. It is used to give input data to consideration nodes. A sensor is used by one or more consideration nodes. A sensor group is a node that can be used to aggregate input from several sensors (or sensor groups) for a higher-level input to the consideration nodes.
+		Aggregates input from child [NNSensor] and nested [NNSensorGroup] nodes into a single [member NNSensors.sensor_value] using [member evaluation_method], with optional inversion via [member invert_sensor_value]. Add as a child of [NNAgent], [NNBTRoot], [NNSTRoot], or another [NNSensorGroup].
 	</description>
 	<tutorials>
 	</tutorials>

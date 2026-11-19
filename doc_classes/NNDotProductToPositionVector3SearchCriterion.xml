@@ -4,7 +4,8 @@
 		Checks if a specific position is in front of or behind a search space node.
 	</brief_description>
 	<description>
-		The [Vector3] dot product to position search criterion can be used to check if a specific position is in front of or behind a search space node. It calculates a direction vector using the [member dot_product_position] and the node global position. Then, it calculates a dot product using the direction vector and the search space node direction ([code]-global_transform.basis.z[/code] rotated by rotation).
+		The [Vector3] dot product to position search criterion checks whether [member dot_product_position] is in front of or behind a [Node3D] candidate. It computes the normalized direction vector from the node's global position to [member dot_product_position] and takes the dot product with the node's forward direction ([code]-global_transform.basis.z[/code]).
+		When used for scoring, the raw score is computed as [code]dot * 0.5 + 0.5[/code] (mapping [code]-1.0..1.0[/code] to [code]0.0..1.0[/code]), then passed through [member NNNQSSearchCriteria.activation_curve] if one is set.
 	</description>
 	<tutorials>
 	</tutorials>
@@ -13,10 +14,10 @@
 			The global position to use in the dot product calculation.
 		</member>
 		<member name="filtering_rule" type="int" setter="set_filtering_rule" getter="get_filtering_rule" default="1">
-			If filtering is in use, the result given by the dot product is compared to this value for filtering.
+			How the dot product is compared to [member filtering_value] when filtering is enabled. The choices are: [code]LessThan:0[/code], [code]LessOrEqual:1[/code], [code]Equal:2[/code], [code]MoreOrEqual:3[/code], and [code]MoreThan:4[/code]. Nodes for which the comparison is true are filtered out (for example, with [code]LessThan[/code], any node whose dot product is less than [member filtering_value] is filtered out).
 		</member>
 		<member name="filtering_value" type="float" setter="set_filtering_value" getter="get_filtering_value" default="0.0">
-			If filtering is in use, this is the comparison that is done to decide on the filtering. The choices are: "LessThan:0,LessOrEqual:1,Equal:2,MoreOrEqual:3,MoreThan:4". For instance, if LessThan is chosen then any node that gets a dot product value of less than the value of filtering_value will be filtered out.
+			The value the dot product is compared to with [member filtering_rule] when the criterion is used for filtering.
 		</member>
 	</members>
 </class>

@@ -21,7 +21,7 @@
 			If [code]true[/code], the query is posted to the [NNNodeQuerySystem] as a high priority query, which gets the larger share of the per-frame time budget.
 		</member>
 		<member name="nqs_search_space" type="NNNQSSearchSpaces" setter="set_nqs_search_space" getter="get_nqs_search_space">
-			A node reference to a NQS Search Space node.
+			The [NNNQSSearchSpaces] node to query. Stored by object ID, so a freed search space reads back as [code]null[/code]. Reassigning or clearing it cancels any query this leaf posted on the previous search space, leaving queries posted by other callers untouched. When [code]null[/code], ticking the leaf returns [constant NNBTNodes.FAILURE].
 		</member>
 		<member name="result_scores_key" type="String" setter="set_result_scores_key" getter="get_result_scores_key" default="&quot;&quot;">
 			The blackboard key that receives the result scores as a [PackedFloat64Array], sorted best first. An empty key writes nothing.

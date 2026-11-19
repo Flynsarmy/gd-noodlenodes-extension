@@ -7,7 +7,7 @@
 		The query advances inside the Node Query System's per-frame time budget, so the sensor never blocks and never executes the query itself.
 		[member NNSensors.sensor_value] is the score of the best result once a query completes, and [code]0.0[/code] before the first completion or when a completed query found nothing.
 		The best result node is written to the nearest ancestor root's blackboard under [member best_result_key] on completion, and erased when a completed query found nothing. An empty [member best_result_key] writes and erases nothing. Blackboard nodes are not kept alive: if the best result is freed, the key remains and reads back as [code]null[/code].
-		The last completed result is reported until a new query completes. While enabled, a fresh query is posted after each completion, so the sensor keeps refreshing.
+		The last completed result is reported until a new query completes. Posting a query sets [member NNNQSSearchSpaces.top_n_to_find] on [member nqs_search_space] to [code]1[/code]. After a query completes, the sensor returns to idle and posts a fresh query on its next sensor evaluation while enabled, rather than immediately in the completion callback.
 		Cancelling, disabling or freeing the sensor stops only the query it posted itself and leaves the blackboard untouched. A query posted by another caller is never stopped.
 	</description>
 	<tutorials>

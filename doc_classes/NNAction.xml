@@ -23,12 +23,12 @@
 	<signals>
 		<signal name="action_entered">
 			<description>
-				Emitted when the action gets selected during the [NNAgent] [member NNAgent.update_current_behaviour] call.
+				Emitted when the action starts: during [method NNAgent.evaluate_options] when a newly selected behaviour starts its initial action, or during [method NNAgent.update_current_behaviour] when the behaviour or an [NNActionGroup] advances to this action.
 			</description>
 		</signal>
 		<signal name="action_exited">
 			<description>
-				Emitted for the current action when some other action gets selected during the [NNAgent] [member NNAgent.update_current_behaviour] call.
+				Emitted when the action ends: during [method NNAgent.update_current_behaviour] when it finishes or fails (or becomes disabled inside an [NNActionGroup]), when its owning behaviour is deselected or has no remaining candidates during [method NNAgent.evaluate_options], when the behaviour is aborted with [method NNAgent.abort_current_behaviour], or when the tracked action is removed or reparented away while still alive.
 			</description>
 		</signal>
 		<signal name="frame_tick">

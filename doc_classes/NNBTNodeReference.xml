@@ -13,7 +13,7 @@
 	</tutorials>
 	<members>
 		<member name="node_reference" type="NNBTNodes" setter="set_node_reference" getter="get_node_reference">
-			A behaviour tree node.
+			The target [NNBTNodes] node ticked by this reference. Stored by object ID, so a freed target reads back as [code]null[/code]. Assignments that would form a cycle (the node itself, a scene ancestor or descendant, or any target that can already reach this node) are rejected with an error and leave the previous reference unchanged. When the target is [code]null[/code] or disabled, ticking this node returns [constant NNBTNodes.FAILURE].
 		</member>
 	</members>
 </class>

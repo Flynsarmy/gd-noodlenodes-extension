@@ -4,7 +4,7 @@
 		Base class of the HTN domain nodes.
 	</brief_description>
 	<description>
-		Base class of [NNHTNTask], [NNHTNCompoundTask], [NNHTNMethod] and [NNHTNSubtaskCall]. A node is available when all of its [member conditions] hold and [method on_check_preconditions], if the script implements it, returns [code]true[/code]. A disabled node ([member NoodleNodes.is_enabled] [code]false[/code]) is skipped by planning without evaluating anything.
+		Base class of [NNHTNTask], [NNHTNCompoundTask], [NNHTNMethod], [NNHTNSubtaskCall] and [NNHTNParallelTask]. A node is available when all of its [member conditions] hold and [method on_check_preconditions], if the script implements it, returns [code]true[/code]. A disabled node ([member NoodleNodes.is_enabled] [code]false[/code]) is skipped by planning without evaluating anything.
 		Planning hooks receive [code]state[/code], a read-only deep copy of the predicted world state, and [code]args[/code], the read-only arguments of the occurrence being planned. They must not change the scene, resources or other external state, because the search calls them for alternatives it later abandons.
 		The node reaches the live world state and the actor through the inherited [NoodleNodes] helpers, such as [method NoodleNodes.get_blackboard_resource], [method NoodleNodes.get_blackboard] and [method NoodleNodes.get_actor], which resolve through the nearest ancestor root, normally the owning [NNHTNRoot]. Planning hooks should read their [code]state[/code] argument instead of the live board.
 		The editor shows configuration warnings for empty or malformed [member conditions] and empty [member dependency_keys] entries, plus the structural problems listed by each subclass.

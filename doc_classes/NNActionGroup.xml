@@ -5,16 +5,17 @@
 	</brief_description>
 	<description>
 		This node type should be added as child nodes of the [NNBehaviour] node. They are used when a behaviour is being executed by the AI agent.
-		Action groups can be used create sequences of actions, or to pick one random action from several choices. This allows for more complex actions to be performed by a behaviour. You can nest as many action groups as you need, and they can contain any number and combination of actions or action groups.
+		Action groups can be used to create sequences of actions, pick one random action from several choices, branch with an if/else condition, or select actions with a custom script rule. This allows for more complex actions to be performed by a behaviour. You can nest as many action groups as you need, and they can contain any number and combination of actions or action groups.
+		With [code]PickOneAtRandom[/code], only enabled child actions and action groups are candidates when the group starts; if none are enabled, or if the chosen child is later disabled, the group does not reroll and ends without running another child. With [code]IfElse[/code], if the chosen branch (child 0 or child 1) is missing or disabled, the group does not fall back to the other branch and ends without running an action.
 	</description>
 	<tutorials>
 	</tutorials>
 	<members>
 		<member name="action_execution_rule" type="int" setter="set_action_execution_rule" getter="get_action_execution_rule" default="0">
-			A choice of how the actions that are child nodes are executed: Sequence:0,PickOneAtRandom:1,IfElse:2,CustomRule:3. The Sequence choice will execute the actions from top to bottom, the Pick One At Random does what it says it will, the IfElse rule uses the [member if_else_boolean_value] property to decide if the first or the second child node of the [NNActionGroup] will be chosen. Finally, the CustomRule choice allows you to write your own [code]eval[/code] method that is responsible for setting the [member current_action_index] property to choose what action should be executed.
+			A choice of how the actions that are child nodes are executed: Sequence:0,PickOneAtRandom:1,IfElse:2,CustomRule:3. [code]Sequence[/code] executes enabled child actions from top to bottom, skipping disabled ones. [code]PickOneAtRandom[/code] picks one enabled child uniformly at random when the group starts. [code]IfElse[/code] uses [member if_else_boolean_value] to choose child 0 ([code]true[/code]) or child 1 ([code]false[/code]). [code]CustomRule[/code] calls a user-defined [code]eval()[/code] method on this node when the group starts (with [member current_action_index] reset to [code]-1[/code]) and again whenever the group needs the next child (after a child finishes, becomes disabled, fails under [code]ContinueExecution[/code], or if [code]eval()[/code] left [member current_action_index] at [code]-1[/code] on start). Set [member current_action_index] to the index of an enabled child to run it, or to [code]-1[/code] to end the group.
 		</member>
 		<member name="current_action_index" type="int" setter="set_current_action_index" getter="get_current_action_index" default="0">
-			Exposed for the use with a custom eval method to choose a child action/action group node to execute.
+			The child index of the currently active [NNAction] or nested [NNActionGroup]. Defaults to [code]0[/code] before the group has run, and is set to [code]-1[/code] when the group ends. Under the [code]CustomRule[/code] execution rule, a script's [code]eval()[/code] method sets this property to select a child index to run, or [code]-1[/code] to stop the group.
 		</member>
 		<member name="error_handling_rule" type="int" setter="set_error_handling_rule" getter="get_error_handling_rule" default="0">
 			How a child that finishes with [member NNActions.has_failed] set is handled: EndExecution:0,ContinueExecution:1. EndExecution stops the group and marks it as failed, so its parent treats the whole group as failed. ContinueExecution reports the failure through [signal action_failed] and carries on with the execution rule; the group itself does not fail.

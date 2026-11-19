@@ -4,6 +4,8 @@
 		Scores a boolean input with one of two fixed values.
 	</brief_description>
 	<description>
+		An [NNConsideration] that converts its input value into one of two fixed scores: [member false_score_value] when the input is below [code]0.5[/code] and [member true_score_value] when it is [code]0.5[/code] or above.
+		It reads its input from [member NNConsideration.input_sensor] or [member NNConsideration.activation_input_value] and inherits [NNConsideration]'s veto check and input-change caching (also recalculating when [member true_score_value] or [member false_score_value] changes), but does not use [member NNConsideration.activation_curve] or a custom [code]eval[/code] method.
 	</description>
 	<tutorials>
 	</tutorials>

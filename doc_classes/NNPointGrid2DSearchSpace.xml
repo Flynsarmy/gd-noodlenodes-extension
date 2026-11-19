@@ -4,50 +4,48 @@
 		Creates and uses a [Node2D] point grid to define the search space.
 	</brief_description>
 	<description>
-		These nodes create and use a [Node2D] point grid to define the search space. You need to set a [Node2D] parent node where the nodes will be created as child nodes. The points are created relative to the parent node position and will inherit the transformations from the parent node. The parent node will be in the middle of the point grid.
-		The points for the grid are created as pairs: a base point and a lattice point.
-		For instance in a very dense 2D square grid, there could be a base point every 2x and 1y. This spacing between base points is controlled with the [member point_grid_base_spacing_vector] property. The values of this property also control the density of the grid. The smaller the spacing between points, the more points needs to be created to fill the area/volume given with the [member grid_size] property.
-		The lattice point is a point relative to the base point. For the 2D square grid mentioned earlier the [member point_grid_lattice_vector] would be (1,0). This will create the lattice point to the right of the base point.
-		During the creation of the point grid the x and y axes are looped through starting from [code]-0.5 * grid_size.x, -0.5 * grid_size.y[/code] and going up to [code]0.5 * grid_size.x, 0.5 * grid_size.y[/code]. On each loop iteration the [member point_grid_base_spacing_vector] x and y components are added to the current position to get the next position for the next pair of points. So on each iteration, both the base point and the lattice point will be added. For 3D grids the z-axis is handled similarly to the x and y axes.
-		To get a triangular grid, only the lattice point needs to be moved. If we move it 0.5 units upwards and set the [member point_grid_lattice_vector] to (1,0.5) we would get a grid like in the image below.
-		By adjusting the base point spacing and lattice vector values, you can create various types of grids with the density you want.
-		[b]Warning:[/b] When creating point grids, it is very easy to create a huge amount of points for a search space.
-		Optionally a [NavigationMesh] can be used when the point grid is been queried. Then the points will be placed on the closest point to their grid position on the [NavigationMesh].
-		To set a visible debug shape for the point grid, you can create a [Node2D] (or derived node, such as [Sprite2D]) for the [NNPointGrid2DSearchSpace]. The node should be added as a child node for the search space and its name must be DEBUG.
-		The point grid creation method will create two properties for the point grid nodes: [member NNNQSSearchCriteria.score] and [member NNNQSSearchCriteria.is_filtered]. These will be updated for the point grid nodes if the search space property [member NNNQSSearchSpaces.is_run_in_debug_mode] is set in the Debugging property group.
+		Creates and uses a [Node2D] point grid to define the search space. Set [member point_grid_parent_node] to the [Node2D] under which the generated point nodes will be added. The points are created relative to the parent node's position and inherit its transform, with the parent node at the center of the grid.
+		Points are generated in pairs: a base point and a lattice point.
+		For example, in a square 2D grid, a base point might be placed every 2 units on X and 1 unit on Y. This step between base points is controlled by [member point_grid_base_spacing_vector], which also controls grid density: smaller spacing produces more points to fill the area defined by [member grid_size].
+		The lattice point is placed at [member point_grid_lattice_vector] relative to each base point. For the square grid above, setting [member point_grid_lattice_vector] to [code]Vector2(1, 0)[/code] places the lattice point 1 unit to the right of each base point.
+		During grid generation, the X and Y axes are stepped from [code]-0.5 * grid_size[/code] to [code]0.5 * grid_size[/code] in increments of [member point_grid_base_spacing_vector]. At each step, both the base point and [code]base_point + point_grid_lattice_vector[/code] are added. Shifting the lattice point (for example, to [code]Vector2(1, 0.5)[/code]) produces staggered or triangular layouts.
+		[b]Warning:[/b] When creating point grids, it is very easy to generate a large number of points for a search space.
+		When [member use_navigation_mesh_positions] is [code]true[/code] and [member navigation_map_rid] is valid (initialized automatically from the viewport's 2D world navigation map), each point's global position is snapped during query preprocessing to the closest point on that navigation map using [method NavigationServer2D.map_get_closest_point].
+		To give generated points a visible debug representation or custom script, add a [Node2D] (or derived node, such as [Sprite2D]) named [code]DEBUG[/code] as a direct child of this [NNPointGrid2DSearchSpace]. Grid generation duplicates that [code]DEBUG[/code] child for every generated point instead of creating plain [Node2D] nodes.
+		Before duplicating the template node, grid creation calls [method Object.set] for [code]score[/code] ([code]0.0[/code]) and [code]is_filtered[/code] ([code]false[/code]). If your [code]DEBUG[/code] node's script defines those properties and [member NNNQSSearchSpaces.is_run_in_debug_mode] is enabled, they are updated on each point node as criteria evaluate it.
 	</description>
 	<tutorials>
 	</tutorials>
 	<members>
 		<member name="grid_size" type="Vector2" setter="set_grid_size" getter="get_grid_size" default="Vector2(150, 150)">
-			The grid width, height.
+			The grid width and height, centered on [member point_grid_parent_node].
 		</member>
 		<member name="navigation_map_rid" type="RID" setter="set_navigation_map_rid" getter="get_navigation_map_rid" default="RID()">
-			See the description of the [member use_navigation_mesh_positions] property.
+			The [NavigationServer2D] map [RID] used when [member use_navigation_mesh_positions] is [code]true[/code]. Populated automatically from the viewport's 2D world navigation map when the search space initializes.
 		</member>
 		<member name="offset_vector" type="Vector2" setter="set_offset_vector" getter="get_offset_vector" default="Vector2(0, 0)">
-			Offset added to the local position of every point in the grid. With [member use_navigation_mesh_positions], the offset point is the one snapped to the navigation mesh.
+			Offset added to the local position of every point in the grid. With [member use_navigation_mesh_positions], the offset point is the one snapped to the navigation map.
 		</member>
 		<member name="point_grid" type="Node2D[]" setter="set_point_grid" getter="get_point_grid" default="[]">
 			The grid of points as [Node2D] nodes.
 		</member>
 		<member name="point_grid_base_spacing_vector" type="Vector2" setter="set_point_grid_base_spacing_vector" getter="get_point_grid_base_spacing_vector" default="Vector2(20, 10)">
-			The base spacing of the point grid. Defines how rows and columns are created
+			The step size along the X and Y axes between consecutive base points. Both components must be finite and greater than [code]0[/code]; invalid values are ignored and keep the previous spacing.
 		</member>
 		<member name="point_grid_lattice_type" type="int" setter="set_point_grid_lattice_type" getter="get_point_grid_lattice_type" default="0">
-			The lattice type defines how the points are ordered.
+			Selects a lattice preset that overwrites [member point_grid_base_spacing_vector] and [member point_grid_lattice_vector]. Values are: [code]Square:0[/code] (spacing [code](20, 10)[/code], lattice [code](10, 0)[/code]), [code]Triangular:1[/code] (spacing [code](10, 20)[/code], lattice [code](-5, 10)[/code]), [code]CenteredRectangular:2[/code] (spacing [code](20, 10)[/code], lattice [code](10, 5)[/code]), [code]Rectangular:3[/code] (spacing [code](20, 5)[/code], lattice [code](10, 0)[/code]), and [code]Custom:4[/code] (leaves the spacing and lattice vectors unchanged).
 		</member>
 		<member name="point_grid_lattice_vector" type="Vector2" setter="set_point_grid_lattice_vector" getter="get_point_grid_lattice_vector" default="Vector2(10, 0)">
-			The "additional point" which defines the shape of the grid.
+			Local offset from each base point where its paired lattice point is placed. Together with [member point_grid_base_spacing_vector], this defines the repeating pattern of the grid.
 		</member>
 		<member name="point_grid_parent_node" type="Node2D" setter="set_point_grid_parent_node" getter="get_point_grid_parent_node">
 			The node the generated point nodes are added to. The grid is positioned relative to this node, so moving it moves the grid. No grid is created when this is not set.
 		</member>
 		<member name="point_grid_type" type="int" setter="set_point_grid_type" getter="get_point_grid_type" default="0">
-			The type of the grid, currently only RECTANGULAR is supported.
+			The overall shape of the generated grid. Only [code]Rectangle:0[/code] is implemented, which fills the rectangular region defined by [member grid_size].
 		</member>
 		<member name="use_navigation_mesh_positions" type="bool" setter="set_use_navigation_mesh_positions" getter="get_use_navigation_mesh_positions" default="true">
-			If this is set to [code]true[/code] and the [member navigation_map_rid] property is set to a valid navigation map, the point grid positions will be placed on the navigation mesh. Default value is [code]true[/code].
+			If [code]true[/code] and [member navigation_map_rid] is valid, each point's global position is snapped to the closest point on the navigation map via [method NavigationServer2D.map_get_closest_point] during query preprocessing.
 		</member>
 	</members>
 </class>

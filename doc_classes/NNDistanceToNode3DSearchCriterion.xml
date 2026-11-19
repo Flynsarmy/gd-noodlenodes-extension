@@ -4,13 +4,14 @@
 		Scores and filters based on minimum and maximum distance to the set [member distance_to] node.
 	</brief_description>
 	<description>
-		The [Node3D] distance search criterion can be used to score and filter based on minimum and maximum distance to the set [member distance_to] node.
+		The [Node3D] distance search criterion scores and filters [Node3D] candidates based on their global distance to [member distance_to]. If [member distance_to] is not set, nodes are left unfiltered with a score of [code]1.0[/code].
+		Both filtering and scoring use squared distances. When used for scoring, the raw score is mapped linearly in squared distance as [code](distance_squared - min_distance^2) / (max_distance^2 - min_distance^2)[/code], clamped to [code]0.0[/code] at or below [member min_distance] and [code]1.0[/code] at or above [member max_distance], then passed through [member NNNQSSearchCriteria.activation_curve] if one is set.
 	</description>
 	<tutorials>
 	</tutorials>
 	<members>
 		<member name="distance_to" type="Node3D" setter="set_distance_to" getter="get_distance_to">
-			The path to the node to which you want to compare the distance to.
+			The [Node3D] reference to measure distance to.
 		</member>
 		<member name="max_distance" type="float" setter="set_max_distance" getter="get_max_distance" default="100.0">
 			Maximum distance. If the distance is more than this and filtering is applied, the tested node is filtered out.

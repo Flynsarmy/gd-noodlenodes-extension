@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <class name="NNBTNodes" inherits="NoodleNodes" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
 	<brief_description>
-		Base class for all Noodle Nodes  behaviour tree nodes.
+		Base class for all Noodle Nodes behaviour tree nodes.
 	</brief_description>
 	<description>
 		Behaviour Trees are a commonly used structure that can be used to create artificial intelligence in games for the non-playable characters. A behaviour tree has a root node and under it a tree structure, where the branches of the tree define the behaviour for the AI.
@@ -39,7 +39,7 @@
 	</methods>
 	<members>
 		<member name="evaluation_method" type="int" setter="set_evaluation_method" getter="get_evaluation_method" enum="NoodleNodes.EvaluationMethod" default="4">
-			Used with Utility-based Behaviour Tree nodes. This defines how the [NNConsideration] nodes (assigned as child nodes of the behaviour tree node) are aggregated into the score for the node. The default is [constant NoodleNodes.EVALUATION_MULTIPLY].
+			Defines how enabled direct [NNConsiderations] child nodes (such as [NNConsideration], [NNConsiderationGroup] and [NNCustomPropertyConsideration]) are aggregated into [member score]. In the behaviour tree, only direct children of [NNBTScoreBasedPicker] are evaluated for their score. The default is [constant NoodleNodes.EVALUATION_MULTIPLY].
 		</member>
 		<member name="score" type="float" setter="" getter="get_score" default="0.0">
 			The score this node received from the Utility-based evaluation. Read-only runtime state: it is written by evaluation and is never saved with the scene.

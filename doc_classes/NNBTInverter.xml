@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <class name="NNBTInverter" inherits="NNBTDecoratorNodes" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
 	<brief_description>
-		Ticks the first behaviour tree child node it has and returns back to its parent the result of the child node, inverted.
+		Ticks the first enabled behaviour tree child node it has and returns the inverted result to its parent.
 	</brief_description>
 	<description>
-		The inverter node ticks the first behaviour tree child node it has and returns back to its parent the result of the child node, inverted. So success becomes failure, a failure a success. If Running is returned, the inverter returns running back to its parent.
+		The inverter node ticks its first enabled behaviour tree child node and returns the inverted result to its parent: [constant NNBTNodes.SUCCESS] becomes [constant NNBTNodes.FAILURE], and [constant NNBTNodes.FAILURE] becomes [constant NNBTNodes.SUCCESS]. If the child returns [constant NNBTNodes.RUNNING] or [constant NNBTNodes.SKIP], that result is returned unchanged. If no behaviour tree child is enabled, the inverter returns [constant NNBTNodes.FAILURE].
 	</description>
 	<tutorials>
 	</tutorials>

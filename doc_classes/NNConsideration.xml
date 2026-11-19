@@ -4,23 +4,17 @@
 		Scores a behaviour from an input value and an optional activation curve.
 	</brief_description>
 	<description>
-		These two node types should be added as child nodes of the NNBehaviour node. They are used when a behaviour is being scored by the AI agent.
+		Add [NNConsideration] nodes as children of [NNBehaviour], [NNBehaviourGroup], [NNConsiderationGroup], or scored [NNBTNodes] and [NNSTTickedNodes] nodes to contribute a score during evaluation.
 		Each consideration node can contain an activation curve that can be defined in the node properties. The [member activation_input_value] property is used as the x-axis value to find the y-value on the activation curve. The y-value is then the resulting score for the consideration. If no curve has been set, the [member activation_input_value] will be used as the consideration score as-is.
-		If a sensor or a sensor group is used as the input value for a consideration, the [member activation_input_value] for the consideration will be the sensor_value property of the sensor node. Otherwise the value of the consideration's [member activation_input_value] property will be used. In simple terms: sensors are optional, you can use considerations without them if you set the [member activation_input_value] directly in your code.
-		A custom evaluation method can be defined for the [NNConsideration] node by extending the node with a script and defining a method named eval:
+		If a sensor or a sensor group is used as the input value for a consideration, the [member activation_input_value] for the consideration will be overwritten with the [member NNSensors.sensor_value] of the sensor node during evaluation. Otherwise the value of the consideration's [member activation_input_value] property will be used. In simple terms: sensors are optional, you can use considerations without them if you set the [member activation_input_value] directly in your code.
+		A custom evaluation method can be defined for the [NNConsideration] node by extending the node with a script and defining a method named [code]eval[/code]:
 		[gdscript]
 		func eval() -&gt; void:
 		    # Your code here.
 		    score = 0.0
 		[/gdscript]
-		In your custom eval method you should set the [member NNConsiderations.score] property to a value between [code]0[/code] and [code]1[/code]. You can sample the activation_curve using the method [code]sample_activation_curve(double input_value)[/code]. Also, you can set the [member NNConsiderations.has_vetoed] property by using your custom function. If [member NNConsiderations.has_vetoed] property is [code]true[/code], it causes the Behaviour to receive a [member NNConsiderations.score] of 0.0 and the behaviour immediately ends evaluating other considerations. Note that the [member NNConsiderations.has_vetoed] property will not be reset back to [code]false[/code] automatically, so if you set it to [code]true[/code] in your custom evaluation method, you will also need to set it to [code]false[/code] when you want the veto-state to end.
-		If you need to override the [member Node._ready] method for your custom consideration, you need to add the [code]initialize_consideration()[/code] method call to your [member Node._ready] method:
-		[gdscript]
-		func _ready():
-		    initialize_consideration()
-		    # Your code here.
-		[/gdscript]
-		Since version 1.5 the consideration nodes only calculate their [member NNConsiderations.score] if the input value has been changed, or a custom eval-method has been defined.
+		In your custom [code]eval[/code] method you should set the [member NNConsiderations.score] property to a value between [code]0[/code] and [code]1[/code]. You can sample the [member activation_curve] using [method sample_activation_curve]. You can also set [member NNConsiderations.has_vetoed] to [code]true[/code], which causes the parent behaviour or group to score [code]0.0[/code] and stop evaluating further considerations immediately. While [member NNConsiderations.has_vetoed] is [code]true[/code], evaluation returns [code]0.0[/code] immediately without reading [member input_sensor] or calling [code]eval[/code], and it is not reset automatically, so external code must set it back to [code]false[/code] to end the veto state.
+		Consideration nodes cache [member NNConsiderations.score] and only recalculate (running a custom [code]eval[/code] method if defined, or otherwise sampling [member activation_curve] / using [member activation_input_value]) on their first evaluation, after [member input_sensor], [member activation_curve], or [member activation_input_value] changes, or when an attached [member input_sensor] provides a different value or the cached score is [code]0.0[/code]. Otherwise evaluation returns the cached score without calling [code]eval[/code].
 	</description>
 	<tutorials>
 	</tutorials>
@@ -38,7 +32,7 @@
 			A godot curve property that defines how the [member activation_input_value] will be translated to a score.
 		</member>
 		<member name="activation_input_value" type="float" setter="set_activation_input_value" getter="get_activation_input_value" default="0.0001">
-			A floating point value in the range of 0..1.
+			The input value passed to [member activation_curve] (or used directly as the score when no curve is set). Typically in the [code]0..1[/code] range, though values outside that range are not clamped. When [member input_sensor] is assigned, evaluation overwrites this property with the sensor's [member NNSensors.sensor_value].
 		</member>
 		<member name="input_sensor" type="NNSensors" setter="set_input_sensor" getter="get_input_sensor">
 			The sensor or sensor group whose [member NNSensors.sensor_value] is used as the [member activation_input_value]. When not set, [member activation_input_value] is used as assigned.

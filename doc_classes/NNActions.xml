@@ -10,10 +10,10 @@
 	</tutorials>
 	<members>
 		<member name="has_failed" type="bool" setter="set_has_failed" getter="get_has_failed" default="false">
-			Use this property only to let the AI agent know when the chosen action has failed. You will also need to set the [member is_finished] property! The stepper function will immediately set it back to [code]false[/code] once it has handled the failed event.
+			Marks the action as failed. Also set [member is_finished] to [code]true[/code] so the behaviour or action group stops waiting on it and handles the failure. On [NNAction], this flag is reset to [code]false[/code] when the action starts (before [signal NNAction.action_entered]) and when the action ends (after [signal NNAction.action_exited], so exit listeners can still read it). On [NNActionGroup], it is set automatically when a child fails under [code]EndExecution[/code] and is not reset on start or end.
 		</member>
 		<member name="is_finished" type="bool" setter="set_is_finished" getter="get_is_finished" default="false">
-			Use this property only to let the AI agent know when the chosen action is finished. The stepper function will immediately set it back to [code]false[/code] once it has moved on to the next action.
+			Marks the action as finished so the behaviour or action group can advance on the next [method NNAgent.update_current_behaviour] call. On [NNAction], this flag is reset to [code]false[/code] when the action starts (before [signal NNAction.action_entered]) and when the action ends (after [signal NNAction.action_exited], so exit listeners can still read it).
 		</member>
 	</members>
 </class>

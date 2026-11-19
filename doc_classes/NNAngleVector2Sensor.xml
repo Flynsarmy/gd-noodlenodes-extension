@@ -4,7 +4,7 @@
 		Accepts two vectors, calculates the angle between them and scales it to [code]0..1[/code] range.
 	</brief_description>
 	<description>
-		The angle between [member from_vector] and [member to_vector] is clamped to the configured range and then normalised so [member min_angle_radian] maps to [code]0.0[/code] and [member max_angle_radian] maps to [code]1.0[/code]. A range whose minimum equals its maximum scores [code]0.0[/code].
+		Calculates the signed angle from [member from_vector] to [member to_vector] via [method Vector2.angle_to], clamps it to the configured range, and normalises it so [member min_angle_radian] maps to [code]0.0[/code] and [member max_angle_radian] maps to [code]1.0[/code]. A range whose minimum is greater than or equal to its maximum scores [code]0.0[/code].
 	</description>
 	<tutorials>
 	</tutorials>
@@ -16,22 +16,22 @@
 			The angle from [member from_vector] to [member to_vector] in radians, clamped to [member min_angle_radian] and [member max_angle_radian]. Updated when the sensor is evaluated.
 		</member>
 		<member name="from_vector" type="Vector2" setter="set_from_vector" getter="get_from_vector" default="Vector2(0, 0)">
-			Input value for the sensor. Base value for the angle calculation, for example the direction of an AI entity.
+			Reference direction vector for the signed angle calculation ([code]from_vector.angle_to(to_vector)[/code]), for example the facing direction of an AI entity.
 		</member>
 		<member name="max_angle_degrees" type="float" setter="set_max_angle_degrees" getter="get_max_angle_degrees" default="180.0">
-			The maximum value for the angle between from and to in degrees, this corresponds to [code]1.0[/code] for the sensor_value. Updates the euler angle automatically.
+			The maximum signed angle from [member from_vector] to [member to_vector] in degrees, corresponding to [code]1.0[/code] for [member NNSensors.sensor_value]. Automatically updates [member max_angle_radian].
 		</member>
 		<member name="max_angle_radian" type="float" setter="set_max_angle_radian" getter="get_max_angle_radian" default="3.1415927">
-			The maximum value for the angle between from and to in radians, this corresponds to [code]1.0[/code] for the sensor_value. Updates the euler angle automatically.
+			The maximum signed angle from [member from_vector] to [member to_vector] in radians, corresponding to [code]1.0[/code] for [member NNSensors.sensor_value]. Automatically updates [member max_angle_degrees].
 		</member>
 		<member name="min_angle_degrees" type="float" setter="set_min_angle_degrees" getter="get_min_angle_degrees" default="-180.0">
-			The minimum value for the angle between from and to in degrees, this corresponds to [code]0.0[/code] for the sensor_value. Updates the euler angle automatically.
+			The minimum signed angle from [member from_vector] to [member to_vector] in degrees, corresponding to [code]0.0[/code] for [member NNSensors.sensor_value]. Automatically updates [member min_angle_radian].
 		</member>
 		<member name="min_angle_radian" type="float" setter="set_min_angle_radian" getter="get_min_angle_radian" default="-3.1415927">
-			The minimum value for the angle between from and to in radians, this corresponds to [code]0.0[/code] for the sensor_value. Updates the euler angle automatically.
+			The minimum signed angle from [member from_vector] to [member to_vector] in radians, corresponding to [code]0.0[/code] for [member NNSensors.sensor_value]. Automatically updates [member min_angle_degrees].
 		</member>
 		<member name="to_vector" type="Vector2" setter="set_to_vector" getter="get_to_vector" default="Vector2(0, 0)">
-			Input value for the sensor. The other vector to compare from-vector to, for example direction to closest enemy entity.
+			Target direction vector compared against [member from_vector] via [method Vector2.angle_to], for example the direction toward the closest enemy entity. Swapping [member from_vector] and [member to_vector] negates the resulting signed angle.
 		</member>
 	</members>
 </class>
