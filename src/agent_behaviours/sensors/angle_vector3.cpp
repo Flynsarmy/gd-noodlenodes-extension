@@ -17,21 +17,21 @@ void NNAngleVector3Sensor::_bind_methods() {
 
 	ClassDB::bind_method(D_METHOD("set_max_angle_degrees", "max_angle_degrees"), &NNAngleVector3Sensor::set_max_angle_degrees);
 	ClassDB::bind_method(D_METHOD("get_max_angle_degrees"), &NNAngleVector3Sensor::get_max_angle_degrees);
-	ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "max_angle_degrees", PROPERTY_HINT_RANGE, "-179.99999999,179.99999999"), "set_max_angle_degrees", "get_max_angle_degrees");
+	ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "max_angle_degrees", PROPERTY_HINT_RANGE, "0.01,180.0"), "set_max_angle_degrees", "get_max_angle_degrees");
 
 	ClassDB::bind_method(D_METHOD("set_max_angle_radian", "max_angle_radian"), &NNAngleVector3Sensor::set_max_angle_radian);
 	ClassDB::bind_method(D_METHOD("get_max_angle_radian"), &NNAngleVector3Sensor::get_max_angle_radian);
-	ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "max_angle_radian", PROPERTY_HINT_RANGE, "-3.14159264,3.14159264"), "set_max_angle_radian", "get_max_angle_radian");
+	ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "max_angle_radian", PROPERTY_HINT_RANGE, "0.0001,3.14159265"), "set_max_angle_radian", "get_max_angle_radian");
 
 	ADD_SUBGROUP("Debugging", "");
 
 	ClassDB::bind_method(D_METHOD("set_angle_radian", "angle_radian"), &NNAngleVector3Sensor::set_angle_radian);
 	ClassDB::bind_method(D_METHOD("get_angle_radian"), &NNAngleVector3Sensor::get_angle_radian);
-	ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "angle_radian", PROPERTY_HINT_RANGE, "-3.14159264,3.14159264"), "set_angle_radian", "get_angle_radian");
+	ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "angle_radian", PROPERTY_HINT_RANGE, "0.0,3.14159265"), "set_angle_radian", "get_angle_radian");
 
 	ClassDB::bind_method(D_METHOD("set_angle_degrees", "angle_degrees"), &NNAngleVector3Sensor::set_angle_degrees);
 	ClassDB::bind_method(D_METHOD("get_angle_degrees"), &NNAngleVector3Sensor::get_angle_degrees);
-	ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "angle_degrees", PROPERTY_HINT_RANGE, "-179.99999999,179.99999999"), "set_angle_degrees", "get_angle_degrees");
+	ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "angle_degrees", PROPERTY_HINT_RANGE, "0.0,180.0"), "set_angle_degrees", "get_angle_degrees");
 }
 
 // Constructor and destructor.
@@ -39,8 +39,8 @@ void NNAngleVector3Sensor::_bind_methods() {
 NNAngleVector3Sensor::NNAngleVector3Sensor() {
 	_angle_radian = 0.0f;
 	_angle_degrees = 0.0f;
-	_max_angle_radian = 2.0f * Math::PI;
-	_max_angle_degrees = 360.0f;
+	_max_angle_radian = Math::PI;
+	_max_angle_degrees = 180.0f;
 	_one_over_max_angle_radian = 1.0f / _max_angle_radian;
 }
 
@@ -52,7 +52,7 @@ NNAngleVector3Sensor::~NNAngleVector3Sensor() {
 float NNAngleVector3Sensor::evaluate_sensor_value() {
 	_angle_radian = _from_vector.angle_to(_to_vector);
 	_angle_degrees = godot::Math::rad_to_deg(_angle_radian);
-	set_sensor_value(_angle_radian * _one_over_max_angle_radian);
+	set_sensor_value(MIN(_angle_radian, _max_angle_radian) * _one_over_max_angle_radian);
 	return get_sensor_value();
 }
 
@@ -77,9 +77,7 @@ Vector3 NNAngleVector3Sensor::get_from_vector3() const {
 }
 
 void NNAngleVector3Sensor::set_max_angle_radian(float max_angle_radian) {
-	if (max_angle_radian == 0.0f) {
-		return;
-	}
+	ERR_FAIL_COND_MSG(max_angle_radian <= 0.0f, "NNAngleVector3Sensor::set_max_angle_radian(): max_angle_radian must be greater than 0.");
 	_max_angle_radian = max_angle_radian;
 	_max_angle_degrees = godot::Math::rad_to_deg(_max_angle_radian);
 	_one_over_max_angle_radian = 1.0f / _max_angle_radian;
@@ -90,9 +88,7 @@ float NNAngleVector3Sensor::get_max_angle_radian() const {
 }
 
 void NNAngleVector3Sensor::set_max_angle_degrees(float max_angle_degrees) {
-	if (max_angle_degrees == 0.0f) {
-		return;
-	}
+	ERR_FAIL_COND_MSG(max_angle_degrees <= 0.0f, "NNAngleVector3Sensor::set_max_angle_degrees(): max_angle_degrees must be greater than 0.");
 	_max_angle_degrees = max_angle_degrees;
 	_max_angle_radian = godot::Math::deg_to_rad(_max_angle_degrees);
 	_one_over_max_angle_radian = 1.0f / _max_angle_radian;
