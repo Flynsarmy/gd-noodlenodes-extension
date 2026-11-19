@@ -4,12 +4,6 @@
 using namespace godot;
 
 NNDistanceToVector3SearchCriterion::NNDistanceToVector3SearchCriterion() {
-	_min_distance = 0.0f;
-	_max_distance = 100.0f;
-	_min_distance_squared = 0.0f;
-	_max_distance_squared = _max_distance * _max_distance;
-	_span_length = _max_distance_squared - _min_distance_squared;
-	_one_over_span_length = 1.0f / _span_length;
 	_distance_to_vector = Vector3(0.0, 0.0, 0.0);
 }
 
@@ -44,34 +38,19 @@ Vector3 NNDistanceToVector3SearchCriterion::get_distance_to_vector() const {
 }
 
 void NNDistanceToVector3SearchCriterion::set_min_distance(float min_distance) {
-	if (_min_distance < 0.0f)
-		return;
-	if (_min_distance >= _max_distance)
-		return;
-
-	_min_distance = min_distance;
-	_min_distance_squared = _min_distance * _min_distance;
-
-	_span_length = _max_distance_squared - _min_distance_squared;
-	_one_over_span_length = 1.0f / _span_length;
+	_distance_range.set_min_distance(min_distance);
 }
 
 float NNDistanceToVector3SearchCriterion::get_min_distance() const {
-	return _min_distance;
+	return _distance_range.get_min_distance();
 }
 
 void NNDistanceToVector3SearchCriterion::set_max_distance(float max_distance) {
-	if (max_distance <= _min_distance)
-		return;
-	_max_distance = max_distance;
-	_max_distance_squared = _max_distance * _max_distance;
-
-	_span_length = _max_distance_squared - _min_distance_squared;
-	_one_over_span_length = 1.0f / _span_length;
+	_distance_range.set_max_distance(max_distance);
 }
 
 float NNDistanceToVector3SearchCriterion::get_max_distance() const {
-	return _max_distance;
+	return _distance_range.get_max_distance();
 }
 
 // Handing methods.
@@ -88,18 +67,11 @@ void NNDistanceToVector3SearchCriterion::apply_criterion(Node *node, bool &filte
 	float distance_squared = from_to.length_squared();
 
 	if (get_use_for_filtering()) {
-		_is_filtered = (distance_squared < _min_distance_squared || distance_squared > _max_distance_squared);
+		_is_filtered = _distance_range.filters(distance_squared);
 	} //endif do filtering
 
 	if (get_use_for_scoring()) {
-		if (distance_squared >= _max_distance_squared) {
-			_score = 1.0f;
-		} else if (distance_squared <= _min_distance_squared) {
-			_score = 0.0f;
-		} else {
-			float distance_from_lower_limit = distance_squared - _min_distance_squared;
-			_score = distance_from_lower_limit * _one_over_span_length;
-		}
+		_score = _distance_range.score(distance_squared);
 		if (get_activation_curve().is_valid()) {
 			_score = sample_activation_curve(_score);
 		}

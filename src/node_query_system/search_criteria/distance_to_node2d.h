@@ -1,5 +1,6 @@
 #pragma once
 
+#include "distance_range.h"
 #include "nqs.h"
 
 #include <godot_cpp/classes/node2d.hpp>
@@ -10,13 +11,7 @@ class NNDistanceToNode2DSearchCriterion : public NNNQSSearchCriteria {
 	GDCLASS(NNDistanceToNode2DSearchCriterion, NNNQSSearchCriteria)
 
 private:
-	float _min_distance;
-	float _max_distance;
-
-	float _min_distance_squared;
-	float _max_distance_squared;
-	float _span_length;
-	float _one_over_span_length;
+	NNDistanceRange _distance_range;
 
 	Node2D *_distance_to;
 

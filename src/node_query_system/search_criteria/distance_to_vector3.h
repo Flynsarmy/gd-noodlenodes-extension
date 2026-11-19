@@ -1,5 +1,6 @@
 #pragma once
 
+#include "distance_range.h"
 #include "nqs.h"
 
 namespace godot {
@@ -8,13 +9,7 @@ class NNDistanceToVector3SearchCriterion : public NNNQSSearchCriteria {
 	GDCLASS(NNDistanceToVector3SearchCriterion, NNNQSSearchCriteria)
 
 private:
-	float _min_distance;
-	float _max_distance;
-
-	float _min_distance_squared;
-	float _max_distance_squared;
-	float _span_length;
-	float _one_over_span_length;
+	NNDistanceRange _distance_range;
 
 	Vector3 _distance_to_vector;
 
