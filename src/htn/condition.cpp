@@ -1,5 +1,7 @@
 #include "condition.h"
 
+#include "nodes.h"
+
 #include <godot_cpp/core/class_db.hpp>
 #include <godot_cpp/core/error_macros.hpp>
 
@@ -27,10 +29,13 @@ void NNHTNCondition::set_expression(const String &p_expression) {
 	}
 	_expression = p_expression;
 	_read_keys.clear();
+	_reads_args = false;
 	const PackedStringArray identifiers = NNExpressionUtil::scan_identifiers(p_expression);
 	for (const String &name : identifiers) {
 		if (name != ARGS_INPUT) {
 			_read_keys.push_back(name);
+		} else {
+			_reads_args = true;
 		}
 	}
 	_input_names = _read_keys.duplicate();
@@ -57,6 +62,10 @@ PackedStringArray NNHTNCondition::get_read_keys() const {
 	return _read_keys;
 }
 
+bool NNHTNCondition::get_reads_args() const {
+	return _reads_args;
+}
+
 String NNHTNCondition::get_parse_error() const {
 	return _parse_error;
 }
@@ -79,21 +88,17 @@ bool NNHTNCondition::_check_parse() {
 }
 
 bool NNHTNCondition::evaluate(const Dictionary &p_state, const Dictionary &p_args) {
-	Dictionary state;
-	for (const String &key : _read_keys) {
-		state[key] = NNExpressionUtil::read_only_copy(p_state.get(key, Variant()));
-	}
-	return evaluate_read_only(state, Dictionary(NNExpressionUtil::read_only_copy(p_args)));
+	return evaluate_read_only(NNHTNStateView(p_state), Dictionary(NNExpressionUtil::read_only_copy(p_args)));
 }
 
-bool NNHTNCondition::evaluate_read_only(const Dictionary &p_state, const Dictionary &p_args) {
+bool NNHTNCondition::evaluate_read_only(const NNHTNStateView &p_state, const Dictionary &p_args) {
 	if (!_check_parse()) {
 		return false;
 	}
 
 	Array inputs;
 	for (const String &key : _read_keys) {
-		inputs.push_back(p_state.get(key, Variant()));
+		inputs.push_back(p_state.get_read_only_value(key));
 	}
 	inputs.push_back(p_args);
 

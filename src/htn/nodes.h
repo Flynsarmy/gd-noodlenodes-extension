@@ -24,10 +24,10 @@ public:
 	explicit NNHTNStateView(const Dictionary &p_values);
 
 	const Dictionary &get_values() const;
-	// Deep, read-only copy built on first use, so neither a script hook nor a condition can alter the state it inspects.
+	// Deep, read-only copy of one key, built on its first read. Absent keys read as NIL.
+	Variant get_read_only_value(const String &p_key) const;
+	// The whole state read-only, built on first use, so a script hook cannot alter the state it inspects.
 	const Dictionary &get_hook_state() const;
-	// The same copy without counting a hook read; conditions use this one.
-	const Dictionary &get_read_only_state() const;
 	// Every planning hook is passed get_hook_state(), so this counts the hooks consulted.
 	uint64_t get_hook_state_reads() const;
 
@@ -46,8 +46,9 @@ public:
 
 private:
 	Dictionary _values;
-	mutable Dictionary _read_only_state;
-	mutable bool _read_only_state_valid = false;
+	mutable Dictionary _read_only_values;
+	mutable Dictionary _hook_state;
+	mutable bool _hook_state_valid = false;
 	mutable uint64_t _hook_state_reads = 0;
 	std::vector<Change> _trail;
 };
@@ -61,6 +62,9 @@ private:
 	bool _dependencies_complete;
 	TypedArray<NNHTNNodes> _predecessors;
 	mutable String _reported_configuration_error;
+
+	// Copied only when a condition reads args; otherwise the planner's own args are never exposed.
+	Dictionary _condition_args(const Dictionary &p_args) const;
 
 protected:
 	static void _bind_methods();

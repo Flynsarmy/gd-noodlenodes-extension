@@ -256,10 +256,9 @@ bool NNHTNBinding::_matches(const NNHTNStateView &p_state, const Dictionary &p_a
 	// Sealed separately so the value kept as the bound argument stays writable.
 	args[_variable] = p_value.duplicate(true);
 	NNExpressionUtil::make_read_only_deep(args);
-	const Dictionary &state = p_state.get_read_only_state();
 	for (int i = 0; i < _conditions.size(); i++) {
 		Ref<NNHTNCondition> condition = _conditions[i];
-		if (condition.is_null() || !condition->evaluate_read_only(state, args)) {
+		if (condition.is_null() || !condition->evaluate_read_only(p_state, args)) {
 			return false;
 		}
 	}

@@ -26,18 +26,29 @@ const Dictionary &NNHTNStateView::get_values() const {
 	return _values;
 }
 
-const Dictionary &NNHTNStateView::get_read_only_state() const {
-	if (!_read_only_state_valid) {
-		_read_only_state = NNExpressionUtil::read_only_copy(_values);
-		_read_only_state_valid = true;
+Variant NNHTNStateView::get_read_only_value(const String &p_key) const {
+	Variant value = _read_only_values.get_or_add(p_key, Variant());
+	// A cached NIL is rebuilt, which only costs another NIL copy.
+	if (value.get_type() == Variant::NIL) {
+		value = NNExpressionUtil::read_only_copy(_values.get(p_key, Variant()));
+		_read_only_values[p_key] = value;
 	}
-	return _read_only_state;
+	return value;
 }
 
 const Dictionary &NNHTNStateView::get_hook_state() const {
-	const Dictionary &state = get_read_only_state();
+	if (!_hook_state_valid) {
+		// The previous state was sealed, so it is replaced rather than rewritten.
+		_hook_state = Dictionary();
+		const Array keys = _values.keys();
+		for (int i = 0; i < keys.size(); i++) {
+			_hook_state[keys[i]] = get_read_only_value(keys[i]);
+		}
+		_hook_state.make_read_only();
+		_hook_state_valid = true;
+	}
 	_hook_state_reads++;
-	return state;
+	return _hook_state;
 }
 
 uint64_t NNHTNStateView::get_hook_state_reads() const {
@@ -58,12 +69,14 @@ void NNHTNStateView::set_value(const String &p_key, const Variant &p_value) {
 	} else {
 		_values[p_key] = p_value;
 	}
-	_read_only_state_valid = false;
+	_read_only_values.erase(p_key);
+	_hook_state_valid = false;
 }
 
 void NNHTNStateView::reset(const Dictionary &p_values) {
 	_values = p_values;
-	_read_only_state_valid = false;
+	_read_only_values.clear();
+	_hook_state_valid = false;
 	_trail.clear();
 }
 
@@ -82,9 +95,10 @@ void NNHTNStateView::restore_trail(size_t p_mark) {
 		} else {
 			_values.erase(change.key);
 		}
+		_read_only_values.erase(change.key);
 		_trail.pop_back();
 	}
-	_read_only_state_valid = false;
+	_hook_state_valid = false;
 }
 
 // NNHTNNodes.
@@ -170,17 +184,28 @@ String NNHTNNodes::_describe() const {
 	return vformat("%s '%s'", get_class(), NNExpressionUtil::path_of(this));
 }
 
+Dictionary NNHTNNodes::_condition_args(const Dictionary &p_args) const {
+	for (int i = 0; i < _conditions.size(); i++) {
+		Ref<NNHTNCondition> condition = _conditions[i];
+		if (condition.is_valid() && condition->get_reads_args()) {
+			return NNExpressionUtil::read_only_copy(p_args);
+		}
+	}
+	Dictionary unread;
+	unread.make_read_only();
+	return unread;
+}
+
 bool NNHTNNodes::check_preconditions(const NNHTNStateView &p_state, const Dictionary &p_args, Dictionary *r_failure) const {
 	if (!_conditions.is_empty()) {
-		const Dictionary &state = p_state.get_read_only_state();
-		const Dictionary args = NNExpressionUtil::read_only_copy(p_args);
+		const Dictionary args = _condition_args(p_args);
 		for (int i = 0; i < _conditions.size(); i++) {
 			Ref<NNHTNCondition> condition = _conditions[i];
 			if (condition.is_null()) {
 				ERR_PRINT(vformat("%s: conditions[%d] is empty; the node is unavailable.", _describe(), i));
 				return _fail_precondition(r_failure, String(), i);
 			}
-			if (!condition->evaluate_read_only(state, args)) {
+			if (!condition->evaluate_read_only(p_state, args)) {
 				return _fail_precondition(r_failure, condition->get_expression(), i);
 			}
 		}

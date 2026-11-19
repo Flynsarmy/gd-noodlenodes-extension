@@ -9,6 +9,8 @@
 
 namespace godot {
 
+class NNHTNStateView;
+
 class NNHTNCondition : public Resource {
 	GDCLASS(NNHTNCondition, Resource)
 
@@ -18,6 +20,7 @@ private:
 	PackedStringArray _input_names;
 	String _parse_error;
 	NNCachedExpression _cache;
+	bool _reads_args = false;
 	bool _parse_error_reported = false;
 	bool _evaluation_error_reported = false;
 
@@ -37,11 +40,13 @@ public:
 	String get_expression() const;
 
 	PackedStringArray get_read_keys() const;
+	// Whether the expression reads the args input, and so needs sealed args.
+	bool get_reads_args() const;
 	String get_parse_error() const;
 
 	bool evaluate(const Dictionary &p_state, const Dictionary &p_args);
-	// Evaluates without copying; p_state and p_args must be entirely read-only.
-	bool evaluate_read_only(const Dictionary &p_state, const Dictionary &p_args);
+	// Evaluates without copying; p_state seals what it is asked for and p_args must already be read-only.
+	bool evaluate_read_only(const NNHTNStateView &p_state, const Dictionary &p_args);
 };
 
 } //namespace godot
