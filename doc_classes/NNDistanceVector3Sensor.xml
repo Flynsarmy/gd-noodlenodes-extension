@@ -9,7 +9,7 @@
 	</tutorials>
 	<members>
 		<member name="direction_vector" type="Vector3" setter="set_direction_vector" getter="get_direction_vector" default="Vector3(0, 0, 0)">
-			Optionally calculated direction vector. Requires [member is_direction_vector_calculated] to be [code]true[/code]
+			The normalised [member from_to_vector]. Requires [member is_direction_vector_calculated] to be [code]true[/code]. A zero vector when [member from_vector] and [member to_vector] are equal.
 		</member>
 		<member name="distance" type="float" setter="set_distance" getter="get_distance" default="0.0">
 			Optionally calculated non-squared distance. Requires [member is_distance_calculated] to be [code]true[/code]

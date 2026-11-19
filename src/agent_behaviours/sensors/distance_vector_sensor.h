@@ -24,7 +24,7 @@ public:
 			distance = Math::sqrt(distance_squared);
 		}
 		if (is_direction_vector_calculated) {
-			direction_vector = from_to_vector / distance;
+			direction_vector = distance > 0.0f ? from_to_vector / distance : TVector();
 		}
 		return distance_squared * one_over_max_distance_squared;
 	}

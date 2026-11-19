@@ -36,3 +36,16 @@ func test_distance_and_direction_are_only_calculated_when_enabled() -> void:
 	_sensor.is_direction_vector_calculated = true
 	_root.tick(0.1)
 	assert_true(_sensor.direction_vector.is_equal_approx(Vector3(-0.6, -0.8, 0.0)))
+
+
+func test_direction_is_zero_when_the_vectors_are_equal() -> void:
+	var _sensor: NNDistanceVector2Sensor = NNDistanceVector2Sensor.new()
+	var _root := Fixtures.add_manual_st_root(self)
+	_root.add_child(_sensor)
+	_sensor.is_direction_vector_calculated = true
+	_sensor.from_vector = Vector2(2.0, 3.0)
+	_sensor.to_vector = Vector2(2.0, 3.0)
+
+	_root.tick(0.1)
+
+	assert_eq(_sensor.direction_vector, Vector2.ZERO)
