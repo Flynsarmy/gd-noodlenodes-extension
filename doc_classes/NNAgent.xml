@@ -139,7 +139,7 @@
 		<signal name="action_exited">
 			<param index="0" name="action_node" type="Object" />
 			<description>
-				Emitted when the current action exits during a update_current_behaviour call.
+				Emitted when the agent ends the current action itself: when the behaviour is deselected or aborted, when no candidate behaviour is left, or when the tracked action was freed or reparented away. An action that finishes normally during [method update_current_behaviour] is ended without this signal, which [signal action_changed] reports instead.
 			</description>
 		</signal>
 		<signal name="behaviour_changed">
