@@ -1,5 +1,6 @@
 #pragma once
 
+#include "angle_range.h"
 #include "nqs.h"
 
 namespace godot {
@@ -8,14 +9,7 @@ class NNAngleToVector3SearchCriterion : public NNNQSSearchCriteria {
 	GDCLASS(NNAngleToVector3SearchCriterion, NNNQSSearchCriteria)
 
 private:
-	float _min_angle_degrees;
-	float _max_angle_degrees;
-
-	float _min_angle_radians;
-	float _max_angle_radians;
-
-	float _span_radians;
-	float _one_over_span_radians;
+	NNAngleRange _angle_range;
 
 	Vector3 _angle_to_direction_vector;
 

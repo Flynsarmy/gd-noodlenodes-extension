@@ -3,11 +3,8 @@
 
 using namespace godot;
 
-NNAngleToVector3XZSearchCriterion::NNAngleToVector3XZSearchCriterion() {
-	_min_angle_degrees = -90.0;
-	_max_angle_degrees = 90.0;
-	_min_angle_radians = godot::Math::deg_to_rad(_min_angle_degrees);
-	_max_angle_radians = godot::Math::deg_to_rad(_max_angle_degrees);
+NNAngleToVector3XZSearchCriterion::NNAngleToVector3XZSearchCriterion() :
+		_angle_range(-90.0f, 90.0f) {
 	_angle_to_direction_vector = Vector3(0.0, 0.0, -1.0);
 	_xz_angle_vector = _project_direction_to_xz(_angle_to_direction_vector);
 }
@@ -30,17 +27,7 @@ void NNAngleToVector3XZSearchCriterion::_bind_methods() {
 }
 
 void NNAngleToVector3XZSearchCriterion::_initialize_criterion() {
-	if (_max_angle_degrees <= _min_angle_degrees) {
-		_max_angle_degrees = _min_angle_degrees + 1.0f;
-		if (_max_angle_degrees > 180.0f) {
-			_max_angle_degrees = 180.0f;
-			_min_angle_degrees = 179.0f;
-		}
-	}
-	_max_angle_radians = godot::Math::deg_to_rad(_max_angle_degrees);
-	_min_angle_radians = godot::Math::deg_to_rad(_min_angle_degrees);
-	_span_radians = _max_angle_radians - _min_angle_radians;
-	_one_over_span_radians = 1.0f / _span_radians;
+	_angle_range.initialize(true);
 }
 
 Vector2 NNAngleToVector3XZSearchCriterion::_project_direction_to_xz(Vector3 direction) const {
@@ -63,30 +50,19 @@ Vector3 NNAngleToVector3XZSearchCriterion::get_angle_to_direction_vector() const
 }
 
 void NNAngleToVector3XZSearchCriterion::set_min_angle_degrees(float min_angle_degrees) {
-	if (_min_angle_degrees < -180.0f)
-		return;
-
-	_min_angle_degrees = min_angle_degrees;
-	_min_angle_radians = godot::Math::deg_to_rad(_min_angle_degrees);
-	_span_radians = _max_angle_radians - _min_angle_radians;
-	_one_over_span_radians = 1.0f / _span_radians;
+	_angle_range.set_min_degrees(min_angle_degrees);
 }
 
 float NNAngleToVector3XZSearchCriterion::get_min_angle_degrees() const {
-	return _min_angle_degrees;
+	return _angle_range.get_min_degrees();
 }
 
 void NNAngleToVector3XZSearchCriterion::set_max_angle_degrees(float max_angle_degrees) {
-	if (max_angle_degrees > 180.0f)
-		return;
-	_max_angle_degrees = max_angle_degrees;
-	_max_angle_radians = godot::Math::deg_to_rad(_max_angle_degrees);
-	_span_radians = _max_angle_radians - _min_angle_radians;
-	_one_over_span_radians = 1.0f / _span_radians;
+	_angle_range.set_max_degrees(max_angle_degrees);
 }
 
 float NNAngleToVector3XZSearchCriterion::get_max_angle_degrees() const {
-	return _max_angle_degrees;
+	return _angle_range.get_max_degrees();
 }
 
 // Handing methods.
@@ -105,18 +81,11 @@ void NNAngleToVector3XZSearchCriterion::apply_criterion(Node *node, bool &filter
 	float angle = _xz_angle_vector.angle_to(node3d_2d_direction_vector);
 
 	if (get_use_for_filtering()) {
-		_is_filtered = (angle < _min_angle_radians || angle > _max_angle_radians);
+		_is_filtered = _angle_range.filters(angle);
 	} //endif do filtering
 
 	if (get_use_for_scoring()) {
-		if (angle >= _max_angle_radians) {
-			_score = 1.0f;
-		} else if (angle <= _min_angle_radians) {
-			_score = 0.0f;
-		} else {
-			float angle_from_lower_limit = angle - _min_angle_radians;
-			_score = angle_from_lower_limit * _one_over_span_radians;
-		}
+		_score = _angle_range.score(angle);
 		if (get_activation_curve().is_valid()) {
 			_score = sample_activation_curve(_score);
 		}

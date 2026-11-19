@@ -3,11 +3,8 @@
 
 using namespace godot;
 
-NNAngleToVector3SearchCriterion::NNAngleToVector3SearchCriterion() {
-	_min_angle_degrees = 0.0f;
-	_max_angle_degrees = 90.0f;
-	_min_angle_radians = godot::Math::deg_to_rad(_min_angle_degrees);
-	_max_angle_radians = godot::Math::deg_to_rad(_max_angle_degrees);
+NNAngleToVector3SearchCriterion::NNAngleToVector3SearchCriterion() :
+		_angle_range(0.0f, 90.0f) {
 	_angle_to_direction_vector = Vector3(0.0, 0.0, -1.0);
 }
 
@@ -29,18 +26,7 @@ void NNAngleToVector3SearchCriterion::_bind_methods() {
 }
 
 void NNAngleToVector3SearchCriterion::_initialize_criterion() {
-	if (_max_angle_degrees <= _min_angle_degrees) {
-		_max_angle_degrees = _min_angle_degrees + 1.0f;
-		if (_max_angle_degrees > 180.0f) {
-			_max_angle_degrees = 180.0f;
-			_min_angle_degrees = 179.0f;
-		}
-	}
-	_max_angle_radians = godot::Math::deg_to_rad(_max_angle_degrees);
-	_min_angle_radians = godot::Math::deg_to_rad(_min_angle_degrees);
-
-	_span_radians = _max_angle_radians - _min_angle_radians;
-	_one_over_span_radians = 1.0f / _span_radians;
+	_angle_range.initialize(true);
 }
 
 // Getters and setters.
@@ -54,30 +40,19 @@ Vector3 NNAngleToVector3SearchCriterion::get_angle_to_direction_vector() const {
 }
 
 void NNAngleToVector3SearchCriterion::set_min_angle_degrees(float min_angle_degrees) {
-	if (_min_angle_degrees < -180.0f)
-		return;
-
-	_min_angle_degrees = min_angle_degrees;
-	_min_angle_radians = godot::Math::deg_to_rad(_min_angle_degrees);
-	_span_radians = _max_angle_radians - _min_angle_radians;
-	_one_over_span_radians = 1.0f / _span_radians;
+	_angle_range.set_min_degrees(min_angle_degrees);
 }
 
 float NNAngleToVector3SearchCriterion::get_min_angle_degrees() const {
-	return _min_angle_degrees;
+	return _angle_range.get_min_degrees();
 }
 
 void NNAngleToVector3SearchCriterion::set_max_angle_degrees(float max_angle_degrees) {
-	if (max_angle_degrees > 180.0f)
-		return;
-	_max_angle_degrees = max_angle_degrees;
-	_max_angle_radians = godot::Math::deg_to_rad(_max_angle_degrees);
-	_span_radians = _max_angle_radians - _min_angle_radians;
-	_one_over_span_radians = 1.0f / _span_radians;
+	_angle_range.set_max_degrees(max_angle_degrees);
 }
 
 float NNAngleToVector3SearchCriterion::get_max_angle_degrees() const {
-	return _max_angle_degrees;
+	return _angle_range.get_max_degrees();
 }
 
 // Handing methods.
@@ -95,18 +70,11 @@ void NNAngleToVector3SearchCriterion::apply_criterion(Node *node, bool &filter_o
 	float angle = _angle_to_direction_vector.angle_to(node3d_direction_vector);
 
 	if (get_use_for_filtering()) {
-		_is_filtered = (angle < _min_angle_radians || angle > _max_angle_radians);
+		_is_filtered = _angle_range.filters(angle);
 	} //endif do filtering
 
 	if (get_use_for_scoring()) {
-		if (angle >= _max_angle_radians) {
-			_score = 1.0f;
-		} else if (angle <= _min_angle_radians) {
-			_score = 0.0f;
-		} else {
-			float angle_from_lower_limit = angle - _min_angle_radians;
-			_score = angle_from_lower_limit * _one_over_span_radians;
-		}
+		_score = _angle_range.score(angle);
 		if (get_activation_curve().is_valid()) {
 			_score = sample_activation_curve(_score);
 		}
