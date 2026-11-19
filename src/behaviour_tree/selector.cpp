@@ -8,55 +8,18 @@ using namespace godot;
 // Method binds.
 
 void NNBTSelector::_bind_methods() {
-	ClassDB::bind_method(D_METHOD("set_reactive", "reactive"), &NNBTSelector::set_reactive);
-	ClassDB::bind_method(D_METHOD("get_reactive"), &NNBTSelector::get_reactive);
+	// godot-cpp binds a method under the class that declares it, and the shared
+	// accessors live in an unregistered base, so bind them through this class.
+	ClassDB::bind_method(D_METHOD("set_reactive", "reactive"), static_cast<void (NNBTSelector::*)(bool)>(&NNBTSelector::set_reactive));
+	ClassDB::bind_method(D_METHOD("get_reactive"), static_cast<bool (NNBTSelector::*)() const>(&NNBTSelector::get_reactive));
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "reactive", PROPERTY_HINT_NONE), "set_reactive", "get_reactive");
 }
 
 // Constructor and destructor.
 
-NNBTSelector::NNBTSelector() {
-	_current_child_index = 0;
-	_is_reactive = false;
+NNBTSelector::NNBTSelector() :
+		NNBTOrderedComposite(Status::SUCCESS, Status::FAILURE) {
 }
 
 NNBTSelector::~NNBTSelector() {
-}
-
-// Handling functions.
-
-// Getters and Setters.
-
-void NNBTSelector::set_reactive(bool p_reactive) {
-	_is_reactive = p_reactive;
-}
-
-bool NNBTSelector::get_reactive() const {
-	return _is_reactive;
-}
-
-void NNBTSelector::_on_before_run(float delta) {
-	_current_child_index = 0;
-}
-
-NNBTNodes::Status NNBTSelector::_tick(float delta) {
-	// A reactive selector re-evaluates from the first child on every tick
-	// instead of resuming from the child already in progress.
-	if (_is_reactive) {
-		_current_child_index = 0;
-	}
-	while (_current_child_index < (int)_child_btnodes.size()) {
-		NNBTNodes *btnode = _child_btnodes[_current_child_index];
-		if (btnode->get_is_enabled()) {
-			Status result = btnode->tick(delta);
-			if (result == Status::SUCCESS) {
-				return Status::SUCCESS;
-			} else if (result == Status::RUNNING) {
-				_interrupt_other_active_children(btnode);
-				return Status::RUNNING;
-			}
-		} //endif is active
-		++_current_child_index;
-	} //endwhile children to tick
-	return Status::FAILURE;
 }
