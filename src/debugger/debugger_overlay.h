@@ -60,6 +60,7 @@ private:
 	uint64_t _registry_revision;
 	int _rendered_type_selection;
 	uint64_t _rendered_registry_revision;
+	uint64_t _refresh_timestamp;
 
 	Control *_get_overlay_scene() const;
 	bool _bind_overlay_view(Control *overlay);

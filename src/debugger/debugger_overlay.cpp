@@ -75,6 +75,7 @@ NNDebuggerOverlay::NNDebuggerOverlay() {
 	_registry_revision = 0;
 	_rendered_type_selection = -2;
 	_rendered_registry_revision = 0;
+	_refresh_timestamp = 0;
 }
 
 NNDebuggerOverlay::~NNDebuggerOverlay() {
@@ -607,6 +608,7 @@ void NNDebuggerOverlay::_refresh_selected_root_view() {
 
 	NNHostedRoot *hosted_root = _hosted_root_of(root);
 	bool path_open = hosted_root == nullptr || hosted_root->is_active();
+	_refresh_timestamp = godot::Time::get_singleton()->get_ticks_usec();
 	std::vector<Node *> targets;
 	if (path_open) {
 		_collect_active_targets(root, targets);
@@ -660,12 +662,11 @@ bool NNDebuggerOverlay::_apply_node_row(TreeItem *item, Node *node, bool p_path_
 	item->set_text(1, status_text);
 	item->set_text(2, String::num((double)score, 2));
 
-	uint64_t current_timestamp = godot::Time::get_singleton()->get_ticks_usec();
-	uint64_t tick_time_diff = current_timestamp - tick_timestamp;
+	uint64_t tick_time_diff = _refresh_timestamp - tick_timestamp;
 	if (tick_time_diff > 1000000) {
 		tick_time_diff = 1000000;
 	}
-	uint64_t eval_time_diff = current_timestamp - eval_timestamp;
+	uint64_t eval_time_diff = _refresh_timestamp - eval_timestamp;
 	if (eval_time_diff > 1000000) {
 		eval_time_diff = 1000000;
 	}
