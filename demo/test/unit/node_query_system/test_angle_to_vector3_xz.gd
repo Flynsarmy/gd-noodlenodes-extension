@@ -1,20 +1,12 @@
 extends GutTest
 @warning_ignore('return_value_discarded')
 
+const NqsHelpers = preload("res://test/unit/node_query_system/support/nqs_helpers.gd")
+
 # The criterion uses Godot's -Z forward convention and projects both directions
 # with (-z, x), so with the default -Z reference rotation.y = -PI/4 is +45 degrees.
 
-const GENEROUS_BUDGET_USEC := 100000
-const MAX_RUN_QUERIES_CALLS := 100
 const SCORE_EPSILON := 0.0001
-
-
-func _make_nqs() -> NNNodeQuerySystem:
-	var nqs: NNNodeQuerySystem = autofree(NNNodeQuerySystem.new())
-	nqs.run_queries_time_budget_per_frame_usec = GENEROUS_BUDGET_USEC
-	nqs.high_priority_query_per_frame_execute_query_time_budget_usec = GENEROUS_BUDGET_USEC
-	nqs.regular_query_per_frame_execute_query_time_budget_usec = GENEROUS_BUDGET_USEC
-	return nqs
 
 
 func _make_candidate(container: Node, candidate_name: String, y_rotation: float) -> Node3D:
@@ -30,25 +22,6 @@ func _snap_forward(candidate: Node3D, forward: Vector3) -> void:
 	# residue of about 6e-17 in the basis, which would put an otherwise aligned
 	# node just outside an inclusive range boundary of exactly 0 degrees.
 	candidate.basis = Basis.looking_at(forward)
-
-
-func _make_query(container: Node, criterion: NNAngleToVector3XZSearchCriterion, top_n: int) -> NNNodeChildrenSearchSpace:
-	var query: NNNodeChildrenSearchSpace = NNNodeChildrenSearchSpace.new()
-	query.parent_node = container
-	query.top_n_to_find = top_n
-	query.add_child(criterion)
-	add_child_autofree(query)
-	return query
-
-
-func _run_to_completion(nqs: NNNodeQuerySystem, query: NNNodeChildrenSearchSpace) -> void:
-	assert_eq(nqs.post_query(query, true), 1, "The test query must be posted.")
-	var calls: int = 0
-	while query.is_query_still_running and calls < MAX_RUN_QUERIES_CALLS:
-		nqs.run_queries()
-		calls += 1
-	assert_false(query.is_query_still_running, "The query must complete with a generous budget.")
-	assert_lt(calls, MAX_RUN_QUERIES_CALLS, "The query must not spin across frames.")
 
 
 func _result_names(query: NNNodeChildrenSearchSpace) -> Array:
@@ -68,9 +41,8 @@ func test_default_reference_selects_aligned_node_not_opposite() -> void:
 	criterion.use_for_filtering = true
 	criterion.use_for_scoring = false
 
-	var query: NNNodeChildrenSearchSpace = _make_query(container, criterion, 2)
-	var nqs: NNNodeQuerySystem = _make_nqs()
-	_run_to_completion(nqs, query)
+	var query: NNNodeChildrenSearchSpace = NqsHelpers.make_query(self, container, criterion, 2)
+	NqsHelpers.run_to_completion(self, NqsHelpers.make_nqs(self), query)
 
 	assert_eq(_result_names(query), ["aligned"], "An identity Node3D faces the default -Z reference; the PI rotation faces away.")
 
@@ -85,9 +57,8 @@ func test_rotated_reference_selects_facing_node() -> void:
 	criterion.use_for_filtering = true
 	criterion.use_for_scoring = false
 
-	var query: NNNodeChildrenSearchSpace = _make_query(container, criterion, 2)
-	var nqs: NNNodeQuerySystem = _make_nqs()
-	_run_to_completion(nqs, query)
+	var query: NNNodeChildrenSearchSpace = NqsHelpers.make_query(self, container, criterion, 2)
+	NqsHelpers.run_to_completion(self, NqsHelpers.make_nqs(self), query)
 
 	assert_eq(_result_names(query), ["aligned"], "With a +X reference, only the node facing +X is within the default -90..90 range.")
 
@@ -105,9 +76,8 @@ func test_positive_range_selects_the_positive_side_of_a_rotated_reference() -> v
 	criterion.use_for_filtering = true
 	criterion.use_for_scoring = false
 
-	var query: NNNodeChildrenSearchSpace = _make_query(container, criterion, 3)
-	var nqs: NNNodeQuerySystem = _make_nqs()
-	_run_to_completion(nqs, query)
+	var query: NNNodeChildrenSearchSpace = NqsHelpers.make_query(self, container, criterion, 3)
+	NqsHelpers.run_to_completion(self, NqsHelpers.make_nqs(self), query)
 
 	assert_eq(_result_names(query), ["aligned", "positive_45"], "0..90 degrees keeps the aligned node and the +45 degree side only.")
 
@@ -125,9 +95,8 @@ func test_negative_range_selects_the_negative_side_of_a_rotated_reference() -> v
 	criterion.use_for_filtering = true
 	criterion.use_for_scoring = false
 
-	var query: NNNodeChildrenSearchSpace = _make_query(container, criterion, 3)
-	var nqs: NNNodeQuerySystem = _make_nqs()
-	_run_to_completion(nqs, query)
+	var query: NNNodeChildrenSearchSpace = NqsHelpers.make_query(self, container, criterion, 3)
+	NqsHelpers.run_to_completion(self, NqsHelpers.make_nqs(self), query)
 
 	assert_eq(_result_names(query), ["aligned", "negative_45"], "-90..0 degrees keeps the aligned node and the -45 degree side only.")
 
@@ -145,9 +114,8 @@ func test_signed_scoring_for_a_rotated_reference() -> void:
 	criterion.use_for_filtering = false
 	criterion.use_for_scoring = true
 
-	var query: NNNodeChildrenSearchSpace = _make_query(container, criterion, 3)
-	var nqs: NNNodeQuerySystem = _make_nqs()
-	_run_to_completion(nqs, query)
+	var query: NNNodeChildrenSearchSpace = NqsHelpers.make_query(self, container, criterion, 3)
+	NqsHelpers.run_to_completion(self, NqsHelpers.make_nqs(self), query)
 
 	var expected_scores := {
 		"negative_45": 0.25,
@@ -190,16 +158,11 @@ func test_2d_criterion_defaults_to_a_signed_90_degree_window() -> void:
 	opposite.rotation = PI
 	container.add_child(opposite)
 
-	var criterion: NNAngleToVector2SearchCriterion = autofree(NNAngleToVector2SearchCriterion.new())
+	var criterion: NNAngleToVector2SearchCriterion = NNAngleToVector2SearchCriterion.new()
 	criterion.use_for_filtering = true
 
-	var query: NNNodeChildrenSearchSpace = NNNodeChildrenSearchSpace.new()
-	query.parent_node = container
-	query.top_n_to_find = 2
-	query.add_child(criterion)
-	add_child_autofree(query)
-
-	_run_to_completion(_make_nqs(), query)
+	var query: NNNodeChildrenSearchSpace = NqsHelpers.make_query(self, container, criterion, 2)
+	NqsHelpers.run_to_completion(self, NqsHelpers.make_nqs(self), query)
 
 	assert_eq(_result_names(query), ["aligned"], "Only the node facing the default +X reference is within -90..90 degrees.")
 	assert_almost_eq(query.get_query_result_scores()[0], 0.5, SCORE_EPSILON, "Zero degrees sits in the middle of the -90..90 window.")

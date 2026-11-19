@@ -2,12 +2,14 @@ extends GutTest
 @warning_ignore('unused_parameter')
 @warning_ignore('return_value_discarded')
 
+const NqsHelpers = preload("res://test/unit/node_query_system/support/nqs_helpers.gd")
+
 const HIGH_PRIORITY := true
 const REGULAR_PRIORITY := false
 
 
 func _make_query_system() -> NNNodeQuerySystem:
-	return autofree(NNNodeQuerySystem.new())
+	return NqsHelpers.make_nqs(self)
 
 
 func _make_search_space() -> NNNodeChildrenSearchSpace:
@@ -36,38 +38,23 @@ func _assert_stopped(search_spaces: Array) -> void:
 		assert_false(search_space.get_is_query_still_running())
 
 
-func test_clear_unregisters_high_priority_query_and_allows_repost() -> void:
-	var nqs: NNNodeQuerySystem = _make_query_system()
-	var query: NNNodeChildrenSearchSpace = _make_search_space()
+func test_clear_unregisters_every_query_and_allows_repost_at_both_priorities() -> void:
+	for is_high_priority in [HIGH_PRIORITY, REGULAR_PRIORITY]:
+		var nqs: NNNodeQuerySystem = _make_query_system()
+		var query: NNNodeChildrenSearchSpace = _make_search_space()
 
-	assert_eq(nqs.post_query(query, HIGH_PRIORITY), 1)
-	assert_true(query.get_is_query_still_running())
+		assert_eq(nqs.post_query(query, is_high_priority), 1)
+		assert_true(query.get_is_query_still_running())
 
-	nqs.clear_queries()
+		nqs.clear_queries()
+		nqs.clear_queries()
 
-	_assert_stopped([query])
-	assert_false(nqs.stop_query(query), "Stopping a cleared query should be a no-op")
+		_assert_stopped([query])
+		assert_false(nqs.stop_query(query), "Stopping a cleared query should be a no-op")
 
-	assert_eq(nqs.post_query(query, HIGH_PRIORITY), 1)
-	assert_true(query.get_is_query_still_running())
-	nqs.clear_queries()
-
-
-func test_clear_unregisters_regular_priority_query_and_allows_repost() -> void:
-	var nqs: NNNodeQuerySystem = _make_query_system()
-	var query: NNNodeChildrenSearchSpace = _make_search_space()
-
-	assert_eq(nqs.post_query(query, REGULAR_PRIORITY), 1)
-	assert_true(query.get_is_query_still_running())
-
-	nqs.clear_queries()
-
-	_assert_stopped([query])
-	assert_false(nqs.stop_query(query), "Stopping a cleared query should be a no-op")
-
-	assert_eq(nqs.post_query(query, REGULAR_PRIORITY), 1)
-	assert_true(query.get_is_query_still_running())
-	nqs.clear_queries()
+		assert_eq(nqs.post_query(query, is_high_priority), 1)
+		assert_true(query.get_is_query_still_running())
+		nqs.clear_queries()
 
 
 func test_clear_unregisters_all_queries_across_priorities() -> void:
@@ -95,22 +82,6 @@ func test_clear_unregisters_all_queries_across_priorities() -> void:
 		assert_false(
 				search_space.get_is_query_still_running(),
 				"Reposted queries should be able to run to completion")
-	nqs.clear_queries()
-
-
-func test_clear_is_idempotent() -> void:
-	var nqs: NNNodeQuerySystem = _make_query_system()
-	var query: NNNodeChildrenSearchSpace = _make_search_space()
-
-	assert_eq(nqs.post_query(query, HIGH_PRIORITY), 1)
-	nqs.clear_queries()
-	nqs.clear_queries()
-
-	_assert_stopped([query])
-	assert_false(nqs.stop_query(query))
-
-	assert_eq(nqs.post_query(query, HIGH_PRIORITY), 1)
-	assert_true(query.get_is_query_still_running())
 	nqs.clear_queries()
 
 
