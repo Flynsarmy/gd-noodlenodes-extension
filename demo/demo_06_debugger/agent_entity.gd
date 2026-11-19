@@ -10,6 +10,14 @@ extends AnimatedSprite2D
 
 var movement_speed := 0.0
 
+var _boxes: Array[Node2D] = []
+
+
+func _ready() -> void:
+	for box in get_tree().get_nodes_in_group("avoider_box"):
+		if box is Node2D:
+			_boxes.append(box)
+
 
 func _physics_process(delta: float) -> void:
 	mouse_sensor.from_vector = global_position
@@ -46,17 +54,12 @@ func _on_nn_agent_behaviour_changed(behaviour_node: NNBehaviour) -> void:
 
 # Returns the global position of the closest box the agent should avoid.
 func _get_closest_box_pos() -> Vector2:
-	var boxes: Array[Node] = get_tree().get_nodes_in_group("avoider_box")
-
 	var min_dist := 9999.0
 	var closest := global_position
-	for box in boxes:
-		var box_node := box as Node2D
-		if box_node == null:
-			continue
-		var dist := box_node.global_position.distance_to(global_position)
+	for box in _boxes:
+		var dist := box.global_position.distance_to(global_position)
 		if dist < min_dist:
 			min_dist = dist
-			closest = box_node.global_position
+			closest = box.global_position
 
 	return closest

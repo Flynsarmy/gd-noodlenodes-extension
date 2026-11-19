@@ -6,6 +6,14 @@ extends AnimatedSprite2D
 @onready var box_sensor: NNDistanceVector2Sensor = $NNAgent/BoxSensor
 var movement_speed: float = 0.0
 
+var _boxes: Array[MeshInstance2D] = []
+
+
+func _ready() -> void:
+	for box in get_tree().get_nodes_in_group('avoider_box'):
+		if box is MeshInstance2D:
+			_boxes.append(box)
+
 
 func _physics_process(delta: float) -> void:
 	mouse_sensor.from_vector = global_position
@@ -42,12 +50,9 @@ func _on_nn_agent_behaviour_changed(behaviour_node: NNBehaviour) -> void:
 
 # Returns global position of closest box
 func _get_closest_box_pos() -> Vector2:
-	var boxes: Array[Node] = get_tree().get_nodes_in_group('avoider_box')
-
 	var min_dist: float = 9999
 	var closest: Vector2
-	for box in boxes:
-		box = box as MeshInstance2D
+	for box in _boxes:
 		var dist: float = box.global_position.distance_to(global_position)
 		if dist < min_dist:
 			min_dist = dist
