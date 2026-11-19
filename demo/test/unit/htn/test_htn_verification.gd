@@ -71,6 +71,22 @@ func test_the_runner_bounds_a_hook_that_keeps_returning_running_and_zero_means_o
 	assert_false(board.has_value("done"))
 
 
+func test_a_verification_the_task_declares_unsafe_fails_without_committing_effects() -> void:
+	var hooked: NNHTNTask = _verified(Domain.task(main, "Hooked", {"done": true}, [], VerifyHookTask), [], 5.0)
+	hooked.can_continue = false
+	watch_signals(hooked)
+
+	root.tick(0.1)
+	root.tick(0.1)
+
+	var step: NNHTNPlanStep = hooked.executed_steps[0]
+	assert_eq(step.state, NNHTNPlanStep.FAILED)
+	assert_eq(step.failure_reason, "verification_unsafe")
+	assert_false(board.has_value("done"))
+	assert_eq(hooked.cancelled_steps, [], "a failed occurrence is not cancelled")
+	assert_signal_emit_count(hooked, "failed", 1)
+
+
 func test_an_invalid_verify_result_fails_the_occurrence() -> void:
 	var hooked: NNHTNTask = _verified(Domain.task(main, "Hooked", {"done": true}, [], VerifyHookTask), [], 5.0)
 	hooked.verify_result = 7

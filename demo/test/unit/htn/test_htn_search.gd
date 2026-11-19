@@ -68,9 +68,7 @@ func test_argument_candidates_are_retried_in_order_when_a_later_sibling_fails() 
 
 
 func test_calls_inherit_arguments_merge_literal_overrides_and_do_not_leak_to_siblings() -> void:
-	var templates := Node.new()
-	templates.name = "Templates"
-	root.add_child(templates)
+	var templates := Domain.templates(root)
 	var go := Domain.task(templates, "Go")
 	var travel := Domain.compound(templates, "Travel")
 	Domain.subtask_call(Domain.method(travel, "Walk"), "CallInner", go, {"target": "near"})
@@ -206,12 +204,7 @@ func test_invalid_hook_results_reject_the_branch() -> void:
 
 
 func test_predicted_effects_must_satisfy_the_blackboard_schema() -> void:
-	var hp := NNBlackboardKey.new()
-	hp.key = "hp"
-	hp.value_type = TYPE_INT
-	var schema := NNBlackboardSchema.new()
-	schema.keys.append(hp)
-	root.get_blackboard_resource().schema = schema
+	root.get_blackboard_resource().schema = Domain.typed_schema("hp", TYPE_INT)
 	var domain := Domain.compound(root, "Domain")
 	Domain.task(Domain.method(domain, "WrongType"), "Heal", {"hp": "full"})
 	Domain.task(Domain.method(domain, "Fallback"), "Rest", {"hp": 100})

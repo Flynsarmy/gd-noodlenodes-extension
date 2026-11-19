@@ -5,15 +5,14 @@ const Domain = preload("res://test/unit/htn/support/htn_domain.gd")
 var root: NNHTNRoot
 var board: NNBlackboard
 var domain: NNHTNCompoundTask
-var searches := 0
+var searches: Domain.SearchCounter
 
 
 func before_each() -> void:
-	searches = 0
 	root = Domain.make_root()
 	add_child_autofree(root)
 	root.execution_settings = Domain.execution(NNHTNExecutionSettings.IMMEDIATE, true)
-	root.search_finished.connect(func(_status: int, _expansions: int, _cost: float, _optimal: bool) -> void: searches += 1)
+	searches = Domain.SearchCounter.new(root)
 	board = root.get_blackboard_resource()
 	board.set_value("prefix_done", false)
 	domain = Domain.compound(root, "Domain")
@@ -61,14 +60,14 @@ func test_an_incompatible_suffix_backtracks_into_another_local_alternative() -> 
 	var arrive := Domain.task(main, "Arrive", {}, ["bridge_up or via == \"ford\""])
 	root.tick(0.1)
 	assert_eq(bridge.executed_steps.size(), 1)
-	searches = 0
+	searches.reset()
 
 	root.tick(0.1)
 
 	var repair := root.get_last_repair_result()
 	assert_true(repair.succeeded)
 	assert_eq(repair.boundary, "Domain/Main/Go/Bridge")
-	assert_eq(searches, 1, "the repair search alone found the plan")
+	assert_eq(searches.count, 1, "the repair search alone found the plan")
 	assert_eq(bridge.executed_steps.size(), 1, "the bridge alternative no longer fits the kept Arrive")
 	assert_eq(ford.executed_steps.size(), 1)
 	assert_eq(arrive.executed_steps.size(), 1)

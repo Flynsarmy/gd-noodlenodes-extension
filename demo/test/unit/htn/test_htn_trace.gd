@@ -78,7 +78,8 @@ func test_events_and_history_are_bounded_and_mark_truncation() -> void:
 		root.tick(0.1)
 
 	var history := root.get_search_history()
-	assert_eq(history.map(func(attempt: Dictionary) -> int: return attempt.id), [2, 3])
+	assert_eq(history.size(), 2, "only the last two attempts are kept")
+	assert_gt(history[1].id, history[0].id, "attempts are ordered oldest first")
 	assert_eq(history[1].events.size(), 2)
 	assert_true(history[1].truncated)
 

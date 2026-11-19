@@ -11,9 +11,7 @@ func before_each() -> void:
 
 
 func test_the_only_direct_compound_child_is_the_domain() -> void:
-	var templates := Node.new()
-	templates.name = "Templates"
-	root.add_child(templates)
+	var templates := Domain.templates(root)
 	Domain.task(Domain.method(Domain.compound(templates, "Template"), "Unused"), "NotThis")
 	Domain.task(Domain.method(Domain.compound(root, "Domain"), "Main"), "This")
 
@@ -74,9 +72,33 @@ func test_invalid_execution_settings_fail_closed() -> void:
 	assert_signal_not_emitted(root, "plan_set")
 
 
+func test_a_budget_exhausted_search_without_a_plan_reports_no_run_outcome() -> void:
+	var main := Domain.method(Domain.compound(root, "Domain"), "Main")
+	for task_name in ["A", "B", "C"]:
+		Domain.task(main, task_name)
+	root.search_settings = Domain.settings(NNHTNSearchSettings.ORDERED, 2)
+	watch_signals(root)
+
+	root.tick(0.1)
+
+	assert_eq(root.get_last_search_status(), NNHTNRoot.BUDGET_EXHAUSTED)
+	assert_signal_not_emitted(root, "finished", "a cutoff proves nothing about the run")
+
+
+func test_an_invalid_configuration_reports_a_failed_run_on_every_blocked_tick() -> void:
+	watch_signals(root)
+
+	root.tick(0.1)
+	root.tick(0.1)
+
+	assert_engine_error("The root has no domain")
+	assert_signal_emit_count(root, "finished", 2)
+	assert_signal_emitted_with_parameters(root, "finished", [false])
+
+
 func test_freeing_the_actor_from_plan_finished_is_safe() -> void:
 	var actor := Node.new()
-	add_child(actor)
+	add_child_autofree(actor)
 	var owned := Domain.make_root()
 	actor.add_child(owned)
 	Domain.task(Domain.method(Domain.compound(owned, "Domain"), "Main"), "Act")

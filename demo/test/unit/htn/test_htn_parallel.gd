@@ -7,14 +7,13 @@ var root: NNHTNRoot
 var board: NNBlackboard
 var domain: NNHTNCompoundTask
 var main: NNHTNMethod
-var searches := 0
+var searches: Domain.SearchCounter
 
 
 func before_each() -> void:
-	searches = 0
 	root = Domain.make_root()
 	add_child_autofree(root)
-	root.search_finished.connect(func(_status: int, _expansions: int, _cost: float, _optimal: bool) -> void: searches += 1)
+	searches = Domain.SearchCounter.new(root)
 	board = root.get_blackboard_resource()
 	domain = Domain.compound(root, "Domain")
 	main = Domain.method(domain, "Main")
@@ -109,6 +108,38 @@ func test_conflicting_writes_reject_the_group_even_when_the_values_are_equal() -
 	assert_has(reasons, "WRITE_CONFLICT")
 
 
+func test_a_group_whose_branches_share_an_actor_resource_falls_back_and_records_the_conflict() -> void:
+	var group := Domain.parallel(main, "Group")
+	var left := Domain.branch(group, "Left")
+	left.actor_resources = PackedStringArray(["left_hand"])
+	var right := Domain.branch(group, "Right")
+	right.actor_resources = PackedStringArray(["left_hand"])
+	var fallback := Domain.task(Domain.method(domain, "Fallback"), "Fallback")
+	root.track_search = true
+
+	root.tick(0.1)
+
+	assert_engine_error("The group is rejected because")
+	assert_eq(fallback.executed_steps.size(), 1, "the rejected group leaves the next method to plan")
+	var reasons: Array = root.get_last_search_trace().events.map(func(event: Dictionary) -> String: return event.reason)
+	assert_has(reasons, "RESOURCE_CONFLICT")
+
+
+func test_a_group_with_a_branch_that_declares_no_contract_falls_back_and_records_the_conflict() -> void:
+	var group := Domain.parallel(main, "Group")
+	Domain.branch(group, "Declared")
+	Domain.task(group, "Undeclared")
+	var fallback := Domain.task(Domain.method(domain, "Fallback"), "Fallback")
+	root.track_search = true
+
+	root.tick(0.1)
+
+	assert_engine_error("The group is rejected because")
+	assert_eq(fallback.executed_steps.size(), 1, "the rejected group leaves the next method to plan")
+	var reasons: Array = root.get_last_search_trace().events.map(func(event: Dictionary) -> String: return event.reason)
+	assert_has(reasons, "CONTRACT_INCOMPLETE")
+
+
 func test_serialize_plans_a_conflicting_group_in_order_and_commits_group_effects_with_the_last_branch() -> void:
 	var group := Domain.parallel(main, "Group", {"group_done": true}, NNHTNParallelTask.SERIALIZE)
 	Domain.branch(group, "Open", {"door_open": true})
@@ -186,7 +217,7 @@ func test_a_failure_inside_a_group_falls_back_to_a_root_search() -> void:
 	failing.results = [NNHTNTask.FAILURE]
 	Domain.branch(group, "Other")
 	root.tick(0.1)
-	searches = 0
+	searches.reset()
 
 	root.tick(0.1)
 
@@ -194,5 +225,5 @@ func test_a_failure_inside_a_group_falls_back_to_a_root_search() -> void:
 	assert_false(repair.succeeded)
 	assert_eq(repair.attempts, 0)
 	assert_string_contains(repair.reason, "belongs to a parallel group")
-	assert_eq(searches, 1, "a root search replaced the failed group")
+	assert_eq(searches.count, 1, "a root search replaced the failed group")
 	assert_eq(failing.executed_steps.size(), 2)

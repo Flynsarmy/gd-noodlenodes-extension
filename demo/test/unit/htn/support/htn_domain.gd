@@ -3,6 +3,20 @@ extends RefCounted
 
 const ScriptedTask = preload("res://test/unit/htn/support/scripted_task.gd")
 
+const RUNNING_FOR_A_WHILE := [NNHTNTask.RUNNING, NNHTNTask.RUNNING, NNHTNTask.RUNNING, NNHTNTask.RUNNING, NNHTNTask.RUNNING]
+
+
+## Counts the searches a root runs, so tests can assert that one did or did not happen.
+class SearchCounter:
+	var count := 0
+
+	func _init(root: NNHTNRoot) -> void:
+		root.search_finished.connect(func(_status: int, _expansions: int, _cost: float, _optimal: bool) -> void:
+			count += 1)
+
+	func reset() -> void:
+		count = 0
+
 
 static func make_root(script: Script = null) -> NNHTNRoot:
 	var root := NNHTNRoot.new()
@@ -13,13 +27,34 @@ static func make_root(script: Script = null) -> NNHTNRoot:
 	return root
 
 
+static func condition(expression: String) -> NNHTNCondition:
+	var node := NNHTNCondition.new()
+	node.expression = expression
+	return node
+
+
 static func conditions(expressions: Array) -> Array[NNHTNCondition]:
 	var result: Array[NNHTNCondition] = []
 	for expression in expressions:
-		var condition := NNHTNCondition.new()
-		condition.expression = expression
-		result.append(condition)
+		result.append(condition(expression))
 	return result
+
+
+## A plain child holding task templates, so the root's only direct compound stays the domain.
+static func templates(root: Node) -> Node:
+	var node := Node.new()
+	node.name = "Templates"
+	root.add_child(node)
+	return node
+
+
+static func typed_schema(key: String, value_type: int) -> NNBlackboardSchema:
+	var entry := NNBlackboardKey.new()
+	entry.key = key
+	entry.value_type = value_type
+	var schema := NNBlackboardSchema.new()
+	schema.keys.append(entry)
+	return schema
 
 
 static func compound(parent: Node, node_name: String, expressions: Array = []) -> NNHTNCompoundTask:

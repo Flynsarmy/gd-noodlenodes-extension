@@ -3,8 +3,6 @@ extends GutTest
 const Domain = preload("res://test/unit/htn/support/htn_domain.gd")
 const CandidateMethod = preload("res://test/unit/htn/support/candidate_method.gd")
 
-const RUNNING_FOR_A_WHILE := [NNHTNTask.RUNNING, NNHTNTask.RUNNING, NNHTNTask.RUNNING, NNHTNTask.RUNNING]
-
 var root: NNHTNRoot
 var board: NNBlackboard
 var main: NNHTNMethod
@@ -42,12 +40,7 @@ func test_a_failed_effect_commit_fails_the_plan() -> void:
 	heal.results = [NNHTNTask.RUNNING]
 	root.tick(0.1)
 	var step: NNHTNPlanStep = root.get_current_step()
-	var hp := NNBlackboardKey.new()
-	hp.key = "hp"
-	hp.value_type = TYPE_INT
-	var schema := NNBlackboardSchema.new()
-	schema.keys.append(hp)
-	board.schema = schema
+	board.schema = Domain.typed_schema("hp", TYPE_INT)
 	watch_signals(root)
 	watch_signals(heal)
 
@@ -66,7 +59,7 @@ func test_a_failed_effect_commit_fails_the_plan() -> void:
 
 func test_replacing_the_plan_cancels_only_the_started_occurrence_once() -> void:
 	var long_task := Domain.task(main, "Long")
-	long_task.results = RUNNING_FOR_A_WHILE.duplicate()
+	long_task.results = Domain.RUNNING_FOR_A_WHILE.duplicate()
 	var later := Domain.task(main, "Later")
 	root.tick(0.1)
 	var first: NNHTNPlanStep = root.get_current_step()
@@ -85,7 +78,7 @@ func test_replacing_the_plan_cancels_only_the_started_occurrence_once() -> void:
 
 func test_disabling_the_root_cancels_the_running_occurrence_once() -> void:
 	var long_task := Domain.task(main, "Long")
-	long_task.results = RUNNING_FOR_A_WHILE.duplicate()
+	long_task.results = Domain.RUNNING_FOR_A_WHILE.duplicate()
 	root.tick(0.1)
 	var step: NNHTNPlanStep = root.get_current_step()
 
@@ -99,7 +92,7 @@ func test_disabling_the_root_cancels_the_running_occurrence_once() -> void:
 
 func test_cancel_hook_is_called_after_the_execute_hook_that_disabled_the_root() -> void:
 	var long_task := Domain.task(main, "Long")
-	long_task.results = RUNNING_FOR_A_WHILE.duplicate()
+	long_task.results = Domain.RUNNING_FOR_A_WHILE.duplicate()
 	long_task.during_execute = func() -> void: root.is_enabled = false
 
 	root.tick(0.1)
@@ -115,7 +108,7 @@ func test_freed_argument_object_invalidates_the_running_occurrence() -> void:
 	chooser.candidates = [{"target": target}]
 	main.free()
 	var approach := Domain.task(Domain.method(root.get_node("Domain"), "Approach", [], chooser), "MoveTo")
-	approach.results = RUNNING_FOR_A_WHILE.duplicate()
+	approach.results = Domain.RUNNING_FOR_A_WHILE.duplicate()
 	root.tick(0.1)
 	var step: NNHTNPlanStep = root.get_current_step()
 	watch_signals(root)
@@ -138,7 +131,7 @@ func test_freed_argument_object_invalidates_the_running_occurrence() -> void:
 func test_running_occurrence_is_invalidated_by_a_silent_state_change() -> void:
 	board.set_value("allowed", true)
 	var guarded := Domain.task(main, "Guarded", {}, ["allowed"])
-	guarded.results = RUNNING_FOR_A_WHILE.duplicate()
+	guarded.results = Domain.RUNNING_FOR_A_WHILE.duplicate()
 	root.tick(0.1)
 	var step: NNHTNPlanStep = root.get_current_step()
 	watch_signals(guarded)
@@ -165,9 +158,7 @@ func test_execution_failure_ends_the_plan_without_cancelling() -> void:
 
 
 func test_template_signals_fire_once_per_occurrence() -> void:
-	var templates := Node.new()
-	templates.name = "Templates"
-	root.add_child(templates)
+	var templates := Domain.templates(root)
 	var shared := Domain.task(templates, "Shared")
 	Domain.subtask_call(main, "First", shared)
 	Domain.subtask_call(main, "Second", shared)

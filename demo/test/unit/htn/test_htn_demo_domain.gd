@@ -7,15 +7,14 @@ const NPC_SCENE: PackedScene = preload("res://demo_07_htn/npc/npc.tscn")
 var npc: CharacterBody3D
 var htn: NNHTNRoot
 var board: NNBlackboard
-var searches := 0
+var searches: Domain.SearchCounter
 
 
 func before_each() -> void:
-	searches = 0
 	npc = NPC_SCENE.instantiate()
 	htn = npc.get_node("HTN")
 	htn.process_thread = NNHTNRoot.MANUAL
-	htn.search_finished.connect(func(_status: int, _expansions: int, _cost: float, _optimal: bool) -> void: searches += 1)
+	searches = Domain.SearchCounter.new(htn)
 	add_child_autofree(npc)
 	board = htn.get_blackboard_resource()
 
@@ -75,9 +74,9 @@ func test_its_own_movement_never_replans_but_events_do() -> void:
 
 	npc.position = Vector3(1, 0, 1)
 	htn.tick(0.1)
-	assert_eq(searches, 1, "a new sensed position alone keeps the running plan")
+	assert_eq(searches.count, 1, "a new sensed position alone keeps the running plan")
 
 	board.set_value("is_scared", true)
 	htn.tick(0.1)
-	assert_eq(searches, 2)
+	assert_eq(searches.count, 2)
 	assert_eq(htn.get_last_replan_trigger_keys(), PackedStringArray(["is_scared"]))
