@@ -9,9 +9,7 @@
 
 #include "../agent_behaviours/agent.h"
 #include "../agent_behaviours/behaviour.h"
-#include "../agent_behaviours/behaviour_group.h"
-#include "../agent_behaviours/consideration.h"
-#include "../agent_behaviours/consideration_group.h"
+#include "../agent_behaviours/behaviours.h"
 #include "../agent_behaviours/considerations.h"
 #include "../agent_behaviours/sensors.h"
 #include "../behaviour_tree/root.h"
@@ -794,33 +792,29 @@ void NNDebuggerOverlay::tree_add_child_nodes(Tree *tree, TreeItem *parent_node, 
 		uint64_t tick_timestamp = 0;
 		uint64_t eval_timestamp = 0;
 		if (NNAgent *agent = godot::Object::cast_to<NNAgent>(next_ai_node)) {
-			tick_timestamp = agent->get_last_evaluated_timestamp(); // Visited gets only updated if signals are used, so use eval instead
-			eval_timestamp = agent->get_last_evaluated_timestamp(); // for the Agent Behaviour tick timestamp.
-			score = 0.0f;
-		} else if (NNConsideration *cons = godot::Object::cast_to<NNConsideration>(next_ai_node)) {
+			tick_timestamp = agent->get_last_evaluated_timestamp(); // Visited only updates when signals are used.
+			eval_timestamp = agent->get_last_evaluated_timestamp();
+		} else if (NNConsiderations *cons = godot::Object::cast_to<NNConsiderations>(next_ai_node)) {
 			tick_timestamp = cons->get_last_evaluated_timestamp();
 			eval_timestamp = cons->get_last_evaluated_timestamp();
 			score = cons->get_score();
-		} else if (NNConsiderationGroup *consg = godot::Object::cast_to<NNConsiderationGroup>(next_ai_node)) {
-			tick_timestamp = consg->get_last_evaluated_timestamp();
-			eval_timestamp = consg->get_last_evaluated_timestamp();
-			score = consg->get_score();
-		} else if (NNBehaviour *beh = godot::Object::cast_to<NNBehaviour>(next_ai_node)) {
+		} else if (NNBehaviours *beh = godot::Object::cast_to<NNBehaviours>(next_ai_node)) {
 			tick_timestamp = beh->get_last_evaluated_timestamp();
 			eval_timestamp = beh->get_last_evaluated_timestamp();
 			score = beh->get_score();
-		} else if (NNBehaviourGroup *behg = godot::Object::cast_to<NNBehaviourGroup>(next_ai_node)) {
-			tick_timestamp = behg->get_last_evaluated_timestamp();
-			eval_timestamp = behg->get_last_evaluated_timestamp();
-			score = behg->get_score();
+		} else if (NNSensors *sensors = godot::Object::cast_to<NNSensors>(next_ai_node)) {
+			tick_timestamp = sensors->get_last_evaluated_timestamp();
+			eval_timestamp = sensors->get_last_evaluated_timestamp();
 		} else if (NNBTNodes *btnode = godot::Object::cast_to<NNBTNodes>(next_ai_node)) {
 			tick_timestamp = btnode->get_last_visited_timestamp();
 			eval_timestamp = btnode->get_last_evaluated_timestamp();
 			score = btnode->get_score();
-		} else if (NNSTNode *stnode = godot::Object::cast_to<NNSTNode>(next_ai_node)) {
+		} else if (NNSTBranchNodes *stnode = godot::Object::cast_to<NNSTBranchNodes>(next_ai_node)) {
 			tick_timestamp = stnode->get_last_visited_timestamp();
 			eval_timestamp = stnode->get_last_evaluated_timestamp();
-			score = stnode->get_score();
+			if (NNSTTickedNodes *ticked_node = godot::Object::cast_to<NNSTTickedNodes>(next_ai_node)) {
+				score = ticked_node->get_score();
+			}
 		}
 
 		NoodleNodes *noodle = Object::cast_to<NoodleNodes>(next_ai_node);
@@ -838,7 +832,6 @@ void NNDebuggerOverlay::tree_add_child_nodes(Tree *tree, TreeItem *parent_node, 
 		child_tree_item->set_text(0, next_ai_node->get_name());
 		child_tree_item->set_text(1, status_text);
 		child_tree_item->set_text(2, String::num((double)score, 2));
-		score = 0.7f * score;
 
 		uint64_t tick_time_diff = current_timestamp - tick_timestamp;
 		if (tick_time_diff > 1000000) {

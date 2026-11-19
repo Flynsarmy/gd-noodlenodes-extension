@@ -30,6 +30,10 @@ class InterruptCountingLeaf extends NNBTLeaf:
 		interrupt_count += 1
 
 
+class ScoreHolder extends Node:
+	var amount := 5.0
+
+
 func before_each() -> void:
 	_debugger = Engine.get_singleton("AIDebuggerOverlay")
 	assert_not_null(_debugger, "AIDebuggerOverlay singleton should be registered in debug builds.")
@@ -848,3 +852,31 @@ func test_refreshing_the_overlay_does_not_end_the_agents_selection() -> void:
 	var tree := _selected_tree()
 	assert_eq(_row_status(tree, "Behaviour"), "current")
 	assert_eq(_row_status(tree, "Action"), "", "The detached action is no longer on the active path.")
+
+
+func test_considerations_show_scores_through_their_base_class() -> void:
+	var agent := _add_agent("ScoreAgent")
+	var holder := ScoreHolder.new()
+	agent.add_child(holder)
+	var consideration := NNCustomPropertyConsideration.new()
+	consideration.name = "CustomConsideration"
+	consideration.node_with_property = holder
+	consideration.property_name = "amount"
+	consideration.property_max_value = 10.0
+	var behaviour := NNBehaviour.new()
+	behaviour.name = "ScoringBehaviour"
+	behaviour.add_child(consideration)
+	agent.add_child(behaviour)
+
+	agent.evaluate_options(1.0)
+	assert_almost_eq(consideration.score, 0.5, 0.0001)
+
+	_open_overlay()
+	_select_type(1)
+	_select_root_item(1)
+	_debugger.update_ui()
+
+	var row := _find_row(_selected_tree().get_root(), "CustomConsideration")
+	assert_not_null(row)
+	if row != null:
+		assert_eq(row.get_text(2), "0.5", "A consideration derived from NNConsiderations must show its score.")
