@@ -47,7 +47,7 @@
 		<method name="update_ui">
 			<return type="void" />
 			<description>
-				Refreshes the overlay's debug text and the tree of the selected root from the live AI nodes. The overlay's refresh timer calls this method about every 0.1 seconds, so calling it manually is not necessary.
+				Refreshes the overlay's debug text and the tree of the selected root from the live AI nodes. The overlay's refresh timer calls this method about every 0.1 seconds, so calling it manually is not necessary. It also rebinds the view when the overlay re-enters the scene tree, so an overlay that was moved to another parent keeps refreshing with its selection intact.
 			</description>
 		</method>
 	</methods>

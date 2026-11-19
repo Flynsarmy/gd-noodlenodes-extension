@@ -137,9 +137,8 @@ void NNDebuggerOverlay::_clear_view() {
 	_root_selection = nullptr;
 	_debug_messages = nullptr;
 	_selected_tree = nullptr;
-	_current_type_selection = -1;
-	_current_root_selection = -1;
-	_selected_root_id = ObjectID();
+	// The selection survives so a reparented overlay resumes where it was. The
+	// rendered type is invalidated so the root list is rebuilt on the next refresh.
 	_rendered_type_selection = -2;
 	_rendered_registry_revision = 0;
 }
@@ -719,8 +718,12 @@ void NNDebuggerOverlay::update_ui() {
 	if (overlay == nullptr || !overlay->is_inside_tree()) {
 		return;
 	}
-	if (_debug_messages == nullptr || _root_selection == nullptr) {
-		return;
+	if (_debug_messages == nullptr || _root_selection == nullptr || _selected_tree == nullptr) {
+		// A re-entered overlay keeps its connections but lost its view on exit.
+		if (!_bind_overlay_view(overlay)) {
+			_clear_view();
+			return;
+		}
 	}
 
 	_ensure_root_items();

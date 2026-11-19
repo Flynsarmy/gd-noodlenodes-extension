@@ -880,3 +880,25 @@ func test_considerations_show_scores_through_their_base_class() -> void:
 	assert_not_null(row)
 	if row != null:
 		assert_eq(row.get_text(2), "0.5", "A consideration derived from NNConsiderations must show its score.")
+
+
+func test_reparented_overlay_rebinds_and_keeps_refreshing() -> void:
+	var other_host: Node = add_child_autofree(Node.new())
+	other_host.name = "OtherDebuggerHost"
+	var root := _add_behaviour_tree("ReparentedRoot")
+
+	_open_overlay()
+	_select_type(2)
+	_select_root_item(1)
+	assert_eq(_selected_tree().get_root().get_child_count(), 0)
+
+	_overlay.reparent(other_host, false)
+	root.add_child(NNBTFixedResult.new())
+
+	await wait_seconds(0.25)
+
+	assert_same(_overlay.get_parent(), other_host)
+	var root_item := _selected_tree().get_root()
+	assert_not_null(root_item)
+	if root_item != null:
+		assert_eq(root_item.get_child_count(), 1, "A reparented overlay must rebind and keep refreshing the selected root.")
