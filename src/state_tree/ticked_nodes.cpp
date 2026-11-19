@@ -248,21 +248,21 @@ NNSTRoot *NNSTTickedNodes::_resolve_tree_root() const {
 	return nullptr;
 }
 
-NNSTTickedNodes::ActivationIdentity NNSTTickedNodes::_capture_activation_identity() const {
+NNSTTickedNodes::ActivationIdentity NNSTTickedNodes::_capture_activation_identity(const NNSTRoot *p_tree_root) const {
 	ActivationIdentity identity;
 	identity.epoch = get_activation_epoch();
 
 	const Node *parent = get_parent();
 	identity.parent_id = parent != nullptr ? ObjectID(parent->get_instance_id()) : ObjectID();
 
-	const NNSTRoot *tree_root = _resolve_tree_root();
+	const NNSTRoot *tree_root = p_tree_root != nullptr ? p_tree_root : _resolve_tree_root();
 	identity.root_id = tree_root != nullptr ? ObjectID(tree_root->get_instance_id()) : ObjectID();
 
 	return identity;
 }
 
-bool NNSTTickedNodes::_is_dispatch_activation_valid(uint64_t p_epoch, ObjectID p_parent_id, ObjectID p_root_id) const {
-	if (get_activation_epoch() != p_epoch) {
+bool NNSTTickedNodes::_is_dispatch_activation_valid(const ActivationIdentity &p_identity, const NNSTRoot *p_tree_root) const {
+	if (get_activation_epoch() != p_identity.epoch) {
 		return false;
 	}
 
@@ -277,13 +277,13 @@ bool NNSTTickedNodes::_is_dispatch_activation_valid(uint64_t p_epoch, ObjectID p
 	}
 
 	const Node *parent = get_parent();
-	if (parent == nullptr || ObjectID(parent->get_instance_id()) != p_parent_id) {
+	if (parent == nullptr || ObjectID(parent->get_instance_id()) != p_identity.parent_id) {
 		return false;
 	}
 
-	const NNSTRoot *tree_root = _resolve_tree_root();
+	const NNSTRoot *tree_root = p_tree_root != nullptr ? p_tree_root : _resolve_tree_root();
 	const ObjectID root_id = tree_root != nullptr ? ObjectID(tree_root->get_instance_id()) : ObjectID();
-	return root_id == p_root_id;
+	return root_id == p_identity.root_id;
 }
 
 void NNSTTickedNodes::send_event(String name) {
@@ -310,7 +310,7 @@ bool NNSTTickedNodes::_dispatch_event(const String &name) {
 	// The signal callback is user code: it may transition this state out (and
 	// possibly back in) or reparent it. Capture the activation it started from
 	// so a stale activation cannot keep dispatching.
-	const ActivationIdentity activation = _capture_activation_identity();
+	const ActivationIdentity activation = _capture_activation_identity(tree_root);
 
 	// The state receives the event before it or its children consume it.
 	emit_signal("event_received", name);
@@ -332,7 +332,7 @@ bool NNSTTickedNodes::_dispatch_event(const String &name) {
 	}
 
 	// Only handle the event here if no active child consumed it.
-	return _handle_event(name);
+	return _handle_event(name, activation);
 }
 
 bool NNSTTickedNodes::_dispatch_event_to_children(const String &name) {
@@ -357,11 +357,12 @@ bool NNSTTickedNodes::_dispatch_event_to_children(const String &name) {
 
 		// Do not deliver the event to stale sibling states or handle it here
 		// once the child's callbacks have transitioned this activation away.
-		if (!_is_dispatch_activation_valid(activation)) {
+		// One root lookup serves both checks below.
+		NNSTRoot *tree_root = _resolve_tree_root();
+		if (!_is_dispatch_activation_valid(activation, tree_root)) {
 			return true;
 		}
 
-		NNSTRoot *tree_root = _resolve_tree_root();
 		if (tree_root != nullptr && tree_root->get_is_event_processing_halted()) {
 			return true;
 		}
@@ -370,13 +371,8 @@ bool NNSTTickedNodes::_dispatch_event_to_children(const String &name) {
 	return false;
 }
 
-bool NNSTTickedNodes::_handle_event(const String &name) {
+bool NNSTTickedNodes::_handle_event(const String &name, const ActivationIdentity &activation) {
 	const std::vector<ObjectID> transition_ids = _get_matching_transition_ids(name);
-
-	// Every guard and transition below is user code that can exit, re-enter or
-	// reparent this state. Capture the activation first and stop as soon as it
-	// is no longer the same live activation.
-	const ActivationIdentity activation = _capture_activation_identity();
 
 	for (unsigned int i = 0; i < transition_ids.size(); i++) {
 		ObjectID transition_id = transition_ids[i];
@@ -403,16 +399,11 @@ bool NNSTTickedNodes::_handle_event(const String &name) {
 		}
 
 		// The guard runs user code which may free or reparent this transition.
-		// Re-resolve it before reading its target.
+		// Re-resolve it before reading its target. Nothing below runs user
+		// code, so the activation checked above is still the same one.
 		transition = godot::Object::cast_to<NNSTTransition>(ObjectDB::get_instance(transition_id));
 		if (transition == nullptr || transition->get_parent() != this) {
 			continue;
-		}
-
-		// Transitions and guards may have reparented this state; check again
-		// immediately before applying the transition.
-		if (!_is_dispatch_activation_valid(activation)) {
-			return true;
 		}
 
 		if (_request_transition(transition, false)) {

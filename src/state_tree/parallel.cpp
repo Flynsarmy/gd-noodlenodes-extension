@@ -50,11 +50,12 @@ bool NNSTParallel::_dispatch_event_to_children(const String &name) {
 			consumed = true;
 		}
 
-		if (!_is_dispatch_activation_valid(activation)) {
+		// One root lookup serves both checks below.
+		NNSTRoot *tree_root = _resolve_tree_root();
+		if (!_is_dispatch_activation_valid(activation, tree_root)) {
 			return true;
 		}
 
-		NNSTRoot *tree_root = _resolve_tree_root();
 		if (tree_root != nullptr && tree_root->get_is_event_processing_halted()) {
 			return true;
 		}

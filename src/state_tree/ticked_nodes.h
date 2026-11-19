@@ -84,14 +84,15 @@ protected:
 		ObjectID root_id;
 	};
 
-	// Captures this state's current activation identity.
-	ActivationIdentity _capture_activation_identity() const;
+	// Captures this state's current activation identity. p_tree_root is the
+	// chart root the caller has already resolved; passing it avoids a second
+	// ancestor walk.
+	ActivationIdentity _capture_activation_identity(const NNSTRoot *p_tree_root = nullptr) const;
 	// True while this is still the same live activation: same epoch, ACTIVE,
-	// in the tree, still a child of the same parent, in the same chart.
-	bool _is_dispatch_activation_valid(uint64_t p_epoch, ObjectID p_parent_id, ObjectID p_root_id) const;
-	inline bool _is_dispatch_activation_valid(const ActivationIdentity &p_identity) const {
-		return _is_dispatch_activation_valid(p_identity.epoch, p_identity.parent_id, p_identity.root_id);
-	}
+	// in the tree, still a child of the same parent, in the same chart. The
+	// cheap checks run first, so the root is only resolved when they pass.
+	// p_tree_root is the chart root the caller has already resolved.
+	bool _is_dispatch_activation_valid(const ActivationIdentity &p_identity, const NNSTRoot *p_tree_root = nullptr) const;
 
 	// Resolves the owning chart root. The cached root is only trusted while it
 	// is actually an ancestor, so a reparented state falls back to the parent
@@ -166,8 +167,9 @@ public:
 	// to visit every active child even when an earlier one consumed the event.
 	virtual bool _dispatch_event_to_children(const String &name);
 	// Tries this state's own transitions for the event name. A transition
-	// whose guard fails does not consume the event.
-	virtual bool _handle_event(const String &name);
+	// whose guard fails does not consume the event. p_activation is the
+	// identity captured before the event was delivered to this state.
+	virtual bool _handle_event(const String &name, const ActivationIdentity &p_activation);
 
 	virtual void _transition_in() override;
 	virtual void _transition_out();
