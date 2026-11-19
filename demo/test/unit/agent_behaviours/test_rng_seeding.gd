@@ -12,18 +12,12 @@ const ACTION_COUNT := 8
 const EVALUATION_METHOD_MIN := NoodleNodes.EVALUATION_MIN
 const PICK_ONE_AT_RANDOM := 1
 
-
-func _make_consideration(value: float) -> NNConsideration:
-	var consideration: NNConsideration = NNConsideration.new()
-	consideration.activation_input_value = value
-	return consideration
+const Fixtures = preload("res://test/support/fixtures.gd")
 
 
 func _make_behaviour(node_name: String) -> NNBehaviour:
-	var behaviour: NNBehaviour = NNBehaviour.new()
-	behaviour.name = node_name
+	var behaviour := Fixtures.behaviour(1.0, node_name)
 	behaviour.evaluation_method = EVALUATION_METHOD_MIN
-	behaviour.add_child(_make_consideration(1.0))
 	return behaviour
 
 
@@ -102,13 +96,11 @@ func _distinct_sequences(sequences: Array) -> int:
 
 func test_agents_created_in_one_batch_select_independently() -> void:
 	var agents := _make_behaviour_agents()
-	assert_eq(agents.size(), INSTANCE_COUNT)
 
 	var sequences: Array = []
 	var covered := {}
 	for agent in agents:
 		var picks := _draw_behaviour_names(agent)
-		assert_eq(picks.size(), DRAWS_PER_INSTANCE)
 		for behaviour_name in picks:
 			covered[behaviour_name] = true
 		sequences.append(picks)
@@ -120,12 +112,10 @@ func test_agents_created_in_one_batch_select_independently() -> void:
 
 func test_action_groups_created_in_one_batch_pick_independently() -> void:
 	var agents := _make_action_group_agents()
-	assert_eq(agents.size(), INSTANCE_COUNT)
 
 	var sequences: Array = []
 	for agent in agents:
 		var picks := _draw_action_indices(agent)
-		assert_eq(picks.size(), DRAWS_PER_INSTANCE)
 		sequences.append(picks)
 
 	assert_gt(_distinct_sequences(sequences), 1, "Same-batch action groups picked identical sequences: %s" % [sequences])

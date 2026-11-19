@@ -1,51 +1,29 @@
 extends GutTest
 
-
-func _make_consideration(value: float) -> NNConsideration:
-	var consideration: NNConsideration = NNConsideration.new()
-	consideration.activation_input_value = value
-	return consideration
+const Fixtures = preload("res://test/support/fixtures.gd")
+const AgentHelpers = preload("res://test/unit/agent_behaviours/support/agent_helpers.gd")
 
 
 func _make_behaviour(value: float) -> NNBehaviour:
 	var behaviour: NNBehaviour = NNBehaviour.new()
-	behaviour.add_child(_make_consideration(value))
+	behaviour.add_child(Fixtures.consideration(value))
 	behaviour.add_child(NNAction.new())
 	return behaviour
 
 
-func _make_agent(behaviours: Array) -> NNAgent:
-	var agent: NNAgent = NNAgent.new()
-	for behaviour in behaviours:
-		agent.add_child(behaviour)
-	# These tests drive the agent by hand, so automatic ticking is off.
-	agent.process_thread = NNAgent.MANUAL
-	add_child_autofree(agent)
-	return agent
-
-
-func _count_signal(signal_ref: Signal) -> Array:
-	var count := [0]
-	signal_ref.connect(func(_node = null) -> void: count[0] += 1)
-	return count
-
-
-func _await_physics_frames(count: int) -> void:
-	for i in count:
-		await get_tree().physics_frame
-
-
 func test_no_candidates_before_first_update_stops_the_started_action() -> void:
 	var behaviour := _make_behaviour(1.0)
+	behaviour.name = "Selected"
 	var action := behaviour.get_child(1) as NNAction
-	var agent := _make_agent([behaviour])
+	var agent := Fixtures.add_manual_agent(self, [behaviour])
 
 	agent.evaluate_options(1.0)
 	assert_eq(agent.get_current_action_node(), action, "the started action must be tracked immediately")
+	assert_eq(agent.get_current_behaviour_name(), "Selected")
 
-	var action_exits := _count_signal(action.action_exited)
-	var agent_action_exits := _count_signal(agent.action_exited)
-	var ticks := _count_signal(action.frame_tick)
+	var action_exits := AgentHelpers.count_signal(action.action_exited)
+	var agent_action_exits := AgentHelpers.count_signal(agent.action_exited)
+	var ticks := AgentHelpers.count_signal(action.frame_tick)
 
 	behaviour.is_enabled = false
 	agent.evaluate_options(100.0)
@@ -54,22 +32,46 @@ func test_no_candidates_before_first_update_stops_the_started_action() -> void:
 	assert_eq(agent_action_exits[0], 1)
 	assert_null(agent.get_current_behaviour_node())
 	assert_null(agent.get_current_action_node())
+	assert_eq(agent.get_current_behaviour_name(), "", "no candidates must clear the current behaviour name")
 
-	await _await_physics_frames(2)
+	await wait_physics_frames(2)
 	assert_eq(ticks[0], 0, "a shut down action must not receive frame ticks")
+
+
+func test_uninterruptible_behaviour_blocks_switching_until_it_completes() -> void:
+	var first := _make_behaviour(1.0)
+	var second := _make_behaviour(0.5)
+	var action := first.get_child(1) as NNAction
+	var agent := Fixtures.add_manual_agent(self, [first, second])
+
+	agent.evaluate_options(1.0)
+	assert_eq(agent.get_current_behaviour_node(), first)
+
+	first.can_be_interrupted = false
+	(first.get_child(0) as NNConsideration).activation_input_value = 0.1
+	(second.get_child(0) as NNConsideration).activation_input_value = 0.9
+
+	agent.evaluate_options(100.0)
+	assert_eq(agent.get_current_behaviour_node(), first, "an uninterruptible behaviour blocks selection")
+	assert_eq(agent.get_current_action_node(), action, "the uninterruptible action keeps running")
+
+	action.set_is_finished(true)
+	agent.update_current_behaviour()
+	agent.evaluate_options(100.0)
+	assert_eq(agent.get_current_behaviour_node(), second, "selection resumes once the behaviour completes")
 
 
 func test_repeated_abort_ends_the_started_action_once() -> void:
 	var behaviour := _make_behaviour(1.0)
 	var action := behaviour.get_child(1) as NNAction
-	var agent := _make_agent([behaviour])
+	var agent := Fixtures.add_manual_agent(self, [behaviour])
 
 	agent.evaluate_options(1.0)
 	assert_eq(agent.get_current_action_node(), action)
 
-	var action_exits := _count_signal(action.action_exited)
-	var agent_action_exits := _count_signal(agent.action_exited)
-	var ticks := _count_signal(action.frame_tick)
+	var action_exits := AgentHelpers.count_signal(action.action_exited)
+	var agent_action_exits := AgentHelpers.count_signal(agent.action_exited)
+	var ticks := AgentHelpers.count_signal(action.frame_tick)
 
 	agent.abort_current_behaviour()
 	agent.abort_current_behaviour()
@@ -79,7 +81,7 @@ func test_repeated_abort_ends_the_started_action_once() -> void:
 	assert_null(agent.get_current_action_node())
 	assert_null(agent.get_current_behaviour_node())
 
-	await _await_physics_frames(2)
+	await wait_physics_frames(2)
 	assert_eq(ticks[0], 0, "an aborted action must not receive frame ticks")
 
 
@@ -89,15 +91,15 @@ func test_switch_before_first_update_exits_first_action_once() -> void:
 	var first_action := first.get_child(1) as NNAction
 	var second := _make_behaviour(0.5)
 	var second_action := second.get_child(1) as NNAction
-	var agent := _make_agent([first, second])
+	var agent := Fixtures.add_manual_agent(self, [first, second])
 
 	agent.evaluate_options(1.0)
 	assert_eq(agent.get_current_behaviour_node(), first)
 	assert_eq(agent.get_current_action_node(), first_action)
 
-	var first_exits := _count_signal(first_action.action_exited)
-	var first_ticks := _count_signal(first_action.frame_tick)
-	var second_enters := _count_signal(second_action.action_entered)
+	var first_exits := AgentHelpers.count_signal(first_action.action_exited)
+	var first_ticks := AgentHelpers.count_signal(first_action.frame_tick)
+	var second_enters := AgentHelpers.count_signal(second_action.action_entered)
 
 	# Lower the current behaviour so the other one wins.
 	first_consideration.activation_input_value = 0.1
@@ -108,14 +110,14 @@ func test_switch_before_first_update_exits_first_action_once() -> void:
 	assert_eq(first_exits[0], 1, "the replaced action must exit exactly once")
 	assert_eq(second_enters[0], 1, "the new action must enter exactly once")
 
-	await _await_physics_frames(2)
+	await wait_physics_frames(2)
 	assert_eq(first_ticks[0], 0, "the replaced action must not receive frame ticks")
 
 
 func test_started_action_reports_action_changed_on_first_update() -> void:
 	var behaviour := _make_behaviour(1.0)
 	var action := behaviour.get_child(1) as NNAction
-	var agent := _make_agent([behaviour])
+	var agent := Fixtures.add_manual_agent(self, [behaviour])
 
 	agent.evaluate_options(1.0)
 	var changed := []
@@ -132,13 +134,13 @@ func test_started_action_reports_action_changed_on_first_update() -> void:
 func test_reentrant_abort_from_action_exit_ends_the_action_once() -> void:
 	var behaviour := _make_behaviour(1.0)
 	var action := behaviour.get_child(1) as NNAction
-	var agent := _make_agent([behaviour])
+	var agent := Fixtures.add_manual_agent(self, [behaviour])
 
 	agent.evaluate_options(1.0)
 	agent.update_current_behaviour()
 
-	var action_exits := _count_signal(action.action_exited)
-	var agent_action_exits := _count_signal(agent.action_exited)
+	var action_exits := AgentHelpers.count_signal(action.action_exited)
+	var agent_action_exits := AgentHelpers.count_signal(agent.action_exited)
 	var aborted := [false]
 	action.action_exited.connect(func() -> void:
 		if not aborted[0] and agent.get_current_behaviour_node() != null:
@@ -163,13 +165,13 @@ func test_action_exit_callback_switching_behaviour_preserves_new_selection() -> 
 	var second := _make_behaviour(0.9)
 	second.name = "second"
 	var second_action := second.get_child(1) as NNAction
-	var agent := _make_agent([first, second])
+	var agent := Fixtures.add_manual_agent(self, [first, second])
 
 	agent.evaluate_options(1.0)
 	assert_eq(agent.get_current_behaviour_node(), first)
 
 	var switched := [false]
-	var second_exits := _count_signal(second_action.action_exited)
+	var second_exits := AgentHelpers.count_signal(second_action.action_exited)
 	first_action.action_exited.connect(func() -> void:
 		if not switched[0]:
 			switched[0] = true
@@ -189,14 +191,14 @@ func test_action_exit_callback_switching_behaviour_preserves_new_selection() -> 
 func test_normal_completion_ends_the_action_once_without_agent_action_exit() -> void:
 	var behaviour := _make_behaviour(1.0)
 	var action := behaviour.get_child(1) as NNAction
-	var agent := _make_agent([behaviour])
+	var agent := Fixtures.add_manual_agent(self, [behaviour])
 
 	agent.evaluate_options(1.0)
 	agent.update_current_behaviour()
 	assert_eq(agent.get_current_action_node(), action)
 
-	var action_exits := _count_signal(action.action_exited)
-	var agent_action_exits := _count_signal(agent.action_exited)
+	var action_exits := AgentHelpers.count_signal(action.action_exited)
+	var agent_action_exits := AgentHelpers.count_signal(agent.action_exited)
 
 	action.set_is_finished(true)
 	agent.update_current_behaviour()

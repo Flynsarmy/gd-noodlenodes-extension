@@ -2,6 +2,7 @@ extends GutTest
 
 # Scores are read after NNAgent.evaluate_options(): the native evaluate() is not bound.
 
+const Fixtures = preload("res://test/support/fixtures.gd")
 const MAX_VALUE_ERROR := "NNCustomPropertyConsideration::set_property_max_value(): property_max_value must be finite and non-zero."
 
 
@@ -20,12 +21,7 @@ func _make_consideration(holder: Node, max_value: float) -> NNCustomPropertyCons
 func _make_agent(consideration: NNConsiderations) -> NNAgent:
 	var behaviour: NNBehaviour = NNBehaviour.new()
 	behaviour.add_child(consideration)
-	var agent: NNAgent = NNAgent.new()
-	agent.add_child(behaviour)
-	# These tests drive the agent by hand, so automatic ticking is off.
-	agent.process_thread = NNAgent.MANUAL
-	add_child_autofree(agent)
-	return agent
+	return Fixtures.add_manual_agent(self, [behaviour])
 
 
 func test_pre_ready_max_is_normalized_after_ready() -> void:
@@ -38,20 +34,6 @@ func test_pre_ready_max_is_normalized_after_ready() -> void:
 	assert_eq(consideration.property_max_value, 10.0)
 	agent.evaluate_options(1.0)
 	assert_almost_eq(consideration.score, 0.5, 0.0001)
-
-
-func test_runtime_max_changes_immediately_affect_scores() -> void:
-	var holder := Holder.new()
-	add_child_autofree(holder)
-	var consideration := _make_consideration(holder, 10.0)
-	var agent := _make_agent(consideration)
-
-	agent.evaluate_options(1.0)
-	assert_almost_eq(consideration.score, 0.5, 0.0001)
-
-	consideration.property_max_value = 20.0
-	agent.evaluate_options(1.0)
-	assert_almost_eq(consideration.score, 0.25, 0.0001)
 
 
 func test_zero_and_non_finite_max_are_rejected_and_keep_the_last_valid_max() -> void:

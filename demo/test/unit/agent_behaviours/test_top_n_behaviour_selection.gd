@@ -5,28 +5,16 @@ extends GutTest
 
 const SELECTION_SAMPLES := 300
 
-
-func _make_consideration(value: float) -> NNConsideration:
-	var consideration: NNConsideration = NNConsideration.new()
-	consideration.activation_input_value = value
-	return consideration
+const Fixtures = preload("res://test/support/fixtures.gd")
 
 
 func _make_behaviour(node_name: String, value: float) -> NNBehaviour:
-	var behaviour: NNBehaviour = NNBehaviour.new()
-	behaviour.name = node_name
-	behaviour.add_child(_make_consideration(value))
-	return behaviour
+	return Fixtures.behaviour(value, node_name)
 
 
 func _make_agent(behaviours: Array, num_behaviours_to_select: int) -> NNAgent:
-	var agent: NNAgent = NNAgent.new()
+	var agent := Fixtures.add_manual_agent(self, behaviours)
 	agent.num_behaviours_to_select = num_behaviours_to_select
-	for behaviour in behaviours:
-		agent.add_child(behaviour)
-	# These tests drive the agent by hand, so automatic ticking is off.
-	agent.process_thread = NNAgent.MANUAL
-	add_child_autofree(agent)
 	return agent
 
 

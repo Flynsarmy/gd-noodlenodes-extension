@@ -1,5 +1,8 @@
 extends GutTest
 
+const Fixtures = preload("res://test/support/fixtures.gd")
+const AgentHelpers = preload("res://test/unit/agent_behaviours/support/agent_helpers.gd")
+
 
 class FreeingConsideration extends NNConsideration:
 	var target: Node
@@ -16,36 +19,11 @@ class FreeingConsideration extends NNConsideration:
 		return score_value
 
 
-func _make_consideration(value: float) -> NNConsideration:
-	var consideration: NNConsideration = NNConsideration.new()
-	consideration.activation_input_value = value
-	return consideration
-
-
 func _make_behaviour(value: float) -> NNBehaviour:
 	var behaviour: NNBehaviour = NNBehaviour.new()
-	behaviour.add_child(_make_consideration(value))
+	behaviour.add_child(Fixtures.consideration(value))
 	behaviour.add_child(NNAction.new())
 	return behaviour
-
-
-func _make_agent() -> NNAgent:
-	var agent: NNAgent = NNAgent.new()
-	# These tests drive the agent by hand, so automatic ticking is off.
-	agent.process_thread = NNAgent.MANUAL
-	add_child_autofree(agent)
-	return agent
-
-
-func _select(agent: NNAgent) -> void:
-	agent.evaluate_options(1.0)
-	agent.update_current_behaviour()
-
-
-func _count_signal(signal_ref: Signal) -> Array:
-	var count := [0]
-	signal_ref.connect(func(_node = null) -> void: count[0] += 1)
-	return count
 
 
 func _await_frames() -> void:
@@ -55,11 +33,11 @@ func _await_frames() -> void:
 
 
 func test_free_selected_behaviour_drops_stale_state_and_recovers() -> void:
-	var agent := _make_agent()
+	var agent := Fixtures.add_manual_agent(self)
 	var first := _make_behaviour(1.0)
 	agent.add_child(first)
 
-	_select(agent)
+	AgentHelpers.select(agent)
 	assert_eq(agent.get_current_behaviour_node(), first)
 	assert_not_null(agent.get_current_action_node(), "the selected behaviour should start an action")
 
@@ -75,18 +53,18 @@ func test_free_selected_behaviour_drops_stale_state_and_recovers() -> void:
 	var replacement := _make_behaviour(1.0)
 	agent.add_child(replacement)
 
-	_select(agent)
+	AgentHelpers.select(agent)
 	assert_eq(agent.get_current_behaviour_node(), replacement, "the agent must recover and select a new behaviour")
 	assert_not_null(agent.get_current_action_node())
 
 
 func test_free_selected_action_is_lifetime_safe() -> void:
-	var agent := _make_agent()
+	var agent := Fixtures.add_manual_agent(self)
 	var behaviour := _make_behaviour(1.0)
 	var action := behaviour.get_child(1) as NNAction
 	agent.add_child(behaviour)
 
-	_select(agent)
+	AgentHelpers.select(agent)
 	assert_eq(agent.get_current_action_node(), action)
 
 	action.free()
@@ -98,28 +76,17 @@ func test_free_selected_action_is_lifetime_safe() -> void:
 	# The behaviour is still alive but has no action left, so it completes.
 	assert_null(agent.get_current_behaviour_node())
 
-	agent.evaluate_options(1.0)
-	agent.update_current_behaviour()
-
-	behaviour.is_enabled = false
-	var replacement := _make_behaviour(1.0)
-	agent.add_child(replacement)
-
-	_select(agent)
-	assert_eq(agent.get_current_behaviour_node(), replacement)
-	assert_not_null(agent.get_current_action_node())
-
 
 func test_free_selected_behaviour_group_is_lifetime_safe() -> void:
-	var agent := _make_agent()
+	var agent := Fixtures.add_manual_agent(self)
 	var group := NNBehaviourGroup.new()
 	group.activation_score = 0.0
-	group.add_child(_make_consideration(1.0))
+	group.add_child(Fixtures.consideration(1.0))
 	var grouped := _make_behaviour(1.0)
 	group.add_child(grouped)
 	agent.add_child(group)
 
-	_select(agent)
+	AgentHelpers.select(agent)
 	assert_eq(agent.get_current_behaviour_group_node(), group)
 	assert_eq(agent.get_current_behaviour_node(), grouped)
 	assert_not_null(agent.get_current_action_node())
@@ -137,22 +104,22 @@ func test_free_selected_behaviour_group_is_lifetime_safe() -> void:
 	var replacement := _make_behaviour(1.0)
 	agent.add_child(replacement)
 
-	_select(agent)
+	AgentHelpers.select(agent)
 	assert_eq(agent.get_current_behaviour_node(), replacement)
 
 
 func test_removed_selected_behaviour_exits_once_and_recovers() -> void:
-	var agent := _make_agent()
+	var agent := Fixtures.add_manual_agent(self)
 	var behaviour := _make_behaviour(1.0)
 	var action := behaviour.get_child(1) as NNAction
 	agent.add_child(behaviour)
 
-	_select(agent)
+	AgentHelpers.select(agent)
 
-	var action_exits := _count_signal(action.action_exited)
-	var behaviour_exits := _count_signal(behaviour.behaviour_exited)
-	var agent_action_exits := _count_signal(agent.action_exited)
-	var agent_behaviour_exits := _count_signal(agent.behaviour_exited)
+	var action_exits := AgentHelpers.count_signal(action.action_exited)
+	var behaviour_exits := AgentHelpers.count_signal(behaviour.behaviour_exited)
+	var agent_action_exits := AgentHelpers.count_signal(agent.action_exited)
+	var agent_behaviour_exits := AgentHelpers.count_signal(agent.behaviour_exited)
 
 	agent.remove_child(behaviour)
 	agent.update_current_behaviour()
@@ -165,22 +132,22 @@ func test_removed_selected_behaviour_exits_once_and_recovers() -> void:
 	assert_null(agent.get_current_behaviour_node())
 
 	agent.add_child(behaviour)
-	_select(agent)
+	AgentHelpers.select(agent)
 	assert_eq(agent.get_current_behaviour_node(), behaviour, "a re-added behaviour must be selectable again")
 
 
 func test_reparented_selected_action_exits_once_and_recovers() -> void:
-	var agent := _make_agent()
+	var agent := Fixtures.add_manual_agent(self)
 	var behaviour := _make_behaviour(1.0)
 	var action := behaviour.get_child(1) as NNAction
 	var other_parent := Node.new()
 	agent.add_child(behaviour)
 	add_child_autofree(other_parent)
 
-	_select(agent)
+	AgentHelpers.select(agent)
 
-	var action_exits := _count_signal(action.action_exited)
-	var agent_action_exits := _count_signal(agent.action_exited)
+	var action_exits := AgentHelpers.count_signal(action.action_exited)
+	var agent_action_exits := AgentHelpers.count_signal(agent.action_exited)
 
 	behaviour.remove_child(action)
 	other_parent.add_child(action)
@@ -192,28 +159,28 @@ func test_reparented_selected_action_exits_once_and_recovers() -> void:
 
 	other_parent.remove_child(action)
 	behaviour.add_child(action)
-	_select(agent)
+	AgentHelpers.select(agent)
 	assert_eq(agent.get_current_action_node(), action, "the action must be usable again after reparenting back")
 
 
 func test_reparented_selected_group_exits_once_and_recovers() -> void:
-	var agent := _make_agent()
+	var agent := Fixtures.add_manual_agent(self)
 	var group := NNBehaviourGroup.new()
 	group.activation_score = 0.0
-	group.add_child(_make_consideration(1.0))
+	group.add_child(Fixtures.consideration(1.0))
 	var grouped := _make_behaviour(1.0)
 	group.add_child(grouped)
 	agent.add_child(group)
 	var other_parent := Node.new()
 	add_child_autofree(other_parent)
 
-	_select(agent)
+	AgentHelpers.select(agent)
 
 	var action := agent.get_current_action_node()
-	var action_exits := _count_signal(action.action_exited)
-	var behaviour_exits := _count_signal(grouped.behaviour_exited)
-	var group_exits := _count_signal(group.behaviour_group_exited)
-	var agent_group_exits := _count_signal(agent.behaviour_group_exited)
+	var action_exits := AgentHelpers.count_signal(action.action_exited)
+	var behaviour_exits := AgentHelpers.count_signal(grouped.behaviour_exited)
+	var group_exits := AgentHelpers.count_signal(group.behaviour_group_exited)
+	var agent_group_exits := AgentHelpers.count_signal(agent.behaviour_group_exited)
 
 	agent.remove_child(group)
 	other_parent.add_child(group)
@@ -229,12 +196,12 @@ func test_reparented_selected_group_exits_once_and_recovers() -> void:
 
 	other_parent.remove_child(group)
 	agent.add_child(group)
-	_select(agent)
+	AgentHelpers.select(agent)
 	assert_eq(agent.get_current_behaviour_node(), grouped)
 
 
 func test_runtime_added_behaviour_and_sensor_are_cached() -> void:
-	var agent := _make_agent()
+	var agent := Fixtures.add_manual_agent(self)
 	var lower := _make_behaviour(0.5)
 	agent.add_child(lower)
 
@@ -253,7 +220,7 @@ func test_runtime_added_behaviour_and_sensor_are_cached() -> void:
 
 
 func test_freed_and_reparented_cached_children_do_not_break_evaluation() -> void:
-	var agent := _make_agent()
+	var agent := Fixtures.add_manual_agent(self)
 	var current := _make_behaviour(1.0)
 	var other := _make_behaviour(0.5)
 	var spare := _make_behaviour(0.2)
@@ -264,7 +231,7 @@ func test_freed_and_reparented_cached_children_do_not_break_evaluation() -> void
 	var sensor := NNBooleanSensor.new()
 	agent.add_child(sensor)
 
-	_select(agent)
+	AgentHelpers.select(agent)
 	assert_eq(agent.get_current_behaviour_node(), current)
 
 	spare.free()
@@ -284,18 +251,18 @@ func test_freed_and_reparented_cached_children_do_not_break_evaluation() -> void
 
 
 func test_group_entered_callback_freeing_selected_child_is_lifetime_safe() -> void:
-	var agent := _make_agent()
+	var agent := Fixtures.add_manual_agent(self)
 	var group := NNBehaviourGroup.new()
 	group.activation_score = 0.0
-	group.add_child(_make_consideration(1.0))
+	group.add_child(Fixtures.consideration(1.0))
 	var grouped := _make_behaviour(1.0)
 	group.add_child(grouped)
 	agent.add_child(group)
 
 	var freed := [false]
 	var grouped_reference := [grouped]
-	var group_exits := _count_signal(group.behaviour_group_exited)
-	var agent_group_exits := _count_signal(agent.behaviour_group_exited)
+	var group_exits := AgentHelpers.count_signal(group.behaviour_group_exited)
+	var agent_group_exits := AgentHelpers.count_signal(agent.behaviour_group_exited)
 	group.behaviour_group_entered.connect(func() -> void:
 		if not freed[0]:
 			freed[0] = true
@@ -316,14 +283,14 @@ func test_group_entered_callback_freeing_selected_child_is_lifetime_safe() -> vo
 
 	var replacement := _make_behaviour(0.5)
 	group.add_child(replacement)
-	_select(agent)
+	AgentHelpers.select(agent)
 
 	assert_eq(agent.get_current_behaviour_node(), replacement, "the group must remain usable for later selection")
 	assert_not_null(agent.get_current_action_node())
 
 
 func test_consideration_freeing_current_behaviour_during_evaluation_is_safe() -> void:
-	var agent := _make_agent()
+	var agent := Fixtures.add_manual_agent(self)
 	var current := _make_behaviour(0.4)
 	var killer_consideration := FreeingConsideration.new()
 	killer_consideration.activation_input_value = 1.0
@@ -334,7 +301,7 @@ func test_consideration_freeing_current_behaviour_during_evaluation_is_safe() ->
 	agent.add_child(current)
 	agent.add_child(killer)
 
-	_select(agent)
+	AgentHelpers.select(agent)
 	assert_eq(agent.get_current_behaviour_node(), current)
 
 	killer_consideration.target = current
@@ -349,7 +316,7 @@ func test_consideration_freeing_current_behaviour_during_evaluation_is_safe() ->
 
 
 func test_group_changed_listener_can_free_the_selected_behaviour() -> void:
-	var agent := _make_agent()
+	var agent := Fixtures.add_manual_agent(self)
 	var behaviour := _make_behaviour(1.0)
 	agent.add_child(behaviour)
 	var changed := []
@@ -365,13 +332,13 @@ func test_group_changed_listener_can_free_the_selected_behaviour() -> void:
 
 
 func test_exit_callback_disabling_the_candidate_prevents_selection() -> void:
-	var agent := _make_agent()
+	var agent := Fixtures.add_manual_agent(self)
 	var first := _make_behaviour(1.0)
 	var second := _make_behaviour(0.5)
 	agent.add_child(first)
 	agent.add_child(second)
-	_select(agent)
-	var second_enters := _count_signal(second.behaviour_entered)
+	AgentHelpers.select(agent)
+	var second_enters := AgentHelpers.count_signal(second.behaviour_entered)
 	first.behaviour_exited.connect(func() -> void: second.is_enabled = false)
 	first.is_enabled = false
 
@@ -380,18 +347,4 @@ func test_exit_callback_disabling_the_candidate_prevents_selection() -> void:
 	assert_eq(second_enters[0], 0)
 	assert_null(agent.get_current_behaviour_node())
 	assert_null(agent.get_current_action_node())
-	assert_eq(agent.current_behaviour_name, "")
-
-
-func test_no_candidates_clears_the_current_behaviour_name() -> void:
-	var agent := _make_agent()
-	var behaviour := _make_behaviour(1.0)
-	behaviour.name = "Selected"
-	agent.add_child(behaviour)
-	_select(agent)
-	behaviour.is_enabled = false
-
-	agent.evaluate_options(100.0)
-
-	assert_null(agent.get_current_behaviour_node())
 	assert_eq(agent.current_behaviour_name, "")

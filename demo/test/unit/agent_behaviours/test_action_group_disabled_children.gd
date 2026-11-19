@@ -1,5 +1,8 @@
 extends GutTest
 
+const Fixtures = preload("res://test/support/fixtures.gd")
+const AgentHelpers = preload("res://test/unit/agent_behaviours/support/agent_helpers.gd")
+
 const RULE_SEQUENCE := 0
 const RULE_PICK_ONE_AT_RANDOM := 1
 const RULE_IF_ELSE := 2
@@ -13,44 +16,6 @@ class IndexChoosingRule extends NNActionGroup:
 		current_action_index = target_index
 
 
-func _make_consideration(value: float = 1.0) -> NNConsideration:
-	var consideration: NNConsideration = NNConsideration.new()
-	consideration.activation_input_value = value
-	return consideration
-
-
-func _make_behaviour() -> NNBehaviour:
-	var behaviour: NNBehaviour = NNBehaviour.new()
-	behaviour.add_child(_make_consideration())
-	return behaviour
-
-
-func _make_agent(behaviour: NNBehaviour) -> NNAgent:
-	var agent: NNAgent = NNAgent.new()
-	agent.add_child(behaviour)
-	# These tests drive the agent by hand, so automatic ticking is off.
-	agent.process_thread = NNAgent.MANUAL
-	add_child_autofree(agent)
-	return agent
-
-
-func _select_behaviour(agent: NNAgent) -> void:
-	agent.evaluate_options(1.0)
-	agent.update_current_behaviour()
-
-
-func _count_action_entries(action: NNAction) -> Array:
-	var count := [0]
-	action.action_entered.connect(func() -> void: count[0] += 1)
-	return count
-
-
-func _count_action_exits(action: NNAction) -> Array:
-	var count := [0]
-	action.action_exited.connect(func() -> void: count[0] += 1)
-	return count
-
-
 func _make_disabled_action() -> NNAction:
 	var action: NNAction = NNAction.new()
 	action.set_is_enabled(false)
@@ -58,20 +23,20 @@ func _make_disabled_action() -> NNAction:
 
 
 func test_sequence_skips_disabled_first_action() -> void:
-	var behaviour := _make_behaviour()
+	var behaviour := Fixtures.behaviour(1.0)
 	var group: NNActionGroup = NNActionGroup.new()
 	group.set_action_execution_rule(RULE_SEQUENCE)
 	var disabled_action := _make_disabled_action()
 	var enabled_action: NNAction = NNAction.new()
-	var disabled_entries := _count_action_entries(disabled_action)
-	var enabled_entries := _count_action_entries(enabled_action)
+	var disabled_entries := AgentHelpers.count_signal(disabled_action.action_entered)
+	var enabled_entries := AgentHelpers.count_signal(enabled_action.action_entered)
 
 	group.add_child(disabled_action)
 	group.add_child(enabled_action)
 	behaviour.add_child(group)
-	var agent := _make_agent(behaviour)
+	var agent := Fixtures.add_manual_agent(self, [behaviour])
 
-	_select_behaviour(agent)
+	AgentHelpers.select(agent)
 
 	assert_eq(agent.get_current_action_node(), enabled_action, "the enabled second action must be selected")
 	assert_eq(disabled_entries[0], 0, "the disabled first action must never be entered")
@@ -83,7 +48,7 @@ func test_sequence_skips_disabled_first_action() -> void:
 
 
 func test_sequence_skips_disabled_first_nested_group() -> void:
-	var behaviour := _make_behaviour()
+	var behaviour := Fixtures.behaviour(1.0)
 	var group: NNActionGroup = NNActionGroup.new()
 	group.set_action_execution_rule(RULE_SEQUENCE)
 	var disabled_group: NNActionGroup = NNActionGroup.new()
@@ -91,16 +56,16 @@ func test_sequence_skips_disabled_first_nested_group() -> void:
 	disabled_group.set_is_enabled(false)
 	var nested_action: NNAction = NNAction.new()
 	var enabled_action: NNAction = NNAction.new()
-	var nested_entries := _count_action_entries(nested_action)
-	var enabled_entries := _count_action_entries(enabled_action)
+	var nested_entries := AgentHelpers.count_signal(nested_action.action_entered)
+	var enabled_entries := AgentHelpers.count_signal(enabled_action.action_entered)
 
 	disabled_group.add_child(nested_action)
 	group.add_child(disabled_group)
 	group.add_child(enabled_action)
 	behaviour.add_child(group)
-	var agent := _make_agent(behaviour)
+	var agent := Fixtures.add_manual_agent(self, [behaviour])
 
-	_select_behaviour(agent)
+	AgentHelpers.select(agent)
 
 	assert_eq(agent.get_current_action_node(), enabled_action, "the enabled sibling action must be selected")
 	assert_eq(nested_entries[0], 0, "nothing inside a disabled group may be entered")
@@ -109,23 +74,23 @@ func test_sequence_skips_disabled_first_nested_group() -> void:
 
 
 func test_sequence_nested_group_skips_its_disabled_first_action() -> void:
-	var behaviour := _make_behaviour()
+	var behaviour := Fixtures.behaviour(1.0)
 	var group: NNActionGroup = NNActionGroup.new()
 	group.set_action_execution_rule(RULE_SEQUENCE)
 	var nested_group: NNActionGroup = NNActionGroup.new()
 	nested_group.set_action_execution_rule(RULE_SEQUENCE)
 	var disabled_action := _make_disabled_action()
 	var enabled_action: NNAction = NNAction.new()
-	var disabled_entries := _count_action_entries(disabled_action)
-	var enabled_entries := _count_action_entries(enabled_action)
+	var disabled_entries := AgentHelpers.count_signal(disabled_action.action_entered)
+	var enabled_entries := AgentHelpers.count_signal(enabled_action.action_entered)
 
 	nested_group.add_child(disabled_action)
 	nested_group.add_child(enabled_action)
 	group.add_child(nested_group)
 	behaviour.add_child(group)
-	var agent := _make_agent(behaviour)
+	var agent := Fixtures.add_manual_agent(self, [behaviour])
 
-	_select_behaviour(agent)
+	AgentHelpers.select(agent)
 
 	assert_eq(agent.get_current_action_node(), enabled_action, "the nested group's enabled action must be selected")
 	assert_eq(disabled_entries[0], 0, "the nested disabled action must never be entered")
@@ -135,21 +100,21 @@ func test_sequence_nested_group_skips_its_disabled_first_action() -> void:
 
 
 func test_sequence_ends_current_action_when_disabled_mid_run() -> void:
-	var behaviour := _make_behaviour()
+	var behaviour := Fixtures.behaviour(1.0)
 	var group: NNActionGroup = NNActionGroup.new()
 	group.set_action_execution_rule(RULE_SEQUENCE)
 	var first_action: NNAction = NNAction.new()
 	var second_action: NNAction = NNAction.new()
-	var first_entries := _count_action_entries(first_action)
-	var first_exits := _count_action_exits(first_action)
-	var second_entries := _count_action_entries(second_action)
+	var first_entries := AgentHelpers.count_signal(first_action.action_entered)
+	var first_exits := AgentHelpers.count_signal(first_action.action_exited)
+	var second_entries := AgentHelpers.count_signal(second_action.action_entered)
 
 	group.add_child(first_action)
 	group.add_child(second_action)
 	behaviour.add_child(group)
-	var agent := _make_agent(behaviour)
+	var agent := Fixtures.add_manual_agent(self, [behaviour])
 
-	_select_behaviour(agent)
+	AgentHelpers.select(agent)
 	assert_eq(agent.get_current_action_node(), first_action)
 	assert_eq(first_entries[0], 1)
 
@@ -164,20 +129,20 @@ func test_sequence_ends_current_action_when_disabled_mid_run() -> void:
 
 
 func test_pick_one_at_random_with_only_disabled_children_selects_nothing() -> void:
-	var behaviour := _make_behaviour()
+	var behaviour := Fixtures.behaviour(1.0)
 	var group: NNActionGroup = NNActionGroup.new()
 	group.set_action_execution_rule(RULE_PICK_ONE_AT_RANDOM)
 	var first_action := _make_disabled_action()
 	var second_action := _make_disabled_action()
-	var first_entries := _count_action_entries(first_action)
-	var second_entries := _count_action_entries(second_action)
+	var first_entries := AgentHelpers.count_signal(first_action.action_entered)
+	var second_entries := AgentHelpers.count_signal(second_action.action_entered)
 
 	group.add_child(first_action)
 	group.add_child(second_action)
 	behaviour.add_child(group)
-	var agent := _make_agent(behaviour)
+	var agent := Fixtures.add_manual_agent(self, [behaviour])
 
-	_select_behaviour(agent)
+	AgentHelpers.select(agent)
 
 	assert_null(agent.get_current_action_node(), "no action may be selected when every child is disabled")
 	assert_eq(first_entries[0], 0, "the first disabled action must never be entered")
@@ -185,21 +150,21 @@ func test_pick_one_at_random_with_only_disabled_children_selects_nothing() -> vo
 
 
 func test_if_else_disabled_true_branch_does_not_fall_back() -> void:
-	var behaviour := _make_behaviour()
+	var behaviour := Fixtures.behaviour(1.0)
 	var group: NNActionGroup = NNActionGroup.new()
 	group.set_action_execution_rule(RULE_IF_ELSE)
 	group.set_if_else_boolean_value(true)
 	var disabled_action := _make_disabled_action()
 	var enabled_action: NNAction = NNAction.new()
-	var disabled_entries := _count_action_entries(disabled_action)
-	var enabled_entries := _count_action_entries(enabled_action)
+	var disabled_entries := AgentHelpers.count_signal(disabled_action.action_entered)
+	var enabled_entries := AgentHelpers.count_signal(enabled_action.action_entered)
 
 	group.add_child(disabled_action)
 	group.add_child(enabled_action)
 	behaviour.add_child(group)
-	var agent := _make_agent(behaviour)
+	var agent := Fixtures.add_manual_agent(self, [behaviour])
 
-	_select_behaviour(agent)
+	AgentHelpers.select(agent)
 
 	assert_null(agent.get_current_action_node(), "the true branch is disabled, so nothing may run")
 	assert_eq(disabled_entries[0], 0, "the disabled selected branch must never be entered")
@@ -207,21 +172,21 @@ func test_if_else_disabled_true_branch_does_not_fall_back() -> void:
 
 
 func test_if_else_disabled_false_branch_does_not_fall_back() -> void:
-	var behaviour := _make_behaviour()
+	var behaviour := Fixtures.behaviour(1.0)
 	var group: NNActionGroup = NNActionGroup.new()
 	group.set_action_execution_rule(RULE_IF_ELSE)
 	group.set_if_else_boolean_value(false)
 	var enabled_action: NNAction = NNAction.new()
 	var disabled_action := _make_disabled_action()
-	var enabled_entries := _count_action_entries(enabled_action)
-	var disabled_entries := _count_action_entries(disabled_action)
+	var enabled_entries := AgentHelpers.count_signal(enabled_action.action_entered)
+	var disabled_entries := AgentHelpers.count_signal(disabled_action.action_entered)
 
 	group.add_child(enabled_action)
 	group.add_child(disabled_action)
 	behaviour.add_child(group)
-	var agent := _make_agent(behaviour)
+	var agent := Fixtures.add_manual_agent(self, [behaviour])
 
-	_select_behaviour(agent)
+	AgentHelpers.select(agent)
 
 	assert_null(agent.get_current_action_node(), "the false branch is disabled, so nothing may run")
 	assert_eq(disabled_entries[0], 0, "the disabled selected branch must never be entered")
@@ -229,21 +194,21 @@ func test_if_else_disabled_false_branch_does_not_fall_back() -> void:
 
 
 func test_custom_rule_does_not_run_disabled_eval_choice() -> void:
-	var behaviour := _make_behaviour()
+	var behaviour := Fixtures.behaviour(1.0)
 	var rule := IndexChoosingRule.new()
 	rule.set_action_execution_rule(RULE_CUSTOM_RULE)
 	rule.target_index = 0
 	var disabled_action := _make_disabled_action()
 	var enabled_action: NNAction = NNAction.new()
-	var disabled_entries := _count_action_entries(disabled_action)
-	var enabled_entries := _count_action_entries(enabled_action)
+	var disabled_entries := AgentHelpers.count_signal(disabled_action.action_entered)
+	var enabled_entries := AgentHelpers.count_signal(enabled_action.action_entered)
 
 	rule.add_child(disabled_action)
 	rule.add_child(enabled_action)
 	behaviour.add_child(rule)
-	var agent := _make_agent(behaviour)
+	var agent := Fixtures.add_manual_agent(self, [behaviour])
 
-	_select_behaviour(agent)
+	AgentHelpers.select(agent)
 
 	assert_null(agent.get_current_action_node(), "eval chose a disabled child, so nothing may run")
 	assert_eq(disabled_entries[0], 0, "the disabled eval choice must never be entered")
@@ -251,21 +216,21 @@ func test_custom_rule_does_not_run_disabled_eval_choice() -> void:
 
 
 func test_custom_rule_runs_enabled_eval_choice_once() -> void:
-	var behaviour := _make_behaviour()
+	var behaviour := Fixtures.behaviour(1.0)
 	var rule := IndexChoosingRule.new()
 	rule.set_action_execution_rule(RULE_CUSTOM_RULE)
 	rule.target_index = 1
 	var disabled_action := _make_disabled_action()
 	var enabled_action: NNAction = NNAction.new()
-	var disabled_entries := _count_action_entries(disabled_action)
-	var enabled_entries := _count_action_entries(enabled_action)
+	var disabled_entries := AgentHelpers.count_signal(disabled_action.action_entered)
+	var enabled_entries := AgentHelpers.count_signal(enabled_action.action_entered)
 
 	rule.add_child(disabled_action)
 	rule.add_child(enabled_action)
 	behaviour.add_child(rule)
-	var agent := _make_agent(behaviour)
+	var agent := Fixtures.add_manual_agent(self, [behaviour])
 
-	_select_behaviour(agent)
+	AgentHelpers.select(agent)
 
 	assert_eq(agent.get_current_action_node(), enabled_action, "the enabled eval choice must be selected")
 	assert_eq(disabled_entries[0], 0, "the disabled sibling must never be entered")

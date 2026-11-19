@@ -871,8 +871,6 @@ func test_finish_handler_can_abort_the_current_behaviour() -> void:
 	assert_null(bt_root.get_running_action())
 	assert_false(action.get_is_finished(), "ending the action in the handler is not overridden by the finish")
 
-	agent.tick(0.1)
-
 
 func test_finish_handler_can_free_the_action() -> void:
 	var bt_root := _make_bt_root(_make_leaf(NNBTNodes.SUCCESS))

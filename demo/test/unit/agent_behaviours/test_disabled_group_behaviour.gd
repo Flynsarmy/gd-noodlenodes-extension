@@ -1,24 +1,11 @@
 extends GutTest
 
-
-# These tests tick the agent by hand, so automatic ticking is off.
-func _add_manual_agent(agent: NNAgent) -> NNAgent:
-	agent.process_thread = NNAgent.MANUAL
-	return add_child_autofree(agent)
+const Fixtures = preload("res://test/support/fixtures.gd")
+const AgentHelpers = preload("res://test/unit/agent_behaviours/support/agent_helpers.gd")
 
 
-class CountingConsideration extends NNConsideration:
-	var evaluation_count := 0
-	var score_value := 1.0
-
-	func eval() -> float:
-		evaluation_count += 1
-		score = score_value
-		return score_value
-
-
-func _make_consideration(score_value: float) -> CountingConsideration:
-	var consideration: CountingConsideration = CountingConsideration.new()
+func _make_consideration(score_value: float):
+	var consideration = AgentHelpers.CountingConsideration.new()
 	consideration.score_value = score_value
 	return consideration
 
@@ -32,19 +19,16 @@ func _make_behaviour(score_value: float, enabled := true) -> NNBehaviour:
 
 func _make_agent(group: NNBehaviourGroup) -> NNAgent:
 	group.activation_score = 1.0
-	group.add_child(_make_consideration(1.0))
-	var agent: NNAgent = NNAgent.new()
-	agent.add_child(group)
-	_add_manual_agent(agent)
-	return agent
+	group.add_child(Fixtures.consideration(1.0))
+	return Fixtures.add_manual_agent(self, [group])
 
 
 func test_disabled_grouped_behaviour_is_neither_evaluated_nor_selected() -> void:
 	var group: NNBehaviourGroup = NNBehaviourGroup.new()
 	var disabled: NNBehaviour = _make_behaviour(1.0, false)
 	var enabled: NNBehaviour = _make_behaviour(0.5)
-	var disabled_consideration: CountingConsideration = disabled.get_child(0)
-	var enabled_consideration: CountingConsideration = enabled.get_child(0)
+	var disabled_consideration = disabled.get_child(0)
+	var enabled_consideration = enabled.get_child(0)
 
 	group.add_child(disabled)
 	group.add_child(enabled)
@@ -61,7 +45,7 @@ func test_disabled_grouped_behaviour_is_neither_evaluated_nor_selected() -> void
 func test_disabled_only_grouped_behaviour_is_not_selected() -> void:
 	var group: NNBehaviourGroup = NNBehaviourGroup.new()
 	var disabled: NNBehaviour = _make_behaviour(1.0, false)
-	var disabled_consideration: CountingConsideration = disabled.get_child(0)
+	var disabled_consideration = disabled.get_child(0)
 
 	group.add_child(disabled)
 	var agent: NNAgent = _make_agent(group)
@@ -83,7 +67,7 @@ func test_enabled_current_grouped_behaviour_still_receives_bias() -> void:
 	agent.evaluate_options(0.1)
 	assert_eq(agent.get_current_behaviour_node(), current, "the higher scorer starts selected")
 
-	var current_consideration: CountingConsideration = current.get_child(0)
+	var current_consideration = current.get_child(0)
 	current_consideration.score_value = 0.45
 
 	# 0.45 + 0.1 current behaviour bias beats the 0.5 sibling.

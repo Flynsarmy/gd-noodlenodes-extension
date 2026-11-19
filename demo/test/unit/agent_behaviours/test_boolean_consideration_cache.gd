@@ -1,22 +1,16 @@
 extends GutTest
 
-# These tests tick the agent by hand, so automatic ticking is off.
-func _add_manual_agent(agent: NNAgent) -> NNAgent:
-	agent.process_thread = NNAgent.MANUAL
-	return add_child_autofree(agent)
+const Fixtures = preload("res://test/support/fixtures.gd")
 
 
 func _make_boolean_behaviour(input_value: float) -> Dictionary:
-	var agent: NNAgent = NNAgent.new()
 	var behaviour: NNBehaviour = NNBehaviour.new()
-	var action: NNAction = NNAction.new()
 	var consideration: NNBooleanConsideration = NNBooleanConsideration.new()
 
 	consideration.activation_input_value = input_value
-	behaviour.add_child(action)
+	behaviour.add_child(NNAction.new())
 	behaviour.add_child(consideration)
-	agent.add_child(behaviour)
-	_add_manual_agent(agent)
+	var agent := Fixtures.add_manual_agent(self, [behaviour])
 
 	return {
 		"agent": agent,

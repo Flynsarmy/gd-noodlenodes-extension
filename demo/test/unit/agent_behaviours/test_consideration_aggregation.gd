@@ -1,72 +1,57 @@
 extends GutTest
 
-# These tests tick the agent by hand, so automatic ticking is off.
-func _add_manual_agent(agent: NNAgent) -> NNAgent:
-	agent.process_thread = NNAgent.MANUAL
-	return add_child_autofree(agent)
-
+const Fixtures = preload("res://test/support/fixtures.gd")
+const AgentHelpers = preload("res://test/unit/agent_behaviours/support/agent_helpers.gd")
 
 const MIN := NoodleNodes.EVALUATION_MIN
 const MEAN := NoodleNodes.EVALUATION_MEAN
 
 
-func _make_consideration(value: float, enabled := true) -> NNConsideration:
-	var consideration: NNConsideration = NNConsideration.new()
-	consideration.activation_input_value = value
-	consideration.is_enabled = enabled
-	return consideration
+class VetoConsideration extends NNConsideration:
+	func eval() -> float:
+		has_vetoed = true
+		return 1.0
 
 
-func test_behaviour_min_ignores_disabled_first_consideration() -> void:
-	var _agent: NNAgent = NNAgent.new()
-	var _behaviour: NNBehaviour = NNBehaviour.new()
+func test_behaviour_aggregation_skips_disabled_considerations() -> void:
+	for row in [[MIN, 0.5], [MEAN, 0.65]]:
+		var evaluation_method: int = row[0]
+		var behaviour: NNBehaviour = NNBehaviour.new()
+		behaviour.evaluation_method = evaluation_method
+		behaviour.add_child(Fixtures.consideration(0.0, false))
+		behaviour.add_child(Fixtures.consideration(0.5))
+		behaviour.add_child(Fixtures.consideration(0.8))
+		var agent := Fixtures.add_manual_agent(self, [behaviour])
 
-	_behaviour.evaluation_method = MIN
+		agent.evaluate_options(0.1)
 
-	_behaviour.add_child(_make_consideration(0.0, false))
-	_behaviour.add_child(_make_consideration(0.5))
-	_behaviour.add_child(_make_consideration(0.8))
-
-	_agent.add_child(_behaviour)
-	_add_manual_agent(_agent)
-
-	_agent.evaluate_options(0.1)
-
-	assert_almost_eq(_behaviour.score, 0.5, 0.0001)
-
-
-func test_behaviour_mean_divides_by_evaluated_considerations() -> void:
-	var _agent: NNAgent = NNAgent.new()
-	var _behaviour: NNBehaviour = NNBehaviour.new()
-
-	_behaviour.evaluation_method = MEAN
-
-	_behaviour.add_child(_make_consideration(0.0, false))
-	_behaviour.add_child(_make_consideration(0.5))
-	_behaviour.add_child(_make_consideration(0.8))
-
-	_agent.add_child(_behaviour)
-	_add_manual_agent(_agent)
-
-	_agent.evaluate_options(0.1)
-
-	assert_almost_eq(_behaviour.score, 0.65, 0.0001)
+		assert_almost_eq(behaviour.score, row[1], 0.0001, "evaluation method %d must skip the disabled consideration" % evaluation_method)
 
 
 func test_behaviour_group_mean_divides_by_evaluated_considerations() -> void:
-	var _agent: NNAgent = NNAgent.new()
-	var _group: NNBehaviourGroup = NNBehaviourGroup.new()
+	var group: NNBehaviourGroup = NNBehaviourGroup.new()
+	group.evaluation_method = MEAN
+	group.activation_score = 0.0
+	group.add_child(Fixtures.consideration(0.0, false))
+	group.add_child(Fixtures.consideration(0.5))
+	group.add_child(Fixtures.consideration(0.8))
+	var agent := Fixtures.add_manual_agent(self, [group])
 
-	_group.evaluation_method = MEAN
-	_group.activation_score = 0.0
+	agent.evaluate_options(0.1)
 
-	_group.add_child(_make_consideration(0.0, false))
-	_group.add_child(_make_consideration(0.5))
-	_group.add_child(_make_consideration(0.8))
+	assert_almost_eq(group.score, 0.65, 0.0001)
 
-	_agent.add_child(_group)
-	_add_manual_agent(_agent)
 
-	_agent.evaluate_options(0.1)
+func test_vetoing_consideration_zeroes_the_score_and_stops_evaluation() -> void:
+	var later_consideration := AgentHelpers.CountingConsideration.new()
+	var vetoed := NNBehaviour.new()
+	vetoed.add_child(VetoConsideration.new())
+	vetoed.add_child(later_consideration)
+	var fallback := Fixtures.behaviour(0.2)
+	var agent := Fixtures.add_manual_agent(self, [vetoed, fallback])
 
-	assert_almost_eq(_group.score, 0.65, 0.0001)
+	agent.evaluate_options(1.0)
+
+	assert_eq(vetoed.score, 0.0, "a veto forces the behaviour score to zero")
+	assert_eq(later_consideration.evaluation_count, 0, "considerations after the veto must not be evaluated")
+	assert_eq(agent.get_current_behaviour_node(), fallback, "a vetoed behaviour must not be selected")
