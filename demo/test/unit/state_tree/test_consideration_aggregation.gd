@@ -23,6 +23,15 @@ func _make_sensor(value: float, enabled := true) -> NNSensor:
 	return sensor
 
 
+func _make_changing_sensor(value: float) -> NNFloatRangeSensor:
+	var sensor: NNFloatRangeSensor = NNFloatRangeSensor.new()
+	sensor.range_min_value = 0.0
+	sensor.range_max_value = 1.0
+	sensor.range_value = value
+	sensor.sensor_value = 0.0
+	return sensor
+
+
 func _score_node(evaluation_method: int, considerations: Array) -> NNSTNode:
 	var _root: NNSTRoot = NNSTRoot.new()
 	var _node: NNSTNode = NNSTNode.new()
@@ -92,3 +101,24 @@ func test_sensor_group_skips_disabled_sensors() -> void:
 		_root.tick(0.1)
 
 		assert_almost_eq(_group.sensor_value, case[1], 0.0001, "method %d" % case[0])
+
+
+# Sensors are inputs for considerations, so a final group value must not stop later children refreshing.
+func test_sensor_group_evaluates_every_child_after_final_value() -> void:
+	for case in [
+		[NoodleNodes.EVALUATION_MULTIPLY, 0.0, 0.5, 0.0],
+		[NoodleNodes.EVALUATION_FIRST_NON_ZERO, 0.5, 1.0, 0.5],
+	]:
+		var _root: NNSTRoot = NNSTRoot.new()
+		var _group: NNSensorGroup = NNSensorGroup.new()
+		_group.evaluation_method = case[0]
+		_group.add_child(_make_sensor(case[1]))
+		var changing_sensor := _make_changing_sensor(case[2])
+		_group.add_child(changing_sensor)
+		_root.add_child(_group)
+		_add_manual_root(_root)
+
+		_root.tick(0.1)
+
+		assert_almost_eq(changing_sensor.sensor_value, case[2], 0.0001, "method %d" % case[0])
+		assert_almost_eq(_group.sensor_value, case[3], 0.0001, "group value for method %d" % case[0])

@@ -10,7 +10,7 @@
 	</tutorials>
 	<members>
 		<member name="evaluation_method" type="int" setter="set_evaluation_method" getter="get_evaluation_method" enum="NoodleNodes.EvaluationMethod" default="3">
-			How the child sensors and sensor groups are aggregated into [member NNSensors.sensor_value]. The default is [constant NoodleNodes.EVALUATION_MEAN].
+			How the child sensors and sensor groups are aggregated into [member NNSensors.sensor_value]. Every enabled child sensor is evaluated regardless of the method, so its value stays current. The default is [constant NoodleNodes.EVALUATION_MEAN].
 		</member>
 		<member name="invert_sensor_value" type="bool" setter="set_invert_sensor_value" getter="get_invert_sensor_value" default="false">
 			This inverts the group sensor_value by calculating: [code]sensor_value = 1.0 - sensor_value[/code]. It is applied after all the child nodes have been evaluated.

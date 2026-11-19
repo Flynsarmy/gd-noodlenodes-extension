@@ -71,7 +71,7 @@
 			Uses the average value of the enabled child nodes, dividing by the number of nodes evaluated.
 		</constant>
 		<constant name="EVALUATION_MULTIPLY" value="4" enum="EvaluationMethod">
-			Multiplies the values of the enabled child nodes. Evaluation stops as soon as the product reaches zero.
+			Multiplies the values of the enabled child nodes. Consideration aggregation stops evaluating once the product reaches zero, but sensor groups still evaluate every enabled child sensor so their values stay current.
 		</constant>
 		<constant name="EVALUATION_FIRST_NON_ZERO" value="5" enum="EvaluationMethod">
 			Uses the first value greater than zero, ignoring child nodes that evaluate to zero.

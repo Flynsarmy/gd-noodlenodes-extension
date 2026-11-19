@@ -54,9 +54,8 @@ float NNSensorGroup::evaluate_sensor_value() {
 		if (!sensor->get_is_enabled()) {
 			continue;
 		}
-		if (aggregation.add(sensor->evaluate_sensor_value())) {
-			break;
-		}
+		// Sensors feed considerations, so every enabled child must refresh even once the result is final.
+		aggregation.add(sensor->evaluate_sensor_value());
 	}
 
 	float sensor_value = aggregation.result();

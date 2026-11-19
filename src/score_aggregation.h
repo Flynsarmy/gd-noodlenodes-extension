@@ -5,14 +5,17 @@
 namespace godot {
 
 // Accumulates child scores with NoodleNodes::EvaluationMethod. add() reports
-// when the accumulated value can no longer change, so the caller can stop
-// evaluating children.
+// when the accumulated value is final; further calls keep that value and
+// return true so the caller can stop evaluating children or keep feeding them.
 class ScoreAggregation {
 public:
 	explicit ScoreAggregation(NoodleNodes::EvaluationMethod p_evaluation_method) :
-			_evaluation_method(p_evaluation_method), _result(0.0f), _count(0) {}
+			_evaluation_method(p_evaluation_method), _result(0.0f), _count(0), _final(false) {}
 
 	bool add(float p_value) {
+		if (_final) {
+			return true;
+		}
 		switch (_evaluation_method) {
 			case NoodleNodes::EVALUATION_MIN:
 				if (_count == 0 || p_value < _result) {
@@ -26,21 +29,20 @@ public:
 				break;
 			case NoodleNodes::EVALUATION_MULTIPLY:
 				_result = _count == 0 ? p_value : _result * p_value;
-				++_count;
-				return _result == 0.0f;
+				_final = _result == 0.0f;
+				break;
 			case NoodleNodes::EVALUATION_FIRST_NON_ZERO:
-				++_count;
 				if (p_value > 0.0f) {
 					_result = p_value;
-					return true;
+					_final = true;
 				}
-				return false;
+				break;
 			default:
 				_result += p_value;
 				break;
 		}
 		++_count;
-		return false;
+		return _final;
 	}
 
 	float result() const {
@@ -54,6 +56,7 @@ private:
 	NoodleNodes::EvaluationMethod _evaluation_method;
 	float _result;
 	unsigned int _count;
+	bool _final;
 };
 
 } // namespace godot
