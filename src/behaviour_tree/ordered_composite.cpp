@@ -5,7 +5,6 @@ using namespace godot;
 NNBTOrderedComposite::NNBTOrderedComposite(Status p_short_circuit_status, Status p_fall_through_status) :
 		_current_child_index(0),
 		_is_reactive(false),
-		_running_child(nullptr),
 		_short_circuit_status(p_short_circuit_status),
 		_fall_through_status(p_fall_through_status) {
 }
@@ -31,7 +30,6 @@ NNBTNodes::Status NNBTOrderedComposite::_tick(float delta) {
 	if (_is_reactive) {
 		_current_child_index = 0;
 	}
-	const int tick_start_index = _current_child_index;
 	while (_current_child_index < (int)_child_btnodes.size()) {
 		NNBTNodes *btnode = _child_btnodes[_current_child_index];
 		if (btnode->get_is_enabled()) {
@@ -39,12 +37,7 @@ NNBTNodes::Status NNBTOrderedComposite::_tick(float delta) {
 			if (result == _short_circuit_status) {
 				return _short_circuit_status;
 			} else if (result == Status::RUNNING) {
-				// Only a tick that ticked nothing but last tick's running child can skip
-				// this: a SKIP leaves a run active, and removing an earlier child shifts the cursor.
-				if (_is_reactive || _current_child_index != tick_start_index || btnode != _running_child) {
-					_interrupt_other_active_children(btnode);
-				}
-				_running_child = btnode;
+				_interrupt_other_active_children(btnode);
 				return Status::RUNNING;
 			}
 		} //endif is active

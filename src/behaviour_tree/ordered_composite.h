@@ -23,8 +23,6 @@ public:
 
 private:
 	bool _is_reactive;
-	// Compared, never dereferenced.
-	NNBTNodes *_running_child;
 	Status _short_circuit_status;
 	Status _fall_through_status;
 };

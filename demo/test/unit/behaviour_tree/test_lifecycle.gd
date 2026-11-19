@@ -295,6 +295,33 @@ func test_removing_an_earlier_child_still_interrupts_the_running_child() -> void
 	assert_engine_error_count(0)
 
 
+func test_reparenting_a_running_node_into_the_cursor_interrupts_the_running_child() -> void:
+	var done: LifecycleLeaf = _make_leaf(NNBTNodes.SUCCESS)
+	var running: LifecycleLeaf = _make_leaf(NNBTNodes.RUNNING)
+	var sequence: NNBTSequence = NNBTSequence.new()
+	sequence.add_child(done)
+	sequence.add_child(running)
+	var root: NNBTRoot = _make_root_with(sequence)
+
+	var intruder: LifecycleLeaf = _make_leaf(NNBTNodes.RUNNING)
+	var holder: NNBTPassThrough = NNBTPassThrough.new()
+	holder.add_child(intruder)
+	var other_root: NNBTRoot = _make_root_with(holder)
+
+	assert_eq(root.tick(0.1), NNBTNodes.RUNNING)
+	assert_eq(other_root.tick(0.1), NNBTNodes.RUNNING)
+
+	# A root interrupts a child it stops ticking, so the intruder leaves a decorator to stay mid-run.
+	intruder.reparent(sequence)
+	sequence.move_child(intruder, 1)
+	assert_true(intruder.get_is_running())
+
+	assert_eq(root.tick(0.1), NNBTNodes.RUNNING)
+	assert_eq(running.interrupt_count, 1, "the abandoned running child loses its run")
+
+	assert_engine_error_count(0)
+
+
 func test_terminal_completion_interrupts_a_running_descendant() -> void:
 	var a: LifecycleLeaf = _make_leaf(NNBTNodes.FAILURE)
 	var running: LifecycleLeaf = _make_leaf(NNBTNodes.RUNNING)
