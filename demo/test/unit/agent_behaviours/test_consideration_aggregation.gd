@@ -7,6 +7,11 @@ const MIN := NoodleNodes.EVALUATION_MIN
 const MEAN := NoodleNodes.EVALUATION_MEAN
 
 
+class FullScoreConsideration extends NNConsideration:
+	func eval() -> void:
+		score = 1.0
+
+
 class VetoConsideration extends NNConsideration:
 	func eval() -> float:
 		has_vetoed = true
@@ -55,3 +60,16 @@ func test_vetoing_consideration_zeroes_the_score_and_stops_evaluation() -> void:
 	assert_eq(vetoed.score, 0.0, "a veto forces the behaviour score to zero")
 	assert_eq(later_consideration.evaluation_count, 0, "considerations after the veto must not be evaluated")
 	assert_eq(agent.get_current_behaviour_node(), fallback, "a vetoed behaviour must not be selected")
+
+
+func test_script_attached_after_entering_the_tree_runs_eval() -> void:
+	var consideration := NNConsideration.new()
+	var scripted := NNBehaviour.new()
+	scripted.add_child(consideration)
+	var fallback := Fixtures.behaviour(0.2)
+	var agent := Fixtures.add_manual_agent(self, [scripted, fallback])
+	consideration.set_script(FullScoreConsideration)
+
+	agent.evaluate_options(1.0)
+
+	assert_eq(agent.get_current_behaviour_node(), scripted, "eval from a late-attached script must run")

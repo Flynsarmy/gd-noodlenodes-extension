@@ -30,7 +30,6 @@ void NNConsideration::_bind_methods() {
 NNConsideration::NNConsideration() {
 	_activation_input_value = 0.0001f;
 	_input_sensor = nullptr;
-	_has_custom_evaluation_method = false;
 	_has_activation_input_changed = true;
 }
 
@@ -104,7 +103,7 @@ float NNConsideration::sample_activation_curve(float input_value) const {
 void NNConsideration::_evaluate_consideration() {
 	// If the consideration has been extended with a custom evaluation method,
 	// that is used instead of sampling the curve.
-	if (_has_custom_evaluation_method) {
+	if (has_method("eval")) {
 		call("eval");
 		return;
 	}
@@ -114,12 +113,4 @@ void NNConsideration::_evaluate_consideration() {
 	} else {
 		_score = _activation_input_value;
 	}
-}
-
-void NNConsideration::_notification(int p_what) {
-	if (p_what != NOTIFICATION_POST_ENTER_TREE) {
-		return;
-	}
-
-	_has_custom_evaluation_method = has_method("eval");
 }

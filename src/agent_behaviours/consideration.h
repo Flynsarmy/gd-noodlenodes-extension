@@ -17,7 +17,6 @@ protected:
 	NNSensors *_input_sensor;
 	Ref<Curve> _activation_curve;
 	float _activation_input_value;
-	bool _has_custom_evaluation_method;
 	bool _has_activation_input_changed;
 
 	virtual void _evaluate_consideration();
@@ -36,9 +35,6 @@ public:
 
 	void set_activation_input_value(float activation_input_value);
 	float get_activation_input_value() const;
-
-	// Godot virtuals.
-	void _notification(int p_what);
 
 	// Handling functions.
 
