@@ -35,18 +35,24 @@ NNNQSSearchSpaces::NNNQSSearchSpaces() {
 NNNQSSearchSpaces::~NNNQSSearchSpaces() {
 }
 
+// Batching the clock read bounds a budget overrun to at most N - 1 node visits.
+constexpr unsigned int TIME_CHECK_INTERVAL_NODES = 16;
+
+static PropertyInfo _runtime_stat(PropertyInfo p_info) {
+	p_info.usage = PROPERTY_USAGE_EDITOR | PROPERTY_USAGE_READ_ONLY;
+	return p_info;
+}
+
 void NNNQSSearchSpaces::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("set_top_n_to_find", "top_n_to_find"), &NNNQSSearchSpaces::set_top_n_to_find);
 	ClassDB::bind_method(D_METHOD("get_top_n_to_find"), &NNNQSSearchSpaces::get_top_n_to_find);
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "top_n_to_find", PROPERTY_HINT_RANGE, "1,32,or_greater"), "set_top_n_to_find", "get_top_n_to_find");
 
-	ClassDB::bind_method(D_METHOD("set_query_results", "query_results"), &NNNQSSearchSpaces::set_query_results);
 	ClassDB::bind_method(D_METHOD("get_query_results"), &NNNQSSearchSpaces::get_query_results);
-	ADD_PROPERTY(PropertyInfo(Variant::ARRAY, "query_results", PROPERTY_HINT_ARRAY_TYPE, vformat("%s/%s:%s", Variant::OBJECT, PROPERTY_HINT_RESOURCE_TYPE, "Node")), "set_query_results", "get_query_results");
+	ADD_PROPERTY(_runtime_stat(PropertyInfo(Variant::ARRAY, "query_results", PROPERTY_HINT_ARRAY_TYPE, vformat("%s/%s:%s", Variant::OBJECT, PROPERTY_HINT_RESOURCE_TYPE, "Node"))), "", "get_query_results");
 
-	ClassDB::bind_method(D_METHOD("set_query_result_scores", "query_result_scores"), &NNNQSSearchSpaces::set_query_result_scores);
 	ClassDB::bind_method(D_METHOD("get_query_result_scores"), &NNNQSSearchSpaces::get_query_result_scores);
-	ADD_PROPERTY(PropertyInfo(Variant::ARRAY, "query_result_scores", PROPERTY_HINT_NONE), "set_query_result_scores", "get_query_result_scores");
+	ADD_PROPERTY(_runtime_stat(PropertyInfo(Variant::ARRAY, "query_result_scores", PROPERTY_HINT_NONE)), "", "get_query_result_scores");
 
 	ADD_SUBGROUP("Debugging", "");
 
@@ -54,33 +60,29 @@ void NNNQSSearchSpaces::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_is_run_in_debug_mode"), &NNNQSSearchSpaces::get_is_run_in_debug_mode);
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "is_run_in_debug_mode", PROPERTY_HINT_NONE), "set_is_run_in_debug_mode", "get_is_run_in_debug_mode");
 
-	ClassDB::bind_method(D_METHOD("set_is_query_still_running", "is_query_still_running"), &NNNQSSearchSpaces::set_is_query_still_running);
 	ClassDB::bind_method(D_METHOD("get_is_query_still_running"), &NNNQSSearchSpaces::get_is_query_still_running);
-	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "is_query_still_running", PROPERTY_HINT_NONE), "set_is_query_still_running", "get_is_query_still_running");
+	ADD_PROPERTY(_runtime_stat(PropertyInfo(Variant::BOOL, "is_query_still_running", PROPERTY_HINT_NONE)), "", "get_is_query_still_running");
 
-	ClassDB::bind_method(D_METHOD("set_average_call_runtime_usec", "average_call_runtime_usec"), &NNNQSSearchSpaces::set_average_call_runtime_usec);
+	ClassDB::bind_method(D_METHOD("get_current_call_runtime_usec"), &NNNQSSearchSpaces::get_current_call_runtime_usec);
+	ADD_PROPERTY(_runtime_stat(PropertyInfo(Variant::INT, "current_call_runtime_usec", PROPERTY_HINT_NONE)), "", "get_current_call_runtime_usec");
+
 	ClassDB::bind_method(D_METHOD("get_average_call_runtime_usec"), &NNNQSSearchSpaces::get_average_call_runtime_usec);
-	ADD_PROPERTY(PropertyInfo(Variant::INT, "average_call_runtime_usec", PROPERTY_HINT_NONE), "set_average_call_runtime_usec", "get_average_call_runtime_usec");
+	ADD_PROPERTY(_runtime_stat(PropertyInfo(Variant::INT, "average_call_runtime_usec", PROPERTY_HINT_NONE)), "", "get_average_call_runtime_usec");
 
-	ClassDB::bind_method(D_METHOD("set_search_space_fetch_time_usec", "search_space_fetch_time_usec"), &NNNQSSearchSpaces::set_search_space_fetch_time_usec);
 	ClassDB::bind_method(D_METHOD("get_search_space_fetch_time_usec"), &NNNQSSearchSpaces::get_search_space_fetch_time_usec);
-	ADD_PROPERTY(PropertyInfo(Variant::INT, "search_space_fetch_time_usec", PROPERTY_HINT_NONE), "set_search_space_fetch_time_usec", "get_search_space_fetch_time_usec");
+	ADD_PROPERTY(_runtime_stat(PropertyInfo(Variant::INT, "search_space_fetch_time_usec", PROPERTY_HINT_NONE)), "", "get_search_space_fetch_time_usec");
 
-	ClassDB::bind_method(D_METHOD("set_total_query_runtime_usec", "total_query_runtime_usec"), &NNNQSSearchSpaces::set_total_query_runtime_usec);
 	ClassDB::bind_method(D_METHOD("get_total_query_runtime_usec"), &NNNQSSearchSpaces::get_total_query_runtime_usec);
-	ADD_PROPERTY(PropertyInfo(Variant::INT, "total_query_runtime_usec", PROPERTY_HINT_NONE), "set_total_query_runtime_usec", "get_total_query_runtime_usec");
+	ADD_PROPERTY(_runtime_stat(PropertyInfo(Variant::INT, "total_query_runtime_usec", PROPERTY_HINT_NONE)), "", "get_total_query_runtime_usec");
 
-	ClassDB::bind_method(D_METHOD("set_completed_signal_time_usec", "completed_signal_time_usec"), &NNNQSSearchSpaces::set_completed_signal_time_usec);
 	ClassDB::bind_method(D_METHOD("get_completed_signal_time_usec"), &NNNQSSearchSpaces::get_completed_signal_time_usec);
-	ADD_PROPERTY(PropertyInfo(Variant::INT, "completed_signal_time_usec", PROPERTY_HINT_NONE), "set_completed_signal_time_usec", "get_completed_signal_time_usec");
+	ADD_PROPERTY(_runtime_stat(PropertyInfo(Variant::INT, "completed_signal_time_usec", PROPERTY_HINT_NONE)), "", "get_completed_signal_time_usec");
 
-	ClassDB::bind_method(D_METHOD("set_total_query_node_visits", "total_query_node_visits"), &NNNQSSearchSpaces::set_total_query_node_visits);
 	ClassDB::bind_method(D_METHOD("get_total_query_node_visits"), &NNNQSSearchSpaces::get_total_query_node_visits);
-	ADD_PROPERTY(PropertyInfo(Variant::INT, "total_query_node_visits", PROPERTY_HINT_NONE), "set_total_query_node_visits", "get_total_query_node_visits");
+	ADD_PROPERTY(_runtime_stat(PropertyInfo(Variant::INT, "total_query_node_visits", PROPERTY_HINT_NONE)), "", "get_total_query_node_visits");
 
-	ClassDB::bind_method(D_METHOD("set_total_query_call_count", "total_query_call_count"), &NNNQSSearchSpaces::set_total_query_call_count);
 	ClassDB::bind_method(D_METHOD("get_total_query_call_count"), &NNNQSSearchSpaces::get_total_query_call_count);
-	ADD_PROPERTY(PropertyInfo(Variant::INT, "total_query_call_count", PROPERTY_HINT_NONE), "set_total_query_call_count", "get_total_query_call_count");
+	ADD_PROPERTY(_runtime_stat(PropertyInfo(Variant::INT, "total_query_call_count", PROPERTY_HINT_NONE)), "", "get_total_query_call_count");
 
 	ClassDB::bind_method(D_METHOD("initialize_search_space"), &NNNQSSearchSpaces::initialize_search_space);
 	ClassDB::bind_method(D_METHOD("execute_query", "time_budget_usec"), &NNNQSSearchSpaces::execute_query);
@@ -158,16 +160,8 @@ TypedArray<Node> NNNQSSearchSpaces::get_searchspace_nodes() const {
 	return emptyarray;
 }
 
-void NNNQSSearchSpaces::set_query_results(TypedArray<Node> query_results) {
-	_query_results = query_results;
-}
-
 TypedArray<Node> NNNQSSearchSpaces::get_query_results() const {
 	return _query_results;
-}
-
-void NNNQSSearchSpaces::set_query_result_scores(PackedFloat64Array query_result_scores) {
-	_query_result_scores = query_result_scores;
 }
 
 PackedFloat64Array NNNQSSearchSpaces::get_query_result_scores() const {
@@ -182,65 +176,39 @@ int NNNQSSearchSpaces::get_top_n_to_find() const {
 	return _top_n_to_find;
 }
 
-void NNNQSSearchSpaces::set_current_call_runtime_usec(int current_call_runtime_usec) {
-	_current_call_runtime_usec = current_call_runtime_usec;
-}
-int NNNQSSearchSpaces::get_current_call_runtime_usec() const {
+uint64_t NNNQSSearchSpaces::get_current_call_runtime_usec() const {
 	return _current_call_runtime_usec;
 }
 
-void NNNQSSearchSpaces::set_search_space_fetch_time_usec(int search_space_fetch_time_usec) {
-	_search_space_fetch_time_usec = search_space_fetch_time_usec;
-}
-
-int NNNQSSearchSpaces::get_search_space_fetch_time_usec() const {
+uint64_t NNNQSSearchSpaces::get_search_space_fetch_time_usec() const {
 	return _search_space_fetch_time_usec;
 }
 
-void NNNQSSearchSpaces::set_average_call_runtime_usec(int average_call_runtime_usec) {
-	_average_call_runtime_usec = average_call_runtime_usec;
-}
-
-int NNNQSSearchSpaces::get_average_call_runtime_usec() const {
+uint64_t NNNQSSearchSpaces::get_average_call_runtime_usec() const {
 	return _average_call_runtime_usec;
 }
 
-void NNNQSSearchSpaces::set_total_query_runtime_usec(int total_query_runtime_usec) {
-	_total_query_runtime_usec = total_query_runtime_usec;
-}
-
-int NNNQSSearchSpaces::get_total_query_runtime_usec() const {
+uint64_t NNNQSSearchSpaces::get_total_query_runtime_usec() const {
 	return _total_query_runtime_usec;
 }
 
-void NNNQSSearchSpaces::set_total_query_node_visits(int total_query_node_visits) {
-	_total_query_node_visits = total_query_node_visits;
-}
-
-int NNNQSSearchSpaces::get_total_query_node_visits() const {
+uint64_t NNNQSSearchSpaces::get_total_query_node_visits() const {
 	return _total_query_node_visits;
 }
 
-void NNNQSSearchSpaces::set_total_query_call_count(int total_query_call_count) {
-	_total_query_call_count = total_query_call_count;
-}
-
-int NNNQSSearchSpaces::get_total_query_call_count() const {
+uint64_t NNNQSSearchSpaces::get_total_query_call_count() const {
 	return _total_query_call_count;
 }
 
 void NNNQSSearchSpaces::set_is_query_still_running(bool is_query_still_running) {
 	_is_query_still_running = is_query_still_running;
 }
+
 bool NNNQSSearchSpaces::get_is_query_still_running() const {
 	return _is_query_still_running;
 }
 
-void NNNQSSearchSpaces::set_completed_signal_time_usec(int completed_signal_time_usec) {
-	_completed_signal_time_usec = completed_signal_time_usec;
-}
-
-int NNNQSSearchSpaces::get_completed_signal_time_usec() const {
+uint64_t NNNQSSearchSpaces::get_completed_signal_time_usec() const {
 	return _completed_signal_time_usec;
 }
 
@@ -332,10 +300,7 @@ bool NNNQSSearchSpaces::execute_query(uint64_t time_budget_usec) {
 		uint64_t search_space_fetch_end_timestamp_usec = godot::Time::get_singleton()->get_ticks_usec();
 		_search_space_fetch_time_usec = search_space_fetch_end_timestamp_usec - method_start_time_usec;
 		if (search_space_fetch_end_timestamp_usec >= deadline_usec) {
-			// Update the debug counters before exiting.
-			_current_call_runtime_usec = _search_space_fetch_time_usec;
-			_average_call_runtime_usec = _average_call_runtime_usec * 0.5 + 0.5 * _current_call_runtime_usec;
-			_current_query_runtime_usec += _current_call_runtime_usec;
+			record_call_runtime(_search_space_fetch_time_usec);
 			return false; // Search space fetching used the time budget.
 		}
 
@@ -348,11 +313,7 @@ bool NNNQSSearchSpaces::execute_query(uint64_t time_budget_usec) {
 		uint64_t preprocessing_end_timestamp_usec = godot::Time::get_singleton()->get_ticks_usec();
 		_preprocessing_time_usec += (preprocessing_end_timestamp_usec - preprocessing_start_timestamp_usec);
 		if (preprocessing_end_timestamp_usec >= deadline_usec) {
-			// Update the debug counters before exiting.
-			_current_call_runtime_usec = preprocessing_end_timestamp_usec - method_start_time_usec;
-			_average_call_runtime_usec = _average_call_runtime_usec * 0.5 + 0.5 * _current_call_runtime_usec;
-			_current_query_runtime_usec += _current_call_runtime_usec;
-
+			record_call_runtime(preprocessing_end_timestamp_usec - method_start_time_usec);
 			return false; // Preprocessing used the time budget.
 		}
 	}
@@ -380,18 +341,21 @@ bool NNNQSSearchSpaces::execute_query(uint64_t time_budget_usec) {
 	} //endif is criteria handled
 	// Put all the remaining scores to the search results in order.
 	if (!_is_results_copied) {
+		unsigned int nodes_since_time_check = TIME_CHECK_INTERVAL_NODES;
 		while (_current_result_index < _num_search_space_nodes) {
-			uint64_t current_time_usec = godot::Time::get_singleton()->get_ticks_usec();
-			if (current_time_usec >= deadline_usec) {
-				_current_call_runtime_usec = (current_time_usec - method_start_time_usec);
-				_average_call_runtime_usec = _average_call_runtime_usec * 0.5 + 0.5 * _current_call_runtime_usec;
-				_current_query_runtime_usec += _current_call_runtime_usec;
-				return false;
+			if (nodes_since_time_check >= TIME_CHECK_INTERVAL_NODES) {
+				uint64_t current_time_usec = godot::Time::get_singleton()->get_ticks_usec();
+				if (current_time_usec >= deadline_usec) {
+					record_call_runtime(current_time_usec - method_start_time_usec);
+					return false;
+				}
+				nodes_since_time_check = 0;
 			}
 
 			Node *node = godot::Object::cast_to<Node>((*_ptr_current_search_space)[_current_result_index]);
 			place_to_query_results_based_on_score(node, (*_ptr_current_scores)[_current_result_index]);
 			++_current_result_index;
+			++nodes_since_time_check;
 		}
 		_query_results = _current_query_results;
 		_query_result_scores = _current_query_result_scores;
@@ -414,24 +378,31 @@ bool NNNQSSearchSpaces::execute_query(uint64_t time_budget_usec) {
 	_completed_signal_time_usec = godot::Time::get_singleton()->get_ticks_usec() - signal_start_timestamp;
 
 	// All the criterions are processed and results sorted. Store the total time used for processing.
-	_current_call_runtime_usec = (godot::Time::get_singleton()->get_ticks_usec() - method_start_time_usec);
-	_average_call_runtime_usec = _average_call_runtime_usec * 0.5 + 0.5 * _current_call_runtime_usec;
-	_current_query_runtime_usec += _current_call_runtime_usec;
+	record_call_runtime(godot::Time::get_singleton()->get_ticks_usec() - method_start_time_usec);
 	_total_query_runtime_usec = _current_query_runtime_usec;
 
 	// The query is done.
 	return true;
 }
 
+void NNNQSSearchSpaces::record_call_runtime(uint64_t call_runtime_usec) {
+	_current_call_runtime_usec = call_runtime_usec;
+	_average_call_runtime_usec = _average_call_runtime_usec * 0.5 + 0.5 * _current_call_runtime_usec;
+	_current_query_runtime_usec += _current_call_runtime_usec;
+}
+
 bool NNNQSSearchSpaces::apply_criterion_with_time_budget(NNNQSSearchCriteria *criterion,
 		uint64_t start_time_usec,
 		uint64_t deadline_usec) {
+	unsigned int nodes_since_time_check = TIME_CHECK_INTERVAL_NODES;
 	while (_current_node_index < _num_search_space_nodes) {
-		uint64_t current_time_usec = godot::Time::get_singleton()->get_ticks_usec();
-		if (current_time_usec >= deadline_usec) {
-			_current_call_runtime_usec = current_time_usec - start_time_usec;
-			_average_call_runtime_usec = _average_call_runtime_usec * 0.5 + 0.5 * _current_call_runtime_usec;
-			return false;
+		if (nodes_since_time_check >= TIME_CHECK_INTERVAL_NODES) {
+			uint64_t current_time_usec = godot::Time::get_singleton()->get_ticks_usec();
+			if (current_time_usec >= deadline_usec) {
+				record_call_runtime(current_time_usec - start_time_usec);
+				return false;
+			}
+			nodes_since_time_check = 0;
 		}
 
 		Node *node = godot::Object::cast_to<Node>((*_ptr_current_search_space)[_current_node_index]);
@@ -453,12 +424,15 @@ bool NNNQSSearchSpaces::apply_criterion_with_time_budget(NNNQSSearchCriteria *cr
 			++_work_in_progress_num_added_nodes;
 		}
 		if (_is_run_in_debug_mode) {
-			node->set("is_filtered", filter_out);
-			node->set("score", (previous_score * score));
+			static const StringName is_filtered_property("is_filtered");
+			static const StringName score_property("score");
+			node->set(is_filtered_property, filter_out);
+			node->set(score_property, (previous_score * score));
 		}
 
 		// Move to the next node.
 		++_current_node_index;
+		++nodes_since_time_check;
 	} //endwhile nodes
 
 	TypedArray<Node> *temparray = _ptr_current_search_space;

@@ -107,3 +107,21 @@ func test_zero_budget_execute_query_completes_in_one_call() -> void:
 	assert_true(query.execute_query(0), "an unlimited query should complete in a single call")
 	assert_eq(criterion.apply_count, NUM_CANDIDATES)
 	assert_eq(query.query_results.size(), query.top_n_to_find)
+
+
+# A criterion that times out mid-query must still add that call's runtime to the
+# total, or queries split over several calls under-report their cost.
+func test_timed_out_criterion_calls_count_towards_total_runtime() -> void:
+	var criterion: SlowCriterion = SlowCriterion.new()
+	var query: NNNodeChildrenSearchSpace = _make_query(_make_candidates(NUM_CANDIDATES * 4), criterion)
+
+	var call_runtime_sum_usec := 0
+	var call_count := 0
+	while not query.execute_query(1000):
+		call_runtime_sum_usec += query.current_call_runtime_usec
+		call_count += 1
+		assert_lt(call_count, 100, "the query must eventually complete")
+	call_runtime_sum_usec += query.current_call_runtime_usec
+
+	assert_gt(call_count, 1, "the slow criterion must time out across several calls")
+	assert_gte(query.total_query_runtime_usec, call_runtime_sum_usec, "every call's runtime must be included in the total")

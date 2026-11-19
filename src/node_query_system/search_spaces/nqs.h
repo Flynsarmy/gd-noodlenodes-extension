@@ -59,6 +59,8 @@ private:
 	// callback stopped and re-posted the query into the same index.
 	uint64_t _nqs_query_registration;
 
+	void record_call_runtime(uint64_t call_runtime_usec);
+
 protected:
 	static void _bind_methods();
 	virtual void _initialize_search_space() {}
@@ -96,35 +98,19 @@ public:
 
 	virtual TypedArray<Node> get_searchspace_nodes() const;
 
-	void set_query_results(TypedArray<Node> query_results);
 	TypedArray<Node> get_query_results() const;
-
-	void set_query_result_scores(PackedFloat64Array query_result_scores);
 	PackedFloat64Array get_query_result_scores() const;
 
 	void set_top_n_to_find(int top_n_to_find);
 	int get_top_n_to_find() const;
 
-	void set_average_call_runtime_usec(int average_call_runtime_usec);
-	int get_average_call_runtime_usec() const;
-
-	void set_current_call_runtime_usec(int current_call_runtime_usec);
-	int get_current_call_runtime_usec() const;
-
-	void set_search_space_fetch_time_usec(int search_space_fetch_time_usec);
-	int get_search_space_fetch_time_usec() const;
-
-	void set_total_query_runtime_usec(int total_query_runtime_usec);
-	int get_total_query_runtime_usec() const;
-
-	void set_completed_signal_time_usec(int completed_signal_time_usec);
-	int get_completed_signal_time_usec() const;
-
-	void set_total_query_node_visits(int total_query_node_visits);
-	int get_total_query_node_visits() const;
-
-	void set_total_query_call_count(int total_query_call_count);
-	int get_total_query_call_count() const;
+	uint64_t get_average_call_runtime_usec() const;
+	uint64_t get_current_call_runtime_usec() const;
+	uint64_t get_search_space_fetch_time_usec() const;
+	uint64_t get_total_query_runtime_usec() const;
+	uint64_t get_completed_signal_time_usec() const;
+	uint64_t get_total_query_node_visits() const;
+	uint64_t get_total_query_call_count() const;
 
 	void set_is_query_still_running(bool is_query_still_running);
 	bool get_is_query_still_running() const;
