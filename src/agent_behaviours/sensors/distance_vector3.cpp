@@ -49,14 +49,6 @@ void NNDistanceVector3Sensor::_bind_methods() {
 // Constructor and destructor.
 
 NNDistanceVector3Sensor::NNDistanceVector3Sensor() {
-	_distance = 0.0f;
-	_distance_squared = 0.0f;
-	_max_distance = 100.0f;
-	_max_distance_squared = _max_distance * _max_distance;
-	_one_over_max_distance_squared = 1.0f / _max_distance_squared;
-
-	_is_distance_calculated = false;
-	_is_direction_vector_calculated = false;
 }
 
 NNDistanceVector3Sensor::~NNDistanceVector3Sensor() {
@@ -65,15 +57,7 @@ NNDistanceVector3Sensor::~NNDistanceVector3Sensor() {
 // Handling functions.
 
 float NNDistanceVector3Sensor::evaluate_sensor_value() {
-	_from_to_vector = _from_vector - _to_vector;
-	_distance_squared = _from_to_vector.length_squared();
-	if (_is_distance_calculated || _is_direction_vector_calculated) {
-		_distance = godot::Math::sqrt(_distance_squared);
-	}
-	if (_is_direction_vector_calculated) {
-		_direction_vector = _from_to_vector / _distance;
-	}
-	set_sensor_value(_distance_squared * _one_over_max_distance_squared);
+	set_sensor_value(_core.evaluate());
 	return get_sensor_value();
 }
 
@@ -82,77 +66,75 @@ float NNDistanceVector3Sensor::evaluate_sensor_value() {
 // Configuration values.
 
 void NNDistanceVector3Sensor::set_to_vector3(Vector3 to) {
-	_to_vector = to;
+	_core.to_vector = to;
 }
 
 Vector3 NNDistanceVector3Sensor::get_to_vector3() const {
-	return _to_vector;
+	return _core.to_vector;
 }
 
 void NNDistanceVector3Sensor::set_from_vector3(Vector3 from) {
-	_from_vector = from;
+	_core.from_vector = from;
 }
 
 Vector3 NNDistanceVector3Sensor::get_from_vector3() const {
-	return _from_vector;
+	return _core.from_vector;
 }
 
 void NNDistanceVector3Sensor::set_max_distance(float max_distance) {
-	_max_distance = max_distance;
-	_max_distance_squared = _max_distance * _max_distance;
-	_one_over_max_distance_squared = 1.0 / _max_distance_squared;
+	_core.set_max_distance(max_distance);
 }
 
 float NNDistanceVector3Sensor::get_max_distance() const {
-	return _max_distance;
+	return _core.max_distance;
 }
 
 void NNDistanceVector3Sensor::set_is_distance_calculated(bool is_distance_calculated) {
-	_is_distance_calculated = is_distance_calculated;
+	_core.is_distance_calculated = is_distance_calculated;
 }
 
 bool NNDistanceVector3Sensor::get_is_distance_calculated() const {
-	return _is_distance_calculated;
+	return _core.is_distance_calculated;
 }
 
 void NNDistanceVector3Sensor::set_is_direction_vector_calculated(bool is_direction_vector_calculated) {
-	_is_direction_vector_calculated = is_direction_vector_calculated;
+	_core.is_direction_vector_calculated = is_direction_vector_calculated;
 }
 
 bool NNDistanceVector3Sensor::get_is_direction_vector_calculated() const {
-	return _is_direction_vector_calculated;
+	return _core.is_direction_vector_calculated;
 }
 
 // Debugging / current values.
 
 void NNDistanceVector3Sensor::set_from_to_vector3(Vector3 from_to) {
-	_from_to_vector = from_to;
+	_core.from_to_vector = from_to;
 }
 
 Vector3 NNDistanceVector3Sensor::get_from_to_vector3() const {
-	return _from_to_vector;
+	return _core.from_to_vector;
 }
 
 void NNDistanceVector3Sensor::set_direction_vector3(Vector3 direction) {
-	_direction_vector = direction;
+	_core.direction_vector = direction;
 }
 
 Vector3 NNDistanceVector3Sensor::get_direction_vector3() const {
-	return _direction_vector;
+	return _core.direction_vector;
 }
 
 void NNDistanceVector3Sensor::set_distance(float distance) {
-	_distance = distance;
+	_core.distance = distance;
 }
 
 float NNDistanceVector3Sensor::get_distance() const {
-	return _distance;
+	return _core.distance;
 }
 
 void NNDistanceVector3Sensor::set_distance_squared(float distance_squared) {
-	_distance_squared = distance_squared;
+	_core.distance_squared = distance_squared;
 }
 
 float NNDistanceVector3Sensor::get_distance_squared() const {
-	return _distance_squared;
+	return _core.distance_squared;
 }

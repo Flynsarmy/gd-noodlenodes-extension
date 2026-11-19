@@ -1,6 +1,7 @@
 #pragma once
 
 #include "../sensor.h"
+#include "distance_vector_sensor.h"
 
 namespace godot {
 
@@ -8,18 +9,7 @@ class NNDistanceVector2Sensor : public NNSensor {
 	GDCLASS(NNDistanceVector2Sensor, NNSensor)
 
 private:
-	Vector2 _from_vector;
-	Vector2 _to_vector;
-	Vector2 _from_to_vector;
-	Vector2 _direction_vector;
-	float _distance_squared;
-	float _distance;
-	float _max_distance_squared;
-	float _one_over_max_distance_squared;
-	float _max_distance;
-
-	bool _is_distance_calculated;
-	bool _is_direction_vector_calculated;
+	DistanceVectorSensorCore<Vector2> _core;
 
 protected:
 	static void _bind_methods();
