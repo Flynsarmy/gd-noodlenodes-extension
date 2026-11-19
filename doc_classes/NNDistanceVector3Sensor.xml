@@ -18,7 +18,7 @@
 			Squared distance.
 		</member>
 		<member name="from_to_vector" type="Vector3" setter="set_from_to_vector" getter="get_from_to_vector" default="Vector3(0, 0, 0)">
-			Vector obtained by calculating [code]to_vector - from_vector[/code].
+			Vector obtained by calculating [code]from_vector - to_vector[/code].
 		</member>
 		<member name="from_vector" type="Vector3" setter="set_from_vector" getter="get_from_vector" default="Vector3(0, 0, 0)">
 			The start point of the distance vector.
