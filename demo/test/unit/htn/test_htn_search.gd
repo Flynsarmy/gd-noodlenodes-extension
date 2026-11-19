@@ -36,6 +36,9 @@ func test_later_sibling_failure_backtracks_into_an_earlier_compound_and_rolls_ba
 
 	assert_eq(Domain.step_names(steps), ["SlowTask", "Finish"])
 	assert_eq(root.get_last_search_status(), NNHTNRoot.FOUND)
+	# Local repair resumes from these indices, so backtracking must rewind them too.
+	assert_eq(steps[0].get_provenance()[0].child_index, 0, "SlowTask descends from Main's first child")
+	assert_eq(steps[1].get_provenance()[0].child_index, 1, "Finish is Main's second child")
 
 
 func test_methods_are_tried_in_scene_order_until_one_decomposes() -> void:
