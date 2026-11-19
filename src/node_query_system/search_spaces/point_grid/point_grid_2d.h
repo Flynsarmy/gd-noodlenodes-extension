@@ -1,6 +1,7 @@
 #pragma once
 
 #include "../nqs.h"
+#include "point_grid.h"
 #include <godot_cpp/classes/node2d.hpp>
 #include <vector>
 

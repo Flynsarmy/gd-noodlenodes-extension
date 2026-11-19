@@ -7,6 +7,15 @@
 
 using namespace godot;
 
+namespace {
+const NNPointGridLatticePreset<Vector3> POINT_GRID_LATTICE_PRESETS[4] = {
+	{ Vector3(2.0f, 1.0f, 1.0f), Vector3(1.0f, 0.0f, 0.0f) },
+	{ Vector3(1.0f, 1.0f, 2.0f), Vector3(-0.5f, 0.0f, 1.0f) },
+	{ Vector3(2.0f, 1.0f, 1.0f), Vector3(1.0f, 0.0f, 0.5f) },
+	{ Vector3(2.0f, 1.0f, 0.5f), Vector3(1.0f, 0.0f, 0.0f) },
+};
+} //namespace
+
 NNPointGrid3DSearchSpace::NNPointGrid3DSearchSpace() {
 	_offset_vector = Vector3(0.0, 0.0, 0.0);
 	_grid_size = Vector3(15.0f, 0.0f, 15.0f);
@@ -23,32 +32,7 @@ NNPointGrid3DSearchSpace::~NNPointGrid3DSearchSpace() {
 }
 
 void NNPointGrid3DSearchSpace::destroy_generated_point_grid_nodes() {
-	// Swap the ids into a local vector so a reentrant call (for example from a
-	// node being deleted) finds an empty list and cannot free anything twice.
-	std::vector<uint64_t> generated_node_ids;
-	generated_node_ids.swap(_generated_point_grid_node_ids);
-
-	for (size_t i = 0; i < generated_node_ids.size(); i++) {
-		// The node may legitimately be gone already: the point grid parent node
-		// can be freed before this search space, and user code may free points
-		// individually. Looking the id up is safe, using the object is not.
-		Object *object = ObjectDB::get_instance(generated_node_ids[i]);
-		if (object == nullptr) {
-			continue;
-		}
-		Node3D *node = godot::Object::cast_to<Node3D>(object);
-		if (node == nullptr) {
-			continue;
-		}
-		// memdelete() is the Godot object destructor: it notifies the node, which
-		// removes it from _point_grid_parent_node. Never memfree() a Godot object.
-		memdelete(node);
-	}
-
-	// _point_grid may hold user supplied nodes; drop the references without
-	// deleting them, and never dereference the (possibly stale) parent pointer.
-	_point_grid.clear();
-	_point_grid_parent_node = nullptr;
+	point_grid_destroy_nodes(_generated_point_grid_node_ids, _point_grid, _point_grid_parent_node);
 }
 
 void NNPointGrid3DSearchSpace::_bind_methods() {
@@ -109,27 +93,7 @@ int NNPointGrid3DSearchSpace::get_point_grid_type() const {
 
 void NNPointGrid3DSearchSpace::set_point_grid_lattice_type(int point_grid_lattice_type) {
 	_point_grid_lattice_type = point_grid_lattice_type;
-	switch (point_grid_lattice_type) {
-		case NNPointGrid3DSearchSpaceLatticeType::SQUARE: {
-			_point_grid_base_spacing_vector = Vector3(2.0f, 1.0f, 1.0f);
-			_point_grid_lattice_vector = Vector3(1.0f, 0.0f, 0.0f);
-		} break;
-		case NNPointGrid3DSearchSpaceLatticeType::TRIANGULAR: {
-			_point_grid_base_spacing_vector = Vector3(1.0f, 1.0f, 2.0f);
-			_point_grid_lattice_vector = Vector3(-0.5f, 0.0f, 1.0f);
-		} break;
-		case NNPointGrid3DSearchSpaceLatticeType::CENTERED_RECTANGULAR: {
-			_point_grid_base_spacing_vector = Vector3(2.0f, 1.0f, 1.0f);
-			_point_grid_lattice_vector = Vector3(1.0f, 0.0f, 0.5f);
-		} break;
-		case NNPointGrid3DSearchSpaceLatticeType::RECTANGULAR: {
-			_point_grid_base_spacing_vector = Vector3(2.0f, 1.0f, 0.5f);
-			_point_grid_lattice_vector = Vector3(1.0f, 0.0f, 0.0f);
-		} break;
-		default: {
-			// Custom.
-		} break;
-	}
+	point_grid_apply_lattice(point_grid_lattice_type, POINT_GRID_LATTICE_PRESETS, _point_grid_base_spacing_vector, _point_grid_lattice_vector);
 }
 
 int NNPointGrid3DSearchSpace::get_point_grid_lattice_type() const {
@@ -140,7 +104,7 @@ void NNPointGrid3DSearchSpace::set_point_grid_base_spacing_vector3(Vector3 point
 	// Only accept a finite, strictly positive spacing on all axes. An invalid
 	// value must not replace the previous one, otherwise later valid
 	// assignments would be rejected because of the corrupted stored state.
-	if (!point_grid_base_spacing_vector.is_finite() || point_grid_base_spacing_vector.x <= 0.0f || point_grid_base_spacing_vector.y <= 0.0f || point_grid_base_spacing_vector.z <= 0.0f) {
+	if (!point_grid_spacing_is_valid(point_grid_base_spacing_vector)) {
 		return;
 	}
 	_point_grid_base_spacing_vector = point_grid_base_spacing_vector;
@@ -226,75 +190,23 @@ void NNPointGrid3DSearchSpace::create_point_grid() {
 		}
 	} //end switch point grid type
 
-	// If there is a debug child under the search space node, make duplicates of it
-	// under the search space parent node.
-	Node3D *template_node = nullptr;
-	for (int i = 0; i < get_child_count(); i++) {
-		if (Node3D *dbnode = godot::Object::cast_to<Node3D>(get_child(i))) {
-			if (dbnode->get_name() == StringName("DEBUG")) {
-				template_node = dbnode;
-				break;
-			}
-		} //endif node3d
-	} //endfor childnodes
-	const bool owns_template_node = template_node == nullptr;
-	if (owns_template_node) {
-		template_node = memnew(Node3D);
-	}
-
-	// Ensure that score and is_filtered are available for debug.
-	template_node->set("score", 0.0f);
-	template_node->set("is_filtered", false);
-
-	create_point_grid_nodes(template_node);
-
-	if (owns_template_node) {
-		memdelete(template_node);
-	}
+	point_grid_create(this, "NNPointGrid3DSearchSpace", _point_grid_parent_node, _point_grid_default_positions, _offset_vector, _point_grid, _generated_point_grid_node_ids);
 }
 
 void NNPointGrid3DSearchSpace::create_point_grid_nodes(Node3D *template_node) {
-	for (int i = 0; i < _point_grid_default_positions.size(); i++) {
-		Node3D *new_node = godot::Object::cast_to<Node3D>(template_node->duplicate(15));
-		if (new_node == nullptr) {
-			ERR_FAIL_MSG("NNPointGrid3DSearchSpace::create_point_grid_nodes(): Error, could not duplicate template node. Out of memory?");
-			return;
-		} //endif nullptr
-		_point_grid_parent_node->add_child(new_node);
-		new_node->set_position(_point_grid_default_positions[i] + _offset_vector);
-		_point_grid.push_back(new_node);
-		_generated_point_grid_node_ids.push_back(static_cast<uint64_t>(new_node->get_instance_id()));
-	} //endfor default positions
+	point_grid_create_nodes("NNPointGrid3DSearchSpace", _point_grid_parent_node, template_node, _point_grid_default_positions, _offset_vector, _point_grid, _generated_point_grid_node_ids);
 }
 
 void NNPointGrid3DSearchSpace::create_rectangular_point_grid() {
 	_point_grid_default_positions.clear();
 	// Defensive progress check: the spacing drives the loop increments, so a
 	// non-finite or non-positive value would never terminate the loops below.
-	if (!_point_grid_base_spacing_vector.is_finite() || _point_grid_base_spacing_vector.x <= 0.0f || _point_grid_base_spacing_vector.y <= 0.0f || _point_grid_base_spacing_vector.z <= 0.0f) {
+	if (!point_grid_spacing_is_valid(_point_grid_base_spacing_vector)) {
 		ERR_FAIL_MSG("NNPointGrid3DSearchSpace::create_rectangular_point_grid(): Error, point_grid_base_spacing_vector must be finite and greater than zero on all required axes (x, y and z).");
 		return;
 	}
-	float y = -0.5f * _grid_size.y;
-	float max_y = 0.5f * _grid_size.y;
-	float max_x = 0.5f * _grid_size.x;
-	float max_z = 0.5f * _grid_size.z;
-	while (_grid_size.y >= 0.0f && y <= max_y) {
-		float x = -0.5f * _grid_size.x;
-		while (_grid_size.x >= 0.0f && x <= max_x) {
-			float z = -0.5f * _grid_size.z;
-			while (_grid_size.z >= 0.0f && z <= max_z) {
-				Vector3 new_point = Vector3(x, y, z);
-				_point_grid_default_positions.push_back(new_point);
-				Vector3 lattice_point = new_point + _point_grid_lattice_vector;
-				_point_grid_default_positions.push_back(lattice_point);
-
-				z += _point_grid_base_spacing_vector.z;
-			} //endwhile z
-			x += _point_grid_base_spacing_vector.x;
-		} //endwhile y
-		y += _point_grid_base_spacing_vector.y;
-	} //endwhile x
+	static const int axis_order[3] = { 1, 0, 2 };
+	point_grid_generate_rectangular_positions(_point_grid_default_positions, _grid_size, _point_grid_base_spacing_vector, _point_grid_lattice_vector, axis_order, 3);
 }
 
 void NNPointGrid3DSearchSpace::_initialize_search_space() {
@@ -310,19 +222,5 @@ bool NNPointGrid3DSearchSpace::preprocess_search_space(uint64_t time_limit_times
 	if (!_use_navigation_mesh_positions || !_navigation_map_rid.is_valid()) {
 		return true;
 	}
-	NavigationServer3D *nav_srv = godot::NavigationServer3D::get_singleton();
-	// point_grid is assignable, so it may not match the generated positions one to one.
-	const unsigned int num_points = MIN((unsigned int)_point_grid.size(), (unsigned int)_point_grid_default_positions.size());
-	while (_current_preprocessing_node_index < num_points) {
-		Node3D *node = godot::Object::cast_to<Node3D>(_point_grid[_current_preprocessing_node_index]);
-		if (node != nullptr) {
-			const Vector3 local_position = _point_grid_default_positions[_current_preprocessing_node_index] + _offset_vector;
-			node->set_global_position(nav_srv->map_get_closest_point(_navigation_map_rid, _point_grid_parent_node->get_global_transform().xform(local_position)));
-		}
-		++_current_preprocessing_node_index;
-		if (godot::Time::get_singleton()->get_ticks_usec() >= time_limit_timestamp_usec) {
-			return false;
-		}
-	} //endwhile
-	return true;
+	return point_grid_snap_to_navigation(_current_preprocessing_node_index, _point_grid, _point_grid_default_positions, _offset_vector, _point_grid_parent_node, _navigation_map_rid, NavigationServer3D::get_singleton(), time_limit_timestamp_usec);
 }
