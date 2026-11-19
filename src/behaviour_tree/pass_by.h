@@ -9,9 +9,6 @@ namespace godot {
 class NNBTPassBy : public NNBTTaskNodes {
 	GDCLASS(NNBTPassBy, NNBTTaskNodes)
 
-private:
-	bool _has_on_tick_method;
-
 protected:
 	static void _bind_methods();
 
