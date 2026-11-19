@@ -797,60 +797,6 @@ bool NNSTRoot::_process_transitions(int trigger_type, const String &event_name) 
 	return any_handled;
 }
 
-/**
- * Searches children for states to activate using the appropriate
- * activation method based on the `get_child_state_selection_rule()` setting.
- *
- * Only activates up to 1 child for each node (CompoundState).
- */
-void NNSTRoot::_evaluate_child_activations(std::vector<ObjectID> &nodes) {
-	// Snapshot child IDs because on_enter_condition() / evaluate() callbacks can
-	// remove, reparent or free siblings while this is running.
-	const std::vector<ObjectID> child_state_ids = _child_states;
-
-	if (get_child_state_selection_rule() == NNSTNodeChildStateSelectionRule::ON_ENTER_CONDITION_METHOD) {
-		// Childs are evaluated by using the user-defined on_enter_condition method.
-		for (unsigned int i = 0; i < child_state_ids.size(); i++) {
-			NNSTTickedNodes *stnode = _get_child_state(child_state_ids[i]);
-			if (stnode == nullptr || !stnode->get_is_enabled()) {
-				continue;
-			}
-
-			if (!stnode->on_enter_condition()) {
-				continue;
-			}
-
-			// Activate the child and evaluate its children
-			nodes.push_back(child_state_ids[i]);
-
-			// Only 1 child gets activated
-			break;
-		}
-	} else if (get_child_state_selection_rule() == NNSTNodeChildStateSelectionRule::UTILITY_SCORING) {
-		// Childs are evaluated by using Utility-based scoring.
-		ObjectID highest_scoring_state_to_activate;
-		float highest_score = -9999999.9999;
-		for (unsigned int i = 0; i < child_state_ids.size(); i++) {
-			NNSTTickedNodes *stnode = _get_child_state(child_state_ids[i]);
-			if (stnode == nullptr || !stnode->get_is_enabled()) {
-				continue;
-			}
-
-			float score = stnode->evaluate();
-			if (score > highest_score) {
-				highest_score = score;
-				highest_scoring_state_to_activate = child_state_ids[i];
-			}
-		}
-
-		// Return the highest scoring state that can activate.
-		if (!highest_scoring_state_to_activate.is_null()) {
-			// Activate the child and evaluate its children
-			nodes.push_back(highest_scoring_state_to_activate);
-		}
-	}
-}
-
 void NNSTRoot::_transition_in() {
 	// Entering the root may run automatic STATE_ENTER transitions. Lock the
 	// change pipeline for the duration so their resulting state changes are

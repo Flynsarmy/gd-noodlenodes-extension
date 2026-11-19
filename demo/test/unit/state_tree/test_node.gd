@@ -122,6 +122,35 @@ func test_initial_state_works() -> void:
 	assert_eq(_grandchild.get_is_active(), false)
 	assert_eq(_grandchild2.get_is_active(), true)
 
+func test_cleared_initial_state_does_not_keep_its_child_order() -> void:
+	var _root: NNSTRoot = NNSTRoot.new()
+	var _compound: NNSTNode = NNSTNode.new()
+	var _first: NNSTNode = NNSTNode.new()
+	var _initial: NNSTNode = NNSTNode.new()
+	var _outside: NNSTNode = NNSTNode.new()
+
+	_compound.name = "Compound"
+	_first.name = "First"
+	_initial.name = "Initial"
+	_outside.name = "Outside"
+	_compound.initial_state = NodePath("Initial")
+	_compound.add_child(_first)
+	_compound.add_child(_initial)
+	_root.add_child(_compound)
+	_root.add_child(_outside)
+	_add_manual_root(_root)
+
+	assert_false(_first.get_is_active())
+	assert_true(_initial.get_is_active())
+
+	# Once the preference is gone, authored child order decides again.
+	_compound.initial_state = NodePath("")
+	assert_true(_initial.transition_to(_initial.get_path_to(_outside)))
+	assert_true(_outside.transition_to(_outside.get_path_to(_compound)))
+
+	assert_true(_first.get_is_active())
+	assert_false(_initial.get_is_active())
+
 func test_initial_state_only_accepts_immediate_children() -> void:
 	var _node: NNSTNode = autofree(NNSTNode.new())
 

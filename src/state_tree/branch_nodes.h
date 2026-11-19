@@ -130,6 +130,9 @@ public:
 	virtual bool _can_transition_to(NNSTTickedNodes *from_state, NNSTTickedNodes *to_state);
 	virtual NNSTBranchNodes *_get_common_ancestor(NNSTTickedNodes *from_state, NNSTTickedNodes *to_state);
 	virtual void _evaluate_child_activations(std::vector<ObjectID> &nodes);
+	// Child considered before all others when selecting the state to activate.
+	// A null ID means the authored child order is used as-is.
+	virtual ObjectID _get_preferred_child_state_id() const { return ObjectID(); }
 
 	// Adopts a new list of active child states and transitions out of / in to
 	// the states that changed. Used by the _transition_in() implementations.

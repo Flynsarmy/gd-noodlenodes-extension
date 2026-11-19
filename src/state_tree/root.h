@@ -221,7 +221,6 @@ public:
 	bool auto_tick_step(int p_process_thread, double p_delta);
 
 	virtual void _transition_in() override;
-	virtual void _evaluate_child_activations(std::vector<ObjectID> &nodes) override;
 
 	// Runs automatic transitions that are triggered when a state is entered.
 	// Called from NNSTTickedNodes::on_enter_state(). The generation identifies

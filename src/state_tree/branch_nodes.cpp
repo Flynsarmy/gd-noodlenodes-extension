@@ -443,7 +443,66 @@ void NNSTBranchNodes::_apply_active_states(std::vector<ObjectID> &new_active_sta
  * Only activates up to 1 child for each node (CompoundState).
  */
 void NNSTBranchNodes::_evaluate_child_activations(std::vector<ObjectID> &nodes) {
-	// Implemented on child nodes
+	// Snapshot the child IDs. on_enter_condition() and evaluate() run user code
+	// which may remove, reparent or free siblings, so re-resolve every child
+	// as it is visited instead of indexing the cached list.
+	const std::vector<ObjectID> child_state_ids = _child_states;
+
+	// A preferred child is visited first without touching the cached order, so
+	// later selections still follow the order the children were authored in.
+	const ObjectID preferred_state_id = _get_preferred_child_state_id();
+	std::vector<ObjectID> selection_order;
+	selection_order.reserve(child_state_ids.size() + 1);
+	if (!preferred_state_id.is_null()) {
+		selection_order.push_back(preferred_state_id);
+	}
+	for (unsigned int i = 0; i < child_state_ids.size(); i++) {
+		if (child_state_ids[i] != preferred_state_id) {
+			selection_order.push_back(child_state_ids[i]);
+		}
+	}
+
+	if (get_child_state_selection_rule() == NNSTNodeChildStateSelectionRule::ON_ENTER_CONDITION_METHOD) {
+		// Childs are evaluated by using the user-defined on_enter_condition method.
+		for (unsigned int i = 0; i < selection_order.size(); i++) {
+			NNSTTickedNodes *stnode = _get_child_state(selection_order[i]);
+			if (stnode == nullptr || !stnode->get_is_enabled()) {
+				continue;
+			}
+
+			if (!stnode->on_enter_condition()) {
+				continue;
+			}
+
+			// Activate the child and evaluate its children
+			nodes.push_back(selection_order[i]);
+
+			// Only 1 child gets activated
+			break;
+		}
+	} else if (get_child_state_selection_rule() == NNSTNodeChildStateSelectionRule::UTILITY_SCORING) {
+		// Childs are evaluated by using Utility-based scoring.
+		ObjectID highest_scoring_state_to_activate;
+		float highest_score = -9999999.9999;
+		for (unsigned int i = 0; i < selection_order.size(); i++) {
+			NNSTTickedNodes *stnode = _get_child_state(selection_order[i]);
+			if (stnode == nullptr || !stnode->get_is_enabled()) {
+				continue;
+			}
+
+			float score = stnode->evaluate();
+			if (score > highest_score) {
+				highest_score = score;
+				highest_scoring_state_to_activate = selection_order[i];
+			}
+		}
+
+		// Return the highest scoring state that can activate.
+		if (!highest_scoring_state_to_activate.is_null()) {
+			// Activate the child and evaluate its children
+			nodes.push_back(highest_scoring_state_to_activate);
+		}
+	}
 }
 
 void NNSTBranchNodes::_input(const Ref<InputEvent> &p_event) {
