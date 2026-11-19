@@ -93,9 +93,7 @@ protected:
 	virtual void _on_is_enabled_changed(bool p_is_enabled) override;
 
 	std::vector<NNBTNodes *> _child_btnodes;
-	unsigned int _num_child_btnodes;
 	std::vector<NNConsiderations *> _child_considerations;
-	unsigned int _num_child_considerations;
 	bool _has_reported_extra_enabled_child;
 
 	// Structural helper functions.

@@ -45,7 +45,7 @@ NNBTNodes::Status NNBTSequence::_tick(float delta) {
 	if (_is_reactive) {
 		_current_child_index = 0;
 	}
-	while (_current_child_index < (int)_num_child_btnodes) {
+	while (_current_child_index < (int)_child_btnodes.size()) {
 		NNBTNodes *btnode = _child_btnodes[_current_child_index];
 		if (btnode->get_is_enabled()) {
 			Status result = btnode->tick(delta);

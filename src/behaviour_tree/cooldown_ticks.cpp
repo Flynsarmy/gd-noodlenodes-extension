@@ -69,8 +69,7 @@ NNBTNodes::Status NNBTCooldownTicks::_tick(float delta) {
 		_current_cooldown_ticks--;
 		return _cooldown_return_value;
 	}
-	for (unsigned int i = 0; i < _num_child_btnodes; i++) {
-		NNBTNodes *btnode = _child_btnodes[i];
+	for (NNBTNodes *btnode : _child_btnodes) {
 		if (!btnode->get_is_enabled()) {
 			continue;
 		}

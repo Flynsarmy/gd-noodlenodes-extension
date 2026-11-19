@@ -300,8 +300,7 @@ NNBTNodes::Status NNBTRoot::_tick(float delta) {
 		sensor->evaluate_sensor_value();
 	} //endfor sensors
 
-	for (unsigned int i = 0; i < _num_child_btnodes; i++) {
-		NNBTNodes *btnode = _child_btnodes[i];
+	for (NNBTNodes *btnode : _child_btnodes) {
 		if (!btnode->get_is_enabled()) {
 			continue;
 		}
@@ -361,9 +360,9 @@ void NNBTRoot::_reconcile_active_child() {
 	}
 
 	ObjectID first_enabled_child_id;
-	for (unsigned int i = 0; i < _num_child_btnodes; i++) {
-		if (_child_btnodes[i]->get_is_enabled()) {
-			first_enabled_child_id = _child_btnodes[i]->get_instance_id();
+	for (NNBTNodes *btnode : _child_btnodes) {
+		if (btnode->get_is_enabled()) {
+			first_enabled_child_id = btnode->get_instance_id();
 			break;
 		}
 	}

@@ -46,8 +46,6 @@ NNBTNodes::NNBTNodes() {
 	_is_running = false;
 	_run_owner = ObjectID();
 	_run_delta = 0.0f;
-	_num_child_btnodes = 0;
-	_num_child_considerations = 0;
 	_has_reported_extra_enabled_child = false;
 #ifdef DEBUG_ENABLED
 	_last_visited_timestamp = 0;
@@ -102,8 +100,8 @@ NodePath NNBTNodes::get_tree_root() const {
 
 void NNBTNodes::reset() {
 	interrupt();
-	for (int i = 0; i < _num_child_btnodes; i++) {
-		_child_btnodes[i]->reset();
+	for (NNBTNodes *btnode : _child_btnodes) {
+		btnode->reset();
 	}
 }
 
@@ -115,11 +113,11 @@ float NNBTNodes::evaluate() {
 	_score = 0.0f;
 
 	// Evaluate the child considerations.
-	if (_num_child_considerations < 1) {
+	if (_child_considerations.size() < 1) {
 		return _score;
 	}
 	ScoreAggregation aggregation(_evaluation_method);
-	for (unsigned int i = 0; i < _num_child_considerations; i++) {
+	for (unsigned int i = 0; i < _child_considerations.size(); i++) {
 		NNConsiderations *considerationNode = _child_considerations[i];
 		if (!considerationNode->get_is_enabled())
 			continue;
@@ -204,17 +202,17 @@ void NNBTNodes::_on_interrupt(float delta) {
 }
 
 void NNBTNodes::_interrupt_active_children() {
-	for (unsigned int i = 0; i < _num_child_btnodes; i++) {
-		_child_btnodes[i]->interrupt();
+	for (NNBTNodes *btnode : _child_btnodes) {
+		btnode->interrupt();
 	}
 }
 
 void NNBTNodes::_interrupt_other_active_children(const NNBTNodes *p_keep) {
-	for (unsigned int i = 0; i < _num_child_btnodes; i++) {
-		if (_child_btnodes[i] == p_keep) {
+	for (NNBTNodes *btnode : _child_btnodes) {
+		if (btnode == p_keep) {
 			continue;
 		}
-		_child_btnodes[i]->interrupt();
+		btnode->interrupt();
 	}
 }
 
@@ -248,8 +246,6 @@ void NNBTNodes::update_child_vectors() {
 			_child_considerations.push_back(consideration);
 		}
 	}
-	_num_child_btnodes = (unsigned int)_child_btnodes.size();
-	_num_child_considerations = (unsigned int)_child_considerations.size();
 	// The child structure changed, so any previous structural report is stale.
 	_has_reported_extra_enabled_child = false;
 }
@@ -258,8 +254,8 @@ void NNBTNodes::update_child_vectors() {
 
 int NNBTNodes::_count_enabled_child_btnodes() const {
 	int count = 0;
-	for (unsigned int i = 0; i < _num_child_btnodes; i++) {
-		if (_child_btnodes[i]->get_is_enabled()) {
+	for (NNBTNodes *btnode : _child_btnodes) {
+		if (btnode->get_is_enabled()) {
 			++count;
 		}
 	}
@@ -272,8 +268,7 @@ void NNBTNodes::_report_extra_enabled_child_btnodes() {
 	}
 
 	bool has_enabled_child = false;
-	for (unsigned int i = 0; i < _num_child_btnodes; i++) {
-		NNBTNodes *btnode = _child_btnodes[i];
+	for (NNBTNodes *btnode : _child_btnodes) {
 		if (!btnode->get_is_enabled()) {
 			continue;
 		}

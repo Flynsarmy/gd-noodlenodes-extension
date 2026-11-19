@@ -37,8 +37,7 @@ NNBTNodes::Status NNBTFixedResult::get_fixed_result() const {
 NNBTNodes::Status NNBTFixedResult::_tick(float delta) {
 	_report_extra_enabled_child_btnodes();
 
-	for (unsigned int i = 0; i < _num_child_btnodes; i++) {
-		NNBTNodes *btnode = _child_btnodes[i];
+	for (NNBTNodes *btnode : _child_btnodes) {
 		if (!btnode->get_is_enabled()) {
 			continue;
 		}

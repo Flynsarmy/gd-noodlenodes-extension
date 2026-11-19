@@ -42,8 +42,8 @@ void NNBTParallel::update_child_vectors() {
 	// removed child is never looked up again.
 	for (std::map<NNBTNodes *, Status>::iterator it = _child_results.begin(); it != _child_results.end();) {
 		bool is_child = false;
-		for (unsigned int i = 0; i < _num_child_btnodes; i++) {
-			if (_child_btnodes[i] == it->first) {
+		for (NNBTNodes *btnode : _child_btnodes) {
+			if (btnode == it->first) {
 				is_child = true;
 				break;
 			}
@@ -124,16 +124,15 @@ NNBTNodes::Status NNBTParallel::_tick(float delta) {
 	// The enabled count is fixed for this tick so a "require all" policy only
 	// becomes true once every enabled child has a terminal result.
 	int num_enabled = 0;
-	for (unsigned int i = 0; i < _num_child_btnodes; i++) {
-		if (_child_btnodes[i]->get_is_enabled()) {
+	for (NNBTNodes *btnode : _child_btnodes) {
+		if (btnode->get_is_enabled()) {
 			++num_enabled;
 		}
 	}
 
 	int num_success = 0;
 	int num_failure = 0;
-	for (unsigned int i = 0; i < _num_child_btnodes; i++) {
-		NNBTNodes *btnode = _child_btnodes[i];
+	for (NNBTNodes *btnode : _child_btnodes) {
 		if (!btnode->get_is_enabled()) {
 			continue;
 		}

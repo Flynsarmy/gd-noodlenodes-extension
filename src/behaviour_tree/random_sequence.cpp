@@ -40,8 +40,7 @@ void NNBTRandomSequence::update_child_vectors() {
 void NNBTRandomSequence::_on_before_run(float delta) {
 	// Create a random order.
 	_child_node_order.clear();
-	for (unsigned int i = 0; i < _num_child_btnodes; i++) {
-		NNBTNodes *btnode = _child_btnodes[i];
+	for (NNBTNodes *btnode : _child_btnodes) {
 		if (!btnode->get_is_enabled()) {
 			continue;
 		}

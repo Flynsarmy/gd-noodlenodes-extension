@@ -40,8 +40,7 @@ void NNBTScoreBasedPicker::_on_before_run(float delta) {
 	// score to run.
 	_selected_child = nullptr;
 	float current_highest_score = -99999999.9999;
-	for (unsigned int i = 0; i < _num_child_btnodes; i++) {
-		NNBTNodes *btnode = _child_btnodes[i];
+	for (NNBTNodes *btnode : _child_btnodes) {
 		if (!btnode->get_is_enabled()) {
 			continue;
 		}

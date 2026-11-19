@@ -81,8 +81,7 @@ NNBTNodes::Status NNBTRepeatUntil::_tick(float delta) {
 		return Status::FAILURE;
 	}
 
-	for (unsigned int i = 0; i < _num_child_btnodes; i++) {
-		NNBTNodes *btnode = _child_btnodes[i];
+	for (NNBTNodes *btnode : _child_btnodes) {
 		if (!btnode->get_is_enabled()) {
 			continue;
 		}

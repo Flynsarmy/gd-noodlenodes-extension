@@ -56,8 +56,7 @@ NNBTNodes::Status NNBTLimiter::_tick(float delta) {
 
 	// Only the first enabled behaviour tree child is ticked. Any further
 	// enabled children are ignored and reported as a structural error.
-	for (unsigned int i = 0; i < _num_child_btnodes; i++) {
-		NNBTNodes *btnode = _child_btnodes[i];
+	for (NNBTNodes *btnode : _child_btnodes) {
 		if (!btnode->get_is_enabled()) {
 			continue;
 		}
