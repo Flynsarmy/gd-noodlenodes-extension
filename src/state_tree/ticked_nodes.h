@@ -70,9 +70,6 @@ private:
 	uint64_t _activation_generation;
 
 	bool _finish_transition(NNSTRoot *p_root);
-	// transition_to() is a thin scope wrapper around this impl so every
-	// success/failure return path leaves the transition scope.
-	bool _transition_to_impl(NodePath path_to_node);
 	// Resolves the owning chart root (including through ancestors for the root's
 	// own children). Returns nullptr when no NNSTRoot owns this state.
 	NNSTRoot *_get_tree_root() const;
@@ -157,6 +154,9 @@ public:
 
 	// Returns true if the transition was applied.
 	virtual bool transition_to(NodePath path_to_node);
+	// Applies an already resolved target. Used by the root for its own
+	// transitions so they share the change scope and history restore path.
+	bool _transition_to_resolved_target(NNSTTickedNodes *to_state, const ObjectID &history_id, const NNSTHistoryStateSnapshot &history_entry);
 
 	// Event dispatch. _dispatch_event() delivers the event to this state:
 	// it emits event_received, forwards the event to its active children
@@ -194,8 +194,8 @@ public:
 	// state of its restore snapshot and reports the history identity and
 	// snapshot entry through the out parameters. Shared by path transitions
 	// and transition resources so immediate, event and delayed paths agree.
-	NNSTTickedNodes *_resolve_target_node(Node *target_node, ObjectID &r_history_id, NNSTHistoryStateSnapshot &r_history_entry) const;
-	NNSTTickedNodes *_resolve_transition_target(NNSTTransition *transition, ObjectID &r_history_id, NNSTHistoryStateSnapshot &r_history_entry) const;
+	static NNSTTickedNodes *_resolve_target_node(Node *target_node, ObjectID &r_history_id, NNSTHistoryStateSnapshot &r_history_entry);
+	static NNSTTickedNodes *_resolve_transition_target(NNSTTransition *transition, ObjectID &r_history_id, NNSTHistoryStateSnapshot &r_history_entry);
 	void _process_pending_transition(float delta);
 
 	GDVIRTUAL0R(bool, on_enter_condition);

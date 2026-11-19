@@ -599,7 +599,7 @@ bool NNSTTickedNodes::_execute_transition(NNSTTransition *transition) {
 	return _transition_to_state(target_state, transition, history_id, history_entry);
 }
 
-NNSTTickedNodes *NNSTTickedNodes::_resolve_target_node(Node *target_node, ObjectID &r_history_id, NNSTHistoryStateSnapshot &r_history_entry) const {
+NNSTTickedNodes *NNSTTickedNodes::_resolve_target_node(Node *target_node, ObjectID &r_history_id, NNSTHistoryStateSnapshot &r_history_entry) {
 	r_history_id = ObjectID();
 	r_history_entry = NNSTHistoryStateSnapshot();
 
@@ -630,7 +630,7 @@ NNSTTickedNodes *NNSTTickedNodes::_resolve_target_node(Node *target_node, Object
 	return Object::cast_to<NNSTTickedNodes>(ObjectDB::get_instance(r_history_entry.state_id));
 }
 
-NNSTTickedNodes *NNSTTickedNodes::_resolve_transition_target(NNSTTransition *transition, ObjectID &r_history_id, NNSTHistoryStateSnapshot &r_history_entry) const {
+NNSTTickedNodes *NNSTTickedNodes::_resolve_transition_target(NNSTTransition *transition, ObjectID &r_history_id, NNSTHistoryStateSnapshot &r_history_entry) {
 	if (transition == nullptr) {
 		r_history_id = ObjectID();
 		r_history_entry = NNSTHistoryStateSnapshot();
@@ -723,19 +723,6 @@ float NNSTTickedNodes::evaluate() {
 }
 
 bool NNSTTickedNodes::transition_to(NodePath path_to_node) {
-	// Hold a change scope across the whole transition. Every success/failure
-	// return path leaves this wrapper, so callbacks that set expression
-	// properties, send events or mark state changes only queue work until the
-	// transition has finished and the hierarchy is settled.
-	NNSTRoot *scope_root = _get_tree_root();
-	if (scope_root == nullptr) {
-		return _transition_to_impl(path_to_node);
-	}
-	ChangeScopeGuard scope(scope_root);
-	return _transition_to_impl(path_to_node);
-}
-
-bool NNSTTickedNodes::_transition_to_impl(NodePath path_to_node) {
 	ObjectID history_id;
 	NNSTHistoryStateSnapshot history_entry;
 	NNSTTickedNodes *to_state = _resolve_target_node(get_node_or_null(path_to_node), history_id, history_entry);
@@ -747,6 +734,19 @@ bool NNSTTickedNodes::_transition_to_impl(NodePath path_to_node) {
 	// Route through the shared execution path so event-driven, delayed and
 	// automatic transitions all share the same preflight, transition budget,
 	// transaction and `taken` semantics.
+	return _transition_to_resolved_target(to_state, history_id, history_entry);
+}
+
+bool NNSTTickedNodes::_transition_to_resolved_target(NNSTTickedNodes *to_state, const ObjectID &history_id, const NNSTHistoryStateSnapshot &history_entry) {
+	// Hold a change scope across the whole transition. Every success/failure
+	// return path leaves this wrapper, so callbacks that set expression
+	// properties, send events or mark state changes only queue work until the
+	// transition has finished and the hierarchy is settled.
+	NNSTRoot *scope_root = _get_tree_root();
+	if (scope_root == nullptr) {
+		return _transition_to_state(to_state, nullptr, history_id, history_entry);
+	}
+	ChangeScopeGuard scope(scope_root);
 	return _transition_to_state(to_state, nullptr, history_id, history_entry);
 }
 

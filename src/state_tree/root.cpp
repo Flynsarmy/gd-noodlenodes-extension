@@ -534,15 +534,16 @@ bool NNSTRoot::_try_root_event_transitions(const String &name) {
 			continue;
 		}
 
-		// The transition's target is authored relative to the transition node,
-		// which is a child of this root, so it is one level deep.
-		Node *target_node = get_node_or_null(transition->get_to().slice(1));
-		NNSTTickedNodes *to_state = godot::Object::cast_to<NNSTTickedNodes>(target_node);
+		// A history target resolves to its remembered entry state and carries
+		// the restore identity, exactly like a transition owned by a state.
+		ObjectID history_id;
+		NNSTHistoryStateSnapshot history_entry;
+		NNSTTickedNodes *to_state = NNSTTickedNodes::_resolve_transition_target(transition, history_id, history_entry);
 		if (to_state == nullptr) {
 			continue;
 		}
 
-		if (_run_transition_to(to_state)) {
+		if (_run_transition_to(to_state, history_id, history_entry)) {
 			return true;
 		}
 
@@ -571,7 +572,7 @@ static void _collect_active_states_deepest_first(NNSTTickedNodes *state, std::ve
 	}
 }
 
-bool NNSTRoot::_run_transition_to(NNSTTickedNodes *to_state) {
+bool NNSTRoot::_run_transition_to(NNSTTickedNodes *to_state, const ObjectID &history_id, const NNSTHistoryStateSnapshot &history_entry) {
 	if (to_state == nullptr) {
 		return false;
 	}
@@ -606,7 +607,7 @@ bool NNSTRoot::_run_transition_to(NNSTTickedNodes *to_state) {
 				continue;
 			}
 
-			if (from_state->transition_to(from_state->get_path_to(target))) {
+			if (from_state->_transition_to_resolved_target(target, history_id, history_entry)) {
 				return true;
 			}
 

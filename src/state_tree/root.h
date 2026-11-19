@@ -64,8 +64,9 @@ private:
 	// never be applied on behalf of a stale child activation.
 	bool _is_active_child_activation_valid(ObjectID p_state_id, uint64_t p_epoch) const;
 	// Starts a transition to to_state from the active child (or one of its
-	// active descendants) so the existing transition logic is reused.
-	bool _run_transition_to(NNSTTickedNodes *to_state);
+	// active descendants) so the existing transition logic is reused. A
+	// history target is carried into the transition so its restore runs.
+	bool _run_transition_to(NNSTTickedNodes *to_state, const ObjectID &history_id, const NNSTHistoryStateSnapshot &history_entry);
 
 	NNTickScheduler _tick_scheduler;
 	NNHostedRoot _hosted_root;

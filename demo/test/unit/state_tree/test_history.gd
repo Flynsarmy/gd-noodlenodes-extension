@@ -1520,3 +1520,32 @@ func test_event_transition_to_history_restores_configuration() -> void:
 	assert_true(_a.get_is_active())
 	assert_true(_a2.get_is_active())
 	assert_false(_a1.get_is_active())
+
+func test_root_event_transition_to_history_restores_configuration() -> void:
+	var _nodes: Dictionary = _build_nested_history_tree(true)
+	var _root: NNSTRoot = _nodes["root"]
+	var _outside: NNSTNode = _nodes["outside"]
+	var _compound: NNSTNode = _nodes["compound"]
+	var _a: NNSTNode = _nodes["a"]
+	var _a1: NNSTNode = _nodes["a1"]
+	var _a2: NNSTNode = _nodes["a2"]
+	var _history: NNSTHistory = _nodes["history"]
+	var _transition: NNSTTransition = NNSTTransition.new()
+	_transition.name = "RootTransition"
+	_root.add_child(_transition)
+	_transition.event_name = "restore"
+	_transition.to = _transition.get_path_to(_history)
+	_add_manual_root(_root)
+
+	assert_true(_a1.transition_to(_a1.get_path_to(_a2)))
+	assert_true(_a2.transition_to(_a2.get_path_to(_outside)))
+	assert_true(_history.get_has_history())
+	assert_true(_outside.get_is_active())
+
+	_root.send_event("restore")
+
+	assert_false(_outside.get_is_active())
+	assert_true(_compound.get_is_active())
+	assert_true(_a.get_is_active())
+	assert_true(_a2.get_is_active())
+	assert_false(_a1.get_is_active())
