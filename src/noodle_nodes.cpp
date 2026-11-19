@@ -3,6 +3,7 @@
 #include <godot_cpp/classes/engine.hpp>
 #include <godot_cpp/classes/random_number_generator.hpp>
 #include <godot_cpp/core/class_db.hpp>
+#include <godot_cpp/core/object.hpp>
 
 using namespace godot;
 
@@ -32,12 +33,27 @@ void NoodleNodes::_bind_methods() {
 
 NoodleNodes::NoodleNodes() {
 	_is_enabled = true;
+	_ancestor_root_id = ObjectID();
+	_has_cached_ancestor_root = false;
 }
 
 NoodleNodes::~NoodleNodes() {
 }
 
 // Handling functions.
+
+void NoodleNodes::_notification(int p_what) {
+	switch (p_what) {
+		case NOTIFICATION_ENTER_TREE:
+		case NOTIFICATION_EXIT_TREE:
+		case NOTIFICATION_PARENTED:
+		case NOTIFICATION_UNPARENTED: {
+			_has_cached_ancestor_root = false;
+		} break;
+		default: {
+		} break;
+	}
+}
 
 void NoodleNodes::_on_is_enabled_changed(bool p_is_enabled) {
 }
@@ -59,7 +75,7 @@ bool NoodleNodes::get_is_enabled() const {
 	return _is_enabled;
 }
 
-NoodleNodes *NoodleNodes::get_ancestor_root() const {
+NoodleNodes *NoodleNodes::_find_ancestor_root() const {
 	for (Node *node = get_parent(); node != nullptr; node = node->get_parent()) {
 		NoodleNodes *noodle = Object::cast_to<NoodleNodes>(node);
 		if (noodle != nullptr && noodle->is_root()) {
@@ -67,6 +83,19 @@ NoodleNodes *NoodleNodes::get_ancestor_root() const {
 		}
 	}
 	return nullptr;
+}
+
+NoodleNodes *NoodleNodes::get_ancestor_root() const {
+	// Out of the tree nothing invalidates the cache, so always walk there.
+	if (!is_inside_tree()) {
+		return _find_ancestor_root();
+	}
+	if (!_has_cached_ancestor_root) {
+		NoodleNodes *root = _find_ancestor_root();
+		_ancestor_root_id = root != nullptr ? ObjectID(root->get_instance_id()) : ObjectID();
+		_has_cached_ancestor_root = true;
+	}
+	return Object::cast_to<NoodleNodes>(ObjectDB::get_instance(_ancestor_root_id));
 }
 
 NNBlackboard *NoodleNodes::get_blackboard_resource() const {

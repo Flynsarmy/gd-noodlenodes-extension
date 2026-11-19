@@ -3,6 +3,7 @@
 #include "blackboard.h"
 #include <godot_cpp/classes/node.hpp>
 #include <godot_cpp/classes/ref.hpp>
+#include <godot_cpp/core/object_id.hpp>
 #include <godot_cpp/variant/string.hpp>
 #include <godot_cpp/variant/variant.hpp>
 
@@ -16,9 +17,17 @@ class NoodleNodes : public Node {
 
 private:
 	bool _is_enabled;
+	// A reparented ancestor notifies no descendants, but it does move them out
+	// of and back into the tree, so the cache is only trusted while in-tree.
+	mutable ObjectID _ancestor_root_id;
+	mutable bool _has_cached_ancestor_root;
+
+	NoodleNodes *_find_ancestor_root() const;
 
 protected:
 	static void _bind_methods();
+
+	void _notification(int p_what);
 
 	// Called after get_is_enabled() changes. Subclasses override this to react
 	// to being disabled or re-enabled.

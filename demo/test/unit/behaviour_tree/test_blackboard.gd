@@ -749,6 +749,42 @@ func test_nested_root_follows_a_reparented_ancestor_root() -> void:
 	container.free()
 
 
+func test_leaf_follows_a_reparented_intermediate_ancestor() -> void:
+	var world := Node.new()
+	world.name = "World"
+	add_child_autofree(world)
+
+	var root_a := NNBTRoot.new()
+	root_a.name = "RootA"
+	world.add_child(root_a)
+	var branch := NNBTSequence.new()
+	root_a.add_child(branch)
+	var leaf := NNBTLeaf.new()
+	branch.add_child(leaf)
+
+	root_a.set_blackboard("from_a", 1)
+	assert_eq(leaf.get_blackboard_resource(), root_a.get_blackboard_resource())
+	assert_eq(leaf.get_blackboard("from_a", 0), 1)
+
+	var root_b := NNBTRoot.new()
+	root_b.name = "RootB"
+	world.add_child(root_b)
+	root_b.set_blackboard("from_b", 2)
+
+	branch.reparent(root_b)
+
+	assert_eq(leaf.get_blackboard_resource(), root_b.get_blackboard_resource(), "moving an intermediate ancestor re-resolves the board")
+	assert_eq(leaf.get_blackboard("from_b", 0), 2)
+	assert_eq(leaf.get_blackboard("from_a", -1), -1, "the previous root's data is gone")
+
+	root_b.remove_child(branch)
+	assert_null(leaf.get_blackboard_resource(), "a leaf outside the tree resolves no board")
+
+	root_a.add_child(branch)
+	assert_eq(leaf.get_blackboard_resource(), root_a.get_blackboard_resource(), "reparenting outside the tree is picked up on re-entry")
+	assert_eq(leaf.get_blackboard("from_a", 0), 1)
+
+
 func _save_serialised_scene(scene_root: Node, path: String) -> String:
 	var packed := PackedScene.new()
 	assert_eq(packed.pack(scene_root), OK, "packing the scene succeeds")
