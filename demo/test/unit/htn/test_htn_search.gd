@@ -116,6 +116,27 @@ func test_decompositions_deeper_than_64_active_compounds_are_rejected() -> void:
 	assert_eq(Domain.step_names(Domain.tick_and_capture_plan(root)), ["Shallow"])
 
 
+# A compound abandoned by a backtrack is no longer active, so a long chain of dead ends
+# must not count them against the active-compound limit.
+func test_backtracking_releases_the_active_compounds_it_unwound() -> void:
+	var node: NNHTNNodes = Domain.method(Domain.compound(root, "Domain"), "Main")
+	for index in 40:
+		var level := Domain.compound(node, "Level%d" % index)
+		var dead := Domain.compound(Domain.method(level, "Dead%d" % index), "DeadWork%d" % index)
+		var dead_method := Domain.method(dead, "DeadMethod%d" % index)
+		Domain.task(dead_method, "DeadStep%d" % index, {"dead%d" % index: 1})
+		Domain.task(dead_method, "DeadEnd%d" % index, {}, ["dead%d == 2" % index])
+		var live := Domain.method(level, "Live%d" % index)
+		Domain.task(live, "Step%d" % index)
+		node = live
+	Domain.task(node, "Deepest")
+
+	var steps := Domain.tick_and_capture_plan(root)
+
+	assert_eq(steps.size(), 41)
+	assert_eq(String(steps[40].task.name), "Deepest")
+
+
 func test_expansion_budget_exhaustion_is_reported_without_installing_a_plan() -> void:
 	var settings := NNHTNSearchSettings.new()
 	settings.max_expansions = 2

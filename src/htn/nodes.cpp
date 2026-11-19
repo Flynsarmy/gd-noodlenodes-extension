@@ -45,6 +45,13 @@ uint64_t NNHTNStateView::get_hook_state_reads() const {
 }
 
 void NNHTNStateView::set_value(const String &p_key, const Variant &p_value) {
+	Change change;
+	change.key = p_key;
+	change.existed = _values.has(p_key);
+	if (change.existed) {
+		change.previous = _values.get(p_key, Variant());
+	}
+	_trail.push_back(std::move(change));
 	// A null value means the key is absent, as on NNBlackboard.
 	if (p_value.get_type() == Variant::NIL) {
 		_values.erase(p_key);
@@ -56,6 +63,27 @@ void NNHTNStateView::set_value(const String &p_key, const Variant &p_value) {
 
 void NNHTNStateView::reset(const Dictionary &p_values) {
 	_values = p_values;
+	_read_only_state_valid = false;
+	_trail.clear();
+}
+
+size_t NNHTNStateView::get_trail_mark() const {
+	return _trail.size();
+}
+
+void NNHTNStateView::restore_trail(size_t p_mark) {
+	if (_trail.size() <= p_mark) {
+		return;
+	}
+	while (_trail.size() > p_mark) {
+		const Change &change = _trail.back();
+		if (change.existed) {
+			_values[change.key] = change.previous;
+		} else {
+			_values.erase(change.key);
+		}
+		_trail.pop_back();
+	}
 	_read_only_state_valid = false;
 }
 

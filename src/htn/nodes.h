@@ -10,6 +10,7 @@
 #include <godot_cpp/variant/dictionary.hpp>
 #include <godot_cpp/variant/packed_string_array.hpp>
 #include <godot_cpp/variant/typed_array.hpp>
+#include <vector>
 
 namespace godot {
 
@@ -33,11 +34,22 @@ public:
 	void set_value(const String &p_key, const Variant &p_value);
 	void reset(const Dictionary &p_values);
 
+	// Planning-only undo log: a mark is a trail length, and restoring one reverts the
+	// set_value calls recorded after it.
+	struct Change {
+		String key;
+		Variant previous;
+		bool existed = false;
+	};
+	size_t get_trail_mark() const;
+	void restore_trail(size_t p_mark);
+
 private:
 	Dictionary _values;
 	mutable Dictionary _read_only_state;
 	mutable bool _read_only_state_valid = false;
 	mutable uint64_t _hook_state_reads = 0;
+	std::vector<Change> _trail;
 };
 
 class NNHTNNodes : public NoodleNodes {

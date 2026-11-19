@@ -112,14 +112,37 @@ private:
 		size_t plan_base = 0;
 	};
 
-	// The search state a choice point restores before each of its alternatives.
-	struct Snapshot {
-		Dictionary state;
+	// Trail lengths a choice point rewinds to before each of its alternatives.
+	struct Mark {
+		size_t state_trail = 0;
+		size_t pending_size = 0;
+		size_t pending_trail = 0;
+		size_t frame_trail = 0;
+		size_t active_trail = 0;
 		size_t plan_size = 0;
 		double plan_cost = 0.0;
-		std::vector<WorkItem> pending;
-		std::vector<NNHTNProvenanceFrame> frames;
-		std::vector<NNHTNCompoundTask *> active;
+	};
+
+	// Undo records, replayed newest first: a push is undone by a pop and vice versa.
+	struct PendingUndo {
+		size_t depth = 0;
+		WorkItem item;
+	};
+
+	struct FrameUndo {
+		enum Kind {
+			PUSHED,
+			POPPED,
+			CHILD_INDEX,
+		};
+		Kind kind = PUSHED;
+		int child_index = -1;
+		NNHTNProvenanceFrame frame;
+	};
+
+	struct ActiveUndo {
+		bool pushed = false;
+		NNHTNCompoundTask *compound = nullptr;
 	};
 
 	struct RankedMethod {
@@ -158,7 +181,7 @@ private:
 	};
 
 	struct ChoicePoint {
-		Snapshot snapshot;
+		Mark mark;
 		std::variant<MethodChoice, OrderChoice> choice;
 	};
 
@@ -181,6 +204,9 @@ private:
 	std::vector<ChoicePoint> _choice_points;
 	std::vector<NNHTNProvenanceFrame> _frames;
 	std::vector<NNHTNCompoundTask *> _active;
+	std::vector<PendingUndo> _pending_undo;
+	std::vector<FrameUndo> _frame_undo;
+	std::vector<ActiveUndo> _active_undo;
 	// Never reset, so a repair's new frames cannot collide with those of the steps it keeps.
 	uint64_t _next_frame_id = 1;
 	uint64_t _next_group_id = 1;
@@ -207,8 +233,11 @@ private:
 	bool _backtrack();
 	// Starts the choice point's next alternative. Returns false once none is left.
 	bool _resume(ChoicePoint &r_choice_point);
-	Snapshot _snapshot() const;
-	void _restore(const Snapshot &p_snapshot);
+	Mark _mark() const;
+	void _restore(const Mark &p_mark);
+	// Popped entries are kept in the undo logs so a choice point can put them back.
+	void _pop_active();
+	void _pop_frames(size_t p_depth);
 
 	bool _process_node(const WorkItem &p_item);
 	bool _process_compound(NNHTNCompoundTask *p_compound, const Dictionary &p_args, const String &p_path, int p_trace_parent);
