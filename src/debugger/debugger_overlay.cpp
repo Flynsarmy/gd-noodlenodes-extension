@@ -1,9 +1,7 @@
 #ifdef DEBUG_ENABLED
 #include "debugger_overlay.h"
-#include <godot_cpp/classes/h_slider.hpp>
 #include <godot_cpp/classes/packed_scene.hpp>
 #include <godot_cpp/classes/resource_loader.hpp>
-#include <godot_cpp/classes/scene_tree.hpp>
 #include <godot_cpp/classes/time.hpp>
 #include <godot_cpp/classes/timer.hpp>
 
@@ -27,6 +25,22 @@ static const char *const NN_DEBUGGER_OVERLAY_SCENE_PATH = "res://addons/noodle_n
 
 namespace {
 
+Node *_as_agent(Object *object) {
+	return Object::cast_to<NNAgent>(object);
+}
+
+Node *_as_behaviour_tree(Object *object) {
+	return Object::cast_to<NNBTRoot>(object);
+}
+
+Node *_as_state_tree(Object *object) {
+	return Object::cast_to<NNSTRoot>(object);
+}
+
+Node *_as_htn_root(Object *object) {
+	return Object::cast_to<NNHTNRoot>(object);
+}
+
 uint64_t _item_node_id(TreeItem *item) {
 	if (item == nullptr) {
 		return 0;
@@ -48,6 +62,10 @@ NNDebuggerOverlay *NNDebuggerOverlay::get_singleton() {
 
 NNDebuggerOverlay::NNDebuggerOverlay() {
 	_singleton = this;
+	_root_types[ROOT_TYPE_AGENT - 1] = { &_agents, _as_agent, "Agent", "Agents", "current" };
+	_root_types[ROOT_TYPE_BEHAVIOUR_TREE - 1] = { &_behaviour_trees, _as_behaviour_tree, "Behaviour Tree", "BTrees", "running" };
+	_root_types[ROOT_TYPE_STATE_TREE - 1] = { &_state_trees, _as_state_tree, "State Tree", "STrees", "active" };
+	_root_types[ROOT_TYPE_HTN - 1] = { &_htn_roots, _as_htn_root, "HTN", "HTNs", "running" };
 	_type_selection = nullptr;
 	_root_selection = nullptr;
 	_debug_messages = nullptr;
@@ -79,20 +97,18 @@ void NNDebuggerOverlay::_bind_methods() {
 
 // Handling methods.
 
-int NNDebuggerOverlay::_register_object(std::vector<ObjectID> &registry, uint64_t instance_id) {
-	ERR_FAIL_COND_V_MSG(instance_id == 0, -1, "NNDebuggerOverlay: Cannot register an invalid instance ID.");
+void NNDebuggerOverlay::_register_object(std::vector<ObjectID> &registry, uint64_t instance_id) {
+	ERR_FAIL_COND_MSG(instance_id == 0, "NNDebuggerOverlay: Cannot register an invalid instance ID.");
 
 	ObjectID object_id(instance_id);
 	for (unsigned int i = 0; i < registry.size(); i++) {
 		if (registry[i] == object_id) {
-			return (int)i;
+			return;
 		}
 	}
 
-	int index = (int)registry.size();
 	registry.push_back(object_id);
 	_registry_revision++;
-	return index;
 }
 
 void NNDebuggerOverlay::_deregister_object(std::vector<ObjectID> &registry, uint64_t instance_id) {
@@ -106,20 +122,20 @@ void NNDebuggerOverlay::_deregister_object(std::vector<ObjectID> &registry, uint
 	}
 }
 
-int NNDebuggerOverlay::register_behaviour_tree(uint64_t instance_id) {
-	return _register_object(_behaviour_trees, instance_id);
+void NNDebuggerOverlay::register_behaviour_tree(uint64_t instance_id) {
+	_register_object(_behaviour_trees, instance_id);
 }
 
-int NNDebuggerOverlay::register_state_tree(uint64_t instance_id) {
-	return _register_object(_state_trees, instance_id);
+void NNDebuggerOverlay::register_state_tree(uint64_t instance_id) {
+	_register_object(_state_trees, instance_id);
 }
 
-int NNDebuggerOverlay::register_ai_agent(uint64_t instance_id) {
-	return _register_object(_agents, instance_id);
+void NNDebuggerOverlay::register_ai_agent(uint64_t instance_id) {
+	_register_object(_agents, instance_id);
 }
 
-int NNDebuggerOverlay::register_htn_root(uint64_t instance_id) {
-	return _register_object(_htn_roots, instance_id);
+void NNDebuggerOverlay::register_htn_root(uint64_t instance_id) {
+	_register_object(_htn_roots, instance_id);
 }
 
 void NNDebuggerOverlay::deregister_behaviour_tree(uint64_t instance_id) {
@@ -160,6 +176,15 @@ void NNDebuggerOverlay::_clear_selected_tree() {
 	if (_selected_tree != nullptr) {
 		_selected_tree->clear();
 	}
+}
+
+void NNDebuggerOverlay::_clear_root_selection() {
+	_current_root_selection = 0;
+	_selected_root_id = ObjectID();
+	if (_root_selection != nullptr) {
+		_root_selection->select(0);
+	}
+	_clear_selected_tree();
 }
 
 bool NNDebuggerOverlay::_bind_overlay_view(Control *overlay) {
@@ -283,53 +308,34 @@ void NNDebuggerOverlay::add_as_child_of(Node *debugger_parent_node) {
 
 // UI Handling methods.
 
-const std::vector<ObjectID> *NNDebuggerOverlay::_get_registry_for_type(int type) const {
-	switch (type) {
-		case 1: {
-			return &_agents;
-		} break;
-		case 2: {
-			return &_behaviour_trees;
-		} break;
-		case 3: {
-			return &_state_trees;
-		} break;
-		case 4: {
-			return &_htn_roots;
-		} break;
-		default: {
-		} break;
+const NNDebuggerOverlay::RootTypeInfo *NNDebuggerOverlay::_root_type_info(int type) const {
+	if (type < ROOT_TYPE_AGENT || type > ROOT_TYPE_HTN) {
+		return nullptr;
 	}
-	return nullptr;
+	return &_root_types[type - ROOT_TYPE_AGENT];
+}
+
+const std::vector<ObjectID> *NNDebuggerOverlay::_get_registry_for_type(int type) const {
+	const RootTypeInfo *info = _root_type_info(type);
+	return info != nullptr ? info->registry : nullptr;
 }
 
 Node *NNDebuggerOverlay::_resolve_root_for_type(int type, ObjectID instance_id) const {
-	if (instance_id.is_null()) {
+	const RootTypeInfo *info = _root_type_info(type);
+	if (info == nullptr || instance_id.is_null()) {
 		return nullptr;
 	}
+	return info->resolve(ObjectDB::get_instance((uint64_t)instance_id));
+}
 
-	Object *object = ObjectDB::get_instance((uint64_t)instance_id);
-	if (object == nullptr) {
-		return nullptr;
+int NNDebuggerOverlay::_count_live_roots(const std::vector<ObjectID> &registry, Node *(*resolve)(Object *object)) {
+	int count = 0;
+	for (unsigned int i = 0; i < registry.size(); i++) {
+		if (resolve(ObjectDB::get_instance((uint64_t)registry[i])) != nullptr) {
+			count++;
+		}
 	}
-
-	switch (type) {
-		case 1: {
-			return Object::cast_to<NNAgent>(object);
-		} break;
-		case 2: {
-			return Object::cast_to<NNBTRoot>(object);
-		} break;
-		case 3: {
-			return Object::cast_to<NNSTRoot>(object);
-		} break;
-		case 4: {
-			return Object::cast_to<NNHTNRoot>(object);
-		} break;
-		default: {
-		} break;
-	}
-	return nullptr;
+	return count;
 }
 
 String NNDebuggerOverlay::_host_path(const NoodleNodes *host) {
@@ -369,16 +375,14 @@ String NNDebuggerOverlay::_root_label(Node *root) const {
 	return label;
 }
 
-String NNDebuggerOverlay::_root_status_text(Node *root) {
+String NNDebuggerOverlay::_root_status_text(Node *root) const {
 	String type_name;
-	if (Object::cast_to<NNAgent>(root) != nullptr) {
-		type_name = "Agent";
-	} else if (Object::cast_to<NNBTRoot>(root) != nullptr) {
-		type_name = "Behaviour Tree";
-	} else if (Object::cast_to<NNSTRoot>(root) != nullptr) {
-		type_name = "State Tree";
-	} else if (Object::cast_to<NNHTNRoot>(root) != nullptr) {
-		type_name = "HTN";
+	for (int type = ROOT_TYPE_AGENT; type <= ROOT_TYPE_HTN; type++) {
+		const RootTypeInfo *info = _root_type_info(type);
+		if (info->resolve(root) != nullptr) {
+			type_name = info->label;
+			break;
+		}
 	}
 
 	if (type_name.is_empty()) {
@@ -390,21 +394,18 @@ String NNDebuggerOverlay::_root_status_text(Node *root) {
 	return type_name;
 }
 
-String NNDebuggerOverlay::_active_path_status(Node *node) {
+String NNDebuggerOverlay::_active_path_status(Node *node) const {
 	NoodleNodes *noodle = Object::cast_to<NoodleNodes>(node);
 	if (noodle == nullptr) {
 		return String();
 	}
 
 	NoodleNodes *ancestor_root = noodle->get_ancestor_root();
-	if (Object::cast_to<NNBTRoot>(ancestor_root) != nullptr || Object::cast_to<NNHTNRoot>(ancestor_root) != nullptr) {
-		return "running";
-	}
-	if (Object::cast_to<NNSTRoot>(ancestor_root) != nullptr) {
-		return "active";
-	}
-	if (Object::cast_to<NNAgent>(ancestor_root) != nullptr) {
-		return "current";
+	for (int type = ROOT_TYPE_AGENT; type <= ROOT_TYPE_HTN; type++) {
+		const RootTypeInfo *info = _root_type_info(type);
+		if (info->resolve(ancestor_root) != nullptr) {
+			return info->active_path_label;
+		}
 	}
 	return String();
 }
@@ -586,15 +587,7 @@ void NNDebuggerOverlay::_refresh_selected_root_view() {
 
 	Node *root = _resolve_root_for_type(_current_type_selection, _selected_root_id);
 	if (root == nullptr) {
-		if (_selected_root_id.is_valid()) {
-			_selected_root_id = ObjectID();
-			_current_root_selection = -1;
-			if (_root_selection != nullptr && _root_selection->get_item_count() > 0) {
-				_root_selection->select(0);
-				_current_root_selection = 0;
-			}
-		}
-		_clear_selected_tree();
+		_clear_root_selection();
 		return;
 	}
 
@@ -748,19 +741,13 @@ void NNDebuggerOverlay::on_root_item_selected(int item) {
 	}
 
 	if (item == 0) { // The 0th item is the "Select a root node" placeholder.
-		_current_root_selection = 0;
-		_selected_root_id = ObjectID();
-		_root_selection->select(0);
-		_clear_selected_tree();
+		_clear_root_selection();
 		return;
 	}
 
 	Variant metadata = _root_selection->get_item_metadata(item);
 	if (metadata.get_type() != Variant::INT) {
-		_current_root_selection = 0;
-		_selected_root_id = ObjectID();
-		_root_selection->select(0);
-		_clear_selected_tree();
+		_clear_root_selection();
 		return;
 	}
 
@@ -769,10 +756,7 @@ void NNDebuggerOverlay::on_root_item_selected(int item) {
 	if (root == nullptr) {
 		// The item outlived its root. Drop the selection rather than indexing the
 		// unfiltered registry.
-		_current_root_selection = 0;
-		_selected_root_id = ObjectID();
-		_root_selection->select(0);
-		_clear_selected_tree();
+		_clear_root_selection();
 		return;
 	}
 
@@ -806,33 +790,12 @@ void NNDebuggerOverlay::update_ui() {
 	_ensure_root_items();
 	_refresh_selected_root_view();
 
-	int agent_count = 0;
-	for (unsigned int i = 0; i < _agents.size(); i++) {
-		if (_resolve_root_for_type(1, _agents[i]) != nullptr) {
-			agent_count++;
-		}
+	String msg;
+	for (int type = ROOT_TYPE_AGENT; type <= ROOT_TYPE_HTN; type++) {
+		const RootTypeInfo *info = _root_type_info(type);
+		msg += String(info->count_label) + String(": ") + String::num_int64(_count_live_roots(*info->registry, info->resolve));
+		msg += type == ROOT_TYPE_HTN ? String(".\n") : String(" | ");
 	}
-	int behaviour_tree_count = 0;
-	for (unsigned int i = 0; i < _behaviour_trees.size(); i++) {
-		if (_resolve_root_for_type(2, _behaviour_trees[i]) != nullptr) {
-			behaviour_tree_count++;
-		}
-	}
-	int state_tree_count = 0;
-	for (unsigned int i = 0; i < _state_trees.size(); i++) {
-		if (_resolve_root_for_type(3, _state_trees[i]) != nullptr) {
-			state_tree_count++;
-		}
-	}
-
-	int htn_root_count = 0;
-	for (unsigned int i = 0; i < _htn_roots.size(); i++) {
-		if (_resolve_root_for_type(4, _htn_roots[i]) != nullptr) {
-			htn_root_count++;
-		}
-	}
-
-	godot::String msg = godot::String("Agents: ") + godot::String::num_int64(agent_count) + godot::String(" | BTrees: ") + godot::String::num_int64(behaviour_tree_count) + godot::String(" | STrees: ") + godot::String::num_int64(state_tree_count) + godot::String(" | HTNs: ") + godot::String::num_int64(htn_root_count) + godot::String(".\n");
 
 	Node *selected_root = _resolve_root_for_type(_current_type_selection, _selected_root_id);
 	if (selected_root != nullptr) {

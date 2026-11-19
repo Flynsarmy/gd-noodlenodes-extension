@@ -20,11 +20,28 @@ class NNDebuggerOverlay : public Object {
 	GDCLASS(NNDebuggerOverlay, Object)
 
 private:
+	// Values are part of the bound on_type_item_selected() API.
+	enum RootType {
+		ROOT_TYPE_AGENT = 1,
+		ROOT_TYPE_BEHAVIOUR_TREE = 2,
+		ROOT_TYPE_STATE_TREE = 3,
+		ROOT_TYPE_HTN = 4,
+	};
+
+	struct RootTypeInfo {
+		std::vector<ObjectID> *registry;
+		Node *(*resolve)(Object *object);
+		const char *label;
+		const char *count_label;
+		const char *active_path_label;
+	};
+
 	// Registries hold instance IDs so freed roots are never dereferenced.
 	std::vector<ObjectID> _behaviour_trees;
 	std::vector<ObjectID> _state_trees;
 	std::vector<ObjectID> _agents;
 	std::vector<ObjectID> _htn_roots;
+	RootTypeInfo _root_types[4];
 
 	static NNDebuggerOverlay *_singleton;
 
@@ -48,15 +65,18 @@ private:
 	bool _bind_overlay_view(Control *overlay);
 	void _clear_view();
 	void _clear_selected_tree();
+	void _clear_root_selection();
 
+	const RootTypeInfo *_root_type_info(int type) const;
 	const std::vector<ObjectID> *_get_registry_for_type(int type) const;
 	Node *_resolve_root_for_type(int type, ObjectID instance_id) const;
-	int _register_object(std::vector<ObjectID> &registry, uint64_t instance_id);
+	static int _count_live_roots(const std::vector<ObjectID> &registry, Node *(*resolve)(Object *object));
+	void _register_object(std::vector<ObjectID> &registry, uint64_t instance_id);
 	void _deregister_object(std::vector<ObjectID> &registry, uint64_t instance_id);
 	String _root_label(Node *root) const;
 	static String _host_path(const NoodleNodes *host);
-	static String _root_status_text(Node *root);
-	static String _active_path_status(Node *node);
+	String _root_status_text(Node *root) const;
+	String _active_path_status(Node *node) const;
 	static NNHostedRoot *_hosted_root_of(Node *root);
 	static void _collect_active_targets(Node *root, std::vector<Node *> &r_targets);
 	static bool _is_on_active_path(Node *node, const std::vector<Node *> &targets);
@@ -78,10 +98,10 @@ public:
 	static NNDebuggerOverlay *get_singleton();
 
 	// Handling methods.
-	int register_behaviour_tree(uint64_t instance_id);
-	int register_state_tree(uint64_t instance_id);
-	int register_ai_agent(uint64_t instance_id);
-	int register_htn_root(uint64_t instance_id);
+	void register_behaviour_tree(uint64_t instance_id);
+	void register_state_tree(uint64_t instance_id);
+	void register_ai_agent(uint64_t instance_id);
+	void register_htn_root(uint64_t instance_id);
 
 	void deregister_behaviour_tree(uint64_t instance_id);
 	void deregister_state_tree(uint64_t instance_id);
