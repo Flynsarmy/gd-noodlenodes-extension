@@ -1,5 +1,6 @@
 #pragma once
 
+#include "area_search_space.h"
 #include "nqs.h"
 #include <godot_cpp/classes/area3d.hpp>
 
@@ -9,9 +10,7 @@ class NNArea3DSearchSpace : public NNNQSSearchSpaces {
 	GDCLASS(NNArea3DSearchSpace, NNNQSSearchSpaces)
 
 private:
-	Area3D *_area3d;
-
-	TypedArray<Area3D> _intersecting_areas;
+	AreaSearchSpaceCore<Area3D> _core;
 
 protected:
 	static void _bind_methods();
@@ -20,9 +19,6 @@ protected:
 	virtual void _uninitialize_search_space() override;
 
 public:
-	NNArea3DSearchSpace();
-	~NNArea3DSearchSpace();
-
 	void on_area_entered(Area3D *area);
 	void on_area_exited(Area3D *area);
 
