@@ -1,11 +1,21 @@
 #pragma once
 
+#include "dot_product_filter.h"
 #include "nqs.h"
 
 namespace godot {
 
 class NNDotProductToPositionVector2SearchCriterion : public NNNQSSearchCriteria {
 	GDCLASS(NNDotProductToPositionVector2SearchCriterion, NNNQSSearchCriteria)
+
+public:
+	enum NNDotProductToPositionVector2SearchCriteriaFilteringRule {
+		LessThan = 0,
+		LessOrEqual = 1,
+		Equal = 2,
+		MoreOrEqual = 3,
+		MoreThan = 4,
+	};
 
 private:
 	Vector2 _dot_product_position_vector;
@@ -19,14 +29,6 @@ protected:
 public:
 	NNDotProductToPositionVector2SearchCriterion();
 	~NNDotProductToPositionVector2SearchCriterion();
-
-	enum NNDotProductToPositionVector2SearchCriteriaFilteringRule {
-		LessThan = 0,
-		LessOrEqual = 1,
-		Equal = 2,
-		MoreOrEqual = 3,
-		MoreThan = 4,
-	};
 
 	// Getters and setters for attributes.
 

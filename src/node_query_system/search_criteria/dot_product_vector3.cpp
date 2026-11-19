@@ -71,27 +71,11 @@ void NNDotProductVector3SearchCriterion::apply_criterion(Node *node, bool &filte
 	float dotproduct = _dot_product_direction_vector.dot(node3d_direction_vector);
 
 	if (get_use_for_filtering()) {
-		switch (_filtering_rule) {
-			case NNDotProductVector3SearchCriteriaFilteringRule::LessThan: {
-				_is_filtered = (dotproduct < _filtering_value);
-			} break;
-			case NNDotProductVector3SearchCriteriaFilteringRule::LessOrEqual: {
-				_is_filtered = (dotproduct <= _filtering_value);
-			} break;
-			case NNDotProductVector3SearchCriteriaFilteringRule::Equal: {
-				_is_filtered = (dotproduct == _filtering_value);
-			} break;
-			case NNDotProductVector3SearchCriteriaFilteringRule::MoreOrEqual: {
-				_is_filtered = (dotproduct >= _filtering_value);
-			} break;
-			default: {
-				_is_filtered = (dotproduct > _filtering_value);
-			} break;
-		}
+		_is_filtered = filter_dot_product<NNDotProductVector3SearchCriteriaFilteringRule>(dotproduct, _filtering_value, _filtering_rule);
 	} //endif do filtering
 
 	if (get_use_for_scoring()) {
-		_score = dotproduct * 0.5f + 0.5f;
+		_score = score_dot_product(dotproduct);
 		if (get_activation_curve().is_valid()) {
 			_score = sample_activation_curve(_score);
 		}

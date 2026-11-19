@@ -73,27 +73,11 @@ void NNDotProductToPositionVector3SearchCriterion::apply_criterion(Node *node, b
 	float DotProductToPosition = node3d_direction_vector.dot(node3d_from_to_position_vector);
 
 	if (get_use_for_filtering()) {
-		switch (_filtering_rule) {
-			case NNDotProductToPositionVector3SearchCriteriaFilteringRule::LessThan: {
-				_is_filtered = (DotProductToPosition < _filtering_value);
-			} break;
-			case NNDotProductToPositionVector3SearchCriteriaFilteringRule::LessOrEqual: {
-				_is_filtered = (DotProductToPosition <= _filtering_value);
-			} break;
-			case NNDotProductToPositionVector3SearchCriteriaFilteringRule::Equal: {
-				_is_filtered = (DotProductToPosition == _filtering_value);
-			} break;
-			case NNDotProductToPositionVector3SearchCriteriaFilteringRule::MoreOrEqual: {
-				_is_filtered = (DotProductToPosition >= _filtering_value);
-			} break;
-			default: {
-				_is_filtered = (DotProductToPosition > _filtering_value);
-			} break;
-		}
+		_is_filtered = filter_dot_product<NNDotProductToPositionVector3SearchCriteriaFilteringRule>(DotProductToPosition, _filtering_value, _filtering_rule);
 	} //endif do filtering
 
 	if (get_use_for_scoring()) {
-		_score = DotProductToPosition * 0.5f + 0.5f;
+		_score = score_dot_product(DotProductToPosition);
 		if (get_activation_curve().is_valid()) {
 			_score = sample_activation_curve(_score);
 		}

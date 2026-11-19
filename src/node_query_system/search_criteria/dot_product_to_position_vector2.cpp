@@ -74,27 +74,11 @@ void NNDotProductToPositionVector2SearchCriterion::apply_criterion(Node *node, b
 	float DotProductToPosition = node2d_direction_vector.dot(node2d_from_to_vector);
 
 	if (get_use_for_filtering()) {
-		switch (_filtering_rule) {
-			case NNDotProductToPositionVector2SearchCriteriaFilteringRule::LessThan: {
-				_is_filtered = (DotProductToPosition < _filtering_value);
-			} break;
-			case NNDotProductToPositionVector2SearchCriteriaFilteringRule::LessOrEqual: {
-				_is_filtered = (DotProductToPosition <= _filtering_value);
-			} break;
-			case NNDotProductToPositionVector2SearchCriteriaFilteringRule::Equal: {
-				_is_filtered = (DotProductToPosition == _filtering_value);
-			} break;
-			case NNDotProductToPositionVector2SearchCriteriaFilteringRule::MoreOrEqual: {
-				_is_filtered = (DotProductToPosition >= _filtering_value);
-			} break;
-			default: {
-				_is_filtered = (DotProductToPosition > _filtering_value);
-			} break;
-		}
+		_is_filtered = filter_dot_product<NNDotProductToPositionVector2SearchCriteriaFilteringRule>(DotProductToPosition, _filtering_value, _filtering_rule);
 	} //endif do filtering
 
 	if (get_use_for_scoring()) {
-		_score = DotProductToPosition * 0.5f + 0.5f;
+		_score = score_dot_product(DotProductToPosition);
 		if (get_activation_curve().is_valid()) {
 			_score = sample_activation_curve(_score);
 		}
