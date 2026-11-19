@@ -31,23 +31,6 @@ bool NNCachedExpression::execute(const Array &p_input_values, Variant &r_result,
 
 namespace NNExpressionUtil {
 
-Variant evaluate_expression(const String &p_context, const String &p_expression, const Dictionary &p_inputs, const Variant &p_default_value) {
-	NNCachedExpression expression;
-	String error;
-	if (!expression.parse(p_expression, PackedStringArray(p_inputs.keys()), error)) {
-		ERR_PRINT("(" + p_context + ") Expression parse error : " + error + " for expression " + p_expression);
-		return p_default_value;
-	}
-
-	Variant result;
-	if (!expression.execute(p_inputs.values(), result, error)) {
-		ERR_PRINT("(" + p_context + ") Expression execute error: " + error + " for expression: " + p_expression);
-		return p_default_value;
-	}
-
-	return result;
-}
-
 static bool _is_reserved_identifier(const String &p_name) {
 	constexpr const char *KEYWORDS[] = { "in", "null", "true", "false", "PI", "TAU", "INF", "NAN", "not", "and", "or", "self" };
 	for (const char *keyword : KEYWORDS) {

@@ -284,6 +284,25 @@ func test_expression_delay_is_evaluated_from_blackboard() -> void:
 	_root.tick(0.25)
 	assert_true(_target.get_is_active())
 
+func test_changing_delay_expression_takes_effect() -> void:
+	var _tree: Dictionary = _build_tree("0.5")
+	var _root: NNSTRoot = _tree["root"]
+	var _transition: NNSTTransition = _tree["transition"]
+
+	assert_almost_eq(_transition.evaluate_delay(), 0.5, 0.0001)
+
+	_transition.delay_in_seconds = "1.25"
+	assert_almost_eq(_transition.evaluate_delay(), 1.25, 0.0001)
+
+	var board := NNBlackboard.new()
+	board.values = {"delay_time": 2.5}
+	_root.blackboard = board
+	_transition.delay_in_seconds = "delay_time"
+	assert_almost_eq(_transition.evaluate_delay(), 2.5, 0.0001)
+
+	board.values = {"delay_time": 0.25}
+	assert_almost_eq(_transition.evaluate_delay(), 0.25, 0.0001)
+
 func test_negative_delay_is_immediate() -> void:
 	for delay in ["-3.0", "delay_time"]:
 		var _tree: Dictionary = _build_tree(delay)

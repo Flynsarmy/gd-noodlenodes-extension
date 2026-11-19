@@ -3,7 +3,6 @@
 #include <godot_cpp/classes/expression.hpp>
 #include <godot_cpp/classes/ref.hpp>
 #include <godot_cpp/variant/array.hpp>
-#include <godot_cpp/variant/dictionary.hpp>
 #include <godot_cpp/variant/packed_string_array.hpp>
 #include <godot_cpp/variant/string.hpp>
 #include <godot_cpp/variant/variant.hpp>
@@ -29,11 +28,6 @@ private:
 };
 
 namespace NNExpressionUtil {
-
-// Evaluates p_expression with the keys of p_inputs as variable names. Reports
-// an error tagged with p_context and returns p_default_value when parsing or
-// execution fails.
-Variant evaluate_expression(const String &p_context, const String &p_expression, const Dictionary &p_inputs, const Variant &p_default_value);
 
 // Names p_expression reads as free variables: identifiers outside string
 // literals that are not keywords, type names, member accesses or calls.

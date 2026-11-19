@@ -1,5 +1,6 @@
 #pragma once
 
+#include "../expression_util.h"
 #include "branch_nodes.h"
 #include "guard.h"
 
@@ -15,6 +16,8 @@ private:
 	String _event_name;
 	NodePath _to;
 	String _delay_in_seconds;
+	PackedStringArray _delay_read_keys;
+	mutable NNCachedExpression _delay_cache;
 
 protected:
 	static void _bind_methods();

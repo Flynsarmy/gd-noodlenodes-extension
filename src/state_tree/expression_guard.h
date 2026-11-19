@@ -1,5 +1,6 @@
 #pragma once
 
+#include "../expression_util.h"
 #include "guard.h"
 
 namespace godot {
@@ -16,6 +17,10 @@ public:
 	virtual int get_supported_trigger_types() const override;
 	String get_expression() const;
 	void set_expression(const String &p_expression);
+
+private:
+	PackedStringArray _read_keys;
+	mutable NNCachedExpression _cache;
 };
 
 } //namespace godot

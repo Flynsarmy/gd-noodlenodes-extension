@@ -78,6 +78,7 @@ String NNSTTransition::get_delay_in_seconds() const {
 
 void NNSTTransition::set_delay_in_seconds(const String &p_delay_in_seconds) {
 	_delay_in_seconds = p_delay_in_seconds;
+	_delay_read_keys = NNExpressionUtil::scan_identifiers(p_delay_in_seconds);
 }
 
 // Handling functions.
@@ -145,11 +146,22 @@ float NNSTTransition::evaluate_delay() const {
 		return 0.0f;
 	}
 
-	Variant result = NNExpressionUtil::evaluate_expression(
-			String("delay of ") + NNExpressionUtil::path_of(this),
-			delay_expression,
-			state_chart->get_blackboard_resource()->get_values(),
-			0.0);
+	const Dictionary values = state_chart->get_blackboard_resource()->get_values();
+	Array inputs;
+	for (const String &key : _delay_read_keys) {
+		inputs.push_back(values.get(key, Variant()));
+	}
+
+	Variant result;
+	String error;
+	if (!_delay_cache.parse(delay_expression, _delay_read_keys, error)) {
+		ERR_PRINT(vformat("(delay of %s) Expression parse error : %s for expression %s", NNExpressionUtil::path_of(this), error, delay_expression));
+		return 0.0f;
+	}
+	if (!_delay_cache.execute(inputs, result, error)) {
+		ERR_PRINT(vformat("(delay of %s) Expression execute error: %s for expression: %s", NNExpressionUtil::path_of(this), error, delay_expression));
+		return 0.0f;
+	}
 
 	const Variant::Type result_type = result.get_type();
 	if (result_type != Variant::FLOAT && result_type != Variant::INT) {
