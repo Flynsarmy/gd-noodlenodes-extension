@@ -902,3 +902,28 @@ func test_reparented_overlay_rebinds_and_keeps_refreshing() -> void:
 	assert_not_null(root_item)
 	if root_item != null:
 		assert_eq(root_item.get_child_count(), 1, "A reparented overlay must rebind and keep refreshing the selected root.")
+
+
+func test_collapsed_row_stays_collapsed_across_refresh() -> void:
+	var root := _add_behaviour_tree("CollapseRoot")
+	var branch := NNBTFixedResult.new()
+	branch.name = "Branch"
+	branch.add_child(NNBTFixedResult.new())
+	root.add_child(branch)
+
+	_open_overlay()
+	_select_type(2)
+	_select_root_item(1)
+
+	var branch_row := _find_row(_selected_tree().get_root(), "Branch")
+	assert_not_null(branch_row)
+	if branch_row == null:
+		return
+	branch_row.collapsed = true
+
+	await wait_seconds(0.25)
+
+	var refreshed_row := _find_row(_selected_tree().get_root(), "Branch")
+	assert_not_null(refreshed_row)
+	if refreshed_row != null:
+		assert_true(refreshed_row.collapsed, "A refresh must not expand a row the user collapsed.")

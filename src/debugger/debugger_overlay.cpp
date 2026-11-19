@@ -25,6 +25,21 @@ using namespace godot;
 
 static const char *const NN_DEBUGGER_OVERLAY_SCENE_PATH = "res://addons/noodle_nodes/debugger/noodle_nodes_debugger_overlay.tscn";
 
+namespace {
+
+uint64_t _item_node_id(TreeItem *item) {
+	if (item == nullptr) {
+		return 0;
+	}
+	Variant metadata = item->get_metadata(0);
+	if (metadata.get_type() != Variant::INT) {
+		return 0;
+	}
+	return (uint64_t)(int64_t)metadata;
+}
+
+} //namespace
+
 NNDebuggerOverlay *NNDebuggerOverlay::_singleton = nullptr;
 
 NNDebuggerOverlay *NNDebuggerOverlay::get_singleton() {
@@ -61,8 +76,6 @@ void NNDebuggerOverlay::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("on_exit_tree"), &NNDebuggerOverlay::on_exit_tree);
 	ClassDB::bind_method(D_METHOD("update_ui"), &NNDebuggerOverlay::update_ui);
 }
-
-// Godot virtuals.
 
 // Handling methods.
 
@@ -409,87 +422,25 @@ NNHostedRoot *NNDebuggerOverlay::_hosted_root_of(Node *root) {
 	return hosted_root;
 }
 
-bool NNDebuggerOverlay::_is_on_path_to(Node *node, const ObjectID &target_id) {
-	if (node == nullptr || target_id.is_null()) {
-		return false;
-	}
-
-	Node *target = Object::cast_to<Node>(ObjectDB::get_instance((uint64_t)target_id));
-	if (target == nullptr) {
-		return false;
-	}
-	return node == target || node->is_ancestor_of(target);
-}
-
-void NNDebuggerOverlay::_cache_agent_selections(Node *root) {
-	_agent_selections.clear();
-	if (root == nullptr) {
+void NNDebuggerOverlay::_collect_active_targets(Node *root, std::vector<Node *> &r_targets) {
+	if (NNBTRoot *bt_root = Object::cast_to<NNBTRoot>(root)) {
+		if (NNBTNodes *running_action = bt_root->get_running_action()) {
+			r_targets.push_back(running_action);
+		}
 		return;
 	}
 
-	// Collecting runs no user code, so these child pointers stay valid here.
-	std::vector<ObjectID> agent_ids;
-	std::vector<Node *> pending;
-	pending.push_back(root);
-	while (!pending.empty()) {
-		Node *node = pending.back();
-		pending.pop_back();
-		if (Object::cast_to<NNAgent>(node) != nullptr) {
-			agent_ids.push_back(ObjectID(node->get_instance_id()));
-		}
-		for (int i = 0; i < node->get_child_count(); i++) {
-			Node *child = node->get_child(i);
-			if (child != nullptr) {
-				pending.push_back(child);
-			}
-		}
-	}
-
-	for (unsigned int i = 0; i < agent_ids.size(); i++) {
-		AgentSelection selection;
-		selection.agent_id = agent_ids[i];
-
-		NNAgent *agent = Object::cast_to<NNAgent>(ObjectDB::get_instance((uint64_t)agent_ids[i]));
-		if (agent == nullptr) {
-			continue;
-		}
-
+	if (NNAgent *agent = Object::cast_to<NNAgent>(root)) {
 		if (NNBehaviour *behaviour = agent->peek_current_behaviour()) {
-			selection.behaviour_id = ObjectID(behaviour->get_instance_id());
+			r_targets.push_back(behaviour);
 		}
 		if (NNAction *action = agent->peek_current_action()) {
-			selection.action_id = ObjectID(action->get_instance_id());
+			r_targets.push_back(action);
 		}
-
-		_agent_selections.push_back(selection);
-	}
-}
-
-bool NNDebuggerOverlay::_node_is_on_active_path(Node *node) {
-	NoodleNodes *noodle = Object::cast_to<NoodleNodes>(node);
-	if (noodle == nullptr) {
-		return false;
+		return;
 	}
 
-	NoodleNodes *ancestor_root = noodle->get_ancestor_root();
-	if (ancestor_root == nullptr) {
-		return false;
-	}
-
-	if (NNBTRoot *bt_root = Object::cast_to<NNBTRoot>(ancestor_root)) {
-		NNBTNodes *running_action = bt_root->get_running_action();
-		if (running_action == nullptr) {
-			return false;
-		}
-		return node == running_action || node->is_ancestor_of(running_action);
-	}
-
-	if (Object::cast_to<NNSTRoot>(ancestor_root) != nullptr) {
-		NNSTTickedNodes *ticked_node = Object::cast_to<NNSTTickedNodes>(node);
-		return ticked_node != nullptr && ticked_node->get_is_active();
-	}
-
-	if (NNHTNRoot *htn_root = Object::cast_to<NNHTNRoot>(ancestor_root)) {
+	if (NNHTNRoot *htn_root = Object::cast_to<NNHTNRoot>(root)) {
 		const TypedArray<NNHTNPlanStep> plan = htn_root->get_plan();
 		for (int i = 0; i < plan.size(); i++) {
 			const Ref<NNHTNPlanStep> step = plan[i];
@@ -497,26 +448,32 @@ bool NNDebuggerOverlay::_node_is_on_active_path(Node *node) {
 			if (state != NNHTNPlanStep::RUNNING && state != NNHTNPlanStep::VERIFYING && state != NNHTNPlanStep::STAGED) {
 				continue;
 			}
-			NNHTNTask *task = step->get_task();
-			NNHTNParallelTask *group = step->get_parallel_group();
-			if ((task != nullptr && (node == task || node->is_ancestor_of(task))) || (group != nullptr && (node == group || node->is_ancestor_of(group)))) {
-				return true;
+			if (NNHTNTask *task = step->get_task()) {
+				r_targets.push_back(task);
+			}
+			if (NNHTNParallelTask *group = step->get_parallel_group()) {
+				r_targets.push_back(group);
 			}
 		}
+	}
+}
+
+bool NNDebuggerOverlay::_is_on_active_path(Node *node, const std::vector<Node *> &targets) {
+	NoodleNodes *noodle = Object::cast_to<NoodleNodes>(node);
+	if (noodle == nullptr) {
 		return false;
 	}
 
-	if (Object::cast_to<NNAgent>(ancestor_root) != nullptr) {
-		ObjectID agent_id(ancestor_root->get_instance_id());
-		for (unsigned int i = 0; i < _agent_selections.size(); i++) {
-			const AgentSelection &selection = _agent_selections[i];
-			if (selection.agent_id != agent_id) {
-				continue;
-			}
-			return _is_on_path_to(node, selection.behaviour_id) || _is_on_path_to(node, selection.action_id);
-		}
+	if (Object::cast_to<NNSTRoot>(noodle->get_ancestor_root()) != nullptr) {
+		NNSTTickedNodes *ticked_node = Object::cast_to<NNSTTickedNodes>(noodle);
+		return ticked_node != nullptr && ticked_node->get_is_active();
 	}
 
+	for (unsigned int i = 0; i < targets.size(); i++) {
+		if (node == targets[i] || node->is_ancestor_of(targets[i])) {
+			return true;
+		}
+	}
 	return false;
 }
 
@@ -628,8 +585,6 @@ void NNDebuggerOverlay::_refresh_selected_root_view() {
 	}
 
 	Node *root = _resolve_root_for_type(_current_type_selection, _selected_root_id);
-	_cache_agent_selections(root);
-
 	if (root == nullptr) {
 		if (_selected_root_id.is_valid()) {
 			_selected_root_id = ObjectID();
@@ -643,19 +598,141 @@ void NNDebuggerOverlay::_refresh_selected_root_view() {
 		return;
 	}
 
-	_selected_tree->clear();
-	TreeItem *root_item = _selected_tree->create_item();
+	TreeItem *root_item = _selected_tree->get_root();
 	if (root_item == nullptr) {
-		return;
+		root_item = _selected_tree->create_item();
+		if (root_item == nullptr) {
+			return;
+		}
+		root_item->set_custom_font_size(0, 10);
+		root_item->set_custom_font_size(1, 10);
+		root_item->set_custom_font_size(2, 10);
 	}
-
-	root_item->set_custom_font_size(0, 10);
-	root_item->set_custom_font_size(1, 10);
-	root_item->set_custom_font_size(2, 10);
+	root_item->set_metadata(0, Variant((int64_t)root->get_instance_id()));
 	root_item->set_text(0, root->get_name());
 	root_item->set_text(1, _root_status_text(root));
+
 	NNHostedRoot *hosted_root = _hosted_root_of(root);
-	tree_add_child_nodes(_selected_tree, root_item, root, hosted_root == nullptr || hosted_root->is_active());
+	bool path_open = hosted_root == nullptr || hosted_root->is_active();
+	std::vector<Node *> targets;
+	if (path_open) {
+		_collect_active_targets(root, targets);
+	}
+	_refresh_item_children(root_item, root, path_open, targets);
+}
+
+bool NNDebuggerOverlay::_apply_node_row(TreeItem *item, Node *node, bool p_path_open, const std::vector<Node *> &targets) {
+	float score = 0.0f;
+	uint64_t tick_timestamp = 0;
+	uint64_t eval_timestamp = 0;
+	if (NNAgent *agent = Object::cast_to<NNAgent>(node)) {
+		tick_timestamp = agent->get_last_evaluated_timestamp(); // Visited only updates when signals are used.
+		eval_timestamp = tick_timestamp;
+	} else if (NNConsiderations *considerations = Object::cast_to<NNConsiderations>(node)) {
+		tick_timestamp = considerations->get_last_evaluated_timestamp();
+		eval_timestamp = tick_timestamp;
+		score = considerations->get_score();
+	} else if (NNBehaviours *behaviours = Object::cast_to<NNBehaviours>(node)) {
+		tick_timestamp = behaviours->get_last_evaluated_timestamp();
+		eval_timestamp = tick_timestamp;
+		score = behaviours->get_score();
+	} else if (NNSensors *sensors = Object::cast_to<NNSensors>(node)) {
+		tick_timestamp = sensors->get_last_evaluated_timestamp();
+		eval_timestamp = tick_timestamp;
+	} else if (NNBTNodes *bt_node = Object::cast_to<NNBTNodes>(node)) {
+		tick_timestamp = bt_node->get_last_visited_timestamp();
+		eval_timestamp = bt_node->get_last_evaluated_timestamp();
+		score = bt_node->get_score();
+	} else if (NNSTBranchNodes *st_node = Object::cast_to<NNSTBranchNodes>(node)) {
+		tick_timestamp = st_node->get_last_visited_timestamp();
+		eval_timestamp = st_node->get_last_evaluated_timestamp();
+		if (NNSTTickedNodes *ticked_node = Object::cast_to<NNSTTickedNodes>(st_node)) {
+			score = ticked_node->get_score();
+		}
+	}
+
+	NoodleNodes *noodle = Object::cast_to<NoodleNodes>(node);
+	bool child_path_open = false;
+	String status_text;
+	if (noodle != nullptr && noodle->is_root()) {
+		NNHostedRoot *hosted_root = _hosted_root_of(noodle);
+		child_path_open = p_path_open && hosted_root != nullptr && hosted_root->is_active();
+		status_text = _root_status_text(noodle);
+	} else if (p_path_open && _is_on_active_path(noodle, targets)) {
+		child_path_open = true;
+		status_text = _active_path_status(noodle);
+	}
+
+	item->set_text(0, node->get_name());
+	item->set_text(1, status_text);
+	item->set_text(2, String::num((double)score, 2));
+
+	uint64_t current_timestamp = godot::Time::get_singleton()->get_ticks_usec();
+	uint64_t tick_time_diff = current_timestamp - tick_timestamp;
+	if (tick_time_diff > 1000000) {
+		tick_time_diff = 1000000;
+	}
+	uint64_t eval_time_diff = current_timestamp - eval_timestamp;
+	if (eval_time_diff > 1000000) {
+		eval_time_diff = 1000000;
+	}
+	float tick_color = 1.0f - (float)tick_time_diff * 0.000001f * 0.7f;
+	float eval_color = 1.0f - (float)eval_time_diff * 0.000001f * 0.7f;
+
+	item->set_custom_color(0, Color(tick_color, tick_color, tick_color));
+	item->set_custom_color(2, Color(eval_color * 0.8f, eval_color * 0.8f, eval_color));
+
+	if (p_path_open) {
+		_apply_htn_step_state(item, node);
+	}
+
+	return child_path_open;
+}
+
+void NNDebuggerOverlay::_refresh_item_children(TreeItem *parent_item, Node *parent_node, bool p_path_open, const std::vector<Node *> &targets) {
+	int item_index = 0;
+	for (int i = 0; i < parent_node->get_child_count(); i++) {
+		Node *child = parent_node->get_child(i);
+		if (child == nullptr) {
+			continue;
+		}
+
+		TreeItem *item = item_index < parent_item->get_child_count() ? parent_item->get_child(item_index) : nullptr;
+		if (item != nullptr && _item_node_id(item) != child->get_instance_id()) {
+			// TreeItem::remove_child() only detaches the item, so it must also be freed.
+			parent_item->remove_child(item);
+			item->call("free");
+			item = nullptr;
+		}
+		if (item == nullptr) {
+			item = _selected_tree->create_item(parent_item, item_index);
+			if (item == nullptr) {
+				return;
+			}
+			item->set_metadata(0, Variant((int64_t)child->get_instance_id()));
+			item->set_custom_font_size(0, 10);
+			item->set_custom_font_size(1, 10);
+			item->set_custom_font_size(2, 10);
+		}
+		item_index++;
+
+		bool child_path_open = _apply_node_row(item, child, p_path_open, targets);
+
+		std::vector<Node *> child_targets;
+		const std::vector<Node *> *child_targets_ptr = &targets;
+		NoodleNodes *noodle = Object::cast_to<NoodleNodes>(child);
+		if (child_path_open && noodle != nullptr && noodle->is_root()) {
+			_collect_active_targets(child, child_targets);
+			child_targets_ptr = &child_targets;
+		}
+		_refresh_item_children(item, child, child_path_open, *child_targets_ptr);
+	}
+
+	while (parent_item->get_child_count() > item_index) {
+		TreeItem *extra_item = parent_item->get_child(item_index);
+		parent_item->remove_child(extra_item);
+		extra_item->call("free");
+	}
 }
 
 void NNDebuggerOverlay::on_root_item_selected(int item) {
@@ -772,91 +849,6 @@ void NNDebuggerOverlay::update_ui() {
 	}
 
 	_debug_messages->set_text(msg);
-}
-
-void NNDebuggerOverlay::tree_add_child_nodes(Tree *tree, TreeItem *parent_node, Node *parent_ai_node, bool p_path_open) {
-	if (tree == nullptr || parent_ai_node == nullptr || parent_node == nullptr) {
-		return;
-	}
-	uint64_t current_timestamp = godot::Time::get_singleton()->get_ticks_usec();
-
-	for (int i = 0; i < parent_ai_node->get_child_count(); i++) {
-		Node *next_ai_node = parent_ai_node->get_child(i);
-		if (!next_ai_node)
-			continue;
-
-		TreeItem *child_tree_item = tree->create_item(parent_node);
-		if (!child_tree_item)
-			return;
-		child_tree_item->set_custom_font_size(0, 10);
-		child_tree_item->set_custom_font_size(1, 10);
-		child_tree_item->set_custom_font_size(2, 10);
-		float score = 0.0f;
-		uint64_t tick_timestamp = 0;
-		uint64_t eval_timestamp = 0;
-		if (NNAgent *agent = godot::Object::cast_to<NNAgent>(next_ai_node)) {
-			tick_timestamp = agent->get_last_evaluated_timestamp(); // Visited only updates when signals are used.
-			eval_timestamp = agent->get_last_evaluated_timestamp();
-		} else if (NNConsiderations *cons = godot::Object::cast_to<NNConsiderations>(next_ai_node)) {
-			tick_timestamp = cons->get_last_evaluated_timestamp();
-			eval_timestamp = cons->get_last_evaluated_timestamp();
-			score = cons->get_score();
-		} else if (NNBehaviours *beh = godot::Object::cast_to<NNBehaviours>(next_ai_node)) {
-			tick_timestamp = beh->get_last_evaluated_timestamp();
-			eval_timestamp = beh->get_last_evaluated_timestamp();
-			score = beh->get_score();
-		} else if (NNSensors *sensors = godot::Object::cast_to<NNSensors>(next_ai_node)) {
-			tick_timestamp = sensors->get_last_evaluated_timestamp();
-			eval_timestamp = sensors->get_last_evaluated_timestamp();
-		} else if (NNBTNodes *btnode = godot::Object::cast_to<NNBTNodes>(next_ai_node)) {
-			tick_timestamp = btnode->get_last_visited_timestamp();
-			eval_timestamp = btnode->get_last_evaluated_timestamp();
-			score = btnode->get_score();
-		} else if (NNSTBranchNodes *stnode = godot::Object::cast_to<NNSTBranchNodes>(next_ai_node)) {
-			tick_timestamp = stnode->get_last_visited_timestamp();
-			eval_timestamp = stnode->get_last_evaluated_timestamp();
-			if (NNSTTickedNodes *ticked_node = godot::Object::cast_to<NNSTTickedNodes>(next_ai_node)) {
-				score = ticked_node->get_score();
-			}
-		}
-
-		NoodleNodes *noodle = Object::cast_to<NoodleNodes>(next_ai_node);
-		bool child_path_open = false;
-		String status_text;
-		if (noodle != nullptr && noodle->is_root()) {
-			NNHostedRoot *hosted_root = _hosted_root_of(noodle);
-			child_path_open = p_path_open && hosted_root != nullptr && hosted_root->is_active();
-			status_text = _root_status_text(noodle);
-		} else if (p_path_open && _node_is_on_active_path(noodle)) {
-			child_path_open = true;
-			status_text = _active_path_status(noodle);
-		}
-
-		child_tree_item->set_text(0, next_ai_node->get_name());
-		child_tree_item->set_text(1, status_text);
-		child_tree_item->set_text(2, String::num((double)score, 2));
-
-		uint64_t tick_time_diff = current_timestamp - tick_timestamp;
-		if (tick_time_diff > 1000000) {
-			tick_time_diff = 1000000;
-		}
-		uint64_t eval_time_diff = current_timestamp - eval_timestamp;
-		if (eval_time_diff > 1000000) {
-			eval_time_diff = 1000000;
-		}
-		float tick_color = 1.0f - (float)tick_time_diff * 0.000001f * 0.7f;
-		float eval_color = 1.0f - (float)eval_time_diff * 0.000001f * 0.7f;
-
-		child_tree_item->set_custom_color(0, Color(tick_color, tick_color, tick_color));
-		child_tree_item->set_custom_color(2, Color(eval_color * 0.8f, eval_color * 0.8f, eval_color));
-
-		if (p_path_open) {
-			_apply_htn_step_state(child_tree_item, next_ai_node);
-		}
-
-		tree_add_child_nodes(tree, child_tree_item, next_ai_node, child_path_open);
-
-	} //endfor child nodes.
 }
 
 #endif

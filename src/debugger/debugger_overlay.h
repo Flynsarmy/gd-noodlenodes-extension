@@ -26,13 +26,6 @@ private:
 	std::vector<ObjectID> _agents;
 	std::vector<ObjectID> _htn_roots;
 
-	struct AgentSelection {
-		ObjectID agent_id;
-		ObjectID behaviour_id;
-		ObjectID action_id;
-	};
-	std::vector<AgentSelection> _agent_selections;
-
 	static NNDebuggerOverlay *_singleton;
 
 	// The overlay scene is resolved through its ObjectID on every use. This lets
@@ -65,10 +58,11 @@ private:
 	static String _root_status_text(Node *root);
 	static String _active_path_status(Node *node);
 	static NNHostedRoot *_hosted_root_of(Node *root);
-	static bool _is_on_path_to(Node *node, const ObjectID &target_id);
-	void _cache_agent_selections(Node *root);
-	bool _node_is_on_active_path(Node *node);
+	static void _collect_active_targets(Node *root, std::vector<Node *> &r_targets);
+	static bool _is_on_active_path(Node *node, const std::vector<Node *> &targets);
 	static void _apply_htn_step_state(TreeItem *item, Node *node);
+	bool _apply_node_row(TreeItem *item, Node *node, bool p_path_open, const std::vector<Node *> &targets);
+	void _refresh_item_children(TreeItem *parent_item, Node *parent_node, bool p_path_open, const std::vector<Node *> &targets);
 
 	void _rebuild_root_items();
 	void _ensure_root_items();
@@ -82,10 +76,6 @@ public:
 	~NNDebuggerOverlay();
 
 	static NNDebuggerOverlay *get_singleton();
-
-	// Godot virtuals.
-
-	void tree_add_child_nodes(Tree *tree, TreeItem *parent_node, Node *parent_ai_node, bool p_path_open);
 
 	// Handling methods.
 	int register_behaviour_tree(uint64_t instance_id);
