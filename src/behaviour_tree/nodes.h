@@ -31,7 +31,6 @@ public:
 		SUCCESS = 1,
 	};
 
-	void set_score(float score);
 	float get_score() const;
 
 	Status get_tick_result() const;

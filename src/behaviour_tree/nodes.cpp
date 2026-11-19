@@ -28,9 +28,8 @@ void NNBTNodes::_bind_methods() {
 
 	ADD_SUBGROUP("Debugging", "");
 
-	ClassDB::bind_method(D_METHOD("set_score", "score"), &NNBTNodes::set_score);
 	ClassDB::bind_method(D_METHOD("get_score"), &NNBTNodes::get_score);
-	ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "score", PROPERTY_HINT_NONE), "set_score", "get_score");
+	ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "score", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_EDITOR | PROPERTY_USAGE_READ_ONLY), "", "get_score");
 
 	ClassDB::bind_method(D_METHOD("get_tick_result"), &NNBTNodes::get_tick_result);
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "tick_result", PROPERTY_HINT_ENUM, "Running:0,Success:1,Failure:-1,Skip:-2"), "", "get_tick_result");
@@ -67,10 +66,6 @@ void NNBTNodes::set_evaluation_method(EvaluationMethod evaluation_method) {
 
 NoodleNodes::EvaluationMethod NNBTNodes::get_evaluation_method() const {
 	return _evaluation_method;
-}
-
-void NNBTNodes::set_score(float score) {
-	_score = score;
 }
 
 float NNBTNodes::get_score() const {

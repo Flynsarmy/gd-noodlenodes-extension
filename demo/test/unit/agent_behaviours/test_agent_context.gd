@@ -227,3 +227,36 @@ func test_private_board_is_not_serialised() -> void:
 	first.free()
 	second.free()
 	_delete_serialised_scene(path)
+
+
+func test_evaluated_runtime_state_is_not_serialised() -> void:
+	var path := "user://gut_agent_runtime_state.tscn"
+	var world := Node.new()
+	world.name = "World"
+	var agent := NNAgent.new()
+	agent.name = "Agent"
+	agent.process_thread = NNAgent.MANUAL
+	world.add_child(agent)
+	agent.owner = world
+	var behaviour := NNBehaviour.new()
+	behaviour.name = "Behaviour"
+	agent.add_child(behaviour)
+	behaviour.owner = world
+	var consideration := NNConsideration.new()
+	consideration.name = "Consideration"
+	consideration.activation_input_value = 1.0
+	behaviour.add_child(consideration)
+	consideration.owner = world
+
+	agent.evaluate_options(0.1)
+	assert_eq(agent.get_current_behaviour_name(), "Behaviour", "the behaviour was selected")
+	assert_gt(behaviour.get_score(), 0.0, "the behaviour was scored")
+
+	var text := _save_serialised_scene(world, path)
+	assert_true(text.contains('name="Behaviour"'), "the behaviour is part of the saved scene")
+	assert_false(text.contains("current_behaviour_name"), "the selected behaviour name is runtime state")
+	assert_false(text.contains("top_scoring_behaviour_name"), "the top scoring name is runtime state")
+	assert_false(text.contains("score = "), "evaluated scores are runtime state")
+
+	world.free()
+	_delete_serialised_scene(path)

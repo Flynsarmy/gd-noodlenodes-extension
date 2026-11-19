@@ -34,13 +34,8 @@ void NNAgent::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_actor_node_path"), &NNAgent::get_actor_node_path);
 	ADD_PROPERTY(PropertyInfo(Variant::NODE_PATH, "actor_node_path"), "set_actor_node_path", "get_actor_node_path");
 
-	ClassDB::bind_method(D_METHOD("set_current_behaviour_group_node", "behaviour_group"), &NNAgent::set_current_behaviour_group_node);
 	ClassDB::bind_method(D_METHOD("get_current_behaviour_group_node"), &NNAgent::get_current_behaviour_group_node);
-
-	ClassDB::bind_method(D_METHOD("set_current_behaviour_node", "behaviour"), &NNAgent::set_current_behaviour_node);
 	ClassDB::bind_method(D_METHOD("get_current_behaviour_node"), &NNAgent::get_current_behaviour_node);
-
-	ClassDB::bind_method(D_METHOD("set_current_action_node", "action"), &NNAgent::set_current_action_node);
 	ClassDB::bind_method(D_METHOD("get_current_action_node"), &NNAgent::get_current_action_node);
 
 	ClassDB::bind_method(D_METHOD("evaluate_options", "delta"), &NNAgent::evaluate_options);
@@ -71,22 +66,18 @@ void NNAgent::_bind_methods() {
 
 	ADD_SUBGROUP("Debugging", "");
 
-	ClassDB::bind_method(D_METHOD("set_top_scoring_behaviour_name", "top_scoring_behaviour_name"), &NNAgent::set_top_scoring_behaviour_name);
 	ClassDB::bind_method(D_METHOD("get_top_scoring_behaviour_name"), &NNAgent::get_top_scoring_behaviour_name);
-	ADD_PROPERTY(PropertyInfo(Variant::STRING, "top_scoring_behaviour_name", PROPERTY_HINT_NONE), "set_top_scoring_behaviour_name", "get_top_scoring_behaviour_name");
+	ADD_PROPERTY(PropertyInfo(Variant::STRING, "top_scoring_behaviour_name", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_EDITOR | PROPERTY_USAGE_READ_ONLY), "", "get_top_scoring_behaviour_name");
 
-	ClassDB::bind_method(D_METHOD("set_current_behaviour_name", "current_behaviour_name"), &NNAgent::set_current_behaviour_name);
 	ClassDB::bind_method(D_METHOD("get_current_behaviour_name"), &NNAgent::get_current_behaviour_name);
-	ADD_PROPERTY(PropertyInfo(Variant::STRING, "current_behaviour_name", PROPERTY_HINT_NONE), "set_current_behaviour_name", "get_current_behaviour_name");
+	ADD_PROPERTY(PropertyInfo(Variant::STRING, "current_behaviour_name", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_EDITOR | PROPERTY_USAGE_READ_ONLY), "", "get_current_behaviour_name");
 
 #ifdef DEBUG_ENABLED
-	ClassDB::bind_method(D_METHOD("set_total_evaluate_options_usec", "total_evaluate_options_usec"), &NNAgent::set_total_evaluate_options_usec);
 	ClassDB::bind_method(D_METHOD("get_total_evaluate_options_usec"), &NNAgent::get_total_evaluate_options_usec);
-	ADD_PROPERTY(PropertyInfo(Variant::INT, "total_evaluate_options_usec", PROPERTY_HINT_NONE), "set_total_evaluate_options_usec", "get_total_evaluate_options_usec");
+	ADD_PROPERTY(PropertyInfo(Variant::INT, "total_evaluate_options_usec", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_EDITOR | PROPERTY_USAGE_READ_ONLY), "", "get_total_evaluate_options_usec");
 
-	ClassDB::bind_method(D_METHOD("set_total_update_behaviour_usec", "total_update_behaviour_usec"), &NNAgent::set_total_update_behaviour_usec);
 	ClassDB::bind_method(D_METHOD("get_total_update_behaviour_usec"), &NNAgent::get_total_update_behaviour_usec);
-	ADD_PROPERTY(PropertyInfo(Variant::INT, "total_update_behaviour_usec", PROPERTY_HINT_NONE), "set_total_update_behaviour_usec", "get_total_update_behaviour_usec");
+	ADD_PROPERTY(PropertyInfo(Variant::INT, "total_update_behaviour_usec", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_EDITOR | PROPERTY_USAGE_READ_ONLY), "", "get_total_update_behaviour_usec");
 #endif
 
 	// Add all signals.
@@ -825,16 +816,8 @@ NodePath NNAgent::get_actor_node_path() const {
 	return _root_context.get_actor_node_path();
 }
 
-void NNAgent::set_current_behaviour_name(godot::String current_behaviour_name) {
-	_current_behaviour_name = current_behaviour_name;
-}
-
 godot::String NNAgent::get_current_behaviour_name() const {
 	return _current_behaviour_name;
-}
-
-void NNAgent::set_current_behaviour_group_node(NNBehaviourGroup *new_behaviour_group) {
-	_current_behaviour_group_id = new_behaviour_group != nullptr ? ObjectID(new_behaviour_group->get_instance_id()) : ObjectID();
 }
 
 NNBehaviourGroup *NNAgent::get_current_behaviour_group_node() const {
@@ -842,17 +825,9 @@ NNBehaviourGroup *NNAgent::get_current_behaviour_group_node() const {
 	return _resolve_behaviour_group(_current_behaviour_group_id);
 }
 
-void NNAgent::set_current_behaviour_node(NNBehaviour *new_behaviour) {
-	_current_behaviour_id = new_behaviour != nullptr ? ObjectID(new_behaviour->get_instance_id()) : ObjectID();
-}
-
 NNBehaviour *NNAgent::get_current_behaviour_node() const {
 	const_cast<NNAgent *>(this)->_reconcile_selected_nodes();
 	return _resolve_behaviour(_current_behaviour_id);
-}
-
-void NNAgent::set_current_action_node(NNAction *new_action_node) {
-	_current_action_id = new_action_node != nullptr ? ObjectID(new_action_node->get_instance_id()) : ObjectID();
 }
 
 NNAction *NNAgent::get_current_action_node() const {
@@ -918,26 +893,14 @@ uint64_t NNAgent::get_random_seed() const {
 	return _rng->get_seed();
 }
 
-void NNAgent::set_top_scoring_behaviour_name(godot::String top_scoring_behaviour_name) {
-	_top_scoring_behaviour_name = top_scoring_behaviour_name;
-}
-
 godot::String NNAgent::get_top_scoring_behaviour_name() const {
 	return _top_scoring_behaviour_name;
 }
 
 #ifdef DEBUG_ENABLED
 
-void NNAgent::set_total_evaluate_options_usec(uint64_t total_evaluate_options_usec) {
-	_total_evaluate_options_usec = total_evaluate_options_usec;
-}
-
 uint64_t NNAgent::get_total_evaluate_options_usec() const {
 	return _total_evaluate_options_usec;
-}
-
-void NNAgent::set_total_update_behaviour_usec(uint64_t total_update_behaviour_usec) {
-	_total_update_behaviour_usec = total_update_behaviour_usec;
 }
 
 uint64_t NNAgent::get_total_update_behaviour_usec() const {

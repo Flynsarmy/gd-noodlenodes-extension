@@ -818,13 +818,6 @@ func test_refreshing_the_overlay_does_not_end_the_agents_selection() -> void:
 	agent.tick(0.1)
 	assert_same(hosted.get_running_action(), leaf, "The hosted run starts when the action is selected.")
 
-	# Moving the current behaviour leaves the cached action stranded outside it
-	# but keeps the hosted tree live and running.
-	var second_behaviour := NNBehaviour.new()
-	second_behaviour.name = "SecondBehaviour"
-	agent.add_child(second_behaviour)
-	agent.set_current_behaviour_node(second_behaviour)
-
 	var action_exits: Array = []
 	var behaviour_exits: Array = []
 	agent.action_exited.connect(func(node = null) -> void: action_exits.append(node))
@@ -840,8 +833,18 @@ func test_refreshing_the_overlay_does_not_end_the_agents_selection() -> void:
 	assert_eq(leaf.interrupt_count, 0, "Refreshing the overlay must not interrupt the hosted run.")
 	assert_same(hosted.get_running_action(), leaf, "Refreshing the overlay must not reset the hosted tree.")
 
+	# A script can detach the running action from its behaviour. The cached
+	# action then sits outside the current behaviour, so refreshing must only
+	# read the selection: reconciling it would end the action and the behaviour.
+	var second_behaviour := NNBehaviour.new()
+	second_behaviour.name = "SecondBehaviour"
+	agent.add_child(second_behaviour)
+	action.reparent(second_behaviour)
+	_debugger.update_ui()
+
+	assert_eq(action_exits.size(), 0, "Reading a detached action must not end it.")
+	assert_eq(behaviour_exits.size(), 0, "Reading a detached action must not end the behaviour.")
+
 	var tree := _selected_tree()
-	assert_eq(_row_status(tree, "SecondBehaviour"), "current")
-	assert_eq(_row_status(tree, "Action"), "", "The stranded action is no longer on the active path.")
-	assert_eq(_row_status(tree, "HostedTree"), "Behaviour Tree (hosted)")
-	assert_eq(_row_status(tree, "Leaf"), "", "The active path stops at the stranded action.")
+	assert_eq(_row_status(tree, "Behaviour"), "current")
+	assert_eq(_row_status(tree, "Action"), "", "The detached action is no longer on the active path.")

@@ -11,11 +11,11 @@ using namespace godot;
 void NNConsiderations::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("set_has_vetoed", "has_vetoed"), &NNConsiderations::set_has_vetoed);
 	ClassDB::bind_method(D_METHOD("get_has_vetoed"), &NNConsiderations::get_has_vetoed);
-	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "has_vetoed", PROPERTY_HINT_NONE), "set_has_vetoed", "get_has_vetoed");
+	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "has_vetoed", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_EDITOR | PROPERTY_USAGE_READ_ONLY), "set_has_vetoed", "get_has_vetoed");
 
 	ClassDB::bind_method(D_METHOD("set_score", "score"), &NNConsiderations::set_score);
 	ClassDB::bind_method(D_METHOD("get_score"), &NNConsiderations::get_score);
-	ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "score", PROPERTY_HINT_NONE), "set_score", "get_score");
+	ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "score", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_EDITOR | PROPERTY_USAGE_READ_ONLY), "set_score", "get_score");
 }
 
 // Constructor and destructor.

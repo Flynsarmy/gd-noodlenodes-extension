@@ -73,27 +73,6 @@
 				Returns the seed of the random number generator that picks between selection candidates. The generator is randomized when the agent is created, so agents do not share a selection stream by default.
 			</description>
 		</method>
-		<method name="set_current_action_node">
-			<return type="void" />
-			<param index="0" name="action" type="NNAction" />
-			<description>
-				Records [param action] as the current action without starting it or ending the previous one. Pass [code]null[/code] to clear it. Use [method update_current_behaviour] for normal selection.
-			</description>
-		</method>
-		<method name="set_current_behaviour_group_node">
-			<return type="void" />
-			<param index="0" name="behaviour_group" type="NNBehaviourGroup" />
-			<description>
-				Records [param behaviour_group] as the current behaviour group without running any enter or exit callbacks. Pass [code]null[/code] to clear it.
-			</description>
-		</method>
-		<method name="set_current_behaviour_node">
-			<return type="void" />
-			<param index="0" name="behaviour" type="NNBehaviour" />
-			<description>
-				Records [param behaviour] as the current behaviour without running any enter or exit callbacks or starting its actions. Pass [code]null[/code] to clear it. Use [method evaluate_options] and [method update_current_behaviour] for normal selection.
-			</description>
-		</method>
 		<method name="set_random_seed">
 			<return type="void" />
 			<param index="0" name="random_seed" type="int" />
@@ -128,8 +107,8 @@
 		<member name="current_behaviour_bias" type="float" setter="set_current_behaviour_bias" getter="get_current_behaviour_bias" default="0.1">
 			This property can be used to set a bias to the current behaviour score. This can be useful to reduce or eliminate oscillation between Behaviours. The bias gets added after the actual consideration-based score has been calculated and before the candidates are ranked, so a positive bias keeps the running behaviour among the top [member num_behaviours_to_select] candidates for longer while a negative bias makes it drop out sooner. It has no effect when there is no running behaviour.
 		</member>
-		<member name="current_behaviour_name" type="String" setter="set_current_behaviour_name" getter="get_current_behaviour_name" default="&quot;&quot;">
-			This property shows what was the selected behaviour after the latest [method evaluate_options] method call.
+		<member name="current_behaviour_name" type="String" setter="" getter="get_current_behaviour_name" default="&quot;&quot;">
+			The selected behaviour after the latest [method evaluate_options] method call. Read-only runtime state: it is written by the agent and is never saved with the scene.
 		</member>
 		<member name="num_behaviours_to_select" type="int" setter="set_num_behaviours_to_select" getter="get_num_behaviours_to_select" default="1">
 			The number of highest scoring behaviours kept as selection candidates. The running behaviour keeps running while it is still one of them, so it is only replaced when it drops out of this list. When a new behaviour has to be chosen, the pick is random with a probability proportional to score, so higher scoring candidates are preferred. Equal scores retain evaluation order when the list is full. A value of [code]1[/code] always follows the single highest scoring candidate, which makes selection deterministic. Must be between 1 and 16; invalid assignments report an error and leave the value unchanged.
@@ -140,14 +119,14 @@
 		<member name="tick_rate" type="int" setter="set_tick_rate" getter="get_tick_rate" default="6">
 			The single thinking throttle. A rate of [code]N[/code] performs [method evaluate_options] and [method update_current_behaviour] on every [code]N[/code]th eligible step, while the selected nodes still receive [code]frame_tick[/code] on every eligible step. A thinking step receives the delta accumulated over the steps since the previous thinking step; [code]frame_tick[/code] receives only the current step's delta. The default of [code]6[/code] thinks about ten times per second at 60 physics ticks per second, and the first eligible step always thinks, so a new agent picks a behaviour immediately. Values below 1 clamp to 1, and ineligible emissions do not advance the count. Setting this property or [member process_thread], an [member is_enabled] change, and entering or leaving the tree re-arm the schedule so the next eligible step is due and discard the accumulated delta. While an ancestor state or action hosts the agent, the host's ticks are the eligible steps, so this rate still throttles thinking and [code]frame_tick[/code] still fires on every host tick; [member process_thread] does not apply.
 		</member>
-		<member name="top_scoring_behaviour_name" type="String" setter="set_top_scoring_behaviour_name" getter="get_top_scoring_behaviour_name" default="&quot;&quot;">
-			This property shows what was the top scoring behaviour after the latest [method evaluate_options] method call.
+		<member name="top_scoring_behaviour_name" type="String" setter="" getter="get_top_scoring_behaviour_name" default="&quot;&quot;">
+			The top scoring behaviour after the latest [method evaluate_options] method call. Read-only runtime state: it is written by the agent and is never saved with the scene.
 		</member>
-		<member name="total_evaluate_options_usec" type="int" setter="set_total_evaluate_options_usec" getter="get_total_evaluate_options_usec" default="0">
-			This property shows how many microseconds (usec) the latest [method evaluate_options] method call required to complete.
+		<member name="total_evaluate_options_usec" type="int" setter="" getter="get_total_evaluate_options_usec" default="0">
+			Microseconds the latest [method evaluate_options] method call took. Read-only runtime state, only available in debug builds, and never saved with the scene.
 		</member>
-		<member name="total_update_behaviour_usec" type="int" setter="set_total_update_behaviour_usec" getter="get_total_update_behaviour_usec" default="0">
-			Microseconds the last [method update_current_behaviour] call took. Debugging information.
+		<member name="total_update_behaviour_usec" type="int" setter="" getter="get_total_update_behaviour_usec" default="0">
+			Microseconds the latest [method update_current_behaviour] method call took. Read-only runtime state, only available in debug builds, and never saved with the scene.
 		</member>
 	</members>
 	<signals>

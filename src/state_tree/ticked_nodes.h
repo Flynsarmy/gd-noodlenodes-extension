@@ -126,7 +126,6 @@ public:
 	void set_hosted_failure_event(const String &p_event_name);
 	String get_hosted_failure_event() const;
 
-	void set_score(float score);
 	float get_score() const;
 
 	void set_evaluation_method(EvaluationMethod evaluation_method);

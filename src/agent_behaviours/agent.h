@@ -130,13 +130,10 @@ public:
 	void set_tick_rate(int p_tick_rate);
 	int get_tick_rate() const;
 
-	void set_current_behaviour_group_node(NNBehaviourGroup *new_behaviour_group_node);
 	NNBehaviourGroup *get_current_behaviour_group_node() const;
 
-	void set_current_behaviour_node(NNBehaviour *new_behaviour_node);
 	NNBehaviour *get_current_behaviour_node() const;
 
-	void set_current_behaviour_name(godot::String current_behaviour_name);
 	godot::String get_current_behaviour_name() const;
 
 	void set_num_behaviours_to_select(int num_behaviours_to_select);
@@ -148,17 +145,13 @@ public:
 	void set_random_seed(uint64_t random_seed);
 	uint64_t get_random_seed() const;
 
-	void set_top_scoring_behaviour_name(godot::String top_scoring_behaviour_name);
 	godot::String get_top_scoring_behaviour_name() const;
 
-	void set_current_action_node(NNAction *new_action_node);
 	NNAction *get_current_action_node() const;
 
 #ifdef DEBUG_ENABLED
-	void set_total_evaluate_options_usec(uint64_t total_evaluate_options_usec);
 	uint64_t get_total_evaluate_options_usec() const;
 
-	void set_total_update_behaviour_usec(uint64_t total_update_behaviour_usec);
 	uint64_t get_total_update_behaviour_usec() const;
 #endif
 	// Handling functions.

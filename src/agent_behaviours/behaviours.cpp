@@ -9,9 +9,8 @@ void NNBehaviours::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_evaluation_method"), &NNBehaviours::get_evaluation_method);
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "evaluation_method", PROPERTY_HINT_ENUM, "Sum,Min,Max,Mean,Multiply,First Non Zero", PROPERTY_USAGE_DEFAULT | PROPERTY_USAGE_CLASS_IS_ENUM, "NoodleNodes.EvaluationMethod"), "set_evaluation_method", "get_evaluation_method");
 
-	ClassDB::bind_method(D_METHOD("set_score", "score"), &NNBehaviours::set_score);
 	ClassDB::bind_method(D_METHOD("get_score"), &NNBehaviours::get_score);
-	ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "score", PROPERTY_HINT_RANGE, "-100.0,100.0"), "set_score", "get_score");
+	ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "score", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_EDITOR | PROPERTY_USAGE_READ_ONLY), "", "get_score");
 }
 
 // Godot virtuals.

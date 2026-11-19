@@ -55,7 +55,6 @@ public:
 	inline void set_last_evaluated_timestamp(uint64_t new_timestamp) { _last_evaluated_timestamp = new_timestamp; };
 #endif
 
-	void set_score(float score) { _score = score; };
 	float get_score() const { return _score; };
 
 	std::vector<ObjectID> get_child_behaviour_ids() const { return _child_behaviour_ids; };

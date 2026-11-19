@@ -82,9 +82,8 @@ void NNSTTickedNodes::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_hosted_failure_event"), &NNSTTickedNodes::get_hosted_failure_event);
 	ADD_PROPERTY(PropertyInfo(Variant::STRING, "hosted_failure_event", PROPERTY_HINT_NONE), "set_hosted_failure_event", "get_hosted_failure_event");
 
-	ClassDB::bind_method(D_METHOD("set_score", "score"), &NNSTTickedNodes::set_score);
 	ClassDB::bind_method(D_METHOD("get_score"), &NNSTTickedNodes::get_score);
-	ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "score", PROPERTY_HINT_NONE), "set_score", "get_score");
+	ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "score", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_EDITOR | PROPERTY_USAGE_READ_ONLY), "", "get_score");
 
 	ClassDB::bind_method(D_METHOD("set_evaluation_method", "evaluation_method"), &NNSTTickedNodes::set_evaluation_method);
 	ClassDB::bind_method(D_METHOD("get_evaluation_method"), &NNSTTickedNodes::get_evaluation_method);
@@ -216,10 +215,6 @@ NNSTRoot *NNSTTickedNodes::_get_tree_root() const {
 		}
 	}
 	return nullptr;
-}
-
-void NNSTTickedNodes::set_score(float score) {
-	_score = score;
 }
 
 float NNSTTickedNodes::get_score() const {
