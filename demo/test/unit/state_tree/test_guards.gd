@@ -1,8 +1,10 @@
 extends GutTest
 
+const Fixtures = preload("res://test/support/fixtures.gd")
+
 
 func _make_state() -> Dictionary:
-	var root: NNSTRoot = add_child_autofree(NNSTRoot.new())
+	var root: NNSTRoot = Fixtures.add_manual_st_root(self)
 	var state: NNSTNode = NNSTNode.new()
 	var transition: NNSTTransition = NNSTTransition.new()
 	root.add_child(state)

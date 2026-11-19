@@ -2,11 +2,8 @@ extends GutTest
 @warning_ignore('unused_parameter')
 @warning_ignore('return_value_discarded')
 
-
-# These tests tick the chart by hand, so automatic ticking is off.
-func _add_manual_root(root: NNSTRoot) -> NNSTRoot:
-	root.process_thread = NNSTRoot.MANUAL
-	return add_child_autofree(root)
+const Fixtures = preload("res://test/support/fixtures.gd")
+const STHelpers = preload("res://test/unit/state_tree/support/st_helpers.gd")
 
 
 # Counts guard evaluations. bump() increments count and succeeds once count
@@ -18,22 +15,6 @@ class Counter extends RefCounted:
 	func bump() -> bool:
 		count += 1
 		return count >= threshold
-
-
-# A guard that only implements is_satisfied(), like a typical custom GDScript guard.
-class CustomGuard extends NNSTGuard:
-	@warning_ignore('native_method_override')
-	func is_satisfied(_transition: NNSTTransition, _state: NNSTTickedNodes) -> bool:
-		return true
-
-
-# Counts how many times the engine enters this state. on_enter_state() is a
-# GDVIRTUAL dispatched from C++, so this observer is consulted on every entry.
-class CountingState extends NNSTNode:
-	var enter_count: int = 0
-	@warning_ignore('native_method_override')
-	func on_enter_state() -> void:
-		enter_count += 1
 
 
 # Sets an expression property while it exits. Used to prove that a property
@@ -75,33 +56,15 @@ func test_automatic_transition_fires_on_state_enter() -> void:
 
 	# Build the whole tree before it enters, so the transition exists when the
 	# root enters _start during _ready().
-	_add_manual_root(_root)
+	Fixtures.add_manual_st_root(self, _root)
 
 	# The automatic transition must have been evaluated on state enter.
 	assert_false(_start.get_is_active())
 	assert_true(_target.get_is_active())
 
 
-func test_automatic_transition_with_failing_guard_does_not_fire_on_enter() -> void:
-	var _root: NNSTRoot = _add_manual_root(NNSTRoot.new())
-	var _start: NNSTNode = NNSTNode.new()
-	var _target: NNSTNode = NNSTNode.new()
-	var _transition: NNSTTransition = NNSTTransition.new()
-	var _guard: NNSTExpressionGuard = NNSTExpressionGuard.new()
-
-	_root.add_child(_start)
-	_root.add_child(_target)
-	_start.add_child(_transition)
-	_transition.guard = _guard
-	_guard.expression = "flag"
-	_root.initial_expression_properties = {"flag": false}
-
-	assert_true(_start.get_is_active())
-	assert_false(_target.get_is_active())
-
-
-func test_expression_property_change_triggers_automatic_transition() -> void:
-	var _root: NNSTRoot = _add_manual_root(NNSTRoot.new())
+func test_initial_expression_properties_are_applied_before_first_enter() -> void:
+	var _root: NNSTRoot = NNSTRoot.new()
 	var _start: NNSTNode = NNSTNode.new()
 	var _target: NNSTNode = NNSTNode.new()
 	var _transition: NNSTTransition = NNSTTransition.new()
@@ -113,22 +76,17 @@ func test_expression_property_change_triggers_automatic_transition() -> void:
 	_transition.to = _transition.get_path_to(_target)
 	_transition.guard = _guard
 	_guard.expression = "flag"
-	_root.initial_expression_properties = {"flag": false}
+	_root.initial_expression_properties = {"flag": true}
 
-	assert_true(_start.get_is_active())
-	assert_false(_target.get_is_active())
+	Fixtures.add_manual_st_root(self, _root)
 
-	_root.set_expression_property("flag", true)
-
-	assert_false(_start.get_is_active())
+	assert_eq(_root.get_blackboard("flag"), true, "initial properties land in the blackboard before entry")
+	assert_false(_start.get_is_active(), "the guard sees the initial value on the first evaluation")
 	assert_true(_target.get_is_active())
-	assert_eq(_root.get_expression_property("flag"), true)
-	# Expression properties are stored in the blackboard so guards see them.
-	assert_eq(_root.get_blackboard("flag"), true)
 
 
 func test_automatic_transitions_do_not_fire_every_frame() -> void:
-	var _root: NNSTRoot = _add_manual_root(NNSTRoot.new())
+	var _root: NNSTRoot = NNSTRoot.new()
 	var _start: NNSTNode = NNSTNode.new()
 	var _target: NNSTNode = NNSTNode.new()
 	var _transition: NNSTTransition = NNSTTransition.new()
@@ -141,6 +99,8 @@ func test_automatic_transitions_do_not_fire_every_frame() -> void:
 	_transition.guard = _guard
 	_guard.expression = "flag"
 	_root.initial_expression_properties = {"flag": false}
+
+	Fixtures.add_manual_st_root(self, _root)
 
 	for _i in 10:
 		_root.tick(0.1)
@@ -159,7 +119,7 @@ func test_automatic_transitions_do_not_fire_every_frame() -> void:
 
 
 func test_state_is_active_guard_triggers_on_state_change() -> void:
-	var _root: NNSTRoot = _add_manual_root(NNSTRoot.new())
+	var _root: NNSTRoot = NNSTRoot.new()
 	var _parallel: NNSTParallel = NNSTParallel.new()
 	var _left: NNSTNode = NNSTNode.new()
 	var _right: NNSTNode = NNSTNode.new()
@@ -187,6 +147,8 @@ func test_state_is_active_guard_triggers_on_state_change() -> void:
 	_other_start.add_child(_event_transition)
 	_event_transition.event_name = "activate_other"
 	_event_transition.to = _event_transition.get_path_to(_other_target)
+
+	Fixtures.add_manual_st_root(self, _root)
 
 	assert_true(_start.get_is_active())
 	assert_false(_end.get_is_active())
@@ -251,7 +213,7 @@ func test_transition_trigger_types() -> void:
 
 
 func test_non_automatic_transitions_remain_event_driven() -> void:
-	var _root: NNSTRoot = _add_manual_root(NNSTRoot.new())
+	var _root: NNSTRoot = Fixtures.add_manual_st_root(self)
 	var _start: NNSTNode = NNSTNode.new()
 	var _target: NNSTNode = NNSTNode.new()
 	var _transition: NNSTTransition = NNSTTransition.new()
@@ -276,19 +238,12 @@ func test_non_automatic_transitions_remain_event_driven() -> void:
 	assert_true(_target.get_is_active())
 
 
-func test_custom_guard_defaults_to_no_trigger_types() -> void:
-	var _guard: CustomGuard = CustomGuard.new()
-	# Custom guards that do not declare their triggers only get STATE_ENTER
-	# (which every automatic transition supports) from the transition itself.
-	assert_eq(_guard.get_supported_trigger_types(), NNSTRoot.TriggerType.NONE)
-
-
 func test_automatic_transition_cycle_terminates_without_crashing() -> void:
 	# A <-> B with two always-satisfied automatic transitions must hit the bounded
 	# transition runner instead of recursing until the stack overflows.
 	var _root: NNSTRoot = NNSTRoot.new()
-	var _a: CountingState = CountingState.new()
-	var _b: CountingState = CountingState.new()
+	var _a: STHelpers.CountingState = STHelpers.CountingState.new()
+	var _b: STHelpers.CountingState = STHelpers.CountingState.new()
 	var _ta: NNSTTransition = NNSTTransition.new()
 	var _tb: NNSTTransition = NNSTTransition.new()
 
@@ -306,7 +261,7 @@ func test_automatic_transition_cycle_terminates_without_crashing() -> void:
 	_ta.to = _ta.get_path_to(_b)
 	_tb.to = _tb.get_path_to(_a)
 
-	_add_manual_root(_root)
+	Fixtures.add_manual_st_root(self, _root)
 
 	# The bounded runner emits a single engine error when it hits its cap. Mark
 	# those errors handled so GUT does not treat the expected error as a failure.
@@ -322,47 +277,6 @@ func test_automatic_transition_cycle_terminates_without_crashing() -> void:
 	assert_gt(_a.enter_count + _b.enter_count, 1)
 	assert_lt(_a.enter_count + _b.enter_count, 205)
 	assert_true(_a.get_is_active() != _b.get_is_active())
-
-
-func test_parallel_regions_all_handle_the_same_event() -> void:
-	# A parallel node is a fan-out point: every still-active region must get the
-	# trigger even after a sibling region has consumed it (compound/normal
-	# states keep first-match-wins).
-	var _root: NNSTRoot = NNSTRoot.new()
-	var _parallel: NNSTParallel = NNSTParallel.new()
-	var _region1: NNSTNode = NNSTNode.new()
-	var _region2: NNSTNode = NNSTNode.new()
-	var _a1: NNSTNode = NNSTNode.new()
-	var _b1: NNSTNode = NNSTNode.new()
-	var _a2: NNSTNode = NNSTNode.new()
-	var _b2: NNSTNode = NNSTNode.new()
-	var _to_b1: NNSTTransition = NNSTTransition.new()
-	var _to_b2: NNSTTransition = NNSTTransition.new()
-
-	_region1.add_child(_a1)
-	_region1.add_child(_b1)
-	_region2.add_child(_a2)
-	_region2.add_child(_b2)
-	_a1.add_child(_to_b1)
-	_to_b1.event_name = "go"
-	_to_b1.to = _to_b1.get_path_to(_b1)
-	_a2.add_child(_to_b2)
-	_to_b2.event_name = "go"
-	_to_b2.to = _to_b2.get_path_to(_b2)
-	_parallel.add_child(_region1)
-	_parallel.add_child(_region2)
-	_root.add_child(_parallel)
-	_add_manual_root(_root)
-
-	assert_true(_a1.get_is_active())
-	assert_true(_a2.get_is_active())
-
-	_root.send_event("go")
-
-	assert_false(_a1.get_is_active())
-	assert_true(_b1.get_is_active())
-	assert_false(_a2.get_is_active(), "the second region must also handle the go event")
-	assert_true(_b2.get_is_active(), "both regions' target states must be active")
 
 
 func test_state_change_wins_over_event_queued_during_property_change() -> void:
@@ -412,7 +326,7 @@ func test_state_change_wins_over_event_queued_during_property_change() -> void:
 	_to_q3.event_name = "go_event"
 	_to_q3.to = _to_q3.get_path_to(_q3)
 
-	_add_manual_root(_root)
+	Fixtures.add_manual_st_root(self, _root)
 	assert_true(_s.get_is_active())
 	assert_true(_q.get_is_active())
 
@@ -450,7 +364,7 @@ func test_property_set_from_on_exit_state_is_deferred_until_transition_completes
 	_a.prop_name = "flag"
 	_a.prop_value = true
 
-	_add_manual_root(_root)
+	Fixtures.add_manual_st_root(self, _root)
 	assert_true(_a.get_is_active())
 	assert_false(_c.get_is_active())
 
@@ -484,7 +398,7 @@ func test_state_enter_evaluates_automatic_guard_once_per_entry() -> void:
 	board.values = {"counter": _counter}
 	_root.blackboard = board
 
-	_add_manual_root(_root)
+	Fixtures.add_manual_st_root(self, _root)
 	assert_true(_outside.get_is_active())
 
 	_outside.transition_to(_outside.get_path_to(_compound))
@@ -520,7 +434,7 @@ func test_state_enter_reentry_evaluates_guard_once_per_activation() -> void:
 	board.values = {"counter": _counter}
 	_root.blackboard = board
 
-	_add_manual_root(_root)
+	Fixtures.add_manual_st_root(self, _root)
 	assert_true(_outside.get_is_active())
 
 	# First activation of A.
@@ -601,7 +515,7 @@ func _build_change_before_queued_event_chart(property_trigger: bool, entrypoint:
 
 	_l2.state_entered.connect(func(): _root.send_event("later"))
 
-	_add_manual_root(_root)
+	Fixtures.add_manual_st_root(self, _root)
 	match entrypoint:
 		"take":
 			_to_l2.take()

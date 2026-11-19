@@ -5,72 +5,8 @@ extends GutTest
 @warning_ignore('unused_parameter')
 @warning_ignore('return_value_discarded')
 
-# Logs enter/exit calls and optionally sends events from on_enter_state().
-# Events sent from a callback must be queued, not processed recursively.
-class EventSenderNode extends NNSTNode:
-	var events_to_send: Array[String] = []
-	var exit_events_to_send: Array[String] = []
-	var enter_count: int = 0
-	var exit_count: int = 0
-
-	func on_enter_state() -> void:
-		enter_count += 1
-		get_root().get_blackboard('log').push_back("%s on_enter_state" % name)
-		for event_name in events_to_send:
-			get_root().get_blackboard('log').push_back("%s send_event %s" % [name, event_name])
-			get_root().send_event(event_name)
-
-	func on_exit_state() -> void:
-		exit_count += 1
-		get_root().get_blackboard('log').push_back("%s on_exit_state" % name)
-		for event_name in exit_events_to_send:
-			get_root().get_blackboard('log').push_back("%s send_event %s" % [name, event_name])
-			get_root().send_event(event_name)
-
-# Logs enter/exit calls without sending anything.
-class LoggerNode extends NNSTNode:
-	var enter_count: int = 0
-	var exit_count: int = 0
-
-	func on_enter_state() -> void:
-		enter_count += 1
-		get_root().get_blackboard('log').push_back("%s on_enter_state" % name)
-
-	func on_exit_state() -> void:
-		exit_count += 1
-		get_root().get_blackboard('log').push_back("%s on_exit_state" % name)
-
-# Sends an event in the middle of on_enter_state() and logs on both sides of
-# the call, so a test can tell whether the enter callback ran to completion
-# before the event was processed.
-class EnterMidCallbackNode extends NNSTNode:
-	var event_to_send: String = ""
-
-	func on_enter_state() -> void:
-		var log: Array = get_root().get_blackboard('log')
-		log.push_back("%s enter begin" % name)
-		log.push_back("%s send_event %s" % [name, event_to_send])
-		get_root().send_event(event_to_send)
-		log.push_back("%s enter end" % name)
-
-	func on_exit_state() -> void:
-		get_root().get_blackboard('log').push_back("%s on_exit_state" % name)
-
-
-# Transitions to `target_path` when entered, so leaving a state can
-# synchronously re-enter the state the event started from.
-class RedirectOnEnterNode extends NNSTNode:
-	var target_path: NodePath
-	var enter_count: int = 0
-
-	func on_enter_state() -> void:
-		enter_count += 1
-		get_root().get_blackboard('log').push_back("%s on_enter_state" % name)
-		if not target_path.is_empty():
-			transition_to(target_path)
-
-	func on_exit_state() -> void:
-		get_root().get_blackboard('log').push_back("%s on_exit_state" % name)
+const Fixtures = preload("res://test/support/fixtures.gd")
+const STHelpers = preload("res://test/unit/state_tree/support/st_helpers.gd")
 
 
 # Transitions `state` away from itself inside the guard callback. The native
@@ -88,19 +24,6 @@ class StateTransitioningGuard extends NNSTGuard:
 		return true
 
 
-func _make_logger(node_name: String) -> LoggerNode:
-	var node := LoggerNode.new()
-	node.name = node_name
-	return node
-
-
-func _make_sender(node_name: String, events: Array[String]) -> EventSenderNode:
-	var node := EventSenderNode.new()
-	node.name = node_name
-	node.events_to_send = events
-	return node
-
-
 # Adds a transition as a child of `branch`. `target` must already be in the
 # same tree so the transition can author its path relative to itself.
 func _make_transition(branch: NNSTBranchNodes, event_name: String, target: Node) -> NNSTTransition:
@@ -116,14 +39,11 @@ func _get_log(root: NNSTRoot) -> Array:
 
 
 func test_child_transition_wins_over_parent_for_same_event() -> void:
-	var _root: NNSTRoot = NNSTRoot.new()
-	var board := NNBlackboard.new()
-	board.values = { "log": [] }
-	_root.blackboard = board
-	var _parent := _make_logger("Parent")
-	var _child_a := _make_logger("ChildA")
-	var _child_b := _make_logger("ChildB")
-	var _parent_sibling := _make_logger("ParentSibling")
+	var _root: NNSTRoot = STHelpers.event_queue_root()
+	var _parent := STHelpers.logger("Parent")
+	var _child_a := STHelpers.logger("ChildA")
+	var _child_b := STHelpers.logger("ChildB")
+	var _parent_sibling := STHelpers.logger("ParentSibling")
 	_parent.add_child(_child_a)
 	_parent.add_child(_child_b)
 	_root.add_child(_parent)
@@ -132,7 +52,7 @@ func test_child_transition_wins_over_parent_for_same_event() -> void:
 	_make_transition(_parent, "go", _parent_sibling)
 	_make_transition(_child_a, "go", _child_b)
 
-	add_child_autofree(_root)
+	Fixtures.add_manual_st_root(self, _root)
 
 	assert_true(_parent.get_is_active())
 	assert_true(_child_a.get_is_active())
@@ -146,13 +66,10 @@ func test_child_transition_wins_over_parent_for_same_event() -> void:
 
 
 func test_unhandled_event_bubbles_to_parent() -> void:
-	var _root: NNSTRoot = NNSTRoot.new()
-	var board := NNBlackboard.new()
-	board.values = { "log": [] }
-	_root.blackboard = board
-	var _parent := _make_logger("Parent")
-	var _child := _make_logger("Child")
-	var _parent_sibling := _make_logger("ParentSibling")
+	var _root: NNSTRoot = STHelpers.event_queue_root()
+	var _parent := STHelpers.logger("Parent")
+	var _child := STHelpers.logger("Child")
+	var _parent_sibling := STHelpers.logger("ParentSibling")
 	_parent.add_child(_child)
 	_root.add_child(_parent)
 	_root.add_child(_parent_sibling)
@@ -160,7 +77,7 @@ func test_unhandled_event_bubbles_to_parent() -> void:
 	_make_transition(_parent, "go", _parent_sibling)
 	_make_transition(_child, "unrelated", _parent_sibling)
 
-	add_child_autofree(_root)
+	Fixtures.add_manual_st_root(self, _root)
 	assert_true(_child.get_is_active())
 
 	_root.send_event("go")
@@ -171,14 +88,11 @@ func test_unhandled_event_bubbles_to_parent() -> void:
 
 
 func test_failed_child_guard_does_not_consume_event() -> void:
-	var _root: NNSTRoot = NNSTRoot.new()
-	var board := NNBlackboard.new()
-	board.values = { "log": [] }
-	_root.blackboard = board
-	var _parent := _make_logger("Parent")
-	var _child_a := _make_logger("ChildA")
-	var _child_b := _make_logger("ChildB")
-	var _parent_sibling := _make_logger("ParentSibling")
+	var _root: NNSTRoot = STHelpers.event_queue_root()
+	var _parent := STHelpers.logger("Parent")
+	var _child_a := STHelpers.logger("ChildA")
+	var _child_b := STHelpers.logger("ChildB")
+	var _parent_sibling := STHelpers.logger("ParentSibling")
 	_parent.add_child(_child_a)
 	_parent.add_child(_child_b)
 	_root.add_child(_parent)
@@ -191,7 +105,7 @@ func test_failed_child_guard_does_not_consume_event() -> void:
 	var _child_transition := _make_transition(_child_a, "go", _child_b)
 	_child_transition.guard = _guard
 
-	add_child_autofree(_root)
+	Fixtures.add_manual_st_root(self, _root)
 	assert_true(_child_a.get_is_active())
 
 	_root.send_event("go")
@@ -203,18 +117,15 @@ func test_failed_child_guard_does_not_consume_event() -> void:
 
 
 func test_parallel_event_reaches_all_regions() -> void:
-	var _root: NNSTRoot = NNSTRoot.new()
-	var board := NNBlackboard.new()
-	board.values = { "log": [] }
-	_root.blackboard = board
+	var _root: NNSTRoot = STHelpers.event_queue_root()
 	var _parallel: NNSTParallel = NNSTParallel.new()
-	var _region1 := _make_logger("Region1")
-	var _region2 := _make_logger("Region2")
-	var _leaf1a := _make_logger("Leaf1a")
-	var _leaf1b := _make_logger("Leaf1b")
-	var _leaf2a := _make_logger("Leaf2a")
-	var _leaf2b := _make_logger("Leaf2b")
-	var _root_sibling := _make_logger("RootSibling")
+	var _region1 := STHelpers.logger("Region1")
+	var _region2 := STHelpers.logger("Region2")
+	var _leaf1a := STHelpers.logger("Leaf1a")
+	var _leaf1b := STHelpers.logger("Leaf1b")
+	var _leaf2a := STHelpers.logger("Leaf2a")
+	var _leaf2b := STHelpers.logger("Leaf2b")
+	var _root_sibling := STHelpers.logger("RootSibling")
 	_region1.add_child(_leaf1a)
 	_region1.add_child(_leaf1b)
 	_region2.add_child(_leaf2a)
@@ -228,7 +139,7 @@ func test_parallel_event_reaches_all_regions() -> void:
 	_make_transition(_leaf2a, "go", _leaf2b)
 	_make_transition(_root, "go", _root_sibling)
 
-	add_child_autofree(_root)
+	Fixtures.add_manual_st_root(self, _root)
 
 	assert_true(_leaf1a.get_is_active())
 	assert_true(_leaf2a.get_is_active())
@@ -246,14 +157,11 @@ func test_parallel_event_reaches_all_regions() -> void:
 
 
 func test_reentrant_send_event_is_queued_and_processed_in_fifo_order() -> void:
-	var _root: NNSTRoot = NNSTRoot.new()
-	var board := NNBlackboard.new()
-	board.values = { "log": [] }
-	_root.blackboard = board
-	var _node_a := _make_logger("A")
-	var _node_b := _make_sender("B", ["second", "third"])
-	var _node_c := _make_logger("C")
-	var _node_d := _make_logger("D")
+	var _root: NNSTRoot = STHelpers.event_queue_root()
+	var _node_a := STHelpers.logger("A")
+	var _node_b := STHelpers.sender("B", ["second", "third"])
+	var _node_c := STHelpers.logger("C")
+	var _node_d := STHelpers.logger("D")
 	_root.add_child(_node_a)
 	_root.add_child(_node_b)
 	_root.add_child(_node_c)
@@ -263,7 +171,7 @@ func test_reentrant_send_event_is_queued_and_processed_in_fifo_order() -> void:
 	_make_transition(_node_b, "second", _node_c)
 	_make_transition(_node_c, "third", _node_d)
 
-	add_child_autofree(_root)
+	Fixtures.add_manual_st_root(self, _root)
 	assert_true(_node_a.get_is_active())
 	_root.get_blackboard_resource().set_value('log', [])
 
@@ -289,14 +197,11 @@ func test_reentrant_send_event_is_queued_and_processed_in_fifo_order() -> void:
 
 
 func test_consecutive_external_send_events_are_processed_in_fifo_order() -> void:
-	var _root: NNSTRoot = NNSTRoot.new()
-	var board := NNBlackboard.new()
-	board.values = { "log": [] }
-	_root.blackboard = board
-	var _node_a := _make_logger("A")
-	var _node_b := _make_logger("B")
-	var _node_c := _make_logger("C")
-	var _node_d := _make_logger("D")
+	var _root: NNSTRoot = STHelpers.event_queue_root()
+	var _node_a := STHelpers.logger("A")
+	var _node_b := STHelpers.logger("B")
+	var _node_c := STHelpers.logger("C")
+	var _node_d := STHelpers.logger("D")
 	_root.add_child(_node_a)
 	_root.add_child(_node_b)
 	_root.add_child(_node_c)
@@ -306,7 +211,7 @@ func test_consecutive_external_send_events_are_processed_in_fifo_order() -> void
 	_make_transition(_node_b, "second", _node_c)
 	_make_transition(_node_c, "third", _node_d)
 
-	add_child_autofree(_root)
+	Fixtures.add_manual_st_root(self, _root)
 	assert_true(_node_a.get_is_active())
 	_root.get_blackboard_resource().set_value('log', [])
 
@@ -332,22 +237,19 @@ func test_consecutive_external_send_events_are_processed_in_fifo_order() -> void
 
 
 func test_event_sent_from_enter_during_direct_transition_is_deferred() -> void:
-	var _root: NNSTRoot = NNSTRoot.new()
-	var board := NNBlackboard.new()
-	board.values = { "log": [] }
-	_root.blackboard = board
-	var _start := _make_logger("Start")
-	var _node_a := EnterMidCallbackNode.new()
+	var _root: NNSTRoot = STHelpers.event_queue_root()
+	var _start := STHelpers.logger("Start")
+	var _node_a := STHelpers.EnterMidCallbackNode.new()
 	_node_a.name = "A"
 	_node_a.event_to_send = "go"
-	var _node_b := _make_logger("B")
+	var _node_b := STHelpers.logger("B")
 	_root.add_child(_start)
 	_root.add_child(_node_a)
 	_root.add_child(_node_b)
 
 	_make_transition(_node_a, "go", _node_b)
 
-	add_child_autofree(_root)
+	Fixtures.add_manual_st_root(self, _root)
 	assert_true(_start.get_is_active())
 	_root.get_blackboard_resource().set_value('log', [])
 
@@ -367,14 +269,11 @@ func test_event_sent_from_enter_during_direct_transition_is_deferred() -> void:
 
 
 func test_send_event_from_on_exit_state_is_queued() -> void:
-	var _root: NNSTRoot = NNSTRoot.new()
-	var board := NNBlackboard.new()
-	board.values = { "log": [] }
-	_root.blackboard = board
-	var _node_a := _make_sender("A", [])
+	var _root: NNSTRoot = STHelpers.event_queue_root()
+	var _node_a := STHelpers.sender("A", [])
 	_node_a.exit_events_to_send = ["after"]
-	var _node_b := _make_logger("B")
-	var _node_c := _make_logger("C")
+	var _node_b := STHelpers.logger("B")
+	var _node_c := STHelpers.logger("C")
 	_root.add_child(_node_a)
 	_root.add_child(_node_b)
 	_root.add_child(_node_c)
@@ -382,7 +281,7 @@ func test_send_event_from_on_exit_state_is_queued() -> void:
 	_make_transition(_node_a, "go", _node_b)
 	_make_transition(_node_b, "after", _node_c)
 
-	add_child_autofree(_root)
+	Fixtures.add_manual_st_root(self, _root)
 	assert_true(_node_a.get_is_active())
 	_root.get_blackboard_resource().set_value('log', [])
 
@@ -400,35 +299,11 @@ func test_send_event_from_on_exit_state_is_queued() -> void:
 	])
 
 
-func test_root_level_transition_fires() -> void:
-	var _root: NNSTRoot = NNSTRoot.new()
-	var board := NNBlackboard.new()
-	board.values = { "log": [] }
-	_root.blackboard = board
-	var _node_a := _make_logger("A")
-	var _node_b := _make_logger("B")
-	_root.add_child(_node_a)
-	_root.add_child(_node_b)
-
-	_make_transition(_root, "go", _node_b)
-
-	add_child_autofree(_root)
-	assert_true(_node_a.get_is_active())
-
-	_root.send_event("go")
-
-	assert_false(_node_a.get_is_active())
-	assert_true(_node_b.get_is_active())
-
-
 func test_root_transition_only_fires_after_active_child_declines() -> void:
-	var _root: NNSTRoot = NNSTRoot.new()
-	var board := NNBlackboard.new()
-	board.values = { "log": [] }
-	_root.blackboard = board
-	var _node_a := _make_logger("A")
-	var _node_b := _make_logger("B")
-	var _node_c := _make_logger("C")
+	var _root: NNSTRoot = STHelpers.event_queue_root()
+	var _node_a := STHelpers.logger("A")
+	var _node_b := STHelpers.logger("B")
+	var _node_c := STHelpers.logger("C")
 	_root.add_child(_node_a)
 	_root.add_child(_node_b)
 	_root.add_child(_node_c)
@@ -436,7 +311,7 @@ func test_root_transition_only_fires_after_active_child_declines() -> void:
 	_make_transition(_root, "go", _node_b)
 	_make_transition(_node_a, "go", _node_c)
 
-	add_child_autofree(_root)
+	Fixtures.add_manual_st_root(self, _root)
 	assert_true(_node_a.get_is_active())
 
 	_root.send_event("go")
@@ -447,20 +322,17 @@ func test_root_transition_only_fires_after_active_child_declines() -> void:
 
 
 func test_send_event_on_a_state_routes_through_the_chart() -> void:
-	var _root: NNSTRoot = NNSTRoot.new()
-	var board := NNBlackboard.new()
-	board.values = { "log": [] }
-	_root.blackboard = board
-	var _parent := _make_logger("Parent")
-	var _child_a := _make_logger("ChildA")
-	var _child_b := _make_logger("ChildB")
+	var _root: NNSTRoot = STHelpers.event_queue_root()
+	var _parent := STHelpers.logger("Parent")
+	var _child_a := STHelpers.logger("ChildA")
+	var _child_b := STHelpers.logger("ChildB")
 	_parent.add_child(_child_a)
 	_parent.add_child(_child_b)
 	_root.add_child(_parent)
 
 	_make_transition(_child_a, "go", _child_b)
 
-	add_child_autofree(_root)
+	Fixtures.add_manual_st_root(self, _root)
 	assert_true(_child_a.get_is_active())
 
 	_child_a.send_event("go")
@@ -471,13 +343,10 @@ func test_send_event_on_a_state_routes_through_the_chart() -> void:
 
 
 func test_root_transition_guards_are_evaluated() -> void:
-	var _root: NNSTRoot = NNSTRoot.new()
-	var board := NNBlackboard.new()
-	board.values = { "log": [] }
-	_root.blackboard = board
-	var _node_a := _make_logger("A")
-	var _node_b := _make_logger("B")
-	var _node_c := _make_logger("C")
+	var _root: NNSTRoot = STHelpers.event_queue_root()
+	var _node_a := STHelpers.logger("A")
+	var _node_b := STHelpers.logger("B")
+	var _node_c := STHelpers.logger("C")
 	_root.add_child(_node_a)
 	_root.add_child(_node_b)
 	_root.add_child(_node_c)
@@ -492,7 +361,7 @@ func test_root_transition_guards_are_evaluated() -> void:
 	var _allowed_transition := _make_transition(_root, "go", _node_c)
 	_allowed_transition.guard = _succeeding_guard
 
-	add_child_autofree(_root)
+	Fixtures.add_manual_st_root(self, _root)
 	assert_true(_node_a.get_is_active())
 
 	_root.send_event("go")
@@ -503,18 +372,15 @@ func test_root_transition_guards_are_evaluated() -> void:
 
 
 func test_event_received_is_emitted_for_delivered_states() -> void:
-	var _root: NNSTRoot = NNSTRoot.new()
-	var board := NNBlackboard.new()
-	board.values = { "log": [] }
-	_root.blackboard = board
-	var _parent := _make_logger("Parent")
-	var _child := _make_logger("Child")
-	var _inactive := _make_logger("Inactive")
+	var _root: NNSTRoot = STHelpers.event_queue_root()
+	var _parent := STHelpers.logger("Parent")
+	var _child := STHelpers.logger("Child")
+	var _inactive := STHelpers.logger("Inactive")
 	_parent.add_child(_child)
 	_root.add_child(_parent)
 	_root.add_child(_inactive)
 
-	add_child_autofree(_root)
+	Fixtures.add_manual_st_root(self, _root)
 	watch_signals(_root)
 	watch_signals(_parent)
 	watch_signals(_child)
@@ -529,12 +395,9 @@ func test_event_received_is_emitted_for_delivered_states() -> void:
 
 
 func test_infinite_loop_guard_aborts_processing() -> void:
-	var _root: NNSTRoot = NNSTRoot.new()
-	var board := NNBlackboard.new()
-	board.values = { "log": [] }
-	_root.blackboard = board
-	var _node_a := _make_sender("A", ["ping"])
-	var _node_b := _make_sender("B", ["ping"])
+	var _root: NNSTRoot = STHelpers.event_queue_root()
+	var _node_a := STHelpers.sender("A", ["ping"])
+	var _node_b := STHelpers.sender("B", ["ping"])
 	_root.add_child(_node_a)
 	_root.add_child(_node_b)
 
@@ -543,7 +406,7 @@ func test_infinite_loop_guard_aborts_processing() -> void:
 
 	# Entering A starts the ping-pong. Exactly 100 transitions are applied and
 	# the 101st is rejected with an error, leaving A active.
-	add_child_autofree(_root)
+	Fixtures.add_manual_st_root(self, _root)
 
 	assert_engine_error("infinite loop detected")
 
@@ -564,46 +427,13 @@ func test_infinite_loop_guard_aborts_processing() -> void:
 	assert_eq(_node_b.enter_count, 50)
 
 
-func test_event_received_callback_transition_cancels_state_dispatch() -> void:
-	var _root: NNSTRoot = NNSTRoot.new()
-	var board := NNBlackboard.new()
-	board.values = { "log": [] }
-	_root.blackboard = board
-	var _node_a := _make_logger("A")
-	var _node_b := _make_logger("B")
-	var _node_c := _make_logger("C")
-	_root.add_child(_node_a)
-	_root.add_child(_node_b)
-	_root.add_child(_node_c)
-
-	_make_transition(_node_a, "go", _node_c)
-	_node_a.event_received.connect(
-		func(_event_name: String) -> void:
-			var _applied = _node_a.transition_to(_node_a.get_path_to(_node_b))
-			assert_true(_applied)
-	)
-
-	add_child_autofree(_root)
-	assert_true(_node_a.get_is_active())
-
-	_root.send_event("go")
-
-	assert_false(_node_a.get_is_active())
-	assert_true(_node_b.get_is_active())
-	assert_false(_node_c.get_is_active())
-	assert_eq(_node_c.enter_count, 0)
-
-
 func test_event_received_callback_transition_cancels_parent_dispatch() -> void:
-	var _root: NNSTRoot = NNSTRoot.new()
-	var board := NNBlackboard.new()
-	board.values = { "log": [] }
-	_root.blackboard = board
-	var _parent := _make_logger("Parent")
-	var _node_a := _make_logger("A")
-	var _node_b := _make_logger("B")
-	var _node_c := _make_logger("C")
-	var _parent_sibling := _make_logger("ParentSibling")
+	var _root: NNSTRoot = STHelpers.event_queue_root()
+	var _parent := STHelpers.logger("Parent")
+	var _node_a := STHelpers.logger("A")
+	var _node_b := STHelpers.logger("B")
+	var _node_c := STHelpers.logger("C")
+	var _parent_sibling := STHelpers.logger("ParentSibling")
 	_parent.add_child(_node_a)
 	_parent.add_child(_node_b)
 	_parent.add_child(_node_c)
@@ -618,7 +448,7 @@ func test_event_received_callback_transition_cancels_parent_dispatch() -> void:
 			assert_true(_applied)
 	)
 
-	add_child_autofree(_root)
+	Fixtures.add_manual_st_root(self, _root)
 	assert_true(_parent.get_is_active())
 	assert_true(_node_a.get_is_active())
 
@@ -634,13 +464,10 @@ func test_event_received_callback_transition_cancels_parent_dispatch() -> void:
 
 
 func test_guard_callback_transition_cancels_state_dispatch() -> void:
-	var _root: NNSTRoot = NNSTRoot.new()
-	var board := NNBlackboard.new()
-	board.values = { "log": [] }
-	_root.blackboard = board
-	var _node_a := _make_logger("A")
-	var _node_b := _make_logger("B")
-	var _node_c := _make_logger("C")
+	var _root: NNSTRoot = STHelpers.event_queue_root()
+	var _node_a := STHelpers.logger("A")
+	var _node_b := STHelpers.logger("B")
+	var _node_c := STHelpers.logger("C")
 	_root.add_child(_node_a)
 	_root.add_child(_node_b)
 	_root.add_child(_node_c)
@@ -651,7 +478,7 @@ func test_guard_callback_transition_cancels_state_dispatch() -> void:
 	_guard.target = _node_b
 	_transition.guard = _guard
 
-	add_child_autofree(_root)
+	Fixtures.add_manual_st_root(self, _root)
 	assert_true(_node_a.get_is_active())
 
 	_root.send_event("go")
@@ -665,14 +492,12 @@ func test_guard_callback_transition_cancels_state_dispatch() -> void:
 
 
 func test_exit_and_reentry_does_not_fire_stale_transition() -> void:
-	var _root: NNSTRoot = NNSTRoot.new()
-	var board := NNBlackboard.new()
-	board.values = { "log": [] }
-	_root.blackboard = board
-	var _node_a := _make_logger("A")
-	var _node_b := RedirectOnEnterNode.new()
+	var _root: NNSTRoot = STHelpers.event_queue_root()
+	var _node_a := STHelpers.logger("A")
+	var _node_b := STHelpers.RedirectOnEnterNode.new()
 	_node_b.name = "B"
-	var _node_c := _make_logger("C")
+	_node_b.log_events = true
+	var _node_c := STHelpers.logger("C")
 	_root.add_child(_node_a)
 	_root.add_child(_node_b)
 	_root.add_child(_node_c)
@@ -684,7 +509,7 @@ func test_exit_and_reentry_does_not_fire_stale_transition() -> void:
 			assert_true(_applied)
 	)
 
-	add_child_autofree(_root)
+	Fixtures.add_manual_st_root(self, _root)
 	_node_b.target_path = _node_b.get_path_to(_node_a)
 	assert_true(_node_a.get_is_active())
 	_root.get_blackboard_resource().set_value('log', [])

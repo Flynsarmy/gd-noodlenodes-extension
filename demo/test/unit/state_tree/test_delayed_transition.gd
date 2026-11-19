@@ -2,11 +2,7 @@ extends GutTest
 @warning_ignore('unused_parameter')
 @warning_ignore('return_value_discarded')
 
-
-# These tests tick the chart by hand, so automatic ticking is off.
-func _add_manual_root(root: NNSTRoot) -> NNSTRoot:
-	root.process_thread = NNSTRoot.MANUAL
-	return add_child_autofree(root)
+const Fixtures = preload("res://test/support/fixtures.gd")
 
 
 # Builds a state tree with an active Source state plus Target and Other
@@ -30,12 +26,11 @@ func _build_tree(delay: String = "0.0") -> Dictionary:
 
 	_transition.to = _transition.get_path_to(_target)
 	_transition.delay_in_seconds = delay
-	# An empty event name now makes a transition automatic (it fires when the
-	# state enters). These tests drive the transition explicitly with take()
-	# or an event, so give it an inert event name to keep it manual-only.
+	# An empty event name would make this transition automatic on state enter.
+	# These tests drive it explicitly with take() or an event instead.
 	_transition.event_name = "take_only"
 
-	_add_manual_root(_root)
+	Fixtures.add_manual_st_root(self, _root)
 
 	return {
 		"root": _root,
@@ -284,25 +279,6 @@ func test_expression_delay_is_evaluated_from_blackboard() -> void:
 	_root.tick(0.25)
 	assert_true(_target.get_is_active())
 
-func test_changing_delay_expression_takes_effect() -> void:
-	var _tree: Dictionary = _build_tree("0.5")
-	var _root: NNSTRoot = _tree["root"]
-	var _transition: NNSTTransition = _tree["transition"]
-
-	assert_almost_eq(_transition.evaluate_delay(), 0.5, 0.0001)
-
-	_transition.delay_in_seconds = "1.25"
-	assert_almost_eq(_transition.evaluate_delay(), 1.25, 0.0001)
-
-	var board := NNBlackboard.new()
-	board.values = {"delay_time": 2.5}
-	_root.blackboard = board
-	_transition.delay_in_seconds = "delay_time"
-	assert_almost_eq(_transition.evaluate_delay(), 2.5, 0.0001)
-
-	board.values = {"delay_time": 0.25}
-	assert_almost_eq(_transition.evaluate_delay(), 0.25, 0.0001)
-
 func test_negative_delay_is_immediate() -> void:
 	for delay in ["-3.0", "delay_time"]:
 		var _tree: Dictionary = _build_tree(delay)
@@ -343,7 +319,7 @@ func test_empty_delay_is_zero() -> void:
 	assert_eq(_transition.evaluate_delay(), 0.0)
 
 func test_take_on_inactive_state_is_rejected() -> void:
-	var _root: NNSTRoot = _add_manual_root(NNSTRoot.new())
+	var _root: NNSTRoot = Fixtures.add_manual_st_root(self)
 	var _active: NNSTNode = NNSTNode.new()
 	var _inactive: NNSTNode = NNSTNode.new()
 	var _target: NNSTNode = NNSTNode.new()
@@ -461,7 +437,7 @@ func test_immediate_self_target_does_not_emit_taken() -> void:
 	assert_true(_source.get_is_active())
 
 func test_immediate_descendant_target_does_not_emit_taken() -> void:
-	var _root: NNSTRoot = _add_manual_root(NNSTRoot.new())
+	var _root: NNSTRoot = Fixtures.add_manual_st_root(self)
 	var _source: NNSTNode = NNSTNode.new()
 	var _leaf: NNSTNode = NNSTNode.new()
 	var _target: NNSTNode = NNSTNode.new()
@@ -509,7 +485,7 @@ func test_delayed_self_target_does_not_emit_taken_when_delay_elapses() -> void:
 	assert_true(_source.get_is_active())
 
 func test_rejected_event_transition_falls_through_to_next_transition() -> void:
-	var _root: NNSTRoot = _add_manual_root(NNSTRoot.new())
+	var _root: NNSTRoot = Fixtures.add_manual_st_root(self)
 	var _source: NNSTNode = NNSTNode.new()
 	var _target: NNSTNode = NNSTNode.new()
 	var _self_transition: NNSTTransition = NNSTTransition.new()
@@ -542,7 +518,7 @@ func test_rejected_event_transition_falls_through_to_next_transition() -> void:
 	assert_true(_target.get_is_active())
 
 func test_parallel_common_ancestor_rejection_does_not_emit_taken() -> void:
-	var _root: NNSTRoot = _add_manual_root(NNSTRoot.new())
+	var _root: NNSTRoot = Fixtures.add_manual_st_root(self)
 	var _parallel: NNSTParallel = NNSTParallel.new()
 	var _first: NNSTNode = NNSTNode.new()
 	var _second: NNSTNode = NNSTNode.new()

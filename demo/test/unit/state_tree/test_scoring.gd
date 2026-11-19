@@ -2,7 +2,8 @@ extends GutTest
 @warning_ignore('unused_parameter')
 @warning_ignore('return_value_discarded')
 
-const UTILITY_SCORING := 1
+const Fixtures = preload("res://test/support/fixtures.gd")
+const STHelpers = preload("res://test/unit/state_tree/support/st_helpers.gd")
 
 
 func test_highest_scoring_child_is_entered_at_every_level() -> void:
@@ -12,18 +13,16 @@ func test_highest_scoring_child_is_entered_at_every_level() -> void:
 	var _grandchild_low: NNSTNode = NNSTNode.new()
 	var _grandchild_high: NNSTNode = NNSTNode.new()
 
-	_root.child_state_selection_rule = UTILITY_SCORING
-	_high.child_state_selection_rule = UTILITY_SCORING
+	_root.child_state_selection_rule = STHelpers.UTILITY_SCORING
+	_high.child_state_selection_rule = STHelpers.UTILITY_SCORING
 	_root.add_child(_low)
 	_root.add_child(_high)
 	_high.add_child(_grandchild_low)
 	_high.add_child(_grandchild_high)
 	for node in [_high, _grandchild_high]:
-		var consideration: NNConsideration = NNConsideration.new()
-		consideration.activation_input_value = 0.5
-		node.add_child(consideration)
+		node.add_child(Fixtures.consideration(0.5))
 	# Selection happens on entering the tree, so the hierarchy must be complete first.
-	add_child_autofree(_root)
+	Fixtures.add_manual_st_root(self, _root)
 
 	assert_false(_low.get_is_active())
 	assert_true(_high.get_is_active())

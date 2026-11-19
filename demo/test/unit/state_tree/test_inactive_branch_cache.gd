@@ -2,22 +2,15 @@ extends GutTest
 @warning_ignore('unused_parameter')
 @warning_ignore('return_value_discarded')
 
+const Fixtures = preload("res://test/support/fixtures.gd")
+const STHelpers = preload("res://test/unit/state_tree/support/st_helpers.gd")
+
 # A ready but inactive branch must still refresh its cached children, or a later
 # transition into it sees a stale child list.
 
 
-# These tests tick the chart by hand, so automatic ticking is off.
-func _add_manual_root(root: NNSTRoot) -> NNSTRoot:
-	root.process_thread = NNSTRoot.MANUAL
-	return add_child_autofree(root)
-
-
-const LOGGER_PATH := "res://test/unit/state_tree/node_on_call_logger.gd"
-const UTILITY_SCORING := 1
-
-
 func _make_logger(node_name: String) -> NNSTNode:
-	var node: NNSTNode = load(LOGGER_PATH).new()
+	var node: NNSTNode = STHelpers.LoggingNode.new()
 	node.name = node_name
 	return node
 
@@ -26,14 +19,8 @@ func _get_log(root: NNSTRoot) -> Array:
 	return root.get_blackboard('log')
 
 
-func _make_consideration(value: float) -> NNConsideration:
-	var consideration: NNConsideration = NNConsideration.new()
-	consideration.activation_input_value = value
-	return consideration
-
-
 func test_inactive_branch_sees_child_added_after_ready() -> void:
-	var _root: NNSTRoot = _add_manual_root(NNSTRoot.new())
+	var _root: NNSTRoot = Fixtures.add_manual_st_root(self)
 	var _active_sibling: NNSTNode = _make_logger("ActiveSibling")
 	var _branch: NNSTNode = _make_logger("Branch")
 	var board := NNBlackboard.new()
@@ -83,7 +70,7 @@ func test_inactive_branch_sees_child_removed_after_ready() -> void:
 	_root.add_child(_active_sibling)
 	_root.add_child(_branch)
 	_branch.add_child(_old_child)
-	_add_manual_root(_root)
+	Fixtures.add_manual_st_root(self, _root)
 
 	assert_true(_active_sibling.get_is_active())
 	assert_false(_branch.get_is_active())
@@ -120,7 +107,7 @@ func test_inactive_branch_sees_child_reorder_after_ready() -> void:
 	_root.add_child(_branch)
 	_branch.add_child(_first_child)
 	_branch.add_child(_second_child)
-	_add_manual_root(_root)
+	Fixtures.add_manual_st_root(self, _root)
 
 	assert_true(_active_sibling.get_is_active())
 	assert_false(_branch.get_is_active())
@@ -140,7 +127,7 @@ func test_inactive_branch_sees_child_reorder_after_ready() -> void:
 	assert_eq(_get_log(_root).count("FirstChild on_enter_state"), 0)
 
 func test_inactive_branch_sees_transition_added_after_ready() -> void:
-	var _root: NNSTRoot = _add_manual_root(NNSTRoot.new())
+	var _root: NNSTRoot = Fixtures.add_manual_st_root(self)
 	var _active_sibling: NNSTNode = _make_logger("ActiveSibling")
 	var _branch: NNSTNode = _make_logger("Branch")
 	var _target: NNSTNode = _make_logger("Target")
@@ -178,19 +165,19 @@ func test_inactive_branch_sees_consideration_added_after_ready() -> void:
 	var board := NNBlackboard.new()
 	board.values = { "log": [] }
 	_root.blackboard = board
-	_root.child_state_selection_rule = UTILITY_SCORING
-	_start.add_child(_make_consideration(1.0))
-	_rival.add_child(_make_consideration(0.5))
+	_root.child_state_selection_rule = STHelpers.UTILITY_SCORING
+	_start.add_child(Fixtures.consideration(1.0))
+	_rival.add_child(Fixtures.consideration(0.5))
 	_root.add_child(_start)
 	_root.add_child(_rival)
 	_root.add_child(_branch)
-	_add_manual_root(_root)
+	Fixtures.add_manual_st_root(self, _root)
 
 	assert_true(_start.get_is_active())
 	assert_false(_branch.get_is_active())
 	_root.get_blackboard_resource().set_value('log', [])
 
-	_branch.add_child(_make_consideration(1.0))
+	_branch.add_child(Fixtures.consideration(1.0))
 
 	# Neither adding the consideration nor removing the active child may enter
 	# the inactive branch before the next tick.
@@ -212,7 +199,7 @@ func test_inactive_branch_sees_consideration_added_after_ready() -> void:
 	assert_eq(_get_log(_root).count("Rival on_enter_state"), 0)
 
 func test_active_branch_reorder_and_removal_still_works() -> void:
-	var _root: NNSTRoot = _add_manual_root(NNSTRoot.new())
+	var _root: NNSTRoot = Fixtures.add_manual_st_root(self)
 	var _child: NNSTNode = _make_logger("Child")
 	var _sibling: NNSTNode = _make_logger("Sibling")
 	var board := NNBlackboard.new()

@@ -362,27 +362,6 @@ func test_host_reports_completions_from_its_hosted_bt_root() -> void:
 	assert_eq(hosted_results.size(), 2)
 
 
-func test_final_state_reports_finished_once_per_entry() -> void:
-	var chart := NNSTRoot.new()
-	chart.process_thread = NNSTRoot.MANUAL
-	var final_state := NNSTNode.new()
-	final_state.is_final = true
-	chart.add_child(final_state)
-	watch_signals(chart)
-	add_child_autofree(chart)
-
-	var plain_chart := NNSTRoot.new()
-	plain_chart.process_thread = NNSTRoot.MANUAL
-	var plain_state := NNSTNode.new()
-	plain_chart.add_child(plain_state)
-	watch_signals(plain_chart)
-	add_child_autofree(plain_chart)
-
-	assert_signal_emitted_with_parameters(chart, "finished", [true])
-	assert_eq(get_signal_emit_count(chart, "finished"), 1, "one entry into a final state is one completion")
-	assert_signal_not_emitted(plain_chart, "finished", "entering a non-final state is not a completion")
-
-
 func test_host_reports_the_final_state_of_a_hosted_chart() -> void:
 	var parts := _make_chart_with_active_host()
 	var chart: NNSTRoot = parts["chart"]

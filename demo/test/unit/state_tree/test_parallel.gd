@@ -2,11 +2,8 @@ extends GutTest
 @warning_ignore('unused_parameter')
 @warning_ignore('return_value_discarded')
 
-
-# These tests tick the chart by hand, so automatic ticking is off.
-func _add_manual_root(root: NNSTRoot) -> NNSTRoot:
-	root.process_thread = NNSTRoot.MANUAL
-	return add_child_autofree(root)
+const Fixtures = preload("res://test/support/fixtures.gd")
+const STHelpers = preload("res://test/unit/state_tree/support/st_helpers.gd")
 
 
 class FreeSiblingOnTick extends NNSTNode:
@@ -23,8 +20,8 @@ class FreeSiblingOnEnter extends NNSTNode:
 		if is_instance_valid(target):
 			target.free()
 
-func test_all_children_ticked() -> void:
-	var _root: NNSTRoot = _add_manual_root(NNSTRoot.new())
+func test_all_children_become_active() -> void:
+	var _root: NNSTRoot = Fixtures.add_manual_st_root(self)
 	var _parallel: NNSTParallel = NNSTParallel.new()
 	var _node1: NNSTNode = NNSTNode.new()
 	var _node2: NNSTNode = NNSTNode.new()
@@ -39,10 +36,11 @@ func test_all_children_ticked() -> void:
 	assert_eq(_node2.get_is_active(), true)
 
 func test_children_failing_condition_dont_tick() -> void:
-	var _root: NNSTRoot = _add_manual_root(NNSTRoot.new())
+	var _root: NNSTRoot = Fixtures.add_manual_st_root(self)
 	var _parallel: NNSTParallel = NNSTParallel.new()
 	var _node1: NNSTNode = NNSTNode.new()
-	var _node2: NNSTNode = load("res://test/unit/state_tree/node_enter_condition_fail.gd").new()
+	var _node2: NNSTNode = STHelpers.EnterConditionNode.new()
+	_node2.condition = false
 	var board := NNBlackboard.new()
 	board.values = {
 		"on_enter_condition": 0,
@@ -62,18 +60,17 @@ func test_children_failing_condition_dont_tick() -> void:
 	assert_eq(_node2.get_is_active(), false)
 
 func test_transitions_away_in_correct_order() -> void:
-	var _root: NNSTRoot = _add_manual_root(NNSTRoot.new())
-	var _parallel: NNSTParallel = load("res://test/unit/state_tree/parallel_on_call_logger.gd").new()
-	var _grandchild1: NNSTNode = load("res://test/unit/state_tree/node_on_call_logger.gd").new()
-	var _grandchild2: NNSTNode = load("res://test/unit/state_tree/node_on_call_logger.gd").new()
-	var _node: NNSTNode = load("res://test/unit/state_tree/node_on_call_logger.gd").new()
+	var _root: NNSTRoot = Fixtures.add_manual_st_root(self)
+	var _parallel: NNSTParallel = STHelpers.LoggingParallel.new()
+	var _grandchild1: NNSTNode = STHelpers.LoggingNode.new()
+	var _grandchild2: NNSTNode = STHelpers.LoggingNode.new()
+	var _node: NNSTNode = STHelpers.LoggingNode.new()
 	_root.get_blackboard_resource().set_value('log', [])
 
 	# - root
 	#   - parallel
-	#     - child1
-	#       - grandchild11
-	#       - grandchild12
+	#     - grandchild1
+	#     - grandchild2
 	#   - node
 	_root.add_child(_parallel)
 	_parallel.add_child(_grandchild1)
@@ -101,7 +98,7 @@ func test_transitions_away_in_correct_order() -> void:
 	])
 
 func test_parallel_branches_tick_correct_nodes() -> void:
-	var _root: NNSTRoot = _add_manual_root(NNSTRoot.new())
+	var _root: NNSTRoot = Fixtures.add_manual_st_root(self)
 	var _parallel: NNSTParallel = NNSTParallel.new()
 	var _child1: NNSTNode = NNSTNode.new()
 	var _grandchild11: NNSTNode = NNSTNode.new()
@@ -136,10 +133,10 @@ func test_parallel_branches_tick_correct_nodes() -> void:
 	assert_eq(_grandchild22.get_is_active(), false)
 
 func test_removing_active_parallel_child_exits_only_that_child() -> void:
-	var _root: NNSTRoot = _add_manual_root(NNSTRoot.new())
+	var _root: NNSTRoot = Fixtures.add_manual_st_root(self)
 	var _parallel: NNSTParallel = NNSTParallel.new()
-	var _child1: NNSTNode = load("res://test/unit/state_tree/node_on_call_logger.gd").new()
-	var _child2: NNSTNode = load("res://test/unit/state_tree/node_on_call_logger.gd").new()
+	var _child1: NNSTNode = STHelpers.LoggingNode.new()
+	var _child2: NNSTNode = STHelpers.LoggingNode.new()
 	var board := NNBlackboard.new()
 	board.values = { "log": [] }
 	_root.blackboard = board
@@ -166,7 +163,7 @@ func test_removing_active_parallel_child_exits_only_that_child() -> void:
 	assert_eq((_root.get_blackboard('log') as Array).count("Child2 on_exit_state"), 1)
 
 func test_freeing_active_sibling_during_tick_is_safe() -> void:
-	var _root: NNSTRoot = _add_manual_root(NNSTRoot.new())
+	var _root: NNSTRoot = Fixtures.add_manual_st_root(self)
 	var _parallel: NNSTParallel = NNSTParallel.new()
 	var _child1: FreeSiblingOnTick = FreeSiblingOnTick.new()
 	var _child2: NNSTNode = NNSTNode.new()
@@ -184,7 +181,7 @@ func test_freeing_active_sibling_during_tick_is_safe() -> void:
 	assert_eq(is_instance_valid(_child2), false)
 
 func test_freeing_active_sibling_during_entry_is_safe() -> void:
-	var _root: NNSTRoot = _add_manual_root(NNSTRoot.new())
+	var _root: NNSTRoot = Fixtures.add_manual_st_root(self)
 	var _parallel: NNSTParallel = NNSTParallel.new()
 	var _child1: FreeSiblingOnEnter = FreeSiblingOnEnter.new()
 	var _child2: NNSTNode = NNSTNode.new()
@@ -202,11 +199,11 @@ func test_freeing_active_sibling_during_entry_is_safe() -> void:
 	assert_eq(_child1.get_is_active(), true)
 
 func test_reparenting_active_child_updates_both_branches() -> void:
-	var _root: NNSTRoot = _add_manual_root(NNSTRoot.new())
+	var _root: NNSTRoot = Fixtures.add_manual_st_root(self)
 	var _parallel: NNSTParallel = NNSTParallel.new()
 	var _branch1: NNSTNode = NNSTNode.new()
 	var _branch2: NNSTNode = NNSTNode.new()
-	var _leaf: NNSTNode = load("res://test/unit/state_tree/node_on_call_logger.gd").new()
+	var _leaf: NNSTNode = STHelpers.LoggingNode.new()
 	var board := NNBlackboard.new()
 	board.values = { "log": [] }
 	_root.blackboard = board

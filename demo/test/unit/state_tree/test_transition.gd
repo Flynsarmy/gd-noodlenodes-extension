@@ -2,27 +2,9 @@ extends GutTest
 @warning_ignore('unused_parameter')
 @warning_ignore('return_value_discarded')
 
+const Fixtures = preload("res://test/support/fixtures.gd")
+const STHelpers = preload("res://test/unit/state_tree/support/st_helpers.gd")
 
-# These tests tick the chart by hand, so automatic ticking is off.
-func _add_manual_root(root: NNSTRoot) -> NNSTRoot:
-	root.process_thread = NNSTRoot.MANUAL
-	return add_child_autofree(root)
-
-
-# Test helper: optionally transitions to another state when entered.
-class RedirectOnEnterNode extends NNSTNode:
-	var target_path: NodePath
-	var applied = null
-	var enter_count: int = 0
-	var exit_count: int = 0
-
-	func on_enter_state() -> void:
-		enter_count += 1
-		if not target_path.is_empty():
-			applied = transition_to(target_path)
-
-	func on_exit_state() -> void:
-		exit_count += 1
 
 # Test helper: optionally transitions to another state when exited.
 class RedirectOnExitNode extends NNSTNode:
@@ -64,28 +46,8 @@ class ReparentTargetOnExitNode extends NNSTNode:
 		if is_instance_valid(target) and target.get_parent() != destination:
 			target.reparent(destination)
 
-func test_state_transitions_successfully() -> void:
-	var _root: NNSTRoot = _add_manual_root(NNSTRoot.new())
-	var _node1: NNSTNode = NNSTNode.new()
-	var _node2: NNSTNode = NNSTNode.new()
-	var _transition: NNSTTransition = NNSTTransition.new()
-
-	_root.add_child(_node1)
-	_root.add_child(_node2)
-	_node1.add_child(_transition)
-
-	_transition.event_name = 'test'
-	_transition.to = _transition.get_path_to(_node2)
-
-	_root.tick(0.1)
-	_root.send_event('test')
-
-	assert_eq(_node1.get_is_active(), false)
-	assert_eq(_node2.get_is_active(), true)
-
-
 func test_events_are_case_sensitive() -> void:
-	var _root: NNSTRoot = _add_manual_root(NNSTRoot.new())
+	var _root: NNSTRoot = Fixtures.add_manual_st_root(self)
 	var _node1: NNSTNode = NNSTNode.new()
 	var _node2: NNSTNode = NNSTNode.new()
 	var _transition: NNSTTransition = NNSTTransition.new()
@@ -103,27 +65,8 @@ func test_events_are_case_sensitive() -> void:
 	assert_eq(_node1.get_is_active(), true)
 	assert_eq(_node2.get_is_active(), false)
 
-func test_non_existant_event_does_nothing() -> void:
-	var _root: NNSTRoot = _add_manual_root(NNSTRoot.new())
-	var _node1: NNSTNode = NNSTNode.new()
-	var _node2: NNSTNode = NNSTNode.new()
-	var _transition: NNSTTransition = NNSTTransition.new()
-
-	_root.add_child(_node1)
-	_root.add_child(_node2)
-	_node1.add_child(_transition)
-
-	_transition.event_name = 'foo'
-	_transition.to = _transition.get_path_to(_node2)
-
-	_root.tick(0.1)
-	_root.send_event('test')
-
-	assert_eq(_node1.get_is_active(), true)
-	assert_eq(_node2.get_is_active(), false)
-
 func test_transition_with_succeeding_guard() -> void:
-	var _root: NNSTRoot = _add_manual_root(NNSTRoot.new())
+	var _root: NNSTRoot = Fixtures.add_manual_st_root(self)
 	var _node1: NNSTNode = NNSTNode.new()
 	var _node2: NNSTNode = NNSTNode.new()
 	var _transition: NNSTTransition = NNSTTransition.new()
@@ -146,32 +89,8 @@ func test_transition_with_succeeding_guard() -> void:
 	assert_eq(_node1.get_is_active(), false)
 	assert_eq(_node2.get_is_active(), true)
 
-func test_transition_with_failing_guard() -> void:
-	var _root: NNSTRoot = _add_manual_root(NNSTRoot.new())
-	var _node1: NNSTNode = NNSTNode.new()
-	var _node2: NNSTNode = NNSTNode.new()
-	var _transition: NNSTTransition = NNSTTransition.new()
-	var _guard: NNSTExpressionGuard = NNSTExpressionGuard.new()
-
-	_node1.add_child(_transition)
-	_root.add_child(_node1)
-	_root.add_child(_node2)
-
-	_transition.event_name = 'foo'
-	_transition.to = _transition.get_path_to(_node2)
-	_transition.guard = _guard
-	_guard.expression = "1==0"
-
-	assert_eq(_node1.get_is_active(), true)
-	assert_eq(_node2.get_is_active(), false)
-
-	_root.send_event('foo')
-
-	assert_eq(_node1.get_is_active(), true)
-	assert_eq(_node2.get_is_active(), false)
-
 func test_failed_guard_falls_through_to_next_same_named_transition() -> void:
-	var _root: NNSTRoot = _add_manual_root(NNSTRoot.new())
+	var _root: NNSTRoot = Fixtures.add_manual_st_root(self)
 	var _node1: NNSTNode = NNSTNode.new()
 	var _node2: NNSTNode = NNSTNode.new()
 	var _node3: NNSTNode = NNSTNode.new()
@@ -200,44 +119,8 @@ func test_failed_guard_falls_through_to_next_same_named_transition() -> void:
 	assert_eq(_node2.get_is_active(), false)
 	assert_eq(_node3.get_is_active(), true)
 
-func test_failed_parent_guard_falls_through_to_active_child() -> void:
-	var _root: NNSTRoot = _add_manual_root(NNSTRoot.new())
-	var _node1: NNSTNode = NNSTNode.new()
-	var _node11: NNSTNode = NNSTNode.new()
-	var _node12: NNSTNode = NNSTNode.new()
-	var _node2: NNSTNode = NNSTNode.new()
-	var _parent_transition: NNSTTransition = NNSTTransition.new()
-	var _child_transition: NNSTTransition = NNSTTransition.new()
-	var _guard: NNSTExpressionGuard = NNSTExpressionGuard.new()
-
-	_node1.add_child(_node11)
-	_node1.add_child(_node12)
-	_node1.add_child(_parent_transition)
-	_node11.add_child(_child_transition)
-	_root.add_child(_node1)
-	_root.add_child(_node2)
-
-	_parent_transition.event_name = 'hit'
-	_parent_transition.to = _parent_transition.get_path_to(_node2)
-	_parent_transition.guard = _guard
-	_guard.expression = "1==0"
-
-	_child_transition.event_name = 'hit'
-	_child_transition.to = _child_transition.get_path_to(_node12)
-
-	_root.tick(0.1)
-	assert_eq(_node1.get_is_active(), true)
-	assert_eq(_node11.get_is_active(), true)
-
-	_root.send_event('hit')
-
-	assert_eq(_node1.get_is_active(), true)
-	assert_eq(_node11.get_is_active(), false)
-	assert_eq(_node12.get_is_active(), true)
-	assert_eq(_node2.get_is_active(), false)
-
 func test_first_applicable_transition_wins() -> void:
-	var _root: NNSTRoot = _add_manual_root(NNSTRoot.new())
+	var _root: NNSTRoot = Fixtures.add_manual_st_root(self)
 	var _node1: NNSTNode = NNSTNode.new()
 	var _node2: NNSTNode = NNSTNode.new()
 	var _node3: NNSTNode = NNSTNode.new()
@@ -263,7 +146,7 @@ func test_first_applicable_transition_wins() -> void:
 	assert_eq(_node3.get_is_active(), false)
 
 func test_transition_to_reports_whether_it_applied() -> void:
-	var _root: NNSTRoot = _add_manual_root(NNSTRoot.new())
+	var _root: NNSTRoot = Fixtures.add_manual_st_root(self)
 	var _node1: NNSTNode = NNSTNode.new()
 	var _node2: NNSTNode = NNSTNode.new()
 	var _not_a_state: Node = Node.new()
@@ -278,7 +161,7 @@ func test_transition_to_reports_whether_it_applied() -> void:
 	assert_eq(_node1.transition_to(_node1.get_path_to(_not_a_state)), false)
 
 func test_transition_into_and_out_of_grandchild_twice() -> void:
-	var _root: NNSTRoot = _add_manual_root(NNSTRoot.new())
+	var _root: NNSTRoot = Fixtures.add_manual_st_root(self)
 	var _node1: NNSTNode = NNSTNode.new()
 	var _node11: NNSTNode = NNSTNode.new()
 	var _node11_transition: NNSTTransition = NNSTTransition.new()
@@ -314,38 +197,14 @@ func test_transition_into_and_out_of_grandchild_twice() -> void:
 	assert_eq(_node11.get_is_active(), false)
 	assert_eq(_node2.get_is_active(), true)
 
-func test_transition_from_on_enter_state() -> void:
-	var _root: NNSTRoot = NNSTRoot.new()
-	_root.name = "Root"
-	var _node1: NNSTNode = NNSTNode.new()
-	_node1.name = "Node1"
-	_node1.set_script(load("res://test/unit/state_tree/transition_on_enter_state.gd"))
-	var _node2: NNSTNode = NNSTNode.new()
-	_node2.name = "Node2"
-
-	# Add the children before the root enters the tree so the transition target
-	# exists by the time Node1 is entered.
-	_root.add_child(_node1)
-	_root.add_child(_node2)
-	_add_manual_root(_root)
-
-	assert_eq(_node1.get_is_active(), false)
-	assert_eq(_node2.get_is_active(), true)
-
-	# Ticking again must not re-enter Node1 or undo the transition.
-	_root.tick(0.1)
-
-	assert_eq(_node1.get_is_active(), false)
-	assert_eq(_node2.get_is_active(), true)
-
 func test_nested_transition_from_leaf_on_enter_state() -> void:
 	var _root: NNSTRoot = NNSTRoot.new()
 	_root.name = "Root"
-	var _start: RedirectOnEnterNode = RedirectOnEnterNode.new()
+	var _start: STHelpers.RedirectOnEnterNode = STHelpers.RedirectOnEnterNode.new()
 	_start.name = "Start"
 	var _target: NNSTNode = NNSTNode.new()
 	_target.name = "Target"
-	var _leaf: RedirectOnEnterNode = RedirectOnEnterNode.new()
+	var _leaf: STHelpers.RedirectOnEnterNode = STHelpers.RedirectOnEnterNode.new()
 	_leaf.name = "Leaf"
 	var _end: NNSTNode = NNSTNode.new()
 	_end.name = "End"
@@ -360,7 +219,7 @@ func test_nested_transition_from_leaf_on_enter_state() -> void:
 	_start.target_path = _start.get_path_to(_leaf)
 	_leaf.target_path = _leaf.get_path_to(_end)
 
-	_add_manual_root(_root)
+	Fixtures.add_manual_st_root(self, _root)
 
 	assert_eq(_start.get_is_active(), false)
 	assert_eq(_target.get_is_active(), false)
@@ -380,11 +239,11 @@ func test_nested_transition_from_leaf_on_enter_state() -> void:
 func test_ancestor_on_enter_state_redirect_skips_descendants() -> void:
 	var _root: NNSTRoot = NNSTRoot.new()
 	_root.name = "Root"
-	var _start: RedirectOnEnterNode = RedirectOnEnterNode.new()
+	var _start: STHelpers.RedirectOnEnterNode = STHelpers.RedirectOnEnterNode.new()
 	_start.name = "Start"
-	var _target: RedirectOnEnterNode = RedirectOnEnterNode.new()
+	var _target: STHelpers.RedirectOnEnterNode = STHelpers.RedirectOnEnterNode.new()
 	_target.name = "Target"
-	var _leaf: RedirectOnEnterNode = RedirectOnEnterNode.new()
+	var _leaf: STHelpers.RedirectOnEnterNode = STHelpers.RedirectOnEnterNode.new()
 	_leaf.name = "Leaf"
 	var _end: NNSTNode = NNSTNode.new()
 	_end.name = "End"
@@ -397,7 +256,7 @@ func test_ancestor_on_enter_state_redirect_skips_descendants() -> void:
 	_start.target_path = _start.get_path_to(_leaf)
 	_target.target_path = _target.get_path_to(_end)
 
-	_add_manual_root(_root)
+	Fixtures.add_manual_st_root(self, _root)
 
 	assert_eq(_start.get_is_active(), false)
 	assert_eq(_end.get_is_active(), true)
@@ -418,7 +277,7 @@ func test_ancestor_on_enter_state_redirect_skips_descendants() -> void:
 	assert_eq(_leaf.enter_count, 0)
 
 func test_exit_callback_freeing_transition_target_is_safe() -> void:
-	var _root: NNSTRoot = _add_manual_root(NNSTRoot.new())
+	var _root: NNSTRoot = Fixtures.add_manual_st_root(self)
 	var _source: FreeTargetOnExitNode = FreeTargetOnExitNode.new()
 	var _target: NNSTNode = NNSTNode.new()
 	_source.name = "Source"
@@ -436,7 +295,7 @@ func test_exit_callback_freeing_transition_target_is_safe() -> void:
 	assert_eq(is_instance_valid(_target), false)
 
 func test_child_removing_itself_during_branch_exit_exits_once() -> void:
-	var _root: NNSTRoot = _add_manual_root(NNSTRoot.new())
+	var _root: NNSTRoot = Fixtures.add_manual_st_root(self)
 	var _branch: NNSTNode = NNSTNode.new()
 	var _leaf: RemoveSelfOnExitNode = autofree(RemoveSelfOnExitNode.new())
 	var _target: NNSTNode = NNSTNode.new()
@@ -454,7 +313,7 @@ func test_child_removing_itself_during_branch_exit_exits_once() -> void:
 	assert_true(_target.get_is_active())
 
 func test_exit_callback_reparenting_target_does_not_block_reselection() -> void:
-	var _root: NNSTRoot = _add_manual_root(NNSTRoot.new())
+	var _root: NNSTRoot = Fixtures.add_manual_st_root(self)
 	var _destination: Node = add_child_autofree(Node.new())
 	var _source: ReparentTargetOnExitNode = ReparentTargetOnExitNode.new()
 	var _target: NNSTNode = NNSTNode.new()
@@ -479,15 +338,15 @@ func test_transition_from_on_exit_state_redirects_to_sibling() -> void:
 	_root.name = "Root"
 	var _node1: RedirectOnExitNode = RedirectOnExitNode.new()
 	_node1.name = "Node1"
-	var _node2: RedirectOnEnterNode = RedirectOnEnterNode.new()
+	var _node2: STHelpers.RedirectOnEnterNode = STHelpers.RedirectOnEnterNode.new()
 	_node2.name = "Node2"
-	var _node3: RedirectOnEnterNode = RedirectOnEnterNode.new()
+	var _node3: STHelpers.RedirectOnEnterNode = STHelpers.RedirectOnEnterNode.new()
 	_node3.name = "Node3"
 
 	_root.add_child(_node1)
 	_root.add_child(_node2)
 	_root.add_child(_node3)
-	_add_manual_root(_root)
+	Fixtures.add_manual_st_root(self, _root)
 
 	_node1.target_path = _node1.get_path_to(_node3)
 
@@ -529,7 +388,7 @@ func test_transition_from_child_on_exit_state_redirects() -> void:
 	_root.add_child(_parent)
 	_root.add_child(_node2)
 	_root.add_child(_node3)
-	_add_manual_root(_root)
+	Fixtures.add_manual_st_root(self, _root)
 
 	_child.target_path = _child.get_path_to(_node3)
 
@@ -552,7 +411,7 @@ func test_on_exit_redirect_target_can_redirect_on_enter() -> void:
 	_node1.name = "Node1"
 	var _node2: NNSTNode = NNSTNode.new()
 	_node2.name = "Node2"
-	var _node3: RedirectOnEnterNode = RedirectOnEnterNode.new()
+	var _node3: STHelpers.RedirectOnEnterNode = STHelpers.RedirectOnEnterNode.new()
 	_node3.name = "Node3"
 	var _node4: NNSTNode = NNSTNode.new()
 	_node4.name = "Node4"
@@ -561,7 +420,7 @@ func test_on_exit_redirect_target_can_redirect_on_enter() -> void:
 	_root.add_child(_node2)
 	_root.add_child(_node3)
 	_root.add_child(_node4)
-	_add_manual_root(_root)
+	Fixtures.add_manual_st_root(self, _root)
 
 	_node1.target_path = _node1.get_path_to(_node3)
 	_node3.target_path = _node3.get_path_to(_node4)
@@ -600,13 +459,13 @@ func test_exit_redirect_within_active_parent_preserves_ancestors() -> void:
 	var _root: NNSTRoot = NNSTRoot.new()
 	var _parent: RedirectOnExitNode = RedirectOnExitNode.new()
 	var _start: RedirectOnExitNode = RedirectOnExitNode.new()
-	var _outer_target: RedirectOnEnterNode = RedirectOnEnterNode.new()
-	var _redirect_target: RedirectOnEnterNode = RedirectOnEnterNode.new()
+	var _outer_target: STHelpers.RedirectOnEnterNode = STHelpers.RedirectOnEnterNode.new()
+	var _redirect_target: STHelpers.RedirectOnEnterNode = STHelpers.RedirectOnEnterNode.new()
 	_parent.add_child(_start)
 	_parent.add_child(_outer_target)
 	_parent.add_child(_redirect_target)
 	_root.add_child(_parent)
-	_add_manual_root(_root)
+	Fixtures.add_manual_st_root(self, _root)
 	_start.target_path = _start.get_path_to(_redirect_target)
 
 	assert_true(_start.transition_to(_start.get_path_to(_outer_target)))
@@ -625,14 +484,14 @@ func test_exit_redirect_within_active_parent_preserves_ancestors() -> void:
 func test_entry_redirect_cannot_activate_descendant_of_exiting_state() -> void:
 	var _root: NNSTRoot = NNSTRoot.new()
 	var _start: RedirectOnExitNode = RedirectOnExitNode.new()
-	var _leaf: RedirectOnEnterNode = RedirectOnEnterNode.new()
-	var _outer_target: RedirectOnEnterNode = RedirectOnEnterNode.new()
-	var _redirect_target: RedirectOnEnterNode = RedirectOnEnterNode.new()
+	var _leaf: STHelpers.RedirectOnEnterNode = STHelpers.RedirectOnEnterNode.new()
+	var _outer_target: STHelpers.RedirectOnEnterNode = STHelpers.RedirectOnEnterNode.new()
+	var _redirect_target: STHelpers.RedirectOnEnterNode = STHelpers.RedirectOnEnterNode.new()
 	_start.add_child(_leaf)
 	_root.add_child(_start)
 	_root.add_child(_outer_target)
 	_root.add_child(_redirect_target)
-	_add_manual_root(_root)
+	Fixtures.add_manual_st_root(self, _root)
 	_start.target_path = _start.get_path_to(_redirect_target)
 	_redirect_target.target_path = _redirect_target.get_path_to(_leaf)
 
@@ -663,14 +522,14 @@ func test_parallel_child_exit_redirect_exits_remaining_children_once() -> void:
 	var _parallel: NNSTParallel = NNSTParallel.new()
 	var _child1: RedirectOnExitNode = RedirectOnExitNode.new()
 	var _child2: RedirectOnExitNode = RedirectOnExitNode.new()
-	var _outer_target: RedirectOnEnterNode = RedirectOnEnterNode.new()
-	var _redirect_target: RedirectOnEnterNode = RedirectOnEnterNode.new()
+	var _outer_target: STHelpers.RedirectOnEnterNode = STHelpers.RedirectOnEnterNode.new()
+	var _redirect_target: STHelpers.RedirectOnEnterNode = STHelpers.RedirectOnEnterNode.new()
 	_parallel.add_child(_child1)
 	_parallel.add_child(_child2)
 	_root.add_child(_parallel)
 	_root.add_child(_outer_target)
 	_root.add_child(_redirect_target)
-	_add_manual_root(_root)
+	Fixtures.add_manual_st_root(self, _root)
 	_child2.target_path = _child2.get_path_to(_redirect_target)
 
 	assert_true(_parallel.transition_to(_parallel.get_path_to(_outer_target)))

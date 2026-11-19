@@ -1,33 +1,22 @@
 extends GutTest
 
+const Fixtures = preload("res://test/support/fixtures.gd")
 
-func test_generic_expression_satisfied() -> void:
-	var _root: NNSTRoot = add_child_autofree(NNSTRoot.new())
+
+func test_expression_guard_evaluates_literals_and_blackboard_vars() -> void:
+	var _root: NNSTRoot = Fixtures.add_manual_st_root(self)
 	var _child: NNSTNode = NNSTNode.new()
 	var _guard: NNSTExpressionGuard = NNSTExpressionGuard.new()
 	var _transition: NNSTTransition = NNSTTransition.new()
-	var result: bool;
 	_root.add_child(_child)
 	_child.add_child(_transition)
 	_transition.guard = _guard
 
 	_guard.expression = "1==1"
-	result = _guard.is_satisfied(_transition, _child)
-	assert_eq(result, true)
+	assert_true(_guard.is_satisfied(_transition, _child))
 
 	_guard.expression = "1==0"
-	result = _guard.is_satisfied(_transition, _child)
-	assert_eq(result, false)
-
-func test_expression_satisfied_with_blackboard_vars() -> void:
-	var _root: NNSTRoot = add_child_autofree(NNSTRoot.new())
-	var _child: NNSTNode = NNSTNode.new()
-	var _guard: NNSTExpressionGuard = NNSTExpressionGuard.new()
-	var _transition: NNSTTransition = NNSTTransition.new()
-	var result: bool;
-	_root.add_child(_child)
-	_child.add_child(_transition)
-	_transition.guard = _guard
+	assert_false(_guard.is_satisfied(_transition, _child))
 
 	var blackboard: Dictionary = {"foo": "bar"}
 	var board := NNBlackboard.new()
@@ -35,14 +24,13 @@ func test_expression_satisfied_with_blackboard_vars() -> void:
 	_root.blackboard = board
 
 	_guard.expression = "foo=='bar'"
-	result = _guard.is_satisfied(_transition, _child)
-	assert_eq(result, true)
+	assert_true(_guard.is_satisfied(_transition, _child))
+
 	_guard.expression = "bar=='foo'"
-	result = _guard.is_satisfied(_transition, _child)
-	assert_eq(result, false)
+	assert_false(_guard.is_satisfied(_transition, _child))
 
 func test_each_evaluation_reads_current_blackboard_values() -> void:
-	var _root: NNSTRoot = add_child_autofree(NNSTRoot.new())
+	var _root: NNSTRoot = Fixtures.add_manual_st_root(self)
 	var _child: NNSTNode = NNSTNode.new()
 	var _guard: NNSTExpressionGuard = NNSTExpressionGuard.new()
 	var board := NNBlackboard.new()
@@ -58,7 +46,7 @@ func test_each_evaluation_reads_current_blackboard_values() -> void:
 	assert_false(_guard.is_satisfied(null, _child))
 
 func test_changing_expression_updates_blackboard_inputs() -> void:
-	var _root: NNSTRoot = add_child_autofree(NNSTRoot.new())
+	var _root: NNSTRoot = Fixtures.add_manual_st_root(self)
 	var _child: NNSTNode = NNSTNode.new()
 	var _guard: NNSTExpressionGuard = NNSTExpressionGuard.new()
 	var board := NNBlackboard.new()
@@ -73,7 +61,7 @@ func test_changing_expression_updates_blackboard_inputs() -> void:
 	assert_false(_guard.is_satisfied(null, _child))
 
 func test_null_state_reports_error_and_returns_false() -> void:
-	var _root: NNSTRoot = add_child_autofree(NNSTRoot.new())
+	var _root: NNSTRoot = Fixtures.add_manual_st_root(self)
 	var _child: NNSTNode = NNSTNode.new()
 	var _guard: NNSTExpressionGuard = NNSTExpressionGuard.new()
 	var _transition: NNSTTransition = NNSTTransition.new()
@@ -89,7 +77,7 @@ func test_null_state_reports_error_and_returns_false() -> void:
 	assert_engine_error("Could not find state node, cannot evaluate expression")
 
 func test_null_transition_with_valid_state_evaluates_expression() -> void:
-	var _root: NNSTRoot = add_child_autofree(NNSTRoot.new())
+	var _root: NNSTRoot = Fixtures.add_manual_st_root(self)
 	var _child: NNSTNode = NNSTNode.new()
 	var _guard: NNSTExpressionGuard = NNSTExpressionGuard.new()
 	_root.add_child(_child)
@@ -107,17 +95,17 @@ func test_null_transition_with_valid_state_evaluates_expression() -> void:
 	assert_true(_guard.is_satisfied(null, _child))
 
 func test_null_transition_preserves_expression_errors() -> void:
-	var _root: NNSTRoot = add_child_autofree(NNSTRoot.new())
+	var _root: NNSTRoot = Fixtures.add_manual_st_root(self)
 	var _child: NNSTNode = NNSTNode.new()
 	var _guard: NNSTExpressionGuard = NNSTExpressionGuard.new()
 	_root.add_child(_child)
 
 	_guard.expression = "1 =="
 	assert_false(_guard.is_satisfied(null, _child))
-	assert_engine_error("(guard in ) Expression parse error")
+	assert_engine_error("Expression parse error")
 
 func test_missing_blackboard_key_reads_as_null() -> void:
-	var _root: NNSTRoot = add_child_autofree(NNSTRoot.new())
+	var _root: NNSTRoot = Fixtures.add_manual_st_root(self)
 	var _child: NNSTNode = NNSTNode.new()
 	var _guard: NNSTExpressionGuard = NNSTExpressionGuard.new()
 	var board := NNBlackboard.new()

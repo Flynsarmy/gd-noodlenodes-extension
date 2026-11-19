@@ -1,29 +1,24 @@
 extends GutTest
 @warning_ignore('unused_parameter')
 
-
-class CountingState extends NNSTNode:
-	var tick_count: int = 0
-
-	func on_tick(_delta: float) -> void:
-		tick_count += 1
+const STHelpers = preload("res://test/unit/state_tree/support/st_helpers.gd")
 
 
 func _make_root() -> NNSTRoot:
 	var chart_root: NNSTRoot = NNSTRoot.new()
-	var state: CountingState = CountingState.new()
+	var state: STHelpers.CountingState = STHelpers.CountingState.new()
 	state.name = "CountingState"
 	chart_root.add_child(state)
 	return chart_root
 
 
-func _state_of(chart_root: NNSTRoot) -> CountingState:
-	return chart_root.get_node("CountingState") as CountingState
+func _state_of(chart_root: NNSTRoot) -> STHelpers.CountingState:
+	return chart_root.get_node("CountingState") as STHelpers.CountingState
 
 
 func test_defaults_auto_tick_on_the_physics_frame() -> void:
 	var chart_root: NNSTRoot = _make_root()
-	var state: CountingState = _state_of(chart_root)
+	var state: STHelpers.CountingState = _state_of(chart_root)
 
 	assert_eq(chart_root.tick_rate, 1)
 	assert_eq(chart_root.process_thread, NNSTRoot.PHYSICS, "a default root auto-ticks from the physics frame")
@@ -39,7 +34,7 @@ func test_defaults_auto_tick_on_the_physics_frame() -> void:
 func test_manual_mode_ticks_only_when_the_caller_ticks() -> void:
 	var chart_root: NNSTRoot = _make_root()
 	add_child_autofree(chart_root)
-	var state: CountingState = _state_of(chart_root)
+	var state: STHelpers.CountingState = _state_of(chart_root)
 	chart_root.process_thread = NNSTRoot.MANUAL
 
 	assert_false(chart_root.auto_tick_step(NNSTRoot.PHYSICS, 0.1), "MANUAL never auto-ticks")
@@ -58,7 +53,7 @@ func test_manual_mode_ticks_only_when_the_caller_ticks() -> void:
 func test_leaving_the_tree_stops_ticking() -> void:
 	var chart_root: NNSTRoot = _make_root()
 	add_child_autofree(chart_root)
-	var state: CountingState = _state_of(chart_root)
+	var state: STHelpers.CountingState = _state_of(chart_root)
 
 	await get_tree().physics_frame
 	assert_gt(state.tick_count, 0, "the root ticks while it is in the tree")
@@ -74,7 +69,7 @@ func test_leaving_the_tree_stops_ticking() -> void:
 
 func test_inactive_root_does_not_auto_tick() -> void:
 	var chart_root: NNSTRoot = _make_root()
-	var state: CountingState = _state_of(chart_root)
+	var state: STHelpers.CountingState = _state_of(chart_root)
 
 	assert_false(chart_root.get_is_active(), "a root that never transitioned in is inactive")
 	assert_false(chart_root.auto_tick_step(NNSTRoot.PHYSICS, 0.1), "the scheduler never enters an inactive chart")
