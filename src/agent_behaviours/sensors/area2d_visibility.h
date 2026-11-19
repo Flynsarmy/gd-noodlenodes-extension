@@ -1,109 +1,14 @@
 #pragma once
 
-#include "../sensor.h"
 #include "area_visibility_sensor.h"
-#include <godot_cpp/classes/area2d.hpp>
 
 namespace godot {
 
-class NNArea2DVisibilitySensor : public NNSensor {
+class NNArea2DVisibilitySensor : public AreaVisibilitySensor<NNArea2DVisibilitySensor, AreaVisibilitySensor2D> {
 	GDCLASS(NNArea2DVisibilitySensor, NNSensor)
-
-private:
-	AreaVisibilitySensorCore<AreaVisibilitySensor2D> _core;
-	// An ObjectID, not a pointer: the volume may be freed before this sensor.
-	ObjectID _visibility_volume_id;
-
-	Area2D *_resolve_visibility_volume() const;
 
 protected:
 	static void _bind_methods();
-
-public:
-	NNArea2DVisibilitySensor();
-	~NNArea2DVisibilitySensor();
-
-	// Godot virtuals.
-
-	// Handling functions.
-	virtual void initialize_sensor() override;
-	virtual void uninitialize_sensor() override;
-
-	virtual float evaluate_sensor_value() override;
-
-	void on_area_entered(Area2D *area);
-	void on_area_exited(Area2D *area);
-	void on_body_entered(Node2D *body);
-	void on_body_exited(Node2D *body);
-
-	// Getters and setters for attributes.
-
-	// Configuration values.
-
-	void set_use_owner_global_position(bool use_owner_global_position);
-	bool get_use_owner_global_position() const;
-
-	void set_from_vector2(Vector2 from);
-	Vector2 get_from_vector2() const;
-
-	void set_offset_vector2(Vector2 offset);
-	Vector2 get_offset_vector2() const;
-
-	void set_visibility_volume(Area2D *visibility_volume);
-	Area2D *get_visibility_volume() const;
-
-	void set_do_occlusion_test(bool do_occlusion_test);
-	bool get_do_occlusion_test() const;
-
-	void set_collision_mask(uint32_t collision_mask);
-	uint32_t get_collision_mask() const;
-
-	void set_max_expected_entities_found(int max_expected_entities_found);
-	int get_max_expected_entities_found() const;
-
-	void set_occlusion_test_exclusion_list(TypedArray<RID> occlusion_test_exclusion_list);
-	TypedArray<RID> get_occlusion_test_exclusion_list() const;
-
-	// Debugging / current values.
-
-	void set_num_entities_found(int num_entities_found);
-	int get_num_entities_found() const;
-
-	void set_closest_intersecting_area_index(int closest_intersecting_area_index);
-	int get_closest_intersecting_area_index() const;
-
-	void set_closest_intersecting_body_index(int closest_intersecting_body_index);
-	int get_closest_intersecting_body_index() const;
-
-	void set_closest_unoccluded_area_index(int closest_unoccluded_area_index);
-	int get_closest_unoccluded_area_index() const;
-
-	void set_closest_unoccluded_body_index(int closest_unoccluded_body_index);
-	int get_closest_unoccluded_body_index() const;
-
-	void set_intersecting_areas(TypedArray<Area2D> intersecting_areas);
-	TypedArray<Area2D> get_intersecting_areas() const;
-
-	void set_intersecting_bodies(TypedArray<Node2D> intersecting_bodies);
-	TypedArray<Node2D> get_intersecting_bodies() const;
-
-	void set_unoccluded_areas(TypedArray<Area2D> unoccluded_areas);
-	TypedArray<Area2D> get_unoccluded_areas() const;
-
-	void set_unoccluded_bodies(TypedArray<Node2D> unoccluded_bodies);
-	TypedArray<Node2D> get_unoccluded_bodies() const;
-
-	void set_squared_distances_to_intersecting_areas(TypedArray<float> squared_distances_to_intersecting_areas);
-	TypedArray<float> get_squared_distances_to_intersecting_areas() const;
-
-	void set_squared_distances_to_intersecting_bodies(TypedArray<float> squared_distances_to_intersecting_bodies);
-	TypedArray<float> get_squared_distances_to_intersecting_bodies() const;
-
-	void set_squared_distances_to_unoccluded_areas(TypedArray<float> squared_distances_to_unoccluded_areas);
-	TypedArray<float> get_squared_distances_to_unoccluded_areas() const;
-
-	void set_squared_distances_to_unoccluded_bodies(TypedArray<float> squared_distances_to_unoccluded_bodies);
-	TypedArray<float> get_squared_distances_to_unoccluded_bodies() const;
 };
 
 } //namespace godot
