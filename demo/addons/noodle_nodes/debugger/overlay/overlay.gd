@@ -672,11 +672,15 @@ func _event_text(root_id: int, snapshot: Dictionary, event: Dictionary) -> Strin
 			var attempt: Dictionary = event.get("attempt", {})
 			return "search #%d, cost %.1f" % [int(attempt.get("id", 0)), float(attempt.get("cost", 0.0))]
 		"agent_choice":
+			var behaviour := int(event.get("behaviour", 0))
+			if behaviour == 0:
+				return "no behaviour"
 			var top: Array = event.get("top", [])
 			var score := float(top[0].get("score", 0.0)) if not top.is_empty() else 0.0
-			return "chose %s %.2f" % [_node_name(snapshot, int(event.get("behaviour", 0))), score]
+			return "chose %s %.2f" % [_node_name(snapshot, behaviour), score]
 		"agent_action":
-			return "action %s" % _node_name(snapshot, int(event.get("action", 0)))
+			var action := int(event.get("action", 0))
+			return "no action" if action == 0 else "action %s" % _node_name(snapshot, action)
 		"bb_set":
 			return "%s = %s" % [String(event.get("key", "")), _format_value(event.get("value"))]
 		"bb_erase":

@@ -253,6 +253,18 @@ func test_recent_events_are_worded_per_system() -> void:
 	assert_has(_event_texts(), "chose Investigate 0.64")
 
 
+func test_agent_events_without_a_behaviour_or_action_are_worded() -> void:
+	var now := Fixtures.NOW_USEC
+	_debugger.events = {Fixtures.AGENT: [
+		{"seq": 50, "t_usec": now - 300_000, "kind": "agent_choice", "behaviour": 0, "group": 0, "action": 0,
+			"top": [{"behaviour": 0, "group": 0, "score": 1.0}]},
+		{"seq": 51, "t_usec": now - 290_000, "kind": "agent_action", "action": 0},
+	]}
+	_overlay.select_entity(_owner_a.get_instance_id())
+
+	assert_eq(_event_texts(), ["no behaviour", "no action"])
+
+
 func test_repeated_event_lines_collapse_with_a_count() -> void:
 	var now := Fixtures.NOW_USEC
 	_debugger.events = {Fixtures.COVER_BT: [
