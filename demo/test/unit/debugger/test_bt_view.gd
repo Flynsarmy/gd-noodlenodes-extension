@@ -21,9 +21,10 @@ func after_each() -> void:
 
 func test_every_node_gets_its_own_graph_item_without_overlap() -> void:
 	var snapshot := DebuggerFixtures.bt_snapshot()
+	var graph := _graph()
+	graph.size = Vector2(900, 620)
 	_view.set_snapshot(snapshot)
 
-	var graph := _graph()
 	assert_eq(graph.get_items().size(), snapshot["nodes"].size(), "one graph item per snapshot node")
 	for entry in snapshot["nodes"]:
 		assert_not_null(graph.get_item(entry["id"]), "%s is in the graph" % entry["name"])
@@ -267,7 +268,7 @@ func test_a_resize_refits_until_the_user_takes_over_the_view() -> void:
 	assert_true(_all_items_visible(graph), "the tree is fitted when it is first shown")
 
 	var fitted := _item_positions(graph)
-	graph.size = Vector2(460, 320)
+	graph.size = Vector2(700, 400)
 	assert_true(_all_items_visible(graph), "a resize before any interaction refits")
 	assert_ne(_item_positions(graph), fitted, "the view transform followed the resize")
 
@@ -306,7 +307,20 @@ func test_the_view_fits_the_default_panel_height() -> void:
 	assert_true(view.get_combined_minimum_size().y <= 150, "the view minimum fits the default panel height")
 	var graph: BTGraph = view.get_node("%Graph")
 	assert_true(graph.size.y >= 100, "the graph keeps the space at the default panel height, got %s" % graph.size)
-	assert_true(_all_items_visible(graph), "the tree is fitted inside the graph")
+	assert_true(_node_visible(graph, DebuggerFixtures.COVER_MOVE), "the running node is framed inside the graph")
+
+
+func test_auto_fit_keeps_text_legible_and_frames_the_running_node() -> void:
+	var graph := _graph()
+	graph.size = Vector2(1100, 130)
+	_view.set_snapshot(DebuggerFixtures.bt_snapshot())
+
+	assert_true(graph.get_zoom() >= 0.6, "auto-fit keeps node text legible, got zoom %s" % graph.get_zoom())
+	assert_true(_node_visible(graph, DebuggerFixtures.COVER_MOVE), "the running node is framed in a short panel")
+
+	graph.fit()
+	assert_true(graph.get_zoom() < 0.6, "the manual Fit button may still frame the whole tree")
+	assert_true(_all_items_visible(graph), "the manual fit shows every node")
 
 
 func _graph() -> BTGraph:
@@ -315,6 +329,10 @@ func _graph() -> BTGraph:
 
 func _color_distance(a: Color, b: Color) -> float:
 	return Vector3(a.r - b.r, a.g - b.g, a.b - b.b).length()
+
+
+func _node_visible(graph: BTGraph, node_id: int) -> bool:
+	return graph.get_global_rect().encloses(graph.get_item(node_id).get_global_rect())
 
 
 func _all_items_visible(graph: BTGraph) -> bool:

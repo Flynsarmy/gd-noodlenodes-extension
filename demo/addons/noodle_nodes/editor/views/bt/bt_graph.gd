@@ -14,8 +14,14 @@ const NODE_MIN_HEIGHT := 44.0
 const H_GAP := 22.0
 const V_GAP := 40.0
 const FIT_PADDING := 24.0
-## Low enough that fit can show a whole tree in the default short panel.
+## Low enough for the manual Fit button; auto-fit uses the legible floor instead.
 const MIN_ZOOM := 0.05
+## Auto-fit never goes below this text height (in display-scaled pixels): past it
+## the tree is unreadable dots, so the running path is framed instead.
+const MIN_LEGIBLE_TEXT := 10.0
+## A graph much wider than tall lays out left to right, like the bottom panel.
+const HORIZONTAL_RATIO := 2.5
+const EDGE_MARGIN := 8.0
 const MAX_ZOOM := 2.0
 const EDGE_WIDTH := 1.5
 const FLOW_WIDTH := 2.0
@@ -41,6 +47,8 @@ var _dash_offset := 0.0
 var _zoom := 1.0
 var _pan := Vector2.ZERO
 var _root_id := 0
+var _running_node := 0
+var _horizontal := false
 var _auto_fit := true
 var _pending_fit := true
 var _panning := false
@@ -56,6 +64,7 @@ func _ready() -> void:
 
 func set_nodes(nodes: Array, now_usec: int, running_node: int) -> void:
 	_now_usec = now_usec
+	_running_node = running_node
 	_nodes.clear()
 	var root_id := 0
 	var structure := PackedInt64Array()
@@ -119,18 +128,32 @@ func select(node_id: int) -> void:
 		_items[id].set_selected(id == _selected_id)
 
 
+## Manual fit: always frames everything, however small that gets.
 func fit() -> void:
 	if _items.is_empty() or size.x < 1.0 or size.y < 1.0:
 		return
-	var padding := FIT_PADDING * _scale
-	var bounds := Rect2(_items.values()[0].position, _node_size)
-	for item in _items.values():
-		bounds = bounds.merge(Rect2(item.position, item.size))
-	var available := size - Vector2(padding, padding) * 2.0
-	_zoom = clampf(minf(available.x / maxf(bounds.size.x, 1.0), available.y / maxf(bounds.size.y, 1.0)), MIN_ZOOM, 1.0)
-	_pan = (size - bounds.size * _zoom) * 0.5 - bounds.position * _zoom
-	_pending_fit = false
-	_apply_transform()
+	var bounds := _all_bounds()
+	_frame(bounds, _fit_zoom(bounds), MIN_ZOOM)
+
+
+## Auto-fit: frames the whole tree while it stays readable, otherwise the deepest
+## readable stretch of the running path, so a short panel shows the active part
+## instead of illegible dots.
+func _auto_fit_now() -> void:
+	if _items.is_empty() or size.x < 1.0 or size.y < 1.0:
+		return
+	var legible := _legible_zoom()
+	var bounds := _all_bounds()
+	var zoom := _fit_zoom(bounds)
+	if zoom >= legible:
+		_frame(bounds, zoom, legible)
+		return
+	_frame(_focus_bounds(legible), legible, legible)
+	_keep_visible(_focus_rect())
+
+
+func get_zoom() -> float:
+	return _zoom
 
 
 func _notification(what: int) -> void:
@@ -138,6 +161,8 @@ func _notification(what: int) -> void:
 		NOTIFICATION_VISIBILITY_CHANGED:
 			_update_processing()
 		NOTIFICATION_RESIZED:
+			if _horizontal != _is_wide():
+				_place_items()
 			if _auto_fit:
 				_pending_fit = true
 				_fit_if_pending()
@@ -166,9 +191,7 @@ func _draw_edge(edge: PackedInt64Array, running: bool) -> void:
 	var to_item: Control = _items.get(edge[1])
 	if from_item == null or to_item == null:
 		return
-	var start := from_item.position + Vector2(from_item.size.x * 0.5, from_item.size.y)
-	var end := to_item.position + Vector2(to_item.size.x * 0.5, 0.0)
-	var points := _edge_points(start, end)
+	var points := _edge_points(from_item, to_item)
 	if running:
 		_draw_dashed(points, StatusPalette.RUNNING, FLOW_WIDTH * _scale)
 		return
@@ -234,6 +257,7 @@ func _measure() -> bool:
 
 
 func _place_items() -> void:
+	_horizontal = _is_wide()
 	var children := {}
 	for id in _nodes:
 		var parent := int(_nodes[id].get("parent", 0))
@@ -261,20 +285,41 @@ func _layout(children: Dictionary) -> Dictionary:
 
 func _place(id: int, depth: int) -> void:
 	var kids: Array = _layout_children.get(id, [])
-	var x := _layout_cursor
+	var lane := _layout_cursor
 	if kids.is_empty():
-		_layout_cursor += _node_size.x + H_GAP * _scale
+		_layout_cursor += _lane_size() + _lane_gap()
 	else:
 		var first := 0.0
 		var last := 0.0
 		for i in kids.size():
 			_place(kids[i], depth + 1)
-			var child_x: float = _layout_positions[kids[i]].x
+			var child_lane := _lane_coord(_layout_positions[kids[i]])
 			if i == 0:
-				first = child_x
-			last = child_x
-		x = (first + last) * 0.5
-	_layout_positions[id] = Vector2(x, float(depth) * (_node_size.y + V_GAP * _scale))
+				first = child_lane
+			last = child_lane
+		lane = (first + last) * 0.5
+	var depth_offset := float(depth) * (_depth_size() + _depth_gap())
+	_layout_positions[id] = Vector2(depth_offset, lane) if _horizontal else Vector2(lane, depth_offset)
+
+
+func _lane_size() -> float:
+	return _node_size.y if _horizontal else _node_size.x
+
+
+func _lane_gap() -> float:
+	return V_GAP * _scale if _horizontal else H_GAP * _scale
+
+
+func _depth_size() -> float:
+	return _node_size.x if _horizontal else _node_size.y
+
+
+func _depth_gap() -> float:
+	return H_GAP * _scale if _horizontal else V_GAP * _scale
+
+
+func _lane_coord(position: Vector2) -> float:
+	return position.y if _horizontal else position.x
 
 
 func _refresh() -> void:
@@ -329,8 +374,16 @@ func _badge_text(entry: Dictionary) -> String:
 	return ", ".join(parts)
 
 
-## Parent bottom → child top over an elbow, so edges never cross a sibling's box.
-func _edge_points(start: Vector2, end: Vector2) -> PackedVector2Array:
+## Parent bottom → child top (top-down) or parent right → child left (wide graphs),
+## over an elbow so an edge never crosses a sibling's box.
+func _edge_points(from_item: Control, to_item: Control) -> PackedVector2Array:
+	if _horizontal:
+		var start := from_item.position + Vector2(from_item.size.x, from_item.size.y * 0.5)
+		var end := to_item.position + Vector2(0.0, to_item.size.y * 0.5)
+		var mid_x := (start.x + end.x) * 0.5
+		return PackedVector2Array([start, Vector2(mid_x, start.y), Vector2(mid_x, end.y), end])
+	var start := from_item.position + Vector2(from_item.size.x * 0.5, from_item.size.y)
+	var end := to_item.position + Vector2(to_item.size.x * 0.5, 0.0)
 	var mid_y := (start.y + end.y) * 0.5
 	return PackedVector2Array([start, Vector2(start.x, mid_y), Vector2(end.x, mid_y), end])
 
@@ -386,7 +439,97 @@ func _note_user_view_change() -> void:
 
 func _fit_if_pending() -> void:
 	if _pending_fit:
-		fit()
+		_auto_fit_now()
+
+
+func _is_wide() -> bool:
+	return size.x > size.y * HORIZONTAL_RATIO
+
+
+## Zoom at which node labels stay at least MIN_LEGIBLE_TEXT logical pixels tall.
+func _legible_zoom() -> float:
+	var font_size := float(maxi(get_theme_font_size("font_size", "Label"), 1))
+	return clampf(MIN_LEGIBLE_TEXT * _scale / font_size, 0.4, 1.0)
+
+
+func _all_bounds() -> Rect2:
+	var bounds := Rect2(_items.values()[0].position, _node_size)
+	for item in _items.values():
+		bounds = bounds.merge(Rect2(item.position, item.size))
+	return bounds
+
+
+## Root → running node chain, or the root alone when nothing is running.
+func _focus_nodes() -> Array:
+	var ids := []
+	var id := _running_node
+	while id != 0 and _nodes.has(id):
+		ids.append(id)
+		id = int(_nodes[id].get("parent", 0))
+	if not ids.is_empty():
+		return ids
+	for candidate in _nodes:
+		if int(_nodes[candidate].get("parent", 0)) == 0:
+			return [candidate]
+	return []
+
+
+## Deepest stretch of the running path (the running node and its nearest ancestors)
+## that fits the view at this zoom, so it keeps as much context as the space allows.
+func _focus_bounds(zoom: float) -> Rect2:
+	var available := _available_size()
+	var bounds := Rect2()
+	for id in _focus_nodes():
+		var rect := Rect2(_items[id].position, _items[id].size)
+		var merged := rect if bounds.size == Vector2.ZERO else bounds.merge(rect)
+		if bounds.size != Vector2.ZERO and (merged.size.x * zoom > available.x or merged.size.y * zoom > available.y):
+			break
+		bounds = merged
+	return bounds
+
+
+func _focus_rect() -> Rect2:
+	var ids := _focus_nodes()
+	if ids.is_empty():
+		return Rect2()
+	return Rect2(_items[ids[0]].position, _items[ids[0]].size)
+
+
+func _available_size() -> Vector2:
+	var padding := FIT_PADDING * _scale
+	return size - Vector2(padding, padding) * 2.0
+
+
+func _fit_zoom(bounds: Rect2) -> float:
+	var available := _available_size()
+	return minf(available.x / maxf(bounds.size.x, 1.0), available.y / maxf(bounds.size.y, 1.0))
+
+
+func _frame(bounds: Rect2, zoom: float, floor: float) -> void:
+	_zoom = clampf(zoom, floor, 1.0)
+	_pan = (size - bounds.size * _zoom) * 0.5 - bounds.position * _zoom
+	_pending_fit = false
+	_apply_transform()
+
+
+## Keeps a framed node fully on screen when the chain around it does not fit.
+func _keep_visible(rect: Rect2) -> void:
+	if rect.size == Vector2.ZERO:
+		return
+	var margin := EDGE_MARGIN * _scale
+	var scaled := Rect2(rect.position * _zoom + _pan, rect.size * _zoom)
+	var shift := Vector2.ZERO
+	if scaled.position.x < margin:
+		shift.x = margin - scaled.position.x
+	elif scaled.end.x > size.x - margin:
+		shift.x = size.x - margin - scaled.end.x
+	if scaled.position.y < margin:
+		shift.y = margin - scaled.position.y
+	elif scaled.end.y > size.y - margin:
+		shift.y = size.y - margin - scaled.end.y
+	if shift != Vector2.ZERO:
+		_pan += shift
+		_apply_transform()
 
 
 func _apply_transform() -> void:
