@@ -3,6 +3,7 @@ extends Button
 ## One transition row, listed inside its source state.
 
 const StatusPalette = preload("res://addons/noodle_nodes/debugger/status_palette.gd")
+const EditorScale = preload("res://addons/noodle_nodes/editor/editor_scale.gd")
 
 var node_id := 0
 
@@ -14,12 +15,20 @@ var _countdown_label: Label
 var _base_tooltip := ""
 
 
-func setup(node: Dictionary, names: Dictionary) -> void:
+func _ready() -> void:
+	EditorScale.apply_to_scene(self)
+
+
+func _bind() -> void:
 	_guard_label = %GuardResult
 	_event_label = %Event
 	_target_label = %Target
 	_detail_label = %Detail
 	_countdown_label = %Countdown
+
+
+func setup(node: Dictionary, names: Dictionary) -> void:
+	_bind()
 
 	node_id = int(node.get("id", 0))
 	var event := String(node.get("event", ""))

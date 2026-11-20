@@ -2,10 +2,16 @@
 extends Button
 ## One row in the state tree history log.
 
+const EditorScale = preload("res://addons/noodle_nodes/editor/editor_scale.gd")
+
 var category := ""
 var entry_text := ""
 var kind_text := ""
 var target_id := 0
+
+
+func _ready() -> void:
+	EditorScale.apply_to_scene(self)
 
 
 func setup(kind_label_text: String, text: String, color: Color, category_name: String) -> void:

@@ -213,13 +213,13 @@ func test_clicking_a_state_selects_it_and_select_node_stays_silent() -> void:
 	event.pressed = true
 	box.gui_input.emit(event)
 	assert_signal_emitted_with_parameters(_view, "node_selected", [Fixtures.ST_IDLE])
-	assert_true((box.get_node("%Selection") as Panel).visible)
+	assert_true((box.get_node("%Selection") as Control).visible)
 
 	var emissions: int = get_signal_emit_count(_view, "node_selected")
 	_view.select_node(Fixtures.ST_WALK)
 	assert_eq(get_signal_emit_count(_view, "node_selected"), emissions)
-	assert_true((_state_box(Fixtures.ST_WALK).get_node("%Selection") as Panel).visible)
-	assert_false((box.get_node("%Selection") as Panel).visible)
+	assert_true((_state_box(Fixtures.ST_WALK).get_node("%Selection") as Control).visible)
+	assert_false((box.get_node("%Selection") as Control).visible)
 
 
 func test_log_filters_search_and_max_lines() -> void:

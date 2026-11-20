@@ -34,9 +34,9 @@ mouse_filter = 2
 theme_override_constants/separation = 4
 
 [node name="Title" type="Label" parent="Content/Header"]
+theme_type_variation = &"HeaderSmall"
 layout_mode = 2
 mouse_filter = 2
-theme_override_font_sizes/font_size = 11
 text = "History"
 
 [node name="Mode" type="Label" parent="Content/Header"]
@@ -44,7 +44,6 @@ unique_name_in_owner = true
 layout_mode = 2
 mouse_filter = 2
 theme_override_colors/font_color = Color(0.55, 0.8, 1, 1)
-theme_override_font_sizes/font_size = 10
 text = "shallow"
 
 [node name="DefaultLine" type="Label" parent="Content"]
@@ -52,12 +51,10 @@ unique_name_in_owner = true
 layout_mode = 2
 mouse_filter = 2
 theme_override_colors/font_color = Color(0.65, 0.68, 0.72, 1)
-theme_override_font_sizes/font_size = 10
 
 [node name="RememberedLine" type="Label" parent="Content"]
 unique_name_in_owner = true
 layout_mode = 2
 mouse_filter = 2
 theme_override_colors/font_color = Color(0.65, 0.68, 0.72, 1)
-theme_override_font_sizes/font_size = 10
 autowrap_mode = 2

@@ -2,9 +2,15 @@
 extends PanelContainer
 ## Shallow/deep history node with its default and remembered states.
 
+const EditorScale = preload("res://addons/noodle_nodes/editor/editor_scale.gd")
+
 var _mode: Label
 var _default_line: Label
 var _remembered_line: Label
+
+
+func _ready() -> void:
+	EditorScale.apply_to_scene(self)
 
 
 func setup(node: Dictionary, names: Dictionary) -> void:

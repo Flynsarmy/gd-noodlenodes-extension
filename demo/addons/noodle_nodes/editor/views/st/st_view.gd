@@ -9,6 +9,7 @@ const TransitionRowScene = preload("res://addons/noodle_nodes/editor/views/st/tr
 const HistoryBoxScene = preload("res://addons/noodle_nodes/editor/views/st/history_box.tscn")
 const LogEntryScene = preload("res://addons/noodle_nodes/editor/views/st/log_entry.tscn")
 const StatusPalette = preload("res://addons/noodle_nodes/debugger/status_palette.gd")
+const EditorScale = preload("res://addons/noodle_nodes/editor/editor_scale.gd")
 
 const LOG_CATEGORY_BY_KIND := {
 	"st_event": "event",
@@ -52,6 +53,7 @@ var _selected_log_row: Button = null
 
 
 func _ready() -> void:
+	EditorScale.apply_to_scene(self)
 	_filters = {
 		"event": %FilterEvents,
 		"transition": %FilterTransitions,
@@ -163,9 +165,8 @@ func _rebuild_boxes() -> void:
 		return
 	_show_empty(false)
 
-	var root_box = _build_state(root_node, root_node)
+	var root_box = _build_state(root_node, root_node, _boxes.add_child)
 	root_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_boxes.add_child(root_box)
 
 	_apply_guard_results()
 	_apply_selection(_selected_id)
@@ -217,7 +218,7 @@ func _structure_signature() -> PackedStringArray:
 	return signature
 
 
-func _build_state(node: Dictionary, parent_node: Dictionary) -> Control:
+func _build_state(node: Dictionary, parent_node: Dictionary, attach: Callable) -> Control:
 	var box = StateBoxScene.instantiate()
 	var id := int(node.get("id", 0))
 	box.setup(node, _active_color(node), _is_active(node), bool(node.get("final", false)))
@@ -225,6 +226,7 @@ func _build_state(node: Dictionary, parent_node: Dictionary) -> Control:
 	box.set_meta(&"state_id", id)
 	box.gui_input.connect(_on_state_gui_input.bind(box))
 	_boxes_by_id[id] = box
+	attach.call(box)
 
 	var parallel := String(node.get("kind", "")) == "parallel"
 	for child in _children.get(id, []):
@@ -238,11 +240,8 @@ func _build_state(node: Dictionary, parent_node: Dictionary) -> Control:
 				_history_by_id[int(child.get("id", 0))] = history
 				box.add_history(history)
 			"state", "parallel", "root":
-				var child_box := _build_state(child, node)
-				if parallel:
-					box.add_region(child_box)
-				else:
-					box.add_child_box(child_box)
+				var attach_child: Callable = box.add_region if parallel else box.add_child_box
+				_build_state(child, node, attach_child)
 	return box
 
 

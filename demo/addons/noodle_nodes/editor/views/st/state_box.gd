@@ -3,6 +3,8 @@ extends PanelContainer
 ## One nested state box. The view owns input handling and recursion; this script
 ## only presents a state and holds its transition rows and child boxes.
 
+const EditorScale = preload("res://addons/noodle_nodes/editor/editor_scale.gd")
+
 var node_id := 0
 var hosted_root := 0
 
@@ -14,14 +16,21 @@ var _portal_badge: Label
 var _transitions: VBoxContainer
 var _regions: HBoxContainer
 var _children: VBoxContainer
-var _selection: Panel
+var _selection: PanelContainer
 var _base_style: StyleBoxFlat
+var _active_color := Color.WHITE
+var _is_active := false
 
 
 func setup(node: Dictionary, active_color: Color, is_active: bool, is_final: bool) -> void:
 	_bind()
-	_base_style = get_theme_stylebox("panel").duplicate() as StyleBoxFlat
 	update(node, active_color, is_active, is_final)
+
+
+func _ready() -> void:
+	EditorScale.apply_to_scene(self)
+	_base_style = (get_theme_stylebox("panel") as StyleBoxFlat).duplicate()
+	_apply_style()
 
 
 func update(node: Dictionary, active_color: Color, is_active: bool, is_final: bool) -> void:
@@ -29,6 +38,8 @@ func update(node: Dictionary, active_color: Color, is_active: bool, is_final: bo
 	hosted_root = int(node.get("hosted_root", 0))
 	_name_label.text = String(node.get("name", ""))
 	_active_bar.visible = is_active
+	_active_color = active_color
+	_is_active = is_active
 	_active_bar.color = active_color
 	_portal_badge.visible = hosted_root != 0
 	_portal_badge.tooltip_text = "Double-click to inspect root %d" % hosted_root
@@ -37,11 +48,16 @@ func update(node: Dictionary, active_color: Color, is_active: bool, is_final: bo
 		_name_label.add_theme_color_override("font_color", active_color)
 	else:
 		_name_label.remove_theme_color_override("font_color")
+	_apply_style()
 
+
+func _apply_style() -> void:
+	if _base_style == null:
+		return
 	var style := _base_style.duplicate() as StyleBoxFlat
-	if is_active:
-		style.bg_color = style.bg_color.lerp(active_color, 0.16)
-		style.border_color = active_color
+	if _is_active:
+		style.bg_color = style.bg_color.lerp(_active_color, 0.16)
+		style.border_color = _active_color
 	add_theme_stylebox_override("panel", style)
 
 
