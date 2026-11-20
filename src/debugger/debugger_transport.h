@@ -21,6 +21,10 @@ public:
 	void install(godot::NNDebugger *p_debugger, const godot::Callable &p_frame_callable);
 	void uninstall();
 
+	// Registration can run before the engine debugger exists; retry until it
+	// succeeds. Idempotent.
+	void ensure_capture_registered();
+
 	bool handle_message(const godot::String &p_message, const godot::Array &p_data);
 
 	void on_root_added(int64_t p_root_id);

@@ -5,8 +5,8 @@ const BT = preload("res://test/unit/behaviour_tree/support/bt_helpers.gd")
 
 
 class InspectorLeaf extends NNBTLeaf:
-	@export var speed: float = 0.0
-	@export var target: Node = null
+	var speed: float = 0.0
+	var target: Node = null
 
 	func on_tick(_delta: float) -> Status:
 		return RUNNING
@@ -212,24 +212,44 @@ func test_pause_follows_the_host_of_a_hosted_root() -> void:
 	assert_eq(leaf.tick_count, 2, "a direct host tick is never blocked")
 
 
-func test_step_runs_exactly_one_scheduled_frame() -> void:
-	var leaf := BT.make_leaf(NNBTNodes.RUNNING)
-	var root := BT.build_root(leaf)
-	root.process_thread = NNBTRoot.IDLE
-	add_child_autofree(root)
+func test_step_runs_exactly_one_frame_per_scheduled_root() -> void:
+	var physics_leaf := BT.make_leaf(NNBTNodes.RUNNING)
+	var physics_root := BT.build_root(physics_leaf)
+	physics_root.process_thread = NNBTRoot.PHYSICS
+	var idle_leaf := BT.make_leaf(NNBTNodes.RUNNING)
+	var idle_root := BT.build_root(idle_leaf)
+	idle_root.process_thread = NNBTRoot.IDLE
+	add_child_autofree(physics_root)
+	add_child_autofree(idle_root)
+
+	await get_tree().physics_frame
 	await get_tree().process_frame
-	var count: int = leaf.tick_count
+	var physics_count: int = physics_leaf.tick_count
+	var idle_count: int = idle_leaf.tick_count
+	assert_gt(physics_count, 0, "the PHYSICS root auto-ticks before pausing")
+	assert_gt(idle_count, 0, "the IDLE root auto-ticks before pausing")
 
 	debugger.set_paused(true)
+	await get_tree().physics_frame
 	await get_tree().process_frame
-	assert_eq(leaf.tick_count, count, "a paused root does not tick")
+	assert_eq(physics_leaf.tick_count, physics_count, "a paused PHYSICS root does not tick")
+	assert_eq(idle_leaf.tick_count, idle_count, "a paused IDLE root does not tick")
 
 	debugger.step()
+	await get_tree().physics_frame
 	await get_tree().process_frame
-	assert_eq(leaf.tick_count, count + 1, "step lets exactly one frame through")
+	assert_eq(physics_leaf.tick_count, physics_count + 1, "one step advances the PHYSICS root once")
+	assert_eq(idle_leaf.tick_count, idle_count + 1, "one step advances the IDLE root once")
+	assert_false(physics_root.auto_tick_step(NNBTRoot.PHYSICS, 0.1), "a root consumes its step once")
+	assert_false(idle_root.auto_tick_step(NNBTRoot.IDLE, 0.1), "every root consumes its own step once")
+	assert_eq(physics_leaf.tick_count, physics_count + 1)
+	assert_eq(idle_leaf.tick_count, idle_count + 1)
 
+	debugger.step()
+	await get_tree().physics_frame
 	await get_tree().process_frame
-	assert_eq(leaf.tick_count, count + 1, "the root is paused again after the stepped frame")
+	assert_eq(physics_leaf.tick_count, physics_count + 2, "a second step advances the PHYSICS root again")
+	assert_eq(idle_leaf.tick_count, idle_count + 2, "a second step advances the IDLE root again")
 
 
 func test_resume_does_not_catch_up_the_paused_time() -> void:

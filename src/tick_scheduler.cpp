@@ -11,7 +11,7 @@ using namespace godot;
 
 #ifdef DEBUG_ENABLED
 bool NNTickScheduler::_debugger_paused = false;
-int64_t NNTickScheduler::_debugger_step_frame = -1;
+int64_t NNTickScheduler::_debugger_step_serial = 0;
 #endif
 
 NNTickScheduler::NNTickScheduler() {
@@ -22,6 +22,11 @@ NNTickScheduler::NNTickScheduler() {
 	_elapsed_delta = 0.0;
 	_process_tree_id = ObjectID();
 	_is_hosted = false;
+#ifdef DEBUG_ENABLED
+	// A scheduler that appears mid-session must not consume a step that was
+	// granted before it existed.
+	_debugger_consumed_step_serial = _debugger_step_serial;
+#endif
 }
 
 void NNTickScheduler::configure(NoodleNodes *p_owner, StepCallback p_step) {
@@ -234,7 +239,6 @@ bool NNTickScheduler::_advance(double p_delta) {
 #ifdef DEBUG_ENABLED
 void NNTickScheduler::set_debugger_paused(bool p_paused) {
 	_debugger_paused = p_paused;
-	_debugger_step_frame = -1;
 }
 
 bool NNTickScheduler::is_debugger_paused() {
@@ -242,13 +246,21 @@ bool NNTickScheduler::is_debugger_paused() {
 }
 
 void NNTickScheduler::debugger_step() {
-	_debugger_step_frame = (int64_t)Engine::get_singleton()->get_process_frames() + 1;
+	// A step issued while running would otherwise leak into the next pause.
+	if (!_debugger_paused) {
+		return;
+	}
+	_debugger_step_serial++;
 }
 
 bool NNTickScheduler::debugger_allows_scheduled_step() {
 	if (!_debugger_paused) {
 		return true;
 	}
-	return (int64_t)Engine::get_singleton()->get_process_frames() == _debugger_step_frame;
+	if (_debugger_consumed_step_serial == _debugger_step_serial) {
+		return false;
+	}
+	_debugger_consumed_step_serial = _debugger_step_serial;
+	return true;
 }
 #endif

@@ -54,18 +54,21 @@ public:
 #ifdef DEBUG_ENABLED
 	// Process-wide debugger gate. A paused scheduled step is dropped before it
 	// reaches the rate schedule, so resuming never produces a catch-up tick.
+	// Each scheduler consumes one step serial, so a step advances every
+	// scheduled root exactly once on whatever thread it runs.
 	static void set_debugger_paused(bool p_paused);
 	static bool is_debugger_paused();
 	static void debugger_step();
-	static bool debugger_allows_scheduled_step();
 #endif
 
 private:
 	bool _advance(double p_delta);
 
 #ifdef DEBUG_ENABLED
+	bool debugger_allows_scheduled_step();
 	static bool _debugger_paused;
-	static int64_t _debugger_step_frame;
+	static int64_t _debugger_step_serial;
+	int64_t _debugger_consumed_step_serial;
 #endif
 
 	godot::NoodleNodes *_owner;

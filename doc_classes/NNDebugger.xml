@@ -30,7 +30,7 @@
 			<return type="Dictionary" />
 			<param index="0" name="node_id" type="int" />
 			<description>
-				Returns the current values of the properties of any live [Object] that have storage or editor usage, keyed by property name. Values are sanitised like [method NNBlackboard.get_debug_data], so they hold no [Object]. Returns an empty dictionary when the object is gone.
+				Returns the current values of the properties of any live [Object] that have storage, editor or script-variable usage, keyed by property name. That includes exported and plain script variables, but not groups, categories or internal engine properties. Values are sanitised like [method NNBlackboard.get_debug_data], so they hold no [Object]. Returns an empty dictionary when the object is gone.
 			</description>
 		</method>
 		<method name="get_root_info" qualifiers="const">
@@ -83,7 +83,7 @@
 		<method name="step">
 			<return type="void" />
 			<description>
-				While paused, lets the next process frame's scheduled steps run, then pauses again. Does nothing visible while not paused. Exactly one frame runs even when many roots are asking.
+				While paused, advances every scheduled root by one of its own frames on its process thread, then pauses again. Each root consumes its own step, so a [code]PHYSICS[/code] root and an [code]IDLE[/code] root each tick exactly once regardless of how many physics steps the next process frame contains. Does nothing while not paused.
 			</description>
 		</method>
 		<method name="unwatch">

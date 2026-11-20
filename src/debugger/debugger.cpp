@@ -57,6 +57,8 @@ void NNDebugger::root_entered(Node *p_root) {
 	if (root == nullptr || root->get_debug_root() == nullptr) {
 		return;
 	}
+	// Backstop for a module init that ran before the engine debugger existed.
+	_transport.ensure_capture_registered();
 
 	const ObjectID root_id = ObjectID(root->get_instance_id());
 	if (std::find(_roots.begin(), _roots.end(), root_id) != _roots.end()) {
@@ -202,7 +204,9 @@ Dictionary NNDebugger::get_node_properties(int64_t p_node_id) const {
 	for (int i = 0; i < property_list.size(); i++) {
 		const Dictionary property = property_list[i];
 		const int64_t usage = property.get("usage", 0);
-		if ((usage & (PROPERTY_USAGE_STORAGE | PROPERTY_USAGE_EDITOR)) == 0) {
+		// Plain GDScript variables only carry SCRIPT_VARIABLE in Godot 4.7;
+		// exported ones also carry storage and editor usage.
+		if ((usage & (PROPERTY_USAGE_STORAGE | PROPERTY_USAGE_EDITOR | PROPERTY_USAGE_SCRIPT_VARIABLE)) == 0) {
 			continue;
 		}
 		if ((usage & (PROPERTY_USAGE_GROUP | PROPERTY_USAGE_CATEGORY | PROPERTY_USAGE_SUBGROUP)) != 0) {

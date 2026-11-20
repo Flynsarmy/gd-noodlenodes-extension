@@ -62,14 +62,20 @@ bool _read_bool(const Array &p_data, int p_index, bool &r_value) {
 void NNDebuggerTransport::install(NNDebugger *p_debugger, const Callable &p_frame_callable) {
 	_debugger = p_debugger;
 	_frame_callable = p_frame_callable;
+	ensure_capture_registered();
+}
 
+void NNDebuggerTransport::ensure_capture_registered() {
+	if (_capture_registered || _debugger == nullptr) {
+		return;
+	}
 	Engine *engine = Engine::get_singleton();
 	EngineDebugger *debugger = EngineDebugger::get_singleton();
 	// The editor runs no game roots, and a second capture registration errors.
 	if (engine == nullptr || debugger == nullptr || engine->is_editor_hint()) {
 		return;
 	}
-	debugger->register_message_capture(StringName(PREFIX), callable_mp(p_debugger, &NNDebugger::_on_debugger_message));
+	debugger->register_message_capture(StringName(PREFIX), callable_mp(_debugger, &NNDebugger::_on_debugger_message));
 	_capture_registered = true;
 }
 
