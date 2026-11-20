@@ -1,4 +1,4 @@
-[gd_scene load_steps=35 format=3 uid="uid://digtgw0djj7ag"]
+[gd_scene load_steps=34 format=3 uid="uid://digtgw0djj7ag"]
 
 [ext_resource type="PackedScene" uid="uid://b63nj6ojftrm7" path="res://demo_05_state_tree_3d_character/visuals/gobot.tscn" id="1_ha2aq"]
 [ext_resource type="Script" uid="uid://c846lrlm3g82d" path="res://demo_05_state_tree_3d_character/ai_entity.gd" id="1_x4txl"]
@@ -12,7 +12,6 @@
 [ext_resource type="Script" uid="uid://beo42i5xfxmgb" path="res://demo_05_state_tree_3d_character/states/movement/run.gd" id="6_pt85u"]
 [ext_resource type="Script" uid="uid://c4cg4apkbin2h" path="res://demo_05_state_tree_3d_character/states/movement/jump.gd" id="11_rbkdm"]
 [ext_resource type="Script" uid="uid://bipk1agsp7kg3" path="res://demo_05_state_tree_3d_character/states/movement/airborn.gd" id="12_xgcap"]
-[ext_resource type="PackedScene" uid="uid://dsu4pkmjdarfe" path="res://addons/noodle_nodes/debuggers/state_charts/state_chart_debugger.tscn" id="14_1ul67"]
 
 [sub_resource type="CapsuleShape3D" id="CapsuleShape3D_ehdux"]
 height = 1.5
@@ -218,17 +217,3 @@ script = ExtResource("4_366v2")
 [node name="To_Vaccuum" type="NNSTTransition" parent="NNSTRoot/Root/Forces/Gravity"]
 to = NodePath("../../Vaccuum")
 event_name = "forces_vaccuum"
-
-[node name="CanvasLayer" type="CanvasLayer" parent="."]
-
-[node name="StateChartDebugger" parent="CanvasLayer" node_paths=PackedStringArray("initial_node_to_watch") instance=ExtResource("14_1ul67")]
-anchors_preset = 1
-anchor_left = 1.0
-anchor_bottom = 0.0
-offset_left = -408.0
-offset_top = 99.0
-offset_right = -65.0
-offset_bottom = 488.0
-grow_horizontal = 0
-grow_vertical = 1
-initial_node_to_watch = NodePath("../../NNSTRoot")
