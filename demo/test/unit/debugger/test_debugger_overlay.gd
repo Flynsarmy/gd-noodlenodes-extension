@@ -222,6 +222,29 @@ func test_labels_group_and_track_the_actor_not_the_scene_owner() -> void:
 	assert_almost_eq(label.position.x + label.size.x * 0.5, 400.0, 0.5)
 
 
+func test_labels_fall_back_to_last_decisions_when_nothing_is_running() -> void:
+	var agent := Fixtures.agent_snapshot()
+	agent["current_behaviour"] = 0
+	agent["last_behaviour"] = Fixtures.AGENT_PATROL
+	_debugger.snapshots[Fixtures.AGENT] = agent
+
+	var bt := Fixtures.bt_snapshot()
+	bt["running_node"] = 0
+	bt["last_leaf"] = Fixtures.COVER_MOVE
+	for node: Dictionary in bt["nodes"]:
+		if int(node["id"]) == Fixtures.COVER_MOVE:
+			node["status"] = "success"
+			node["is_running"] = false
+	_debugger.snapshots[Fixtures.COVER_BT] = bt
+	_overlay.refresh()
+
+	assert_eq(_label_texts()[0], "Alerted/Run › Patrol ✓ › SneakToCover › MoveToCover ✓")
+
+	_overlay.select_entity(_owner_a.get_instance_id())
+	assert_eq(_overlay.get_node("%Rows").get_child(1).get_node("%State").text, "Patrol ✓")
+	assert_eq(_overlay.get_node("%Rows").get_child(3).get_node("%State").text, "MoveToCover ✓")
+
+
 func test_labels_clamp_inside_the_viewport_at_the_screen_edge() -> void:
 	await get_tree().process_frame
 	var bounds: Control = _overlay.get_node("%Labels")
@@ -241,6 +264,37 @@ func test_labels_clamp_inside_the_viewport_at_the_screen_edge() -> void:
 	assert_lte(label.position.x + label.size.x, bounds.size.x)
 	assert_gte(label.position.y, 0.0)
 	assert_lte(label.position.y + label.size.y, bounds.size.y)
+
+
+func test_overlapping_labels_stack_apart_inside_the_viewport() -> void:
+	var owner_c := Node2D.new()
+	owner_c.name = "NpcC"
+	add_child_autofree(owner_c)
+	var info := _remap_owner(Fixtures.root_infos()[4], owner_c)
+	info["id"] = THIRD_ROOT
+	info["host_root_id"] = 0
+	info["host_node_id"] = 0
+	var snapshot := Fixtures.bt_snapshot()
+	snapshot["id"] = THIRD_ROOT
+	snapshot["active_hosted_root"] = 0
+	_debugger.add_root(info, snapshot)
+
+	for owner in [_owner_a, _owner_b, owner_c]:
+		owner.position = Vector2(200.0, 200.0)
+	await get_tree().process_frame
+	_overlay._process(0.0)
+
+	var labels: Array[Rect2] = []
+	for label: Control in _labels():
+		if label.visible:
+			labels.append(Rect2(label.position, label.size))
+	var bounds: Rect2 = _overlay.get_node("%Labels").get_rect()
+	assert_eq(labels.size(), 3)
+	for rect in labels:
+		assert_true(bounds.encloses(rect), "labels must stay inside the viewport")
+	for i in labels.size():
+		for j in range(i + 1, labels.size()):
+			assert_false(labels[i].intersects(labels[j]), "labels %d and %d must not overlap" % [i, j])
 
 
 func test_selecting_an_entity_watches_its_chain_and_switching_unwatches_it() -> void:

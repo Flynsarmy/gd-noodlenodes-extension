@@ -14,6 +14,7 @@ const SEGMENT_SEPARATOR := " › "
 const MAX_RECENT_EVENTS := 8
 const MAX_EVENT_HISTORY := 32
 const LABEL_MARGIN := 4.0
+const LABEL_GAP := 2.0
 const TYPE_COLORS := {
 	Protocol.TYPE_AGENT: Color(0.45, 0.95, 0.6),
 	Protocol.TYPE_BT: Color(0.5, 0.72, 1.0),
@@ -55,6 +56,10 @@ var _last_seq := {}
 var _state_event_names := {}
 var _snapshots := {}
 var _nqs_drawer: Node = null
+var _stack_order: Array[int] = []
+var _stack_entities: Array[int] = []
+var _stack_rects: Array[Rect2] = []
+var _placed_rects: Array[Rect2] = []
 
 
 func _ready() -> void:
@@ -229,6 +234,9 @@ func _update_label_positions() -> void:
 	if not is_inside_tree():
 		return
 	var bounds := _label_bounds()
+	_stack_order.clear()
+	_stack_entities.clear()
+	_stack_rects.clear()
 	for entity_id in _entity_labels:
 		var label: Control = _entity_labels[entity_id]
 		var entity_node := _spatial_entity(entity_id)
@@ -246,10 +254,50 @@ func _update_label_positions() -> void:
 				on_screen = not camera.is_position_behind(world_position)
 				screen_position = camera.unproject_position(world_position)
 		label.visible = on_screen and not label.text.is_empty()
-		if on_screen:
-			label.reset_size()
-			var position := screen_position - Vector2(label.size.x * 0.5, label.size.y + 6.0)
-			label.position = _clamp_label(position, label.size, bounds)
+		if not label.visible:
+			continue
+		label.reset_size()
+		var position := screen_position - Vector2(label.size.x * 0.5, label.size.y + 6.0)
+		_stack_order.append(_stack_rects.size())
+		_stack_entities.append(entity_id)
+		_stack_rects.append(Rect2(_clamp_label(position, label.size, bounds), label.size))
+
+	_stack_order.sort_custom(_stack_before)
+	_placed_rects.clear()
+	for index in _stack_order:
+		var rect := _resolve_label_overlap(_stack_rects[index], bounds)
+		_placed_rects.append(rect)
+		_entity_labels[_stack_entities[index]].position = rect.position
+
+
+func _stack_before(a: int, b: int) -> bool:
+	var first := _stack_rects[a]
+	var second := _stack_rects[b]
+	if first.position.y != second.position.y:
+		return first.position.y < second.position.y
+	if first.position.x != second.position.x:
+		return first.position.x < second.position.x
+	return a < b
+
+
+## Pushes a label above the labels it overlaps, or below when that would cross the top edge.
+func _resolve_label_overlap(rect: Rect2, bounds: Rect2) -> Rect2:
+	var candidate := rect
+	var top_limit := bounds.position.y + LABEL_MARGIN
+	for _attempt in _placed_rects.size() + 1:
+		var hit := Rect2()
+		var found := false
+		for other in _placed_rects:
+			if candidate.intersects(other):
+				hit = other
+				found = true
+				break
+		if not found:
+			break
+		var above := hit.position.y - candidate.size.y - LABEL_GAP
+		candidate.position.y = hit.end.y + LABEL_GAP if above < top_limit else above
+		candidate.position = _clamp_label(candidate.position, candidate.size, bounds)
+	return candidate
 
 
 func _label_bounds() -> Rect2:
@@ -481,7 +529,11 @@ func _segment(snapshot: Dictionary) -> String:
 			return "/".join(names)
 		Protocol.TYPE_AGENT:
 			var behaviour := int(snapshot.get("current_behaviour", 0))
-			return _node_name(snapshot, behaviour) if behaviour != 0 else ""
+			if behaviour != 0:
+				return _node_name(snapshot, behaviour)
+			var last_behaviour := int(snapshot.get("last_behaviour", 0))
+			var last_name := _node_name(snapshot, last_behaviour)
+			return "%s ✓" % last_name if not last_name.is_empty() else ""
 		Protocol.TYPE_HTN:
 			var occurrence := int(snapshot.get("current_occurrence", 0))
 			for step in snapshot.get("plan", []):
@@ -489,8 +541,27 @@ func _segment(snapshot: Dictionary) -> String:
 					return String(step.get("task", ""))
 		Protocol.TYPE_BT:
 			var running := int(snapshot.get("running_node", 0))
-			return _node_name(snapshot, running) if running != 0 else ""
+			if running != 0:
+				return _node_name(snapshot, running)
+			return _last_leaf_segment(snapshot)
 	return ""
+
+
+## A tree that finished inside its tick still names the leaf it last ran and how it ended.
+func _last_leaf_segment(snapshot: Dictionary) -> String:
+	var last_leaf := int(snapshot.get("last_leaf", 0))
+	var leaf_name := _node_name(snapshot, last_leaf)
+	if leaf_name.is_empty():
+		return ""
+	var status := _node_status(snapshot, last_leaf)
+	match status:
+		"success", "succeeded":
+			return "%s ✓" % leaf_name
+		"failure", "failed":
+			return "%s ✗" % leaf_name
+		"running", "":
+			return leaf_name
+	return "%s (%s)" % [leaf_name, status]
 
 
 func _node_name(snapshot: Dictionary, node_id: int) -> String:
@@ -499,6 +570,13 @@ func _node_name(snapshot: Dictionary, node_id: int) -> String:
 	for node in snapshot.get("nodes", []):
 		if int(node.get("id", 0)) == node_id:
 			return String(node.get("name", ""))
+	return ""
+
+
+func _node_status(snapshot: Dictionary, node_id: int) -> String:
+	for node in snapshot.get("nodes", []):
+		if int(node.get("id", 0)) == node_id:
+			return String(node.get("status", ""))
 	return ""
 
 
