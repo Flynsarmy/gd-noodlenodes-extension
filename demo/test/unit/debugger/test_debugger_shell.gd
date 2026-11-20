@@ -169,17 +169,17 @@ func test_root_list_groups_by_owner_and_hosted_root() -> void:
 	var movement := _item_for(Fixtures.ST_ROOT)
 	assert_not_null(movement)
 	assert_eq(movement.get_text(0), "Movement")
-	assert_eq(movement.get_text(1), "ST")
+	assert_string_contains(movement.get_tooltip_text(0), "ST")
 	assert_not_null(movement.get_icon(0))
 	var agent := _item_for(Fixtures.AGENT)
 	assert_eq(agent.get_parent(), movement)
-	assert_eq(agent.get_text(1), "Agent")
+	assert_string_contains(agent.get_tooltip_text(0), "Agent")
 	var patrol := _item_for(Fixtures.PATROL_BT)
 	assert_eq(patrol.get_parent(), agent)
 	var htn := _item_for(Fixtures.HTN)
 	assert_eq(htn.get_parent(), agent)
 	assert_eq(htn.get_text(0), "InvestigateAction › NNHTNRoot")
-	assert_eq(htn.get_text(1), "HTN")
+	assert_string_contains(htn.get_tooltip_text(0), "HTN")
 	var cover := _item_for(Fixtures.COVER_BT)
 	assert_eq(cover.get_parent(), htn)
 	assert_false(_tree().column_titles_visible, "the root list has no column title bar")
@@ -220,11 +220,11 @@ func test_navigation_builds_breadcrumbs_and_moves_subscription() -> void:
 
 	assert_eq(_crumb_labels(), [
 		"Movement (ST)",
-		"NNAgent (Agent)",
+		"Movement › NNAgent (Agent)",
 		"InvestigateAction (Agent action)",
-		"NNHTNRoot (HTN)",
+		"InvestigateAction › NNHTNRoot (HTN)",
 		"SneakToCover (HTN task)",
-		"NNBTRoot (BT)",
+		"SneakToCover › NNBTRoot (BT)",
 	])
 	assert_eq(_message_ids(Protocol.SUBSCRIBE), [
 		Fixtures.ST_ROOT, Fixtures.AGENT, Fixtures.HTN, Fixtures.COVER_BT,
@@ -234,8 +234,8 @@ func test_navigation_builds_breadcrumbs_and_moves_subscription() -> void:
 	_select_root(Fixtures.COVER_BT)
 	assert_eq(_messages_named(Protocol.SUBSCRIBE).size(), 4, "re-selecting the current root sends nothing")
 
-	_click_crumb("NNAgent (Agent)")
-	assert_eq(_crumb_labels(), ["Movement (ST)", "NNAgent (Agent)"])
+	_click_crumb("Movement › NNAgent (Agent)")
+	assert_eq(_crumb_labels(), ["Movement (ST)", "Movement › NNAgent (Agent)"])
 	assert_eq(_message_ids(Protocol.SUBSCRIBE)[-1], Fixtures.AGENT)
 	assert_eq(_message_ids(Protocol.UNSUBSCRIBE)[-1], Fixtures.COVER_BT)
 
@@ -248,7 +248,7 @@ func test_view_drill_into_navigates_to_the_hosted_root() -> void:
 	assert_not_null(view)
 	view.drill_into.emit(Fixtures.AGENT)
 
-	assert_eq(_crumb_labels(), ["Movement (ST)", "NNAgent (Agent)"])
+	assert_eq(_crumb_labels(), ["Movement (ST)", "Movement › NNAgent (Agent)"])
 	assert_eq(_message_ids(Protocol.SUBSCRIBE)[-1], Fixtures.AGENT)
 	assert_eq(_message_ids(Protocol.UNSUBSCRIBE)[-1], Fixtures.ST_ROOT)
 
@@ -292,7 +292,7 @@ func test_follow_active_path_subscribes_and_drills_to_the_deepest_root() -> void
 		Fixtures.ST_ROOT, Fixtures.AGENT, Fixtures.HTN, Fixtures.COVER_BT,
 	])
 	assert_eq(_message_ids(Protocol.UNSUBSCRIBE), [])
-	assert_eq(_crumb_labels()[-1], "NNBTRoot (BT)")
+	assert_eq(_crumb_labels()[-1], "SneakToCover › NNBTRoot (BT)")
 
 	var st_cleared: Dictionary = Fixtures.st_snapshot()
 	st_cleared["active_hosted_root"] = 0
@@ -317,7 +317,7 @@ func test_follow_from_an_inactive_root_restarts_at_the_top_level_ancestor() -> v
 	_send_snapshot(Fixtures.COVER_BT)
 
 	assert_eq(_panel._current_root_id, Fixtures.COVER_BT)
-	assert_eq(_crumb_labels()[-1], "NNBTRoot (BT)")
+	assert_eq(_crumb_labels()[-1], "SneakToCover › NNBTRoot (BT)")
 	assert_true(Fixtures.PATROL_BT in _message_ids(Protocol.UNSUBSCRIBE), "the inactive branch is dropped")
 
 
@@ -327,7 +327,7 @@ func test_follow_active_path_switches_when_the_active_root_changes() -> void:
 	follow.button_pressed = true
 	_send_snapshot(Fixtures.ST_ROOT)
 	_send_snapshot(Fixtures.AGENT)
-	assert_eq(_crumb_labels()[-1], "NNHTNRoot (HTN)")
+	assert_eq(_crumb_labels()[-1], "InvestigateAction › NNHTNRoot (HTN)")
 
 	var agent_changed: Dictionary = Fixtures.agent_snapshot()
 	agent_changed["active_hosted_root"] = Fixtures.PATROL_BT
@@ -335,9 +335,9 @@ func test_follow_active_path_switches_when_the_active_root_changes() -> void:
 
 	assert_eq(_crumb_labels(), [
 		"Movement (ST)",
-		"NNAgent (Agent)",
+		"Movement › NNAgent (Agent)",
 		"PatrolAction (Agent action)",
-		"NNBTRoot (BT)",
+		"PatrolAction › NNBTRoot (BT)",
 	])
 	assert_eq(_message_ids(Protocol.SUBSCRIBE), [
 		Fixtures.ST_ROOT, Fixtures.AGENT, Fixtures.HTN, Fixtures.PATROL_BT,
@@ -353,7 +353,7 @@ func test_removing_the_shown_root_falls_back_to_the_nearest_live_ancestor() -> v
 	_select_root(Fixtures.HTN)
 
 	_panel.handle_message(Protocol.ROOT_REMOVED, [Fixtures.HTN])
-	assert_eq(_crumb_labels()[-1], "NNAgent (Agent)")
+	assert_eq(_crumb_labels()[-1], "Movement › NNAgent (Agent)")
 	assert_eq(_message_ids(Protocol.SUBSCRIBE)[-1], Fixtures.AGENT)
 	assert_null(_item_for(Fixtures.HTN))
 
@@ -380,11 +380,11 @@ func test_root_list_keeps_selection_when_roots_change() -> void:
 
 	_panel.handle_message(Protocol.ROOT_ADDED, [extra])
 	assert_true(_item_for(Fixtures.AGENT).is_selected(0))
-	assert_eq(_crumb_labels()[-1], "NNAgent (Agent)")
+	assert_eq(_crumb_labels()[-1], "Movement › NNAgent (Agent)")
 
 	_panel.handle_message(Protocol.ROOT_REMOVED, [7000])
 	assert_true(_item_for(Fixtures.AGENT).is_selected(0))
-	assert_eq(_crumb_labels()[-1], "NNAgent (Agent)")
+	assert_eq(_crumb_labels()[-1], "Movement › NNAgent (Agent)")
 
 
 func test_blackboard_rows_track_events_and_flash_changes() -> void:
@@ -520,7 +520,7 @@ func test_follow_uses_cached_snapshots_for_the_whole_chain() -> void:
 	var follow: Button = _panel.get_node("%FollowButton")
 	follow.button_pressed = true
 
-	assert_eq(_crumb_labels()[-1], "NNBTRoot (BT)")
+	assert_eq(_crumb_labels()[-1], "SneakToCover › NNBTRoot (BT)")
 	assert_eq(_message_ids(Protocol.SUBSCRIBE), [
 		Fixtures.ST_ROOT, Fixtures.AGENT, Fixtures.HTN, Fixtures.COVER_BT,
 	])
@@ -674,23 +674,33 @@ func test_value_formatter_formats_property_and_event_values() -> void:
 	assert_string_contains(event_row.tooltip_text, "0.35791884202223556")
 
 
-func test_default_split_gives_the_view_most_of_the_height() -> void:
+func test_panel_works_at_the_default_bottom_panel_size() -> void:
 	var host := Control.new()
-	host.size = Vector2(1200, 900)
+	host.size = Vector2(1192, 208)
 	add_child_autofree(host)
 	var panel = PanelScene.instantiate()
 	host.add_child(panel)
+	for info in Fixtures.root_infos():
+		panel.handle_message(Protocol.ROOT_ADDED, [info])
+	panel.handle_message(Protocol.SNAPSHOT, [Fixtures.ST_ROOT, Fixtures.snapshot_for(Fixtures.ST_ROOT)])
 	await get_tree().process_frame
 	await get_tree().process_frame
+
+	var view_host: Control = panel.get_node("%ViewHost")
 	var split: SplitContainer = panel.get_node("%ContentSplit")
-	var view: Control = split.get_child(0)
+	var view_column: Control = split.get_child(0)
 	var inspector: Control = split.get_child(1)
-	assert_gt(view.size.y, inspector.size.y, "the view gets more room than the inspector")
-	assert_lt(inspector.size.y, split.size.y * 0.4, "the inspector stays around a third of the height")
-	assert_gt(inspector.size.y, split.size.y * 0.2, "the inspector still gets usable room")
+	assert_true(view_host.clip_contents, "the view host clips overflowing views")
+	assert_true(inspector.clip_contents, "the inspector clips its content")
+	assert_false(split.vertical, "the inspector sits beside the view at the default size")
+	assert_gte(view_host.size.y, 120.0, "the view host still has usable height")
+	assert_gt(inspector.position.x, view_column.position.x, "the inspector is to the right of the view")
+	assert_eq(inspector.position.y, view_column.position.y, "the inspector is on the same row")
+	assert_gt(inspector.size.x, split.size.x * 0.2, "the inspector gets usable width")
+	assert_lt(inspector.size.x, split.size.x * 0.4, "the inspector stays around a third of the width")
 
 
-func test_portal_labels_disambiguate_repeated_root_names() -> void:
+func test_portal_labels_use_plain_name_and_type() -> void:
 	_add_roots()
 	var spy := SpyView.new()
 	_panel.get_node("%ViewHost").add_child(spy)
@@ -699,8 +709,8 @@ func test_portal_labels_disambiguate_repeated_root_names() -> void:
 		"path": "/root/Extra", "owner_id": 0, "owner_name": "", "owner_path": "",
 		"host_root_id": 0, "host_node_id": 0, "host_node_name": "", "host_node_class": "" }])
 
-	assert_eq(spy.root_labels[Fixtures.PATROL_BT], "PatrolAction › NNBTRoot (BT)")
-	assert_eq(spy.root_labels[Fixtures.COVER_BT], "SneakToCover › NNBTRoot (BT)")
+	assert_eq(spy.root_labels[Fixtures.PATROL_BT], "NNBTRoot (BT)")
+	assert_eq(spy.root_labels[Fixtures.COVER_BT], "NNBTRoot (BT)")
 
 
 func test_snapshot_delta_updates_the_cached_snapshot_and_view() -> void:

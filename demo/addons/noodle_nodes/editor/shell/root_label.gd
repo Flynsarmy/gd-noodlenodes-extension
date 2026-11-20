@@ -17,9 +17,3 @@ static func label(info: Dictionary, duplicate_names: Dictionary) -> String:
 	var generic := root_name == str(info.get("class", ""))
 	var duplicated := int(duplicate_names.get(root_name, 0)) > 1
 	return "%s › %s" % [host_name, root_name] if generic or duplicated else root_name
-
-
-static func tooltip(info: Dictionary, duplicate_names: Dictionary) -> String:
-	var text := label(info, duplicate_names)
-	var path := str(info.get("path", ""))
-	return text if path.is_empty() else "%s\n%s" % [text, path]
