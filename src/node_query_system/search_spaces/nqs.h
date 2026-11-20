@@ -31,7 +31,7 @@ private:
 	TypedArray<Node> _query_results;
 	PackedFloat64Array _query_result_scores;
 #ifdef DEBUG_ENABLED
-	bool _record_debug_scores;
+	unsigned int _debug_score_watch_count;
 	TypedArray<Node> _debug_scored_nodes;
 	PackedFloat64Array _debug_scored_scores;
 #endif
@@ -111,8 +111,8 @@ public:
 	PackedFloat64Array get_query_result_scores() const;
 
 #ifdef DEBUG_ENABLED
-	void set_record_debug_scores(bool record_debug_scores);
-	bool get_record_debug_scores() const;
+	void watch_debug_scores();
+	void unwatch_debug_scores();
 	TypedArray<Node> get_debug_scored_nodes() const;
 	PackedFloat64Array get_debug_scored_scores() const;
 #endif

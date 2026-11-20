@@ -164,18 +164,41 @@ func test_freed_search_space_is_harmless() -> void:
 	assert_eq(drawer.get_points().size(), 0, "a stale instance id must resolve to nothing")
 
 
-func test_drawer_lifetime_controls_debug_score_recording() -> void:
-	var query := _make_2d_query()
+func test_freeing_the_last_drawer_stops_recording() -> void:
+	var query := _make_2d_query(TARGET_2D, 1)
 	var space: NNNQSSearchSpaces = query["space"]
-	assert_false(space.get_record_debug_scores(), "recording is off while nobody watches")
-
 	var drawer: Node = DRAW_2D.instantiate()
 	add_child(drawer)
 	drawer.set_search_space_id(space.get_instance_id())
-	assert_true(space.get_record_debug_scores(), "attaching must enable recording the scored points")
+
+	NqsHelpers.run_to_completion(self, query["nqs"], space)
+	assert_eq(space.get_debug_scored_nodes().size(), 4, "the watched query must record every candidate")
 
 	drawer.free()
-	assert_false(space.get_record_debug_scores(), "freeing the drawer must stop recording")
+	NqsHelpers.run_to_completion(self, query["nqs"], space)
+	assert_eq(space.get_debug_scored_nodes().size(), 0, "nothing may be recorded while nobody watches")
+
+
+# Watches are reference counted: the overlay's drawer and a user-placed drawer
+# must not turn recording off for each other.
+func test_two_drawers_on_one_space_keep_recording_after_one_is_freed() -> void:
+	var query := _make_2d_query(TARGET_2D, 1)
+	var space: NNNQSSearchSpaces = query["space"]
+	var first: Node = DRAW_2D.instantiate()
+	var second: Node = add_child_autofree(DRAW_2D.instantiate())
+	add_child(first)
+	first.set_search_space_id(space.get_instance_id())
+	second.set_search_space_id(space.get_instance_id())
+
+	first.free()
+
+	query["criterion"].distance_to_vector = OTHER_TARGET_2D
+	NqsHelpers.run_to_completion(self, query["nqs"], space)
+
+	assert_eq(space.get_debug_scored_nodes().size(), 4,
+			"the remaining watcher must still record every candidate")
+	assert_eq(second.get_points().size(), 4,
+			"the remaining drawer must draw every scored candidate")
 
 
 func test_3d_points_are_drawn_at_the_query_results() -> void:

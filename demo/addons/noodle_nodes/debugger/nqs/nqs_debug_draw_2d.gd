@@ -19,8 +19,7 @@ const SCORE_OFFSET := Vector2(10.0, -8.0)
 		if id == _source.get_search_space_id():
 			return
 		_has_drawn = false
-		_source.set_search_space(value)
-		_refresh()
+		_source.set_search_space_id(id)
 
 @export var show_scores := true:
 	set(value):
@@ -40,15 +39,15 @@ var _redraw_requests := 0
 func _enter_tree() -> void:
 	if not _source.changed.is_connected(_on_source_changed):
 		_source.changed.connect(_on_source_changed)
-	# (Re)attach here, not in _ready: a drawer that leaves the tree stops
-	# recording, so it has to pick the search space up again when it comes back.
-	_source.set_search_space(search_space)
+	# (Re)attach here, not in _ready: a drawer that leaves the tree releases its
+	# watch, so it has to pick the search space up again when it comes back.
+	_source.attach()
 	_has_drawn = false
 	_refresh()
 
 
 func _exit_tree() -> void:
-	_source.set_search_space_id(0)
+	_source.detach()
 
 
 ## Points of the last completed query that this drawer will draw, as
@@ -67,7 +66,6 @@ func set_search_space_id(id: int) -> void:
 		return
 	_has_drawn = false
 	_source.set_search_space_id(id)
-	_refresh()
 
 
 func _on_source_changed() -> void:

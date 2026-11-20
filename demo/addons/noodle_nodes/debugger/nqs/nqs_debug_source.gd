@@ -12,6 +12,7 @@ const HIGH_SCORE_COLOUR := Color(1.0, 0.85, 0.2)
 var _search_space_id := 0
 var _points: Array[Dictionary] = []
 var _revision := 0
+var _is_attached := false
 
 
 static func is_supported() -> bool:
@@ -27,20 +28,31 @@ func get_search_space_id() -> int:
 	return _search_space_id
 
 
-func set_search_space(search_space: NNNQSSearchSpaces) -> void:
-	if not is_instance_valid(search_space):
-		set_search_space_id(0)
+## Starts following the search space: watches its debug scores and reacts to
+## completed queries. Does nothing while already attached.
+func attach() -> void:
+	if _is_attached:
 		return
-	set_search_space_id(search_space.get_instance_id())
+	_attach()
+	refresh(true)
+
+
+## Stops following the search space and releases our debug score watch.
+func detach() -> void:
+	if not _is_attached:
+		return
+	_detach()
 
 
 func set_search_space_id(id: int) -> void:
 	if id == _search_space_id:
 		return
+	var was_attached := _is_attached
 	_detach()
 	_search_space_id = id
-	_attach()
-	refresh(true)
+	if was_attached:
+		_attach()
+		refresh(true)
 
 
 ## The points of the last completed query as { node, score, colour, winner }.
@@ -62,7 +74,7 @@ func refresh(force := false) -> bool:
 	var nodes: Array[Node] = []
 	var scores := PackedFloat64Array()
 	var search_space := get_search_space()
-	if is_instance_valid(search_space) and is_supported():
+	if _is_attached and is_supported() and is_instance_valid(search_space):
 		if search_space.has_method("get_debug_scored_nodes"):
 			nodes = search_space.get_debug_scored_nodes()
 			scores = search_space.get_debug_scored_scores()
@@ -82,6 +94,7 @@ func refresh(force := false) -> bool:
 
 
 func _attach() -> void:
+	_is_attached = true
 	var search_space := get_search_space()
 	if not is_instance_valid(search_space):
 		return
@@ -90,20 +103,21 @@ func _attach() -> void:
 	if not search_space.tree_exiting.is_connected(_on_search_space_exiting):
 		search_space.tree_exiting.connect(_on_search_space_exiting)
 	# Only record while something watches, so nobody pays for the copy otherwise.
-	if search_space.has_method("set_record_debug_scores"):
-		search_space.set_record_debug_scores(true)
+	if search_space.has_method("watch_debug_scores"):
+		search_space.watch_debug_scores()
 
 
 func _detach() -> void:
-	var search_space := get_search_space()
-	if is_instance_valid(search_space):
-		if search_space.query_completed.is_connected(_on_query_completed):
-			search_space.query_completed.disconnect(_on_query_completed)
-		if search_space.tree_exiting.is_connected(_on_search_space_exiting):
-			search_space.tree_exiting.disconnect(_on_search_space_exiting)
-		if search_space.has_method("set_record_debug_scores"):
-			search_space.set_record_debug_scores(false)
-	_search_space_id = 0
+	if _is_attached:
+		var search_space := get_search_space()
+		if is_instance_valid(search_space):
+			if search_space.query_completed.is_connected(_on_query_completed):
+				search_space.query_completed.disconnect(_on_query_completed)
+			if search_space.tree_exiting.is_connected(_on_search_space_exiting):
+				search_space.tree_exiting.disconnect(_on_search_space_exiting)
+			if search_space.has_method("unwatch_debug_scores"):
+				search_space.unwatch_debug_scores()
+		_is_attached = false
 	_points = []
 	_revision = 0
 

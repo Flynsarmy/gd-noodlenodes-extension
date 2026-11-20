@@ -19,10 +19,34 @@
 				The [method execute_query] method fetches the search space nodes based on its configuration and then applies the search criteria in top-down order. [param time_budget_usec] limits the time, in microseconds, this call spends on the query; a query that runs out of time resumes where it left off on the next call. A budget of [code]0[/code] runs the query to completion in this call. Returns [code]false[/code] if the query hasn't finished (time has run out) and [code]true[/code] otherwise.
 			</description>
 		</method>
+		<method name="get_debug_scored_nodes">
+			<return type="Node[]" />
+			<description>
+				Debug builds only. Every candidate that survived the search criteria in the last completed query, in search-space order. Empty unless the search space is being watched with [method watch_debug_scores]. Unlike [member query_results] this is not limited to the top [member top_n_to_find] nodes.
+			</description>
+		</method>
+		<method name="get_debug_scored_scores">
+			<return type="PackedFloat64Array" />
+			<description>
+				Debug builds only. The final scores of the nodes returned by [method get_debug_scored_nodes], index for index.
+			</description>
+		</method>
 		<method name="initialize_search_space">
 			<return type="void" />
 			<description>
 				Runs the search space's internal initialization (for example, generating point-grid nodes or connecting area signals). This is called automatically from the native [method Node._ready] implementation. If a script attached to this node overrides [method Node._ready], the native [method Node._ready] will not run and you must call [method initialize_search_space] yourself.
+			</description>
+		</method>
+		<method name="unwatch_debug_scores">
+			<return type="void" />
+			<description>
+				Debug builds only. Releases one [method watch_debug_scores] call. Recording stops, and the copies returned by [method get_debug_scored_nodes] and [method get_debug_scored_scores] are cleared, when the last watcher releases its call.
+			</description>
+		</method>
+		<method name="watch_debug_scores">
+			<return type="void" />
+			<description>
+				Debug builds only. Starts copying every surviving candidate and its final score, as returned by [method get_debug_scored_nodes] and [method get_debug_scored_scores], when a query completes. This lets the debugger draw all scored points instead of only the top [member top_n_to_find] results. Calls are reference counted, so several watchers can watch the same search space; each one must pair its call with [method unwatch_debug_scores]. The copy costs time proportional to the search space size on every completed query, so watch only while something is inspecting the query.
 			</description>
 		</method>
 	</methods>
@@ -36,12 +60,6 @@
 		<member name="current_call_runtime_usec" type="int" getter="get_current_call_runtime_usec" default="0">
 			Read-only. The time the latest call to [method execute_query] method took.
 		</member>
-		<member name="debug_scored_nodes" type="Node[]" getter="get_debug_scored_nodes" default="[]">
-			Read-only. Debug builds only. Every candidate that survived the search criteria in the last completed query, in search-space order. Empty unless [member record_debug_scores] was enabled before the query completed. Unlike [member query_results] this is not limited to the top [member top_n_to_find] nodes.
-		</member>
-		<member name="debug_scored_scores" type="PackedFloat64Array" getter="get_debug_scored_scores" default="PackedFloat64Array()">
-			Read-only. Debug builds only. The final scores of [member debug_scored_nodes], index for index.
-		</member>
 		<member name="is_query_still_running" type="bool" getter="get_is_query_still_running" default="false">
 			Read-only. Whether the query is still in progress. This is set to [code]true[/code] when the query is posted with [method NNNodeQuerySystem.post_query] and to [code]false[/code] when it completes or is stopped with [method NNNodeQuerySystem.stop_query].
 		</member>
@@ -53,9 +71,6 @@
 		</member>
 		<member name="query_results" type="Node[]" getter="get_query_results" default="[]">
 			Read-only. The resulting array of nodes, sorted in descending order based on the score.
-		</member>
-		<member name="record_debug_scores" type="bool" setter="set_record_debug_scores" getter="get_record_debug_scores" default="false">
-			Debug builds only. If [code]true[/code], the search space copies every surviving candidate and its final score into [member debug_scored_nodes] and [member debug_scored_scores] when a query completes, so the debugger can draw all scored points instead of only the top [member top_n_to_find] results. The copy costs time proportional to the search space size on every completed query, so enable it only while something is inspecting the query.
 		</member>
 		<member name="search_space_fetch_time_usec" type="int" getter="get_search_space_fetch_time_usec" default="0">
 			Read-only. The time it takes to fetch all the nodes that will be filtered and scored in the query.

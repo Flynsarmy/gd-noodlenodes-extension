@@ -31,7 +31,7 @@ NNNQSSearchSpaces::NNNQSSearchSpaces() {
 	_completed_signal_time_usec = 0;
 	_is_run_in_debug_mode = false;
 #ifdef DEBUG_ENABLED
-	_record_debug_scores = false;
+	_debug_score_watch_count = 0;
 #endif
 	_is_filtered_property = StringName("is_filtered");
 	_score_property = StringName("score");
@@ -62,15 +62,10 @@ void NNNQSSearchSpaces::_bind_methods() {
 	ADD_SUBGROUP("Debugging", "");
 
 #ifdef DEBUG_ENABLED
-	ClassDB::bind_method(D_METHOD("set_record_debug_scores", "record_debug_scores"), &NNNQSSearchSpaces::set_record_debug_scores);
-	ClassDB::bind_method(D_METHOD("get_record_debug_scores"), &NNNQSSearchSpaces::get_record_debug_scores);
-	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "record_debug_scores", PROPERTY_HINT_NONE), "set_record_debug_scores", "get_record_debug_scores");
-
+	ClassDB::bind_method(D_METHOD("watch_debug_scores"), &NNNQSSearchSpaces::watch_debug_scores);
+	ClassDB::bind_method(D_METHOD("unwatch_debug_scores"), &NNNQSSearchSpaces::unwatch_debug_scores);
 	ClassDB::bind_method(D_METHOD("get_debug_scored_nodes"), &NNNQSSearchSpaces::get_debug_scored_nodes);
-	ADD_PROPERTY(_runtime_stat(PropertyInfo(Variant::ARRAY, "debug_scored_nodes", PROPERTY_HINT_ARRAY_TYPE, vformat("%s/%s:%s", Variant::OBJECT, PROPERTY_HINT_RESOURCE_TYPE, "Node"))), "", "get_debug_scored_nodes");
-
 	ClassDB::bind_method(D_METHOD("get_debug_scored_scores"), &NNNQSSearchSpaces::get_debug_scored_scores);
-	ADD_PROPERTY(_runtime_stat(PropertyInfo(Variant::ARRAY, "debug_scored_scores", PROPERTY_HINT_NONE)), "", "get_debug_scored_scores");
 #endif
 
 	ClassDB::bind_method(D_METHOD("set_is_run_in_debug_mode", "is_run_in_debug_mode"), &NNNQSSearchSpaces::set_is_run_in_debug_mode);
@@ -186,19 +181,19 @@ PackedFloat64Array NNNQSSearchSpaces::get_query_result_scores() const {
 }
 
 #ifdef DEBUG_ENABLED
-void NNNQSSearchSpaces::set_record_debug_scores(bool record_debug_scores) {
-	if (_record_debug_scores == record_debug_scores) {
+void NNNQSSearchSpaces::watch_debug_scores() {
+	++_debug_score_watch_count;
+}
+
+void NNNQSSearchSpaces::unwatch_debug_scores() {
+	if (_debug_score_watch_count == 0) {
 		return;
 	}
-	_record_debug_scores = record_debug_scores;
-	if (!record_debug_scores) {
+	--_debug_score_watch_count;
+	if (_debug_score_watch_count == 0) {
 		_debug_scored_nodes.clear();
 		_debug_scored_scores.clear();
 	}
-}
-
-bool NNNQSSearchSpaces::get_record_debug_scores() const {
-	return _record_debug_scores;
 }
 
 TypedArray<Node> NNNQSSearchSpaces::get_debug_scored_nodes() const {
@@ -406,7 +401,7 @@ bool NNNQSSearchSpaces::execute_query(uint64_t time_budget_usec) {
 #ifdef DEBUG_ENABLED
 		// _query_results only keeps the top N; the debugger's viewport draw needs
 		// every surviving candidate and its score.
-		if (_record_debug_scores) {
+		if (_debug_score_watch_count > 0) {
 			_debug_scored_nodes.resize(_num_search_space_nodes);
 			_debug_scored_scores.resize(_num_search_space_nodes);
 			for (unsigned int i = 0; i < _num_search_space_nodes; ++i) {
