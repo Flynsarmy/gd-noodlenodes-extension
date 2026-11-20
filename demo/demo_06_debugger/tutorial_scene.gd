@@ -14,6 +14,10 @@ const AGENT := 1
 const BEHAVIOUR_TREE := 2
 const STATE_TREE := 3
 
+# Values of NNDebugger.PauseScope.
+const PAUSE_SCOPE_AI := 0
+const PAUSE_SCOPE_GAME := 1
+
 const TYPE_COLORS := {
 	AGENT: Color(0.45, 0.95, 0.6),
 	BEHAVIOUR_TREE: Color(0.5, 0.72, 1.0),
@@ -52,6 +56,8 @@ func _ready() -> void:
 	var debugger := _debugger()
 	if debugger != null:
 		debugger.paused_changed.connect(_on_paused_changed)
+		if debugger.has_signal("pause_scope_changed"):
+			debugger.pause_scope_changed.connect(_on_pause_scope_changed)
 
 
 func _physics_process(_delta: float) -> void:
@@ -73,6 +79,8 @@ func _unhandled_input(event: InputEvent) -> void:
 			_toggle_pause()
 		KEY_N:
 			_step_once()
+		KEY_G:
+			_toggle_scope()
 		KEY_ESCAPE:
 			DemoQuit.quit()
 		_:
@@ -117,6 +125,7 @@ func _spawn_entity(kind: int, position: Vector2) -> Node:
 	_add_label(entity, short_name)
 
 	add_child(entity)
+	entity.process_mode = Node.PROCESS_MODE_PAUSABLE
 	_spawned.append(entity)
 	return entity
 
@@ -223,7 +232,20 @@ func _step_once() -> void:
 		_update_status()
 
 
+func _toggle_scope() -> void:
+	var debugger := _debugger()
+	if debugger == null or not debugger.has_method("set_pause_scope"):
+		return
+	var scope := PAUSE_SCOPE_AI if debugger.get_pause_scope() == PAUSE_SCOPE_GAME else PAUSE_SCOPE_GAME
+	debugger.set_pause_scope(scope)
+	_update_status()
+
+
 func _on_paused_changed(_paused: bool) -> void:
+	_update_status()
+
+
+func _on_pause_scope_changed(_scope: int) -> void:
 	_update_status()
 
 
@@ -234,10 +256,14 @@ func _update_status() -> void:
 
 	var debugger := _debugger()
 	var paused: bool = debugger != null and debugger.is_paused()
+	var scope := "AI"
+	if debugger != null and debugger.has_method("get_pause_scope") and debugger.get_pause_scope() == PAUSE_SCOPE_GAME:
+		scope = "game"
 	var overlay_state := "open" if overlay_open else "closed"
 	var pause_state := "on" if paused else "off"
-	status_label.text = "Noodle Nodes tab in the editor  |  F1 overlay (%s)  |  Tab entity  |  Space spawn  |  Backspace remove  |  P pause (%s)  |  N step  |  %d entities" % [
+	status_label.text = "Noodle Nodes tab in the editor  |  F1 overlay (%s)  |  Tab entity  |  Space/Backspace spawn/remove  |  P pause (%s)  |  G scope (%s)  |  N step  |  %d entities" % [
 		overlay_state,
 		pause_state,
+		scope,
 		_live_entity_count(),
 	]

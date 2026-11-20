@@ -318,6 +318,7 @@ activation_curve = SubResource("Curve_curious")
 [node name="InvestigateAction" type="NNAction" parent="Npc/Movement/NNAgent/Investigate"]
 
 [node name="NNHTNRoot" type="NNHTNRoot" parent="Npc/Movement/NNAgent/Investigate/InvestigateAction"]
+track_search = true
 
 [node name="Investigate" type="NNHTNCompoundTask" parent="Npc/Movement/NNAgent/Investigate/InvestigateAction/NNHTNRoot"]
 
