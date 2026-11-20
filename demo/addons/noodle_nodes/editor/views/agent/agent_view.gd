@@ -9,6 +9,7 @@ const SensorRowScene := preload("res://addons/noodle_nodes/editor/views/agent/se
 const ActionRowScene := preload("res://addons/noodle_nodes/editor/views/agent/action_row.tscn")
 const CutoffRowScene := preload("res://addons/noodle_nodes/editor/views/agent/cutoff_row.tscn")
 const TimelineScript := preload("res://addons/noodle_nodes/editor/views/agent/timeline.gd")
+const ScaledUI := preload("res://addons/noodle_nodes/editor/views/agent/scaled_ui.gd")
 
 const BEHAVIOUR_KINDS := ["behaviour", "behaviour_group"]
 const CONSIDERATION_KINDS := ["consideration", "consideration_group"]
@@ -40,6 +41,10 @@ var _choice_seqs: Dictionary = {}
 var _now_usec: int = 0
 var _current_behaviour: int = 0
 var _current_behaviour_group: int = 0
+
+
+func _ready() -> void:
+	ScaledUI.apply(self)
 
 
 func set_snapshot(snapshot: Dictionary) -> void:
