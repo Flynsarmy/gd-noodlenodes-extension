@@ -45,6 +45,8 @@ The tab has four parts:
 - **The system view** in the middle. It changes with the root type.
 - **Inspector** at the bottom: the selected node's live properties, the root's blackboard, and the recent events that mention the selected node.
 
+Godot's default bottom panel is short, so for longer sessions drag the bottom panel taller or use the tab's **Float** button to open it in its own resizable window.
+
 The toolbar has the pause and step buttons, the **AI**/**Game** pause scope selector, the **Follow active path** toggle, a **Horizontal**/**Vertical** layout toggle and **Float**. **Float** moves the whole panel into its own window so you can put it on a second monitor; **Dock** brings it back. The split positions, layout, follow state, float state and pause scope are saved in the editor settings under `noodle_nodes/debugger/`.
 
 If several game sessions run at once, each has its own **Noodle Nodes** tab.
