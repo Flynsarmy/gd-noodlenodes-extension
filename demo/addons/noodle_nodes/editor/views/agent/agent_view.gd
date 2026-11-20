@@ -46,6 +46,14 @@ var _last_behaviour: int = 0
 
 func _ready() -> void:
 	EditorScale.apply_to_scene(self)
+	_strip_label_padding(self)
+
+
+func _strip_label_padding(node: Node) -> void:
+	for child in node.get_children():
+		if child is Label:
+			child.add_theme_stylebox_override("normal", StyleBoxEmpty.new())
+		_strip_label_padding(child)
 
 
 func set_snapshot(snapshot: Dictionary) -> void:

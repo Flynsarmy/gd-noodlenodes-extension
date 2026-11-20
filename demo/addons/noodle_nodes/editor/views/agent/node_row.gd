@@ -28,6 +28,7 @@ var _expanded: bool = false
 
 func _ready() -> void:
 	EditorScale.apply_to_scene(self)
+	_strip_label_padding(self)
 	if _expand:
 		_expand.toggled.connect(_on_expand_toggled)
 	_refresh_accent()
@@ -84,6 +85,38 @@ func is_expanded() -> bool:
 func _on_expand_toggled(value: bool) -> void:
 	set_expanded(value)
 	expanded_changed.emit(node_id, value)
+
+
+## Text width plus the label's own stylebox padding: Font.get_string_size ignores it.
+func _label_text_width(label: Label, font: Font, font_size: int, text: String) -> float:
+	return font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x + _label_padding(label)
+
+
+func _label_padding(label: Label) -> float:
+	var style := label.get_theme_stylebox("normal")
+	return style.get_minimum_size().x if style != null else 0.0
+
+
+func _elide_text(font: Font, font_size: int, text: String, width: float) -> String:
+	if width <= 0.0:
+		return ""
+	if font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x <= width:
+		return text
+	var ellipsis := "…"
+	for count in range(text.length() - 1, 0, -1):
+		var candidate := text.substr(0, count) + ellipsis
+		if font.get_string_size(candidate, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x <= width:
+			return candidate
+	return ""
+
+
+## The editor Label theme carries large content margins; compact rows should draw
+## text edge to edge so measured widths match the drawn width.
+func _strip_label_padding(node: Node) -> void:
+	for child in node.get_children():
+		if child is Label:
+			child.add_theme_stylebox_override("normal", StyleBoxEmpty.new())
+		_strip_label_padding(child)
 
 
 func _refresh_accent() -> void:
