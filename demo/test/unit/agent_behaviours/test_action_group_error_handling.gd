@@ -98,3 +98,24 @@ func test_continue_execution_does_not_fail_the_group_for_its_parent() -> void:
 	agent.update_current_behaviour()
 
 	assert_eq(agent.get_current_action_node(), fixture["after_group_action"], "the behaviour carries on past the group")
+
+
+func test_restarted_group_forgets_an_earlier_failure() -> void:
+	var fixture := _make_failing_sequence(HANDLING_END_EXECUTION)
+	var agent: NNAgent = fixture["agent"]
+	var failed_action: NNAction = fixture["failed_action"]
+	var next_action: NNAction = fixture["next_action"]
+
+	failed_action.set_has_failed(true)
+	failed_action.set_is_finished(true)
+	agent.update_current_behaviour()
+	assert_null(agent.get_current_behaviour_node())
+
+	AgentHelpers.select(agent)
+	assert_eq(agent.get_current_action_node(), failed_action)
+	failed_action.set_is_finished(true)
+	agent.update_current_behaviour()
+	next_action.set_is_finished(true)
+	agent.update_current_behaviour()
+
+	assert_eq(agent.get_current_action_node(), fixture["after_group_action"], "a successful rerun carries on past the group")

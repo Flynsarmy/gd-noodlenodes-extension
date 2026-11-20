@@ -57,6 +57,7 @@ NNActionGroup::~NNActionGroup() {
 // Handling functions.
 
 bool NNActionGroup::start_action() {
+	NNActions::start_action();
 	_current_action_started = false;
 	if (get_child_count() <= 0) {
 		_current_action_index = -1;
