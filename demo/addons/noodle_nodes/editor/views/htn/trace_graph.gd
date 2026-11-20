@@ -63,6 +63,8 @@ var _pan := Vector2.ZERO
 var _selected_id := -1
 var _signature := -1
 var _pending_fit := false
+## Once the user pans or zooms, resizes no longer refit the graph under them.
+var _user_transformed := false
 var _dragging := false
 var _drag_moved := false
 var _drag_origin := Vector2.ZERO
@@ -80,8 +82,10 @@ func _ready() -> void:
 
 
 func _notification(what: int) -> void:
-	if what == NOTIFICATION_RESIZED and _pending_fit:
-		call_deferred("_fit_if_pending")
+	if what != NOTIFICATION_RESIZED or _records.is_empty():
+		return
+	if _pending_fit or not _user_transformed:
+		call_deferred("_fit_if_needed")
 
 
 ## Replaces the graph with one attempt's trace. Re-rendering the trace already
@@ -102,7 +106,7 @@ func set_trace(events: Array, empty_text: String = "") -> void:
 	_layout()
 	_create_views()
 	_pending_fit = true
-	_fit_if_pending()
+	_fit_if_needed()
 	_update_empty()
 	queue_redraw()
 
@@ -153,9 +157,17 @@ func fit_to_view() -> void:
 	_apply_transform()
 
 
-func _fit_if_pending() -> void:
-	if _pending_fit:
+func _fit_if_needed() -> void:
+	if _pending_fit or not _user_transformed:
 		fit_to_view()
+
+
+## The part of the canvas currently visible in the pane, in canvas coordinates.
+## Used by tests and tooling to check that a fit kept the trace on screen.
+func get_visible_rect() -> Rect2:
+	if _zoom <= 0.0:
+		return Rect2()
+	return Rect2(-_pan / _zoom, size / _zoom)
 
 
 func _reset() -> void:
@@ -171,6 +183,7 @@ func _reset() -> void:
 	_bounds = Rect2()
 	_selected_id = -1
 	_pending_fit = false
+	_user_transformed = false
 	_zoom = 1.0
 	_pan = Vector2.ZERO
 	_canvas.position = Vector2.ZERO
@@ -504,6 +517,7 @@ func _gui_input(event: InputEvent) -> void:
 		accept_event()
 	elif event is InputEventPanGesture:
 		_pan -= event.delta * _pan_speed
+		_user_transformed = true
 		_apply_transform()
 		accept_event()
 	elif event is InputEventKey:
@@ -548,6 +562,7 @@ func _handle_mouse_motion(motion: InputEventMouseMotion) -> void:
 	var delta := motion.position - _drag_origin
 	if delta.length() > _drag_threshold:
 		_drag_moved = true
+		_user_transformed = true
 	_pan = _pan_origin + delta
 	_apply_transform()
 
@@ -611,5 +626,6 @@ func _zoom_at(at: Vector2, factor: float) -> void:
 	if is_equal_approx(next_zoom, _zoom):
 		return
 	_zoom = next_zoom
+	_user_transformed = true
 	_pan = at - before * _zoom
 	_apply_transform()

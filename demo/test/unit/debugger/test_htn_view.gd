@@ -277,6 +277,60 @@ func test_the_trace_heading_ellipsises_with_the_full_text_as_a_tooltip() -> void
 	assert_eq(heading.tooltip_text, heading.text)
 
 
+func _settle_layout(frames: int = 3) -> void:
+	for i in frames:
+		await get_tree().process_frame
+
+
+func test_the_trace_panel_is_hidden_until_a_decision_is_selected() -> void:
+	view.anchor_right = 0.0
+	view.anchor_bottom = 0.0
+	view.size = Vector2(1600, 900)
+	view.set_snapshot(Fixtures.htn_snapshot())
+	view.apply_events(Fixtures.htn_events())
+	view.select_attempt(3, true)
+	await _settle_layout()
+
+	var panel: Control = view.get_node("%DetailScroll")
+	var graph_frame: Control = view.get_node("%GraphFrame")
+	var split: Control = view.get_node("%TraceSplit")
+	var graph = _graph()
+
+	assert_false(panel.visible, "The detail panel must not take space while nothing is selected")
+	assert_gt(graph_frame.size.x, split.size.x * 0.95, "The graph must span the trace width")
+	assert_eq(_records_outside_visible_rect(graph), [], "Fitting must keep every decision inside the graph")
+
+	graph.select_event(_record_for_path(graph, "Investigate/SearchForClue").id)
+	assert_true(panel.visible, "Selecting a decision shows the detail panel")
+
+	await _settle_layout()
+	assert_eq(
+		_records_outside_visible_rect(graph), [],
+		"The graph refits when the panel takes space back"
+	)
+
+	graph.clear_selection()
+	assert_false(panel.visible, "Clearing the selection frees the panel space")
+
+	graph.select_event(_record_for_path(graph, "Investigate/SearchForClue").id)
+	var next := Fixtures.htn_attempt()
+	next["id"] = 4
+	next["timestamp"] = "2026-11-20T11:40:05"
+	view.apply_events([{ "seq": 0, "kind": "htn_attempt", "attempt": next }])
+	assert_false(panel.visible, "Showing another attempt frees the panel space")
+
+
+func _records_outside_visible_rect(graph) -> Array:
+	var outside: Array = []
+	var visible_rect: Rect2 = graph.get_visible_rect().grow(1.0)
+	for record in graph.get_records():
+		if not record.visible:
+			continue
+		if not visible_rect.encloses(Rect2(record.position, TraceGraph.NODE_SIZE)):
+			outside.append(record.path)
+	return outside
+
+
 func test_pane_sizes_follow_the_editor_scale() -> void:
 	# The scene no longer carries fixed pane sizes; they are applied on ready so
 	# they can follow the editor's display scale.
