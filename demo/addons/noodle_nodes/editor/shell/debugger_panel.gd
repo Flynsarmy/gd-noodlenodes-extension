@@ -466,13 +466,11 @@ func _ensure_view(type: String) -> void:
 func _refresh_root_labels() -> void:
 	if _view == null or not _view.has_method("set_root_labels"):
 		return
-	var duplicate_names := RootLabel.count_names(_root_infos)
 	var labels := {}
 	for root_id in _root_infos:
 		var info: Dictionary = _root_infos[root_id]
 		var type := String(info.get("type", ""))
-		var type_label := String(Protocol.TYPE_LABELS.get(type, type))
-		labels[root_id] = "%s (%s)" % [RootLabel.label(info, duplicate_names), type_label]
+		labels[root_id] = "%s (%s)" % [String(info.get("name", "")), String(Protocol.TYPE_LABELS.get(type, type))]
 	_view.call("set_root_labels", labels)
 
 
@@ -525,23 +523,24 @@ func _references_node(event: Dictionary, node_id: int) -> bool:
 
 func _breadcrumb_chain(root_id: int) -> Array:
 	var chain: Array = []
+	var duplicate_names := RootLabel.count_names(_root_infos)
 	var id := root_id
 	var guard := 0
 	while id != 0 and _root_infos.has(id) and guard < 64:
 		guard += 1
 		var info: Dictionary = _root_infos[id]
 		var host_root_id := int(info.get("host_root_id", 0))
-		chain.push_front({ "label": _root_label(info), "root_id": id, "is_host": false })
+		chain.push_front({ "label": _root_label(info, duplicate_names), "root_id": id, "is_host": false })
 		if host_root_id != 0 and _root_infos.has(host_root_id) and int(info.get("host_node_id", 0)) != host_root_id:
 			chain.push_front({ "label": _host_label(info), "root_id": host_root_id, "is_host": true })
 		id = host_root_id
 	return chain
 
 
-func _root_label(info: Dictionary) -> String:
+func _root_label(info: Dictionary, duplicate_names: Dictionary) -> String:
 	var type := str(info.get("type", ""))
 	var label := str(Protocol.TYPE_LABELS.get(type, type.to_upper()))
-	return "%s (%s)" % [info.get("name", ""), label]
+	return "%s (%s)" % [RootLabel.label(info, duplicate_names), label]
 
 
 func _host_label(info: Dictionary) -> String:
