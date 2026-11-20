@@ -260,12 +260,76 @@ func test_flow_animation_only_runs_while_the_view_is_visible() -> void:
 	assert_true(graph.is_processing())
 
 
+func test_a_resize_refits_until_the_user_takes_over_the_view() -> void:
+	var graph := _graph()
+	graph.size = Vector2(900, 620)
+	_view.set_snapshot(DebuggerFixtures.bt_snapshot())
+	assert_true(_all_items_visible(graph), "the tree is fitted when it is first shown")
+
+	var fitted := _item_positions(graph)
+	graph.size = Vector2(460, 320)
+	assert_true(_all_items_visible(graph), "a resize before any interaction refits")
+	assert_ne(_item_positions(graph), fitted, "the view transform followed the resize")
+
+	_pan(graph, Vector2(120, 80))
+	var panned := _item_positions(graph)
+	graph.size = Vector2(900, 620)
+	assert_eq(_item_positions(graph), panned, "a resize after the user panned leaves the view alone")
+
+
+func test_showing_a_different_root_refits_after_the_user_moved_the_view() -> void:
+	var graph := _graph()
+	graph.size = Vector2(900, 620)
+	_view.set_snapshot(DebuggerFixtures.bt_snapshot())
+	var before := _item_positions(graph)
+	_pan(graph, Vector2(260, 180))
+	assert_ne(_item_positions(graph), before, "panning moved the view")
+
+	_view.set_snapshot(DebuggerFixtures.patrol_bt_snapshot())
+	assert_true(_all_items_visible(graph), "a different root is fitted even after the user panned")
+
+	_view.clear()
+	_view.set_snapshot(DebuggerFixtures.bt_snapshot())
+	assert_true(_all_items_visible(graph), "the first snapshot after clear is fitted")
+
+
 func _graph() -> BTGraph:
 	return _view.get_node("%Graph")
 
 
 func _color_distance(a: Color, b: Color) -> float:
 	return Vector3(a.r - b.r, a.g - b.g, a.b - b.b).length()
+
+
+func _all_items_visible(graph: BTGraph) -> bool:
+	var view := graph.get_global_rect()
+	for item in graph.get_items():
+		if not view.encloses(item.get_global_rect()):
+			return false
+	return true
+
+
+func _item_positions(graph: BTGraph) -> Array:
+	var positions := []
+	for item in graph.get_items():
+		positions.append(item.get_global_position())
+	return positions
+
+
+func _pan(graph: BTGraph, relative: Vector2) -> void:
+	var press := InputEventMouseButton.new()
+	press.button_index = MOUSE_BUTTON_LEFT
+	press.pressed = true
+	press.position = Vector2(40, 40)
+	graph._gui_input(press)
+	var motion := InputEventMouseMotion.new()
+	motion.relative = relative
+	motion.position = Vector2(40, 40) + relative
+	graph._gui_input(motion)
+	var release := InputEventMouseButton.new()
+	release.button_index = MOUSE_BUTTON_LEFT
+	release.pressed = false
+	graph._gui_input(release)
 
 
 func _left_click(double_click: bool) -> InputEventMouseButton:

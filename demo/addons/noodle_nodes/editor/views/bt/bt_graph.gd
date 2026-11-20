@@ -39,7 +39,9 @@ var _node_size := Vector2.ZERO
 var _dash_offset := 0.0
 var _zoom := 1.0
 var _pan := Vector2.ZERO
-var _fitted := false
+var _root_id := 0
+var _auto_fit := true
+var _pending_fit := true
 var _panning := false
 
 var _layout_children := {}
@@ -54,12 +56,21 @@ func _ready() -> void:
 func set_nodes(nodes: Array, now_usec: int, running_node: int) -> void:
 	_now_usec = now_usec
 	_nodes.clear()
+	var root_id := 0
 	var structure := PackedInt64Array()
 	for entry in nodes:
 		var id := int(entry.get("id", 0))
+		var parent := int(entry.get("parent", 0))
+		if parent == 0:
+			root_id = id
 		_nodes[id] = entry
 		structure.append(id)
-		structure.append(int(entry.get("parent", 0)))
+		structure.append(parent)
+	# The shell reuses this view between roots, so each new root gets a fresh fit.
+	if root_id != _root_id:
+		_root_id = root_id
+		_auto_fit = true
+		_pending_fit = true
 	var structural := structure != _structure
 	if structural:
 		_structure = structure
@@ -69,6 +80,7 @@ func set_nodes(nodes: Array, now_usec: int, running_node: int) -> void:
 	var resized := _measure()
 	if structural or resized:
 		_place_items()
+	_fit_if_pending()
 	queue_redraw()
 
 
@@ -116,7 +128,7 @@ func fit() -> void:
 	var available := size - Vector2(padding, padding) * 2.0
 	_zoom = clampf(minf(available.x / maxf(bounds.size.x, 1.0), available.y / maxf(bounds.size.y, 1.0)), MIN_ZOOM, 1.0)
 	_pan = (size - bounds.size * _zoom) * 0.5 - bounds.position * _zoom
-	_fitted = true
+	_pending_fit = false
 	_apply_transform()
 
 
@@ -125,8 +137,9 @@ func _notification(what: int) -> void:
 		NOTIFICATION_VISIBILITY_CHANGED:
 			_update_processing()
 		NOTIFICATION_RESIZED:
-			if not _fitted:
-				fit()
+			if _auto_fit:
+				_pending_fit = true
+				_fit_if_pending()
 
 
 func _process(delta: float) -> void:
@@ -178,6 +191,7 @@ func _gui_input(event: InputEvent) -> void:
 				accept_event()
 	elif event is InputEventMouseMotion and _panning:
 		_pan += (event as InputEventMouseMotion).relative
+		_note_user_view_change()
 		_apply_transform()
 		accept_event()
 
@@ -231,10 +245,6 @@ func _place_items() -> void:
 	for id in _items:
 		_items[id].position = positions.get(id, Vector2.ZERO)
 		_items[id].size = _node_size
-	if _items.is_empty():
-		_fitted = false
-	elif not _fitted:
-		fit()
 
 
 func _layout(children: Dictionary) -> Dictionary:
@@ -360,10 +370,22 @@ func _on_item_gui_input(event: InputEvent, item: Control) -> void:
 
 
 func _zoom_at(position: Vector2, factor: float) -> void:
+	_note_user_view_change()
 	var pivot := (position - _pan) / _zoom
 	_zoom = clampf(_zoom * factor, MIN_ZOOM, MAX_ZOOM)
 	_pan = position - pivot * _zoom
 	_apply_transform()
+
+
+## Auto-fitting stops once the user takes over the view, until the next root.
+func _note_user_view_change() -> void:
+	_auto_fit = false
+	_pending_fit = false
+
+
+func _fit_if_pending() -> void:
+	if _pending_fit:
+		fit()
 
 
 func _apply_transform() -> void:
