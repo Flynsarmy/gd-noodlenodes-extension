@@ -69,7 +69,7 @@ A root that is nested inside another root's node subtree without being driven by
 
 Pausing does not accumulate delta time: frames that pass while paused are dropped, so resuming does not produce a large catch-up tick.
 
-Pausing does not affect roots with `process_thread` set to `MANUAL` and code that calls `tick()` directly. Hosted roots follow the host that drives them, so pausing the host also freezes the hosted systems.
+Pause and step gate Noodle Nodes' scheduled AI ticks only. Your own `_process` and `_physics_process` code keeps running while the AI is paused, so a sprite that your script moves still moves. Roots with `process_thread` set to `MANUAL` and direct `tick()` calls are never blocked, and hosted roots follow the host that drives them, so pausing the host also freezes the hosted systems.
 
 You can pause and step from the editor tab, from the in-game overlay, or from code:
 
@@ -170,9 +170,9 @@ func _ready() -> void:
 
 The overlay does nothing when the debugger singleton is absent, so it is safe to leave in the scene for release builds; hiding it keeps the screen clean.
 
-Each entity that owns a root and is a `Node2D` or `Node3D` gets a label above it showing its active path, one colour-coded segment per system: the active state path, the running behaviour, the running task or plan step, and the running behaviour tree node. Click a label to select that entity, or press **Tab** to cycle through them. The selected entity's label stays bright; the others dim.
+The overlay groups roots by the node each root acts for, its **actor**, and falls back to the scene owner when a root has no actor. It anchors a label at that node when it is a `Node2D` or `Node3D`, showing the entity's active path with one colour-coded segment per system: the active state path, the running behaviour, the running task or plan step, and the running behaviour tree node. In the showcase each entity is its own scene, so every entity gets a label; in the integrated NPC all of the roots act for the same NPC, so there is one label anchored at the NPC. Click a label to select that entity, or press **Tab** to cycle through them. The selected entity's label stays bright; the others dim.
 
-The panel in the top-right follows the selected entity through its hosted roots. Each row is one root on the chain, with its system, name and the root's active-path text; a status column adds the running behaviour tree result, the current plan step, the running action, or `halted` for a paused state tree. Under the rows, **Recent events** lists the last eight events from any root on the active chain, newest last. The panel's **Pause** and **Step** buttons are the same pause and step as the editor tab.
+The panel in the top-right follows the selected entity through its hosted roots. Each row is one root on the chain, with its system, name and the root's active-path text; a status column adds the running behaviour tree result, the current plan step, the running action, or `halted` when the state tree exceeded its per-pass transition budget (its infinite-loop guard). Under the rows, **Recent events** lists the last eight events from any root on the active chain, newest last. The panel's **Pause** and **Step** buttons are the same pause and step as the editor tab.
 
 The demos wire **F1** to toggle the overlay and open it on start:
 
@@ -188,7 +188,9 @@ The overlay refreshes ten times per second. It watches events only for the roots
 
 ### Drawing the selected entity's query
 
-When the NQS draw is enabled on the overlay, the overlay draws the selected entity's query in the game viewport: every candidate that survived the query is a point coloured by its score, and the winner is highlighted. Select a different entity with **Tab** and the drawing follows it. This is the quickest way to see whether a query is scoring the candidates you expect without leaving the game window.
+The overlay draws the selected entity's query automatically. It looks at the selected entity's active path for a behaviour tree and takes the search space from its running query node's `nqs_search_space` badge, or from the most recently run query node when the tree is between queries. It mounts the matching 2D or 3D drawer in the world and retargets it when the selection changes. Every candidate that survived the query is drawn as a point coloured by its score, with the winner highlighted. Select a different entity with **Tab** and the drawing follows it; when the selection has no query, the drawer is removed.
+
+Only behaviour tree query nodes feed this view: the badge comes from `NNBTRunNQSQuery`. A query owned by an `NNNQSQuerySensor` is not part of the agent snapshot, so the overlay does not draw it; use a drawer with that search space directly, as described next. This is still the quickest way to see whether a tree's query is scoring the candidates you expect without leaving the game window.
 
 ## 12. Drawing queries in the viewport
 
@@ -206,11 +208,13 @@ func _ready() -> void:
     query_draw.search_space = $CoverSpace
 ```
 
+If you only have an instance id, use `set_search_space_id(id)`; `get_search_space_id()` reports the id the drawer currently follows.
+
 The drawer attaches when it enters the tree and releases its watch when it leaves, so toggling its `visible` property does not toggle the watch. Add or remove the node if you want it to stop copying results. It copies only when a query completes, never per frame.
 
 Each surviving candidate is drawn as a point, from blue for the lowest score to gold for the highest. In 2D the winner is a larger dot with a white ring; in 3D it is a larger octahedron with a white cross. `show_scores` draws the numeric score next to each point. If no debug scores were recorded yet, for example because the drawer attached after the last query, it draws the top results from `query_results` instead, so it is useful immediately.
 
-The debug score copy is reference counted on the search space. Watching every scored candidate costs time proportional to the search space size on each completed query, so watch only while something inspects the query.
+The debug score copy is reference counted on the search space. To build your own viewer, call `watch_debug_scores()` when you start drawing, read `get_debug_scored_nodes()` and `get_debug_scored_scores()` after each completed query, and call `unwatch_debug_scores()` when you stop. These methods, like the drawer, only exist in debug builds. Watching every scored candidate costs time proportional to the search space size on each completed query, so watch only while something inspects the query.
 
 ## 13. Release builds
 

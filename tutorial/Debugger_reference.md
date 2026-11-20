@@ -56,20 +56,25 @@ An **agent**, **behaviour tree root**, **state tree root** and **HTN root** each
 | `class` | `String` | The concrete class, for example `"NNBTRoot"`. |
 | `name` | `String` | The node name. |
 | `path` | `String` | The absolute node path. |
-| `owner_id` | `int` | The root's scene owner, or `0` when it has none. This is normally the instantiated entity scene's root, so several roots that live in one scene share an owner. |
+| `owner_id` | `int` | The root's scene owner (Godot's node owner): the root of the instantiated scene that saved the node, or `0`. In a single-scene setup this is the scene root, so every root in that scene shares it. Use the actor fields to find the node the AI acts for. |
 | `owner_name` | `String` | The owner's node name. |
 | `owner_path` | `String` | The owner's absolute node path. |
+| `actor_id` | `int` | The node the root acts for, from `get_actor()`, or `0`. This is the node the in-game overlay labels and draws the root against. |
+| `actor_name` | `String` | The actor's node name. |
+| `actor_path` | `String` | The actor's absolute node path, or empty when there is no actor or it is outside the tree. |
 | `host_root_id` | `int` | The nearest ancestor root, or `0` for a top-level root. |
 | `host_node_id` | `int` | The node that hosts this root inside the other system's tree, or `0`. |
 | `host_node_name` | `String` | The host node's name. |
 | `host_node_class` | `String` | The host node's class, for example `"NNAction"` or `"NNHTNTask"`. |
 
+The **actor** is the node the root does its work for, normally an NPC or another entity node. A root resolves it with `NoodleNodes.get_actor()`: its explicit actor, then its `actor_node_path`, then the actor inherited from an ancestor root, then its parent node. The overlay groups roots by actor and anchors their labels at that node, falling back to the scene owner when a root has no actor. The **owner** is only the scene owner, so in a single-scene setup it is the scene root and says nothing about which entity the root belongs to.
+
 The host fields describe where the root sits in another system's tree. There are two cases:
 
-- A **hosted root** is driven by a host node: an `NNAction`, an `NNHTNTask`, an `NNSTNode`/`NNSTParallel`, or an `NNBTRunHostedRoot` leaf. `host_node_id`, `host_node_name` and `host_node_class` name that node, and `host_root_id` is its nearest ancestor root.
+- A **hosted root** is driven by a host node: an `NNAction`, an `NNHTNTask`, an `NNSTNode`/`NNSTParallel`, or an `NNBTRunHostedRoot` leaf. `host_node_id`, `host_node_name` and `host_node_class` name that node, and `host_root_id` is the host node's nearest ancestor root.
 - A root that is merely **nested** inside another root's node subtree, without being hosted, has the ancestor root as both its host root and its host node.
 
-For a top-level root all three host fields are `0` and the two strings are empty. A root whose host root was freed has `host_root_id` for a root that no longer exists; treat it as top-level in that case.
+For a top-level root the two host ids are `0` and the two host strings are empty. A root whose host root was freed has `host_root_id` for a root that no longer exists; treat it as top-level in that case.
 
 ### 3.2 Watching
 
@@ -198,7 +203,7 @@ Top-level keys:
 | Key | Type | Meaning |
 |---|---|---|
 | `active_states` | `Array[int]` | Every active state, root first. Empty while the root is inactive. |
-| `halted` | `bool` | Whether event processing is halted. |
+| `halted` | `bool` | Whether event processing halted after too many transitions in one processing pass (the infinite-loop guard). |
 | `expression_properties` | `Dictionary` | Sanitised values of the keys used by transition delays and guards. |
 
 Every node has a `kind`. Its extras depend on the kind:
