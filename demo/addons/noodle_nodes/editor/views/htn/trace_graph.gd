@@ -21,9 +21,9 @@ const PADDING := 16.0
 const MIN_ZOOM := 0.35
 const MAX_ZOOM := 1.8
 ## Automatic fitting does not shrink below this scale; larger traces are panned
-## instead of being squeezed into an illegible overview. The debugger is often
-## only a few rows tall, so this stays low enough for a whole plan to fit.
-const FIT_MIN_ZOOM := 0.65
+## instead of being squeezed into an illegible overview. The debugger pane is
+## often narrow as well as short, so this stays low enough to frame a whole row.
+const FIT_MIN_ZOOM := 0.5
 const WHEEL_ZOOM_STEP := 1.12
 const PAN_SPEED := 24.0
 const EDGE_WIDTH := 1.5
@@ -83,10 +83,16 @@ func _ready() -> void:
 
 
 func _notification(what: int) -> void:
-	if what != NOTIFICATION_RESIZED or _records.is_empty():
+	if _records.is_empty():
 		return
-	if _pending_fit or not _user_transformed:
-		call_deferred("_fit_if_needed")
+	# A hidden tab is not laid out, so the first fit can happen at a stale size.
+	# Refit on resize and on becoming visible until the user pans or zooms.
+	if what == NOTIFICATION_VISIBILITY_CHANGED and visible:
+		if _pending_fit or not _user_transformed:
+			call_deferred("_fit_if_needed")
+	elif what == NOTIFICATION_RESIZED:
+		if _pending_fit or not _user_transformed:
+			call_deferred("_fit_if_needed")
 
 
 ## Replaces the graph with one attempt's trace. Re-rendering the trace already
@@ -108,6 +114,8 @@ func set_trace(events: Array, empty_text: String = "") -> void:
 	_create_views()
 	_pending_fit = true
 	_fit_if_needed()
+	# The pane may still be hidden or mid-layout here; fit again once it settles.
+	call_deferred("_fit_if_needed")
 	_update_empty()
 	queue_redraw()
 

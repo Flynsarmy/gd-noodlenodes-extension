@@ -387,7 +387,7 @@ func test_fit_frames_the_whole_trace_when_above_the_zoom_floor() -> void:
 func test_fit_stops_at_the_floor_and_keeps_the_first_decision_visible() -> void:
 	view.anchor_right = 0.0
 	view.anchor_bottom = 0.0
-	view.size = Vector2(900, 300)
+	view.size = Vector2(700, 300)
 	view.set_snapshot(Fixtures.htn_snapshot())
 	view.apply_events(Fixtures.htn_events())
 	view.select_attempt(3, true)
@@ -399,6 +399,58 @@ func test_fit_stops_at_the_floor_and_keeps_the_first_decision_visible() -> void:
 	var first: Dictionary = graph.get_records()[0]
 	var visible: Rect2 = graph.get_visible_rect().grow(1.0)
 	assert_true(visible.encloses(Rect2(first.position, TraceGraph.NODE_SIZE)), "The first decision must stay visible")
+
+
+func test_fit_survives_tab_visibility_and_pane_resizes() -> void:
+	view.anchor_right = 0.0
+	view.anchor_bottom = 0.0
+	view.size = Vector2(1100, 400)
+	view.set_snapshot(Fixtures.htn_snapshot())
+	view.apply_events([{ "seq": 0, "kind": "htn_attempt", "attempt": _wide_attempt() }])
+	view.select_attempt(7, true)
+	await _settle_layout()
+
+	var graph = _graph()
+	_assert_fitted(graph, "after switching to the trace tab")
+
+	view.size = Vector2(1250, 400)
+	await _settle_layout()
+	_assert_fitted(graph, "after widening the pane")
+
+	view.size = Vector2(950, 400)
+	await _settle_layout()
+	var first: Dictionary = graph.get_records()[0]
+	if graph.get_zoom() > TraceGraph.FIT_MIN_ZOOM:
+		_assert_fitted(graph, "after narrowing the pane")
+	else:
+		assert_almost_eq(graph.get_zoom(), TraceGraph.FIT_MIN_ZOOM, 0.0001)
+		assert_true(
+			graph.get_visible_rect().grow(1.0).encloses(Rect2(first.position, TraceGraph.NODE_SIZE)),
+			"The first decision must stay visible when the floor binds"
+		)
+
+
+func _assert_fitted(graph, message: String) -> void:
+	assert_gt(graph.get_zoom(), TraceGraph.FIT_MIN_ZOOM, "The floor must not bind " + message)
+	assert_eq(_records_outside_visible_rect(graph), [], "The fit must frame every node " + message)
+
+
+## Five sequential decisions in one row, wider than the test pane so the fit
+## has to use the zoom floor.
+func _wide_attempt() -> Dictionary:
+	var events: Array = [
+		{ "id": 0, "parent_id": -1, "kind": "compound", "path": "Investigate", "outcome": "considered", "reason": "CONSIDERED", "final": true },
+		{ "id": 1, "parent_id": 0, "kind": "method", "path": "Investigate/Plan", "outcome": "accepted", "reason": "ACCEPTED", "final": true },
+	]
+	for index in 3:
+		events.append({
+			"id": 2 + index, "parent_id": 1, "kind": "task", "path": "Investigate/Plan/Task%d" % index,
+			"outcome": "accepted", "reason": "ACCEPTED", "final": true,
+		})
+	var attempt := Fixtures.htn_attempt()
+	attempt["id"] = 7
+	attempt["events"] = events
+	return attempt
 
 
 func test_attempt_ages_are_relative_game_time() -> void:
