@@ -4,6 +4,7 @@ const Fixtures := preload("res://test/unit/debugger/fixtures/debugger_fixtures.g
 const Protocol := preload("res://addons/noodle_nodes/debugger/protocol.gd")
 const PanelScene := preload("res://addons/noodle_nodes/editor/shell/debugger_panel.tscn")
 const InspectorScene := preload("res://addons/noodle_nodes/editor/shell/inspector.tscn")
+const BreadcrumbsScene := preload("res://addons/noodle_nodes/editor/shell/breadcrumbs.tscn")
 const KvRowScene := preload("res://addons/noodle_nodes/editor/shell/kv_row.tscn")
 const EventRowScene := preload("res://addons/noodle_nodes/editor/shell/event_row.tscn")
 const GenericViewScene := preload("res://addons/noodle_nodes/editor/views/generic/generic_view.tscn")
@@ -125,7 +126,7 @@ func _filter(text: String) -> void:
 func _crumb_labels() -> Array:
 	var labels: Array = []
 	for child in _panel.get_node("%Breadcrumbs").get_children():
-		if child is Button:
+		if child is Button and child.text != "…":
 			labels.append(child.text)
 	return labels
 
@@ -674,6 +675,107 @@ func test_value_formatter_formats_property_and_event_values() -> void:
 	assert_string_contains(event_row.tooltip_text, "0.35791884202223556")
 
 
+func test_empty_inspector_collapses_and_restores() -> void:
+	var host := Control.new()
+	host.size = Vector2(1192, 600)
+	add_child_autofree(host)
+	var panel = PanelScene.instantiate()
+	host.add_child(panel)
+	for info in Fixtures.root_infos():
+		panel.handle_message(Protocol.ROOT_ADDED, [info])
+	await get_tree().process_frame
+	await get_tree().process_frame
+
+	var split: SplitContainer = panel.get_node("%ContentSplit")
+	var view_host: Control = panel.get_node("%ViewHost")
+	var inspector: Control = panel.get_node("%Inspector")
+	var header: Label = inspector.get_node("%NodeHeader")
+	var properties_empty: Control = inspector.get_node("%PropertiesEmpty")
+	assert_true(header.text == "No node selected")
+	assert_false(inspector.visible, "the empty inspector is hidden")
+	assert_false(properties_empty.visible, "the duplicate selection placeholder is hidden")
+	assert_gte(view_host.size.x, split.size.x * 0.8, "the view gets most of the content width")
+
+	panel.handle_message(Protocol.SNAPSHOT, [Fixtures.ST_ROOT, Fixtures.snapshot_for(Fixtures.ST_ROOT)])
+	await get_tree().process_frame
+	var view: Control = view_host.get_child(0)
+	view.node_selected.emit(Fixtures.ST_IDLE)
+	await get_tree().process_frame
+	await get_tree().process_frame
+
+	assert_true(inspector.visible, "selecting a node restores the inspector")
+	assert_true(properties_empty.visible, "the inspector shows its waiting placeholder")
+	var view_column: Control = split.get_child(0)
+	assert_gt(inspector.position.x, view_column.position.x, "the restored inspector is beside the view")
+	assert_eq(inspector.position.y, view_column.position.y, "the restored inspector is on the same row")
+	var fraction := inspector.size.x / split.size.x
+	assert_gt(fraction, 0.2)
+	assert_lt(fraction, 0.4)
+
+
+func test_breadcrumbs_fit_whole_crumbs_with_ellipsis() -> void:
+	var scroll := ScrollContainer.new()
+	scroll.size = Vector2(400, 100)
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_SHOW_NEVER
+	scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	add_child_autofree(scroll)
+	assert_eq(scroll.horizontal_scroll_mode, ScrollContainer.SCROLL_MODE_SHOW_NEVER)
+	var theme := Theme.new()
+	theme.set_font_size("font_size", "Button", 28)
+	theme.set_font_size("font_size", "Label", 28)
+	var style := StyleBoxEmpty.new()
+	style.content_margin_left = 16
+	style.content_margin_right = 16
+	theme.set_stylebox("normal", "Button", style)
+	scroll.theme = theme
+	var bar = BreadcrumbsScene.instantiate()
+	scroll.add_child(bar)
+	await get_tree().process_frame
+
+	var chain: Array = [
+		{ "label": "Movement (ST)", "root_id": 1, "is_host": false },
+		{ "label": "NNAgent (Agent)", "root_id": 2, "is_host": false },
+		{ "label": "InvestigateAction (Agent action)", "root_id": 3, "is_host": true },
+		{ "label": "NNHTNRoot (HTN)", "root_id": 4, "is_host": false },
+		{ "label": "SneakToCover (HTN task)", "root_id": 5, "is_host": true },
+		{ "label": "NNBTRoot (BT)", "root_id": 6, "is_host": false },
+		{ "label": "Current (BT)", "root_id": 7, "is_host": false },
+	]
+	bar.set_chain(chain)
+	await get_tree().process_frame
+	await get_tree().process_frame
+	await get_tree().process_frame
+
+	var buttons: Array[Button] = []
+	var ellipsis: Button = null
+	for child in bar.get_children():
+		if child is Button and child.visible:
+			if child.text == "…":
+				ellipsis = child
+			else:
+				buttons.append(child)
+	assert_not_null(ellipsis)
+	assert_gt(buttons.size(), 0)
+	var last: Button = buttons[-1]
+	assert_eq(last.text, "Current (BT)")
+	assert_gte(last.size.x, last.get_combined_minimum_size().x)
+
+	var scroll_rect := scroll.get_global_rect()
+	for button in buttons:
+		var rect := button.get_global_rect()
+		assert_gte(rect.position.x, scroll_rect.position.x - 1.0)
+		assert_lte(rect.end.x, scroll_rect.end.x + 1.0)
+		assert_gte(rect.position.y, scroll_rect.position.y - 1.0)
+		assert_lte(rect.end.y, scroll_rect.end.y + 1.0)
+
+	var first_index := int(buttons[0].get_meta("chain_index"))
+	assert_gt(first_index, 0)
+	var menu: PopupMenu = ellipsis.get_node("Menu")
+	assert_eq(menu.item_count, first_index)
+	for i in first_index:
+		assert_eq(menu.get_item_text(i), str(chain[i]["label"]))
+
+
 func test_panel_works_at_the_default_bottom_panel_size() -> void:
 	var host := Control.new()
 	host.size = Vector2(1192, 208)
@@ -688,16 +790,13 @@ func test_panel_works_at_the_default_bottom_panel_size() -> void:
 
 	var view_host: Control = panel.get_node("%ViewHost")
 	var split: SplitContainer = panel.get_node("%ContentSplit")
-	var view_column: Control = split.get_child(0)
 	var inspector: Control = split.get_child(1)
 	assert_true(view_host.clip_contents, "the view host clips overflowing views")
 	assert_true(inspector.clip_contents, "the inspector clips its content")
 	assert_false(split.vertical, "the inspector sits beside the view at the default size")
 	assert_gte(view_host.size.y, 120.0, "the view host still has usable height")
-	assert_gt(inspector.position.x, view_column.position.x, "the inspector is to the right of the view")
-	assert_eq(inspector.position.y, view_column.position.y, "the inspector is on the same row")
-	assert_gt(inspector.size.x, split.size.x * 0.2, "the inspector gets usable width")
-	assert_lt(inspector.size.x, split.size.x * 0.4, "the inspector stays around a third of the width")
+	assert_false(inspector.visible, "the empty inspector is hidden")
+	assert_gte(view_host.size.x, split.size.x * 0.8, "the view gets most of the content width")
 
 
 func test_portal_labels_use_plain_name_and_type() -> void:
@@ -711,31 +810,6 @@ func test_portal_labels_use_plain_name_and_type() -> void:
 
 	assert_eq(spy.root_labels[Fixtures.PATROL_BT], "NNBTRoot (BT)")
 	assert_eq(spy.root_labels[Fixtures.COVER_BT], "NNBTRoot (BT)")
-
-
-func test_breadcrumbs_scroll_to_the_last_crumb_without_a_scrollbar() -> void:
-	var host := Control.new()
-	host.size = Vector2(400, 208)
-	add_child_autofree(host)
-	var panel = PanelScene.instantiate()
-	host.add_child(panel)
-	await get_tree().process_frame
-
-	var breadcrumbs: Control = panel.get_node("%Breadcrumbs")
-	var scroll: ScrollContainer = panel.get_node("%BreadcrumbScroll")
-	assert_eq(scroll.horizontal_scroll_mode, ScrollContainer.SCROLL_MODE_SHOW_NEVER)
-
-	var chain: Array = []
-	for i in 10:
-		chain.append({ "label": "A very long breadcrumb %d" % i, "root_id": i + 1, "is_host": false })
-	breadcrumbs.set_chain(chain)
-	await get_tree().process_frame
-	await get_tree().process_frame
-
-	var bar := scroll.get_h_scroll_bar()
-	assert_almost_eq(float(scroll.scroll_horizontal), bar.max_value - bar.page, 1.0, "scrolled to the end")
-	var last: Control = breadcrumbs.get_child(breadcrumbs.get_child_count() - 1)
-	assert_true(last.get_global_rect().end.x <= scroll.get_global_rect().end.x + 1.0, "the last crumb is visible")
 
 
 func _label_text_width(label: Label, text: String) -> float:

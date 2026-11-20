@@ -88,6 +88,7 @@ func _ready() -> void:
 	_float_window.size = _float_size()
 	_load_settings()
 	_update_pause_ui()
+	_set_inspector_selected(false)
 
 
 ## Feeds one game-to-editor message into the panel. The plugin owns the transport.
@@ -140,6 +141,7 @@ func reset() -> void:
 	_paused = false
 	_following = false
 	_replay_root_id = 0
+	_set_inspector_selected(false)
 	if _view != null:
 		_view.call("clear")
 	_root_list.set_roots([], 0)
@@ -187,6 +189,7 @@ func _on_root_removed(root_id: int) -> void:
 		_current_nodes.clear()
 		_blackboard = null
 		_replay_root_id = 0
+		_set_inspector_selected(false)
 		if _view != null:
 			_view.call("clear")
 		_inspector.clear()
@@ -320,6 +323,7 @@ func _apply_snapshot(snapshot: Dictionary) -> void:
 		_properties_node_id = 0
 		_inspector.set_selected_node(0, {})
 		_emit(Protocol.INSPECT, [_current_root_id, 0])
+		_set_inspector_selected(false)
 	_inspector.set_events(_filtered_events(), _node_names())
 	if _replay_root_id == _current_root_id:
 		_replay_root_id = 0
@@ -364,6 +368,7 @@ func _show_root(root_id: int, keep_chain: bool) -> void:
 	_current_root_id = root_id
 	_current_nodes.clear()
 	_blackboard = null
+	_set_inspector_selected(false)
 	if _follow:
 		if not keep_chain or _follow_chain.is_empty():
 			_follow_chain = [root_id]
@@ -487,11 +492,19 @@ func _select_node(node_id: int) -> void:
 		return
 	_selected_node_id = node_id
 	_emit(Protocol.INSPECT, [_current_root_id, node_id])
+	_set_inspector_selected(node_id != 0)
 	var node: Dictionary = _current_nodes.get(node_id, {})
 	_inspector.set_selected_node(node_id, node)
 	if node_id != 0 and _properties_node_id == node_id:
 		_inspector.set_properties(_properties)
 	_inspector.set_events(_filtered_events(), _node_names())
+
+
+func _set_inspector_selected(selected: bool) -> void:
+	if _inspector.visible == selected:
+		return
+	_inspector.visible = selected
+	_content_split.queue_sort()
 
 
 func _filtered_events() -> Array:

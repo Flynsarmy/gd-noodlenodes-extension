@@ -40,7 +40,7 @@ func set_selected_node(node_id: int, node: Dictionary) -> void:
 	if node_id == 0 or node.is_empty():
 		_header.text = "No node selected"
 		_properties_empty.text = "Select a node"
-		_properties_empty.show()
+		_properties_empty.hide()
 		_events_empty.show()
 		return
 	_header.text = "%s  ·  %s" % [node.get("name", "#%d" % node_id), node.get("class", "")]
