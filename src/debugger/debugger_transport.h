@@ -48,6 +48,8 @@ private:
 	void _inspect(int64_t p_root_id, int64_t p_node_id);
 	void _send_full_snapshot(int64_t p_root_id);
 	void _send_snapshot_delta(int64_t p_root_id);
+	void _flush_inspected_properties(int64_t p_now_usec);
+	void _send_inspected_properties();
 	void _clear_subscriptions();
 	void _connect_frame();
 	void _disconnect_frame();
@@ -60,6 +62,8 @@ private:
 	std::map<int64_t, Subscription> _subscriptions;
 	int64_t _inspected_root_id = 0;
 	int64_t _inspected_node_id = 0;
+	int64_t _inspected_properties_usec = 0;
+	godot::Dictionary _inspected_properties;
 	bool _capture_registered = false;
 };
 

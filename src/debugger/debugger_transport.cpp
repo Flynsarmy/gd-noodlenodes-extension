@@ -103,6 +103,8 @@ void NNDebuggerTransport::uninstall() {
 	_disconnect_frame();
 	_inspected_root_id = 0;
 	_inspected_node_id = 0;
+	_inspected_properties_usec = 0;
+	_inspected_properties = Dictionary();
 
 	if (_capture_registered) {
 		EngineDebugger *debugger = EngineDebugger::get_singleton();
@@ -179,6 +181,8 @@ void NNDebuggerTransport::on_root_removed(int64_t p_root_id) {
 	if (_inspected_root_id == p_root_id) {
 		_inspected_root_id = 0;
 		_inspected_node_id = 0;
+		_inspected_properties_usec = 0;
+		_inspected_properties = Dictionary();
 	}
 	_send(MESSAGE_ROOT_REMOVED, Array::make(p_root_id));
 }
@@ -197,6 +201,8 @@ void NNDebuggerTransport::flush() {
 		_disconnect_frame();
 		_inspected_root_id = 0;
 		_inspected_node_id = 0;
+		_inspected_properties_usec = 0;
+		_inspected_properties = Dictionary();
 		return;
 	}
 	if (_subscriptions.empty()) {
@@ -221,6 +227,8 @@ void NNDebuggerTransport::flush() {
 		}
 		_send_snapshot_delta(root_id);
 	}
+
+	_flush_inspected_properties(now_usec);
 }
 
 void NNDebuggerTransport::_send_hello() {
@@ -249,6 +257,9 @@ void NNDebuggerTransport::_subscribe(int64_t p_root_id) {
 	_subscriptions[p_root_id] = subscription;
 	_connect_frame();
 	_send_full_snapshot(p_root_id);
+	if (_inspected_root_id == p_root_id) {
+		_send_inspected_properties();
+	}
 
 	if (String(info.get("type", String())) == TYPE_HTN) {
 		NNHTNRoot *htn_root = Object::cast_to<NNHTNRoot>(ObjectDB::get_instance(ObjectID(p_root_id)));
@@ -276,13 +287,18 @@ void NNDebuggerTransport::_inspect(int64_t p_root_id, int64_t p_node_id) {
 	if (p_node_id == 0) {
 		_inspected_root_id = 0;
 		_inspected_node_id = 0;
+		_inspected_properties_usec = 0;
+		_inspected_properties = Dictionary();
 		return;
 	}
 
 	_inspected_root_id = p_root_id;
 	_inspected_node_id = p_node_id;
+	_inspected_properties_usec = 0;
+	_inspected_properties = Dictionary();
 	if (_debugger != nullptr && _subscriptions.find(p_root_id) != _subscriptions.end()) {
 		_send_full_snapshot(p_root_id);
+		_send_inspected_properties();
 	}
 }
 
@@ -301,9 +317,6 @@ void NNDebuggerTransport::_send_full_snapshot(int64_t p_root_id) {
 	}
 	subscription_it->second.last_snapshot = snapshot;
 	_send(MESSAGE_SNAPSHOT, Array::make(p_root_id, snapshot));
-	if (_inspected_root_id == p_root_id && _inspected_node_id != 0) {
-		_send(MESSAGE_NODE_PROPERTIES, Array::make(p_root_id, _inspected_node_id, _debugger->get_node_properties(_inspected_node_id)));
-	}
 }
 
 void NNDebuggerTransport::_send_snapshot_delta(int64_t p_root_id) {
@@ -321,17 +334,46 @@ void NNDebuggerTransport::_send_snapshot_delta(int64_t p_root_id) {
 		// No baseline (the first full snapshot was unavailable): fall back.
 		subscription_it->second.last_snapshot = snapshot;
 		_send(MESSAGE_SNAPSHOT, Array::make(p_root_id, snapshot));
-	} else {
-		const Dictionary delta = _debugger->diff_snapshots(subscription_it->second.last_snapshot, snapshot);
-		if (_is_quiet_snapshot_delta(delta)) {
-			return;
-		}
-		subscription_it->second.last_snapshot = snapshot;
-		_send(MESSAGE_SNAPSHOT_DELTA, Array::make(p_root_id, delta));
+		return;
 	}
-	if (_inspected_root_id == p_root_id && _inspected_node_id != 0) {
-		_send(MESSAGE_NODE_PROPERTIES, Array::make(p_root_id, _inspected_node_id, _debugger->get_node_properties(_inspected_node_id)));
+	const Dictionary delta = _debugger->diff_snapshots(subscription_it->second.last_snapshot, snapshot);
+	if (_is_quiet_snapshot_delta(delta)) {
+		return;
 	}
+	subscription_it->second.last_snapshot = snapshot;
+	_send(MESSAGE_SNAPSHOT_DELTA, Array::make(p_root_id, delta));
+}
+
+void NNDebuggerTransport::_flush_inspected_properties(int64_t p_now_usec) {
+	if (_debugger == nullptr || _inspected_root_id == 0 || _inspected_node_id == 0) {
+		return;
+	}
+	if (_subscriptions.find(_inspected_root_id) == _subscriptions.end()) {
+		return;
+	}
+	if (p_now_usec - _inspected_properties_usec < SNAPSHOT_INTERVAL_USEC) {
+		return;
+	}
+	_inspected_properties_usec = p_now_usec;
+
+	const Dictionary properties = _debugger->get_node_properties(_inspected_node_id);
+	if (properties == _inspected_properties) {
+		return;
+	}
+	_inspected_properties = properties;
+	_send(MESSAGE_NODE_PROPERTIES, Array::make(_inspected_root_id, _inspected_node_id, properties));
+}
+
+void NNDebuggerTransport::_send_inspected_properties() {
+	if (_debugger == nullptr || _inspected_root_id == 0 || _inspected_node_id == 0) {
+		return;
+	}
+	if (_subscriptions.find(_inspected_root_id) == _subscriptions.end()) {
+		return;
+	}
+	_inspected_properties_usec = Time::get_singleton()->get_ticks_usec();
+	_inspected_properties = _debugger->get_node_properties(_inspected_node_id);
+	_send(MESSAGE_NODE_PROPERTIES, Array::make(_inspected_root_id, _inspected_node_id, _inspected_properties));
 }
 
 void NNDebuggerTransport::_clear_subscriptions() {
