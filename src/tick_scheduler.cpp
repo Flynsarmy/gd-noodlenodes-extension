@@ -9,6 +9,11 @@
 
 using namespace godot;
 
+#ifdef DEBUG_ENABLED
+bool NNTickScheduler::_debugger_paused = false;
+int64_t NNTickScheduler::_debugger_step_frame = -1;
+#endif
+
 NNTickScheduler::NNTickScheduler() {
 	_owner = nullptr;
 	_process_thread = ProcessThread::PHYSICS;
@@ -184,6 +189,11 @@ bool NNTickScheduler::step(int p_process_thread, double p_delta) {
 	if (Engine::get_singleton()->is_editor_hint()) {
 		return false;
 	}
+#ifdef DEBUG_ENABLED
+	if (!debugger_allows_scheduled_step()) {
+		return false;
+	}
+#endif
 
 	return _advance(p_delta);
 }
@@ -220,3 +230,25 @@ bool NNTickScheduler::_advance(double p_delta) {
 	_elapsed_delta = 0.0;
 	return _step(p_delta, tick_delta, true);
 }
+
+#ifdef DEBUG_ENABLED
+void NNTickScheduler::set_debugger_paused(bool p_paused) {
+	_debugger_paused = p_paused;
+	_debugger_step_frame = -1;
+}
+
+bool NNTickScheduler::is_debugger_paused() {
+	return _debugger_paused;
+}
+
+void NNTickScheduler::debugger_step() {
+	_debugger_step_frame = (int64_t)Engine::get_singleton()->get_process_frames() + 1;
+}
+
+bool NNTickScheduler::debugger_allows_scheduled_step() {
+	if (!_debugger_paused) {
+		return true;
+	}
+	return (int64_t)Engine::get_singleton()->get_process_frames() == _debugger_step_frame;
+}
+#endif

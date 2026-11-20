@@ -1,0 +1,269 @@
+extends GutTest
+@warning_ignore('unused_parameter')
+
+const BT = preload("res://test/unit/behaviour_tree/support/bt_helpers.gd")
+
+
+class InspectorLeaf extends NNBTLeaf:
+	@export var speed: float = 0.0
+	@export var target: Node = null
+
+	func on_tick(_delta: float) -> Status:
+		return RUNNING
+
+
+var debugger: Object
+
+
+func before_all() -> void:
+	assert_true(Engine.has_singleton("NoodleNodesDebugger"), "debug builds register the debugger singleton")
+	debugger = Engine.get_singleton("NoodleNodesDebugger")
+
+
+func before_each() -> void:
+	if debugger != null:
+		debugger.set_paused(false)
+
+
+func after_each() -> void:
+	if debugger != null:
+		debugger.set_paused(false)
+
+
+func _make_root() -> NNBTRoot:
+	return BT.build_root(BT.make_leaf(NNBTNodes.RUNNING))
+
+
+func _root_ids() -> Array:
+	var ids: Array = []
+	for info in debugger.get_roots():
+		ids.append(info["id"])
+	return ids
+
+
+func test_lists_only_roots_in_the_tree_in_registration_order() -> void:
+	var first := _make_root()
+	var second := _make_root()
+	var detached := _make_root()
+
+	watch_signals(debugger)
+	add_child_autofree(first)
+	assert_signal_emitted_with_parameters(debugger, "root_added", [debugger.get_root_info(first.get_instance_id())])
+	add_child_autofree(second)
+
+	var ids := _root_ids()
+	assert_true(ids.has(first.get_instance_id()), "a root in the tree is registered")
+	assert_true(ids.has(second.get_instance_id()))
+	assert_false(ids.has(detached.get_instance_id()), "a root outside the tree is not registered")
+	assert_lt(ids.find(first.get_instance_id()), ids.find(second.get_instance_id()), "roots keep registration order")
+
+	detached.free()
+
+
+func test_root_info_reports_type_host_and_owner() -> void:
+	var npc := Node.new()
+	npc.name = "Npc"
+	var agent := NNAgent.new()
+	agent.name = "Agent"
+	agent.process_thread = NNAgent.MANUAL
+	var action := NNAction.new()
+	action.name = "Investigate"
+	var bt_root := _make_root()
+	bt_root.name = "Tree"
+	var behaviour := NNBehaviour.new()
+	var consideration := NNConsideration.new()
+	consideration.activation_input_value = 1.0
+	behaviour.add_child(consideration)
+	behaviour.add_child(action)
+	action.add_child(bt_root)
+	agent.add_child(behaviour)
+	npc.add_child(agent)
+	bt_root.owner = npc
+	add_child_autofree(npc)
+
+	var info: Dictionary = debugger.get_root_info(bt_root.get_instance_id())
+	assert_eq(info["id"], bt_root.get_instance_id())
+	assert_eq(info["type"], "bt")
+	assert_eq(info["class"], "NNBTRoot")
+	assert_eq(info["name"], "Tree")
+	assert_eq(info["path"], String(bt_root.get_path()))
+	assert_eq(info["owner_id"], npc.get_instance_id())
+	assert_eq(info["owner_name"], "Npc")
+	assert_eq(info["owner_path"], String(npc.get_path()))
+	assert_eq(info["host_node_id"], action.get_instance_id(), "the hosting action is the host node")
+	assert_eq(info["host_node_name"], "Investigate")
+	assert_eq(info["host_node_class"], "NNAction")
+	assert_eq(info["host_root_id"], agent.get_instance_id(), "the agent above the action is the host root")
+
+	var agent_info: Dictionary = debugger.get_root_info(agent.get_instance_id())
+	assert_eq(agent_info["host_node_id"], 0, "a top-level root has no host")
+	assert_eq(agent_info["host_root_id"], 0)
+
+
+func test_root_nested_under_another_root_uses_it_as_navigation_parent() -> void:
+	var chart := NNSTRoot.new()
+	chart.name = "Movement"
+	chart.process_thread = NNSTRoot.MANUAL
+	var agent := NNAgent.new()
+	agent.name = "Npc"
+	agent.process_thread = NNAgent.MANUAL
+	chart.add_child(agent)
+	add_child_autofree(chart)
+
+	var info: Dictionary = debugger.get_root_info(agent.get_instance_id())
+	assert_eq(info["host_node_id"], chart.get_instance_id(), "a nested root is listed under the enclosing root")
+	assert_eq(info["host_root_id"], chart.get_instance_id())
+	assert_eq(info["host_node_name"], "Movement")
+	assert_eq(info["host_node_class"], "NNSTRoot")
+
+
+func test_leaving_the_tree_unregisters_and_emits_root_removed() -> void:
+	var root := _make_root()
+	var root_id: int = root.get_instance_id()
+	add_child_autofree(root)
+	watch_signals(debugger)
+
+	remove_child(root)
+
+	assert_signal_emitted_with_parameters(debugger, "root_removed", [root_id])
+	assert_eq(debugger.get_root_info(root_id), {})
+	assert_false(_root_ids().has(root_id))
+
+
+func test_watch_is_ref_counted_and_freed_roots_are_harmless() -> void:
+	var root := _make_root()
+	add_child(root)
+	var root_id: int = root.get_instance_id()
+
+	debugger.watch(root_id)
+	assert_true(debugger.is_watched(root_id))
+	debugger.watch(root_id)
+	debugger.unwatch(root_id)
+	assert_true(debugger.is_watched(root_id), "one watcher remains")
+	debugger.unwatch(root_id)
+	assert_false(debugger.is_watched(root_id))
+	debugger.unwatch(root_id)
+	assert_false(debugger.is_watched(root_id), "an extra unwatch is ignored")
+
+	root.free()
+
+	debugger.watch(root_id)
+	debugger.unwatch(root_id)
+	assert_false(debugger.is_watched(root_id), "a freed root id is ignored")
+	assert_eq(debugger.get_root_info(root_id), {})
+	assert_eq(debugger.get_snapshot(root_id), {})
+	assert_eq(debugger.get_events(root_id), [])
+	assert_eq(debugger.get_events(root_id, 99), [])
+	assert_eq(debugger.get_node_properties(root_id), {})
+
+
+func test_pause_blocks_scheduled_ticks_but_not_manual_or_direct_ticks() -> void:
+	var scheduled_leaf := BT.make_leaf(NNBTNodes.RUNNING)
+	var scheduled := BT.build_root(scheduled_leaf)
+	var manual_leaf := BT.make_leaf(NNBTNodes.RUNNING)
+	var manual := BT.build_root(manual_leaf)
+	manual.process_thread = NNBTRoot.MANUAL
+	add_child_autofree(scheduled)
+	add_child_autofree(manual)
+
+	await get_tree().physics_frame
+	var scheduled_count: int = scheduled_leaf.tick_count
+	assert_gt(scheduled_count, 0, "the root auto-ticks before pausing")
+
+	watch_signals(debugger)
+	debugger.set_paused(true)
+	assert_true(debugger.is_paused())
+	assert_signal_emitted_with_parameters(debugger, "paused_changed", [true])
+
+	await get_tree().physics_frame
+	assert_eq(scheduled_leaf.tick_count, scheduled_count, "a paused scheduled root does not tick")
+	assert_eq(manual_leaf.tick_count, 0, "a MANUAL root never ticks from the frame signal")
+
+	manual.tick(0.1)
+	assert_eq(manual_leaf.tick_count, 1, "MANUAL roots tick by hand while paused")
+	scheduled.tick(0.1)
+	assert_eq(scheduled_leaf.tick_count, scheduled_count + 1, "a direct tick is never blocked")
+
+	debugger.set_paused(false)
+	assert_false(debugger.is_paused())
+	assert_signal_emitted_with_parameters(debugger, "paused_changed", [false])
+	await get_tree().physics_frame
+	assert_eq(scheduled_leaf.tick_count, scheduled_count + 2, "resuming restores scheduled ticks")
+
+
+func test_pause_follows_the_host_of_a_hosted_root() -> void:
+	var chart := NNSTRoot.new()
+	chart.process_thread = NNSTRoot.PHYSICS
+	var host_state := NNSTNode.new()
+	host_state.name = "Host"
+	var leaf := BT.make_leaf(NNBTNodes.RUNNING)
+	host_state.add_child(BT.build_root(leaf))
+	chart.add_child(host_state)
+	add_child_autofree(chart)
+
+	await get_tree().physics_frame
+	assert_eq(leaf.tick_count, 1, "the active host drives its hosted root")
+
+	debugger.set_paused(true)
+	await get_tree().physics_frame
+	assert_eq(leaf.tick_count, 1, "a paused host leaves its hosted root untouched")
+
+	chart.tick(0.1)
+	assert_eq(leaf.tick_count, 2, "a direct host tick is never blocked")
+
+
+func test_step_runs_exactly_one_scheduled_frame() -> void:
+	var leaf := BT.make_leaf(NNBTNodes.RUNNING)
+	var root := BT.build_root(leaf)
+	root.process_thread = NNBTRoot.IDLE
+	add_child_autofree(root)
+	await get_tree().process_frame
+	var count: int = leaf.tick_count
+
+	debugger.set_paused(true)
+	await get_tree().process_frame
+	assert_eq(leaf.tick_count, count, "a paused root does not tick")
+
+	debugger.step()
+	await get_tree().process_frame
+	assert_eq(leaf.tick_count, count + 1, "step lets exactly one frame through")
+
+	await get_tree().process_frame
+	assert_eq(leaf.tick_count, count + 1, "the root is paused again after the stepped frame")
+
+
+func test_resume_does_not_catch_up_the_paused_time() -> void:
+	var leaf := BT.make_leaf(NNBTNodes.RUNNING)
+	var root := BT.build_root(leaf)
+	add_child_autofree(root)
+	await get_tree().physics_frame
+
+	debugger.set_paused(true)
+	for _index in range(6):
+		await get_tree().physics_frame
+	debugger.set_paused(false)
+	await get_tree().physics_frame
+
+	assert_almost_eq(leaf.last_delta, 1.0 / 60.0, 0.001, "paused frames are dropped instead of accumulating")
+
+
+func test_node_properties_returns_sanitised_live_values() -> void:
+	var leaf := InspectorLeaf.new()
+	leaf.speed = 2.5
+	var target := Node.new()
+	leaf.target = target
+	add_child(leaf)
+	var leaf_id: int = leaf.get_instance_id()
+
+	var properties: Dictionary = debugger.get_node_properties(leaf_id)
+	assert_almost_eq(properties["speed"], 2.5, 0.0001, "a script property is read live")
+	assert_eq(properties["target"], "Node", "an Object value is reported by its class name")
+	assert_true(properties["is_enabled"], "storage properties inherited from NoodleNodes are included")
+
+	leaf.speed = 4.0
+	properties = debugger.get_node_properties(leaf_id)
+	assert_almost_eq(properties["speed"], 4.0, 0.0001, "every call reads the current value")
+
+	leaf.free()
+	target.free()
+	assert_eq(debugger.get_node_properties(leaf_id), {}, "a freed object has no properties")

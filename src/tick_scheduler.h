@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstdint>
 #include <functional>
 #include <godot_cpp/core/object_id.hpp>
 
@@ -50,8 +51,22 @@ public:
 	// process thread.
 	bool step_hosted(double p_delta);
 
+#ifdef DEBUG_ENABLED
+	// Process-wide debugger gate. A paused scheduled step is dropped before it
+	// reaches the rate schedule, so resuming never produces a catch-up tick.
+	static void set_debugger_paused(bool p_paused);
+	static bool is_debugger_paused();
+	static void debugger_step();
+	static bool debugger_allows_scheduled_step();
+#endif
+
 private:
 	bool _advance(double p_delta);
+
+#ifdef DEBUG_ENABLED
+	static bool _debugger_paused;
+	static int64_t _debugger_step_frame;
+#endif
 
 	godot::NoodleNodes *_owner;
 	StepCallback _step;
