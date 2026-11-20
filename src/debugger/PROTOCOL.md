@@ -256,7 +256,7 @@ plugin.cfg, plugin.gd                    EditorPlugin, adds the debugger plugin 
 debugger/protocol.gd                     message names, type labels                            (done)
 debugger/status_palette.gd               shared status colours                                 (done)
 debugger/overlay/                        in-game overlay scene + scripts                       (H)
-debugger/nqs/                            NQS debug draw                                        (I)
+debugger/nqs/                            NQS debug draw (scene the overlay can instance)       (I)
 editor/debugger_plugin.gd                EditorDebuggerPlugin                                  (C)
 editor/shell/                            panel .tscn: root list, breadcrumbs, view host, inspector (C)
 editor/views/debug_view.gd               base script for system views                          (done)
@@ -276,7 +276,9 @@ func apply_events(events: Array) -> void          # new events, in seq order, po
 func select_node(node_id: int) -> void            # shell-driven selection, no signal emitted
 func clear() -> void
 ```
-Views never talk to the transport; the shell routes snapshots/events to the view for the root on screen and
+The shell delivers an `htn_history` message to the HTN view as `apply_events()` of synthesised
+`{ "seq": 0, "kind": "htn_attempt", "attempt": a }` events (oldest first), and handles `node_properties` itself
+(inspector). Views never talk to the transport; the shell routes snapshots/events to the view for the root on screen and
 owns subscriptions, breadcrumbs and the inspector. Views must render correctly from a snapshot alone (late
 subscribe) and treat events as incremental detail.
 
