@@ -425,3 +425,20 @@ func test_node_properties_returns_sanitised_live_values() -> void:
 	leaf.free()
 	target.free()
 	assert_eq(debugger.get_node_properties(leaf_id), {}, "a freed object has no properties")
+
+
+func test_node_properties_reports_enum_names() -> void:
+	var leaf := NNBTLeaf.new()
+	leaf.evaluation_method = NoodleNodes.EVALUATION_MULTIPLY
+	var cooldown := NNBTCooldownTicks.new()
+	cooldown.cooldown_return_value = NNBTNodes.FAILURE
+	add_child_autofree(leaf)
+	add_child_autofree(cooldown)
+	var leaf_id: int = leaf.get_instance_id()
+	var cooldown_id: int = cooldown.get_instance_id()
+
+	assert_eq(debugger.get_node_properties(leaf_id)["evaluation_method"], "Multiply", "an implicit enum value reports its name")
+	assert_eq(debugger.get_node_properties(cooldown_id)["cooldown_return_value"], "Failure", "an explicit enum value reports its name")
+
+	cooldown.cooldown_return_value = 42
+	assert_eq(debugger.get_node_properties(cooldown_id)["cooldown_return_value"], 42, "an unmatched value stays an int")

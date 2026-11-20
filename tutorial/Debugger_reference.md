@@ -88,7 +88,7 @@ The snapshot API (`get_snapshot()`) does not need a watch. Watching only affects
 
 `get_events(root_id, after_seq = 0)` returns the recorded events with a `seq` greater than `after_seq`, oldest first, or an empty array when the root is gone. See section 5.
 
-`get_node_properties(node_id)` returns the current values of the properties of any live object that have storage, editor or script-variable usage, keyed by property name. That includes exported and plain script variables but not groups, categories or internal engine properties. It is what the editor inspector uses when you select a node.
+`get_node_properties(node_id)` returns the current values of the properties of any live object that have storage, editor or script-variable usage, keyed by property name. That includes exported and plain script variables but not groups, categories or internal engine properties. Integer properties with an enum hint report the matching enum name (for example `"Multiply"`) instead of the raw number, falling back to the number when no name matches; flag hints and everything else keep their values. It is what the editor inspector uses when you select a node.
 
 `diff_snapshots(previous, current)` returns a delta that turns one snapshot into another without sending the whole snapshot again. The format is described in section 6.2. Neither argument is modified.
 
