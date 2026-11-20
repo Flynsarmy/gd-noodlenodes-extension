@@ -33,6 +33,7 @@ const TYPE_COLORS := {
 var mouse_position: Vector2
 
 var _spawned: Array[Node] = []
+var _name_labels: Array[Label] = []
 var _next_index := {
 	AGENT: 1,
 	BEHAVIOUR_TREE: 1,
@@ -141,6 +142,7 @@ func _add_label(entity: Node, text: String) -> void:
 	label.add_theme_color_override("font_outline_color", Color(0.02, 0.03, 0.05))
 	label.add_theme_constant_override("outline_size", 4)
 	entity.add_child(label)
+	_name_labels.append(label)
 
 
 func _create_avoidance_boxes() -> void:
@@ -253,6 +255,9 @@ func _update_status() -> void:
 	var overlay_open := _overlay_is_open()
 	title_label.visible = not overlay_open
 	subtitle_label.visible = not overlay_open
+	for label in _name_labels:
+		if is_instance_valid(label):
+			label.visible = not overlay_open
 
 	var debugger := _debugger()
 	var paused: bool = debugger != null and debugger.is_paused()
