@@ -57,6 +57,8 @@ private:
 #ifdef DEBUG_ENABLED
 	NNDebugRoot _debug_root;
 	NNBlackboardDebugWatch _debug_blackboard_watch;
+	// The most recent non-zero behaviour chosen, kept after it completes.
+	ObjectID _debug_last_behaviour_id;
 #endif
 
 #ifdef DEBUG_ENABLED
@@ -169,6 +171,9 @@ public:
 	NNBehaviour *peek_current_behaviour() const;
 	NNAction *peek_current_action() const;
 	NNBehaviourGroup *peek_current_behaviour_group() const;
+	// The most recently chosen behaviour, resolved through ObjectDB so a freed
+	// one reads as null. Kept after the behaviour completes or is deselected.
+	NNBehaviour *peek_last_behaviour() const;
 	// [{ "behaviour": id, "group": id, "score": float }] best first.
 	Array get_debug_top_scoring() const;
 #endif

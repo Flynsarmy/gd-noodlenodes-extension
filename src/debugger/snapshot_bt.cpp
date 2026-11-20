@@ -106,6 +106,7 @@ Dictionary NNBTRoot::get_debug_snapshot() const {
 
 	NNBTNodes *running_node = root->get_running_action();
 	snapshot["running_node"] = nn_debug_id(running_node);
+	snapshot["last_leaf"] = nn_debug_id(root->peek_last_leaf());
 	snapshot["tick_count"] = (int64_t)root->get_debug_tick_count();
 	snapshot["elapsed_time"] = root->get_elapsed_time();
 	snapshot["last_result"] = _node_status(root);

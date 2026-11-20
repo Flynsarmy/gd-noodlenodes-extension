@@ -3,6 +3,7 @@
 #include "../debugger/debug_root.h"
 #include "../debugger/snapshot_common.h"
 #include "../score_aggregation.h"
+#include "root.h"
 #include <godot_cpp/classes/engine.hpp>
 #include <godot_cpp/classes/time.hpp>
 #include <godot_cpp/core/class_db.hpp>
@@ -140,6 +141,13 @@ float NNBTNodes::evaluate() {
 
 NNBTNodes::Status NNBTNodes::tick(float delta) {
 #ifdef DEBUG_ENABLED
+	NNBTRoot *tree_root = Object::cast_to<NNBTRoot>(this);
+	if (tree_root == nullptr) {
+		tree_root = Object::cast_to<NNBTRoot>(get_ancestor_root());
+	}
+	if (tree_root != nullptr) {
+		tree_root->_debug_note_ticked(this);
+	}
 	_last_visited_timestamp = godot::Time::get_singleton()->get_ticks_usec();
 	_debug_interrupted = false;
 #endif
