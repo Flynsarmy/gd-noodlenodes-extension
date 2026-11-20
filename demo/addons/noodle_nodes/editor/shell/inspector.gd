@@ -5,6 +5,9 @@ const KvRowScene := preload("res://addons/noodle_nodes/editor/shell/kv_row.tscn"
 const EventRowScene := preload("res://addons/noodle_nodes/editor/shell/event_row.tscn")
 const EditorScale := preload("res://addons/noodle_nodes/editor/editor_scale.gd")
 const MAX_EVENTS := 100
+const KEY_WIDTH_FRACTION := 0.45
+const KEY_MIN_WIDTH := 48
+const KEY_PADDING := 2
 
 @onready var _header: Label = %NodeHeader
 @onready var _properties: VBoxContainer = %PropertiesList
@@ -21,6 +24,7 @@ var _event_rows: Dictionary = {}
 
 func _ready() -> void:
 	EditorScale.apply_to_scene(self)
+	resized.connect(_relayout_kv_rows)
 
 
 func set_selected_node(node_id: int, node: Dictionary) -> void:
@@ -127,6 +131,7 @@ func _sync_kv_rows(container: VBoxContainer, rows: Dictionary, values: Dictionar
 		row.call("set_values", key, values[key])
 		container.move_child(row, index)
 		index += 1
+	_layout_kv_rows(rows)
 
 
 func _set_blackboard_value(key: String, value: Variant, flash: bool) -> void:
@@ -139,6 +144,7 @@ func _set_blackboard_value(key: String, value: Variant, flash: bool) -> void:
 	row.call("set_values", key, value)
 	if flash:
 		row.call("flash")
+	_layout_kv_rows(_blackboard_rows)
 
 
 func _erase_blackboard_value(key: String) -> void:
@@ -148,6 +154,25 @@ func _erase_blackboard_value(key: String) -> void:
 	_blackboard_rows.erase(key)
 	_blackboard.remove_child(row)
 	row.free()
+	_layout_kv_rows(_blackboard_rows)
+
+
+func _relayout_kv_rows() -> void:
+	_layout_kv_rows(_property_rows)
+	_layout_kv_rows(_blackboard_rows)
+
+
+func _layout_kv_rows(rows: Dictionary) -> void:
+	if rows.is_empty():
+		return
+	var widest := 0.0
+	for row in rows.values():
+		widest = maxf(widest, float(row.call("measured_key_width")))
+	var floor := EditorScale.px(KEY_MIN_WIDTH)
+	var cap := maxf(floor, size.x * KEY_WIDTH_FRACTION)
+	var width := clampf(widest + EditorScale.px(KEY_PADDING), floor, cap)
+	for row in rows.values():
+		row.call("set_key_width", width)
 
 
 func _clear_rows(container: VBoxContainer) -> void:

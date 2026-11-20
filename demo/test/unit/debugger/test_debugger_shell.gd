@@ -738,27 +738,43 @@ func test_breadcrumbs_scroll_to_the_last_crumb_without_a_scrollbar() -> void:
 	assert_true(last.get_global_rect().end.x <= scroll.get_global_rect().end.x + 1.0, "the last crumb is visible")
 
 
+func _label_text_width(label: Label, text: String) -> float:
+	var font := label.get_theme_font("font")
+	var font_size := label.get_theme_font_size("font_size")
+	return font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x
+
+
 func test_inspector_fits_a_short_value_at_narrow_width() -> void:
 	var host := Control.new()
 	host.size = Vector2(360, 400)
 	add_child_autofree(host)
 	var inspector: Control = InspectorScene.instantiate()
 	host.add_child(inspector)
+	inspector.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	inspector.set_selected_node(Fixtures.COVER_MOVE, { "name": "MoveToCover", "class": "NNBTActionLeaf" })
-	inspector.set_properties({ "cover": "Sprite2D" })
+	inspector.set_properties({
+		"state": "Walk",
+		"cover_point": "Sprite2D",
+		"an_extremely_long_property_name_that_will_be_capped": true,
+	})
 	await get_tree().process_frame
 	await get_tree().process_frame
 
-	var row: Control = inspector.get_node("%PropertiesList").get_child(0)
-	var key: Label = row.get_node("%Key")
-	var value: Label = row.get_node("%Value")
-	assert_eq(value.text, "Sprite2D")
-	var font := value.get_theme_font("font")
-	var font_size := value.get_theme_font_size("font_size")
-	var needed := font.get_string_size("Sprite2D", HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x
-	assert_gte(value.size.x, needed, "the value column fits the short value")
-	assert_lt(key.size.x, 150.0, "the key column is content-sized, not the old fixed width")
-	assert_string_contains(value.tooltip_text, "Sprite2D")
+	var rows: Dictionary = {}
+	for row in inspector.get_node("%PropertiesList").get_children():
+		rows[str(row.get_node("%Key").text)] = row
+	var state_key: Label = rows["state"].get_node("%Key")
+	var state_value: Label = rows["state"].get_node("%Value")
+	var cover_key: Label = rows["cover_point"].get_node("%Key")
+	var cover_value: Label = rows["cover_point"].get_node("%Value")
+	assert_eq(state_value.text, "Walk")
+	assert_eq(cover_value.text, "Sprite2D")
+	assert_eq(state_key.size.x, cover_key.size.x, "keys share the widest key column in the section")
+	assert_gte(state_key.size.x, _label_text_width(state_key, "state"), "state is not elided")
+	assert_gte(cover_key.size.x, _label_text_width(cover_key, "cover_point"), "cover_point is not elided")
+	assert_lt(cover_key.size.x, 360.0 * 0.45 + 1.0, "the key column is capped at 45% of the inspector width")
+	assert_gte(cover_value.size.x, _label_text_width(cover_value, "Sprite2D"), "Sprite2D is shown in full")
+	assert_string_contains(cover_value.tooltip_text, "Sprite2D")
 
 
 func test_snapshot_delta_updates_the_cached_snapshot_and_view() -> void:
