@@ -142,6 +142,7 @@ NNAgent::NNAgent() {
 	_last_visited_timestamp = 0;
 	_total_evaluate_options_usec = 0;
 	_total_update_behaviour_usec = 0;
+	_debug_last_behaviour_id = ObjectID();
 #endif
 }
 
@@ -577,6 +578,9 @@ void NNAgent::evaluate_options(float delta) {
 
 	// Start and signal the chosen behaviour node.
 	_current_behaviour_group_id = new_behaviour_group_id;
+#ifdef DEBUG_ENABLED
+	_debug_last_behaviour_id = new_behaviour_id;
+#endif
 	if (new_behaviour_group != nullptr) {
 		new_behaviour_group->emit_signal("behaviour_group_entered");
 		// The entered callback is user code and may have freed or reparented
@@ -836,6 +840,10 @@ NNAction *NNAgent::peek_current_action() const {
 NNBehaviourGroup *NNAgent::peek_current_behaviour_group() const {
 	NNBehaviourGroup *behaviour_group = _resolve_behaviour_group(_current_behaviour_group_id);
 	return behaviour_group != nullptr && behaviour_group->get_parent() == this ? behaviour_group : nullptr;
+}
+
+NNBehaviour *NNAgent::peek_last_behaviour() const {
+	return Object::cast_to<NNBehaviour>(ObjectDB::get_instance(_debug_last_behaviour_id));
 }
 
 Array NNAgent::get_debug_top_scoring() const {

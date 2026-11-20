@@ -76,6 +76,7 @@ NNBTRoot::NNBTRoot() {
 	_debug_blackboard_watch.configure(this);
 	_debug_root.configure(this, "bt", [this](bool p_watched) { _debug_blackboard_watch.set_watched(p_watched); });
 	_debug_tick_count = 0;
+	_debug_last_leaf_id = ObjectID();
 #endif
 	_tick_scheduler.configure(this, [this](double p_delta, double p_tick_delta, bool p_due) -> bool {
 		return _auto_tick_step_callback(p_delta, p_tick_delta, p_due);
@@ -102,6 +103,14 @@ void NNBTRoot::set_total_tick_usec(uint64_t total_tick_usec) {
 
 uint64_t NNBTRoot::get_total_tick_usec() const {
 	return _total_tick_usec;
+}
+
+void NNBTRoot::_debug_note_ticked(NNBTNodes *p_node) {
+	_debug_last_leaf_id = p_node != nullptr ? ObjectID(p_node->get_instance_id()) : ObjectID();
+}
+
+NNBTNodes *NNBTRoot::peek_last_leaf() const {
+	return Object::cast_to<NNBTNodes>(ObjectDB::get_instance(_debug_last_leaf_id));
 }
 #endif
 

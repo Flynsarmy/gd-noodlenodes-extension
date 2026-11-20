@@ -127,6 +127,25 @@ func test_behaviour_tree_snapshot_marks_an_interrupted_run_until_the_next_visit(
 	assert_eq(nodes[leaf.get_instance_id()].status, "running")
 
 
+func test_behaviour_tree_snapshot_keeps_the_last_leaf_of_a_completed_tick() -> void:
+	var first := BT.make_leaf(NNBTNodes.SUCCESS)
+	var second := BT.make_leaf(NNBTNodes.SUCCESS)
+	var sequence := NNBTSequence.new()
+	var root := BT.build_tree(sequence, [first, second])
+	add_child_autofree(root)
+	assert_eq(root.get_debug_snapshot().last_leaf, 0, "no tick has run yet")
+
+	assert_eq(root.tick(0.1), NNBTNodes.SUCCESS)
+	var snapshot := root.get_debug_snapshot()
+	assert_eq(snapshot.running_node, 0, "nothing stays running after the sequence completes")
+	assert_eq(snapshot.last_leaf, second.get_instance_id(), "the last leaf the tick reached")
+	var nodes := _nodes_by_id(snapshot)
+	assert_eq(nodes[second.get_instance_id()].status, "success")
+
+	second.free()
+	assert_eq(root.get_debug_snapshot().last_leaf, 0, "a freed node reads as 0")
+
+
 func test_behaviour_tree_snapshot_carries_decorator_badges() -> void:
 	var leaf := BT.make_leaf(NNBTNodes.RUNNING)
 	var delayer := NNBTDelayer.new()
@@ -384,6 +403,22 @@ func test_agent_snapshot_describes_the_selection_and_node_scores() -> void:
 	snapshot = agent.get_debug_snapshot()
 	nodes = _nodes_by_id(snapshot)
 	assert_eq(nodes[cover_sensor.get_instance_id()].nqs_search_space, 0, "a freed search space reads as 0")
+
+
+func test_agent_snapshot_keeps_the_last_chosen_behaviour() -> void:
+	var behaviour := NNBehaviour.new()
+	behaviour.name = "Approach"
+	behaviour.add_child(AgentHelpers.CountingConsideration.new())
+	var agent := Fixtures.add_manual_agent(self, [behaviour])
+	AgentHelpers.select(agent)
+
+	var snapshot := agent.get_debug_snapshot()
+	assert_eq(snapshot.current_behaviour, 0, "a behaviour without actions completes inside the update")
+	assert_eq(snapshot.last_behaviour, behaviour.get_instance_id())
+
+	behaviour.free()
+	snapshot = agent.get_debug_snapshot()
+	assert_eq(snapshot.last_behaviour, 0, "a freed behaviour reads as 0")
 
 
 # Hosted roots ----------------------------------------------------------------

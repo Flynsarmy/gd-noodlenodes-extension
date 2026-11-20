@@ -161,6 +161,7 @@ Dictionary NNAgent::get_debug_snapshot() const {
 	NNBehaviourGroup *current_behaviour_group = agent->peek_current_behaviour_group();
 	NNAction *current_action = agent->peek_current_action();
 	snapshot["current_behaviour"] = nn_debug_id(current_behaviour);
+	snapshot["last_behaviour"] = nn_debug_id(agent->peek_last_behaviour());
 	snapshot["current_behaviour_group"] = nn_debug_id(current_behaviour_group);
 	snapshot["current_action"] = nn_debug_id(current_action);
 	snapshot["top_scoring"] = agent->get_debug_top_scoring();

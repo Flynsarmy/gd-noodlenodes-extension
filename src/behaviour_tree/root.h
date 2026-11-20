@@ -27,6 +27,9 @@ private:
 	NNDebugRoot _debug_root;
 	NNBlackboardDebugWatch _debug_blackboard_watch;
 	int64_t _debug_tick_count;
+	// The last node the most recent tick reached, stored as an ObjectID so a
+	// freed node is detected instead of dereferenced.
+	ObjectID _debug_last_leaf_id;
 #endif
 	// Monotonic tree time. It is never reset, so recorded cooldown start times
 	// stay in the past. Double so a long session keeps the precision of the
@@ -80,6 +83,11 @@ public:
 	NNBlackboardDebugWatch *get_debug_blackboard_watch() override { return &_debug_blackboard_watch; }
 	Dictionary get_debug_snapshot() const override;
 	int64_t get_debug_tick_count() const { return _debug_tick_count; }
+	// Called by the node wrapper on every tick, so the snapshot can report the
+	// node the root's most recent tick reached.
+	void _debug_note_ticked(NNBTNodes *p_node);
+	// The last node the most recent tick reached, resolved through ObjectDB.
+	NNBTNodes *peek_last_leaf() const;
 #endif
 
 	void set_blackboard_resource(const Ref<NNBlackboard> &p_blackboard);
