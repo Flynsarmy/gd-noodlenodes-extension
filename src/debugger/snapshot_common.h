@@ -23,14 +23,14 @@ struct NNDebugPortal {
 	int depth;
 };
 
-// The common snapshot envelope of PROTOCOL.md §2. p_type is "agent", "bt", "st"
+// The common snapshot envelope of tutorial/Debugger_reference.md. p_type is "agent", "bt", "st"
 // or "htn". active_hosted_root and nodes are filled in by the caller.
 Dictionary nn_debug_envelope(NoodleNodes *p_root, const NNDebugRoot *p_debug_root, const char *p_type);
 
 // {"id", "values"} for p_root's effective blackboard, or null.
 Variant nn_debug_blackboard(NoodleNodes *p_root);
 
-// The common node entry of PROTOCOL.md §2. p_parent_id is 0 for the root node.
+// The common node entry of tutorial/Debugger_reference.md. p_parent_id is 0 for the root node.
 Dictionary nn_debug_node_entry(const Node *p_node, int64_t p_parent_id);
 
 // Appends p_parent's descendants in pre-order. A nested root is not expanded:

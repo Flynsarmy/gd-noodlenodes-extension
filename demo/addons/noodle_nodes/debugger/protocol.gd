@@ -1,6 +1,6 @@
 @tool
 ## Message names and labels shared by the editor debugger and the in-game overlay.
-## The wire format is specified in src/debugger/PROTOCOL.md.
+## The wire format is described in tutorial/Debugger_reference.md.
 
 const SINGLETON := "NoodleNodesDebugger"
 const PREFIX := "noodle_nodes"

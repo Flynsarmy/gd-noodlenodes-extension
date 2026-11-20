@@ -1,7 +1,7 @@
 @tool
 extends Control
-## Base script for the system views. The interface is specified in
-## src/debugger/PROTOCOL.md section 5.1.
+## Base script for the system views. The shell routes the shown root's snapshots and
+## events here; views never talk to the transport and must render from a snapshot alone.
 
 signal drill_into(root_id: int)
 signal node_selected(node_id: int)

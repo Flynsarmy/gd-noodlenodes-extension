@@ -1,4 +1,4 @@
-## Realistic debugger snapshots and events, shaped per src/debugger/PROTOCOL.md and modelled on
+## Realistic debugger snapshots and events, shaped per tutorial/Debugger_reference.md and modelled on
 ## demo_08_integrated_npc: Movement (ST) › NNAgent › Investigate › InvestigateAction › NNHTNRoot ›
 ## SneakToCover › NNBTRoot. Preload with
 ## `const DebuggerFixtures = preload("res://test/unit/debugger/fixtures/debugger_fixtures.gd")`.

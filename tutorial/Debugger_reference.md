@@ -366,7 +366,7 @@ Events are only recorded while the root is watched, and the oldest are dropped w
 | `htn_plan_finished` | `succeeded` | The plan finishes. |
 | `agent_choice` | `behaviour`, `group`, `action`, `top` (the same array as `top_scoring`) | The selected behaviour changes. |
 | `agent_action` | `action` | The current action changes. |
-| `bb_set` | `key`, `value` (sanitised) | A blackboard value is set. |
+| `bb_set` | `key`, `value` (sanitised) | A blackboard value is set. At most one per key per 100 ms per root; the snapshot's `blackboard.values` always holds the current value. |
 | `bb_erase` | `key` | A blackboard value is erased. |
 | `bb_clear` | | A blackboard is cleared. |
 

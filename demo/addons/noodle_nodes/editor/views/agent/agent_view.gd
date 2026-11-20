@@ -1,7 +1,7 @@
 @tool
 extends "res://addons/noodle_nodes/editor/views/debug_view.gd"
 ## Utility AI view: behaviour score bars, considerations with activation curves,
-## sensors, and the chosen-behaviour timeline. Interface per src/debugger/PROTOCOL.md 5.1.
+## sensors, and the chosen-behaviour timeline.
 
 const BehaviourRowScene := preload("res://addons/noodle_nodes/editor/views/agent/behaviour_row.tscn")
 const ConsiderationRowScene := preload("res://addons/noodle_nodes/editor/views/agent/consideration_row.tscn")

@@ -3,7 +3,6 @@ extends "res://addons/noodle_nodes/editor/views/debug_view.gd"
 ## HTN system view: the installed plan and its live execution state, the search
 ## history with a decision trace graph, the domain, a timeline of execution
 ## events and the selected attempt's planning state against the live blackboard.
-## Implemented against src/debugger/PROTOCOL.md section 5.1.
 
 const EditorScale = preload("res://addons/noodle_nodes/editor/editor_scale.gd")
 const StatusPalette = preload("res://addons/noodle_nodes/debugger/status_palette.gd")

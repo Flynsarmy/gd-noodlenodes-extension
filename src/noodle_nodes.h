@@ -65,7 +65,7 @@ public:
 #ifdef DEBUG_ENABLED
 	// Non-null for a root the debugger can register and watch.
 	virtual NNDebugRoot *get_debug_root() { return nullptr; }
-	// Schema in src/debugger/PROTOCOL.md. Empty for non-roots.
+	// Schema in tutorial/Debugger_reference.md. Empty for non-roots.
 	virtual Dictionary get_debug_snapshot() const { return Dictionary(); }
 	// Non-null for a root whose blackboard signals feed the debugger.
 	virtual NNBlackboardDebugWatch *get_debug_blackboard_watch() { return nullptr; }

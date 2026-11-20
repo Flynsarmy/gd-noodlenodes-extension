@@ -1,6 +1,6 @@
 extends Control
 ## In-game debugger overlay: one compact label per entity showing its active path, plus a panel
-## mirroring the selected entity's active chain. The runtime contract is src/debugger/PROTOCOL.md.
+## mirroring the selected entity's active chain. The runtime API is described in tutorial/Debugger_reference.md.
 
 const Protocol = preload("res://addons/noodle_nodes/debugger/protocol.gd")
 const StatusPalette = preload("res://addons/noodle_nodes/debugger/status_palette.gd")
