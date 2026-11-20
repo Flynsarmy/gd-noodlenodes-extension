@@ -19,11 +19,15 @@ Godot 4.7 or newer.
 * *State Tree with utility support*
 * *Node Query System*
 * *Hierarchical Task Network planner*
+* *Integrated debugger: an editor tab with live views for every system, an in-game overlay and a Node Query System viewport draw*
 
 
 ## How to use the nodes
 
 You can find the tutorials [here](tutorial/README.md).
+
+To debug your AI, start with [Basic debugging](tutorial/Basic_debugging.md). The [Debugger reference](tutorial/Debugger_reference.md) documents the API and data formats for building your own tools on the debugger.
+
 
 ## Documentation
 

@@ -1,8 +1,8 @@
 extends AnimatedSprite2D
 
 # Behaviour-tree population for the debugger showcase. The score based picker
-# evaluates the considerations attached to each branch, so the overlay's Score
-# column shows real values while the tree ticks.
+# evaluates the considerations attached to each branch, so the editor's behaviour
+# tree view and the overlay show real scores while the tree ticks.
 
 @onready var tree_root: NNBTRoot = $NNBTRoot
 @onready var distance_sensor: NNDistanceVector2Sensor = $NNBTRoot/DistanceSensor

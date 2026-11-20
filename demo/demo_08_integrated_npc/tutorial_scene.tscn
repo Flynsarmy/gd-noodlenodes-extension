@@ -121,7 +121,7 @@ theme_override_colors/font_color = Color(0.62, 0.7, 0.85, 1)
 theme_override_colors/font_outline_color = Color(0.02, 0.03, 0.06, 1)
 theme_override_constants/outline_size = 6
 theme_override_font_sizes/font_size = 13
-text = "The NPC picks Patrol, Investigate or Flee from its threat alert and nearby cover; Investigate plans its steps with HTN  -  press F1 to toggle the debugger overlay"
+text = "The NPC picks Patrol, Investigate or Flee from its threat alert and nearby cover; Investigate plans its steps with HTN  -  open the Noodle Nodes tab in the editor, or press F1 for the in-game overlay"
 horizontal_alignment = 1
 
 [node name="Threat" type="Sprite2D" parent="." node_paths=PackedStringArray("target")]

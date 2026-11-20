@@ -1,8 +1,9 @@
 extends Node2D
 
-# A showcase for the Noodle Nodes debugger overlay. Three populations of AI
-# entities share the same arena so the overlay has live roots to label and
-# inspect.
+# Debugger showcase. Three populations of AI entities share one arena so the
+# Noodle Nodes debugger tab and the in-game overlay have live roots to label,
+# inspect and pause. Each entity is its own scene, so the overlay labels each
+# one and Tab cycles between them.
 
 const AGENT_SCENE: PackedScene = preload("agent_entity.tscn")
 const BEHAVIOUR_TREE_SCENE: PackedScene = preload("behaviour_tree_entity.tscn")
@@ -26,7 +27,6 @@ const TYPE_COLORS := {
 @onready var subtitle_label: Label = $Backdrop/Subtitle
 
 var mouse_position: Vector2
-var ai_paused := false
 
 var _spawned: Array[Node] = []
 var _next_index := {
@@ -49,6 +49,10 @@ func _ready() -> void:
 	_open_overlay()
 	_update_status()
 
+	var debugger := _debugger()
+	if debugger != null:
+		debugger.paused_changed.connect(_on_paused_changed)
+
 
 func _physics_process(_delta: float) -> void:
 	mouse_position = get_viewport().get_mouse_position()
@@ -67,6 +71,8 @@ func _unhandled_input(event: InputEvent) -> void:
 			_remove_last_entity()
 		KEY_P:
 			_toggle_pause()
+		KEY_N:
+			_step_once()
 		KEY_ESCAPE:
 			DemoQuit.quit()
 		_:
@@ -76,8 +82,8 @@ func _unhandled_input(event: InputEvent) -> void:
 
 
 func _zone_position(zone: int, viewport_size: Vector2) -> Vector2:
-	# Spread each AI type across its own third of the arena so the colours stay
-	# readable and the overlay dropdown has clearly named roots.
+	# Spread each AI type across its own third of the arena so the entity labels
+	# and the debugger's root list stay readable.
 	var zone_width := viewport_size.x / 3.0
 	var x := zone_width * (float(zone) + 0.5) + randf_range(-zone_width * 0.34, zone_width * 0.34)
 	var y := randf_range(220.0, viewport_size.y - 80.0)
@@ -111,8 +117,6 @@ func _spawn_entity(kind: int, position: Vector2) -> Node:
 	_add_label(entity, short_name)
 
 	add_child(entity)
-	if ai_paused:
-		entity.process_mode = Node.PROCESS_MODE_DISABLED
 	_spawned.append(entity)
 	return entity
 
@@ -188,19 +192,38 @@ func _overlay_is_open() -> bool:
 
 
 func _open_overlay() -> void:
-	_overlay_node().visible = true
+	_overlay_node().visible = _debugger() != null
 
 
 func _toggle_overlay() -> void:
+	if _debugger() == null:
+		return
 	_overlay_node().visible = not _overlay_is_open()
 	_update_status()
 
 
+func _debugger() -> Object:
+	if Engine.has_singleton("NoodleNodesDebugger"):
+		return Engine.get_singleton("NoodleNodesDebugger")
+	return null
+
+
 func _toggle_pause() -> void:
-	ai_paused = not ai_paused
-	for entity in _spawned:
-		if is_instance_valid(entity):
-			entity.process_mode = Node.PROCESS_MODE_DISABLED if ai_paused else Node.PROCESS_MODE_INHERIT
+	var debugger := _debugger()
+	if debugger == null:
+		return
+	debugger.set_paused(not debugger.is_paused())
+	_update_status()
+
+
+func _step_once() -> void:
+	var debugger := _debugger()
+	if debugger != null and debugger.is_paused():
+		debugger.step()
+		_update_status()
+
+
+func _on_paused_changed(_paused: bool) -> void:
 	_update_status()
 
 
@@ -209,9 +232,11 @@ func _update_status() -> void:
 	title_label.visible = not overlay_open
 	subtitle_label.visible = not overlay_open
 
+	var debugger := _debugger()
+	var paused: bool = debugger != null and debugger.is_paused()
 	var overlay_state := "open" if overlay_open else "closed"
-	var pause_state := "on" if ai_paused else "off"
-	status_label.text = "F1 debugger (%s)  |  Space spawn  |  Backspace remove  |  P pause AI (%s)  |  Move the mouse to steer  |  %d AI roots" % [
+	var pause_state := "on" if paused else "off"
+	status_label.text = "Noodle Nodes tab in the editor  |  F1 overlay (%s)  |  Tab entity  |  Space spawn  |  Backspace remove  |  P pause (%s)  |  N step  |  %d entities" % [
 		overlay_state,
 		pause_state,
 		_live_entity_count(),

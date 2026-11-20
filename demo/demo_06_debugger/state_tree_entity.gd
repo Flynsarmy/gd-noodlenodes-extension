@@ -1,7 +1,8 @@
 extends AnimatedSprite2D
 
 # State-tree population for the debugger showcase. The active state branch is
-# visible in the overlay, and visited nodes fade as their ticks age.
+# visible in the editor's state tree view and the overlay, and visited nodes fade
+# as their ticks age.
 
 @onready var tree_root: NNSTRoot = $NNSTRoot
 @onready var sensor_distance: NNDistanceVector2Sensor = $NNSTRoot/MouseSensor

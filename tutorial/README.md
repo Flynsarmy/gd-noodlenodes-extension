@@ -22,7 +22,7 @@ These getting started tutorials create the same AI using AI Agent Behaviours, a 
 |[Getting started with State Trees](Getting_started_with_State_Trees.md)|Beginner tutorial on State Trees in general and in Noodle Nodes.|
 |[Getting started with the Node Query System](Getting_started_with_the_Node_Query_System.md)|Beginner tutorial about the Node Query System in Noodle Nodes.|
 |[Getting started with HTN planning](Getting_started_with_HTN.md)|Beginner tutorial on Hierarchical Task Network planning, walking through the 3D NPC demo.|
-|[Basic debugging](Basic_debugging.md)|Beginner tutorial about debugging your AI entities.|
+|[Basic debugging](Basic_debugging.md)|Beginner tutorial about the debugger tab, its system views, the in-game overlay and the NQS query draw.|
 
 
 ### Intermediate tutorials
@@ -34,7 +34,9 @@ These getting started tutorials create the same AI using AI Agent Behaviours, a 
 
 ### Advanced tutorials
 
-To be added.
+|Tutorial|Description|
+|--|--|
+|[Debugger reference](Debugger_reference.md)|The NoodleNodesDebugger singleton API, the root and snapshot schemas, the event kinds and the editor debugger message protocol, for tools built on the debugger.|
 
 
 ## Older tutorials 

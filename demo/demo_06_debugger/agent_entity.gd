@@ -1,8 +1,8 @@
 extends AnimatedSprite2D
 
 # Utility-agent population for the debugger showcase. The behaviours and their
-# considerations are plain Noodle Nodes utility nodes, so the overlay can show
-# their live scores.
+# considerations are plain Noodle Nodes utility nodes, so the editor's Agent view
+# and the overlay can show their live scores.
 
 @onready var agent: NNAgent = $NNAgent
 @onready var mouse_sensor: NNDistanceVector2Sensor = $NNAgent/MouseSensor

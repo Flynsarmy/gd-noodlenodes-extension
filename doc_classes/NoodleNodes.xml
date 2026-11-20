@@ -39,7 +39,7 @@
 		<method name="get_debug_snapshot" qualifiers="const">
 			<return type="Dictionary" />
 			<description>
-				Returns the debugger snapshot of this node when it is a root ([NNAgent], [NNBTRoot], [NNSTRoot] or [NNHTNRoot]), or an empty [Dictionary] for any other node. The schema is in [code]src/debugger/PROTOCOL.md[/code]: the common envelope, the flat pre-order [code]nodes[/code] list, hosted roots as portals on their host node, plus the type-specific state of the owning system. Only available in debug builds ([code]DEBUG_ENABLED[/code]); the method is not registered in release builds.
+				Returns the debugger snapshot of this node when it is a root ([NNAgent], [NNBTRoot], [NNSTRoot] or [NNHTNRoot]), or an empty [Dictionary] for any other node. The schema is in [code]tutorial/Debugger_reference.md[/code]: the common envelope, the flat pre-order [code]nodes[/code] list, hosted roots as portals on their host node, plus the type-specific state of the owning system. Only available in debug builds ([code]DEBUG_ENABLED[/code]); the method is not registered in release builds.
 			</description>
 		</method>
 		<method name="has_blackboard" qualifiers="const">

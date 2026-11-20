@@ -39,7 +39,7 @@ Move with **WASD**, jump with **Space**, rotate the camera with the **arrow keys
  * gets tired after being scared three times and rests for a while, and
  * collects the coins that appear every 15 seconds, then ignores coins for a few seconds.
 
-Press **F1** to open the debugger overlay on the NPC's plan.
+Press **F1** to open the in-game debugger overlay, which follows the NPC's current plan step, or open the **Noodle Nodes** tab in the editor's **Debugger** panel to see the planner's plan, search attempts and timeline. See [Basic debugging](Basic_debugging.md).
 
 The demo is ported from Vinicius Gerevini's [HTN sample](https://youtu.be/Z7uU94yPfD4), which uses Kenney's [3D Platformer Starter Kit](https://github.com/KenneyNL/Starter-Kit-3D-Platformer). Both are MIT licensed; see `demo/demo_07_htn/LICENSE.md`.
 

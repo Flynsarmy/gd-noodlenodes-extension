@@ -63,10 +63,12 @@ func _overlay_is_open() -> bool:
 
 
 func _open_overlay() -> void:
-	_overlay_node().visible = true
+	_overlay_node().visible = Engine.has_singleton("NoodleNodesDebugger")
 
 
 func _toggle_overlay() -> void:
+	if not Engine.has_singleton("NoodleNodesDebugger"):
+		return
 	_overlay_node().visible = not _overlay_is_open()
 	_update_status()
 
@@ -79,7 +81,7 @@ func _update_status() -> void:
 		title_label.visible = show_labels
 		subtitle_label.visible = show_labels
 
-	var text := "Goal: %s  |  Movement: %s  |  Goal tree: %s  |  Alert: %.2f  |  F1 debugger (%s)  |  Esc quit" % [
+	var text := "Goal: %s  |  Movement: %s  |  Goal tree: %s  |  Alert: %.2f  |  F1 overlay (%s)  |  Esc quit" % [
 		_behaviour_name(),
 		_movement_state(),
 		_goal_tree_status(),

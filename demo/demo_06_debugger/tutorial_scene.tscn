@@ -55,7 +55,7 @@ theme_override_colors/font_color = Color(0.62, 0.7, 0.85, 1)
 theme_override_colors/font_outline_color = Color(0.02, 0.03, 0.06, 1)
 theme_override_constants/outline_size = 6
 theme_override_font_sizes/font_size = 13
-text = "Agent Behaviours (green)  /  Behaviour Trees (blue)  /  State Trees (orange)  -  press F1 to toggle the debugger overlay"
+text = "Noodle Nodes tab in the editor, or F1 for the overlay  -  Tab cycles entities  -  Agents green / BT blue / ST orange"
 horizontal_alignment = 1
 
 [node name="Props" type="Node2D" parent="."]
