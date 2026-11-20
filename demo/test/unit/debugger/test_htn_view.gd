@@ -265,6 +265,18 @@ func test_timeline_orders_events_by_sequence() -> void:
 	assert_eq(_items("TimelineTree").size(), 7, "Replayed events must not duplicate timeline rows")
 
 
+func test_the_trace_heading_ellipsises_with_the_full_text_as_a_tooltip() -> void:
+	view.set_snapshot(Fixtures.htn_snapshot())
+	view.apply_events(Fixtures.htn_events())
+	view.select_attempt(3)
+
+	var heading: Label = view.get_node("%TraceHeading")
+	assert_true(heading.clip_text)
+	assert_eq(heading.text_overrun_behavior, TextServer.OVERRUN_TRIM_ELLIPSIS)
+	assert_string_contains(heading.text, "6 expansions")
+	assert_eq(heading.tooltip_text, heading.text)
+
+
 func test_pane_sizes_follow_the_editor_scale() -> void:
 	# The scene no longer carries fixed pane sizes; they are applied on ready so
 	# they can follow the editor's display scale.

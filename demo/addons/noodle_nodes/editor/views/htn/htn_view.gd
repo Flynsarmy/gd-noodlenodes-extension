@@ -200,6 +200,7 @@ func select_attempt(attempt_id: int, reveal := false) -> void:
 		_tags.current_tab = 1
 	var attempt: Dictionary = _attempts[attempt_id]
 	_trace_heading.text = _attempt_heading(attempt)
+	_trace_heading.tooltip_text = _trace_heading.text
 	var events: Array = attempt.get("events", [])
 	_graph.set_trace(events, "" if not events.is_empty() else "No decision records were retained for attempt #%d." % attempt_id)
 	_show_trace_event(_graph.get_selected_record())
@@ -233,6 +234,7 @@ func clear() -> void:
 	_attempts_structure = ""
 	_diff_signature = ""
 	_trace_heading.text = ""
+	_trace_heading.tooltip_text = ""
 	_tags.current_tab = 0
 	_graph.clear_trace()
 	_show_trace_event({})
@@ -466,6 +468,7 @@ func _merge_attempt(attempt: Dictionary) -> bool:
 		if not _attempts.has(_selected_attempt_id):
 			_selected_attempt_id = -1
 			_trace_heading.text = ""
+			_trace_heading.tooltip_text = ""
 			_graph.clear_trace()
 			_show_trace_event({})
 	return true
