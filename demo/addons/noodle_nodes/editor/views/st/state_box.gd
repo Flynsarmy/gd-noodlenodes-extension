@@ -15,19 +15,16 @@ var _transitions: VBoxContainer
 var _regions: HBoxContainer
 var _children: VBoxContainer
 var _selection: Panel
+var _base_style: StyleBoxFlat
 
 
 func setup(node: Dictionary, active_color: Color, is_active: bool, is_final: bool) -> void:
-	_active_bar = %ActiveBar
-	_name_label = %Name
-	_initial_badge = %InitialBadge
-	_final_badge = %FinalBadge
-	_portal_badge = %PortalBadge
-	_transitions = %Transitions
-	_regions = %Regions
-	_children = %Children
-	_selection = %Selection
+	_bind()
+	_base_style = get_theme_stylebox("panel").duplicate() as StyleBoxFlat
+	update(node, active_color, is_active, is_final)
 
+
+func update(node: Dictionary, active_color: Color, is_active: bool, is_final: bool) -> void:
 	node_id = int(node.get("id", 0))
 	hosted_root = int(node.get("hosted_root", 0))
 	_name_label.text = String(node.get("name", ""))
@@ -38,12 +35,26 @@ func setup(node: Dictionary, active_color: Color, is_active: bool, is_final: boo
 	_final_badge.visible = is_final
 	if is_active:
 		_name_label.add_theme_color_override("font_color", active_color)
+	else:
+		_name_label.remove_theme_color_override("font_color")
 
-	var style: StyleBoxFlat = (get_theme_stylebox("panel") as StyleBoxFlat).duplicate()
+	var style := _base_style.duplicate() as StyleBoxFlat
 	if is_active:
 		style.bg_color = style.bg_color.lerp(active_color, 0.16)
 		style.border_color = active_color
 	add_theme_stylebox_override("panel", style)
+
+
+func _bind() -> void:
+	_active_bar = %ActiveBar
+	_name_label = %Name
+	_initial_badge = %InitialBadge
+	_final_badge = %FinalBadge
+	_portal_badge = %PortalBadge
+	_transitions = %Transitions
+	_regions = %Regions
+	_children = %Children
+	_selection = %Selection
 
 
 func set_initial(is_initial: bool) -> void:

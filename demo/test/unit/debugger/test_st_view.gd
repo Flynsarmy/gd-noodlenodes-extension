@@ -126,6 +126,49 @@ func test_history_node_shows_mode_default_and_remembered() -> void:
 	assert_string_contains((history.get_node("%RememberedLine") as Label).text, "Run")
 
 
+func test_box_survives_snapshot_that_only_changes_active() -> void:
+	_view.set_snapshot(Fixtures.st_snapshot())
+	var idle := _state_box(Fixtures.ST_IDLE)
+	var run := _state_box(Fixtures.ST_RUN)
+	assert_false((idle.get_node("%ActiveBar") as ColorRect).visible)
+	assert_true((run.get_node("%ActiveBar") as ColorRect).visible)
+
+	var next := Fixtures.st_snapshot()
+	next["active_states"] = [Fixtures.ST_ROOT, Fixtures.ST_ALERTED, Fixtures.ST_IDLE]
+	for node in next["nodes"]:
+		if int(node["id"]) == Fixtures.ST_IDLE:
+			node["active"] = true
+			node["last_visited_usec"] = next["time_usec"]
+		elif int(node["id"]) == Fixtures.ST_RUN:
+			node["active"] = false
+	_view.set_snapshot(next)
+
+	assert_same(_state_box(Fixtures.ST_IDLE), idle)
+	assert_same(_state_box(Fixtures.ST_RUN), run)
+	assert_true((idle.get_node("%ActiveBar") as ColorRect).visible)
+	assert_false((run.get_node("%ActiveBar") as ColorRect).visible)
+
+
+func test_stale_transition_event_does_not_cancel_newer_pending() -> void:
+	_view.set_snapshot(Fixtures.st_snapshot())
+	var row := _transition_row(Fixtures.ST_RUN_STOP)
+	var before := _countdown_seconds(row)
+
+	var stale := {
+		"seq": 17, "t_usec": Fixtures.NOW_USEC, "frame": Fixtures.FRAME,
+		"kind": "st_transition", "transition": Fixtures.ST_RUN_STOP,
+		"from": Fixtures.ST_RUN, "to": Fixtures.ST_IDLE, "trigger": "state_enter",
+	}
+	_view.apply_events([stale])
+
+	assert_true((row.get_node("%Countdown") as Label).visible)
+	assert_almost_eq(_countdown_seconds(row), before, 0.15)
+	assert_eq(_log_rows().size(), 1, "a stale event is still logged once")
+
+	_view.apply_events([stale])
+	assert_eq(_log_rows().size(), 1, "a repeated seq is not logged twice")
+
+
 func test_pending_countdown_decreases_and_resyncs() -> void:
 	_view.set_snapshot(Fixtures.st_snapshot())
 	var row := _transition_row(Fixtures.ST_RUN_STOP)
@@ -211,6 +254,12 @@ func test_log_filters_search_and_max_lines() -> void:
 	_view.apply_events(Fixtures.st_events())
 	assert_eq(_log_rows().size(), 3)
 
+	var more := Fixtures.st_events()
+	for index in more.size():
+		more[index]["seq"] = 100 + index
+	_view.apply_events(more)
+	assert_eq(_log_rows().size(), 3)
+
 
 func test_clicking_log_entry_highlights_its_transition() -> void:
 	_view.set_snapshot(Fixtures.st_snapshot())
@@ -226,13 +275,17 @@ func test_clicking_log_entry_highlights_its_transition() -> void:
 
 func test_guard_result_is_shown_on_its_transition() -> void:
 	_view.set_snapshot(Fixtures.st_snapshot())
-	_view.apply_events(Fixtures.st_events())
+	_view.apply_events([{
+		"seq": 19, "t_usec": Fixtures.NOW_USEC, "frame": Fixtures.FRAME,
+		"kind": "st_guard", "transition": Fixtures.ST_START_RUNNING, "trigger": "event",
+		"result": true, "detail": "",
+	}])
 
 	var taken := _transition_row(Fixtures.ST_START_RUNNING)
 	assert_eq((taken.get_node("%GuardResult") as Label).text, "✓")
 
 	_view.apply_events([{
-		"seq": 19, "t_usec": Fixtures.NOW_USEC, "frame": Fixtures.FRAME,
+		"seq": 20, "t_usec": Fixtures.NOW_USEC, "frame": Fixtures.FRAME,
 		"kind": "st_guard", "transition": Fixtures.ST_RUN_STOP, "trigger": "property_change",
 		"result": false, "detail": "alert 0.8 is not below 0.2",
 	}])

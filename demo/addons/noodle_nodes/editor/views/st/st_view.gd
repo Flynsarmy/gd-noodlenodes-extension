@@ -20,6 +20,9 @@ const LOG_CATEGORY_BY_KIND := {
 	"st_exit": "state",
 }
 
+## Enough to cover the 512-event ring buffer with replays to spare.
+const SEEN_SEQ_LIMIT := 4096
+
 @onready var _boxes: VBoxContainer = %Boxes
 @onready var _empty: Label = %Empty
 @onready var _box_scroll: ScrollContainer = %BoxScroll
@@ -29,12 +32,17 @@ const LOG_CATEGORY_BY_KIND := {
 @onready var _max_lines: SpinBox = %MaxLines
 
 var _snapshot := {}
+var _structure := PackedStringArray()
+var _snapshot_last_seq := 0
+var _seen_seqs := {}
+var _seen_order: Array[int] = []
 var _nodes := {}
 var _children := {}
 var _names := {}
 var _active_states: Array = []
 var _boxes_by_id := {}
 var _rows_by_id := {}
+var _history_by_id := {}
 var _selected_id := 0
 var _guard_results := {}
 var _pending := {}
@@ -67,9 +75,22 @@ func set_snapshot(snapshot: Dictionary) -> void:
 	if snapshot.is_empty():
 		clear()
 		return
+	if not _snapshot.is_empty() and int(snapshot.get("id", 0)) != int(_snapshot.get("id", 0)):
+		clear_log()
+		_seen_seqs.clear()
+		_seen_order.clear()
+		_guard_results.clear()
+		_pending.clear()
+		_selected_id = 0
 	_snapshot = snapshot
+	_snapshot_last_seq = int(snapshot.get("last_seq", 0))
 	_reindex()
-	_rebuild_boxes()
+	var structure := _structure_signature()
+	if structure == _structure and not _boxes_by_id.is_empty():
+		_update_existing()
+	else:
+		_structure = structure
+		_rebuild_boxes()
 
 
 func apply_events(events: Array) -> void:
@@ -84,6 +105,10 @@ func select_node(node_id: int) -> void:
 
 func clear() -> void:
 	_snapshot = {}
+	_structure = PackedStringArray()
+	_snapshot_last_seq = 0
+	_seen_seqs.clear()
+	_seen_order.clear()
 	_reindex()
 	_clear_boxes()
 	_selected_id = 0
@@ -142,15 +167,54 @@ func _rebuild_boxes() -> void:
 	root_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_boxes.add_child(root_box)
 
-	for node in _nodes.values():
-		var pending = node.get("pending_transition")
-		if pending is Dictionary and not pending.is_empty():
-			_set_pending(
-					int(pending.get("transition", 0)),
-					float(pending.get("remaining_delay", 0.0)))
 	_apply_guard_results()
 	_apply_selection(_selected_id)
-	_update_countdowns()
+	_resync_pending()
+
+
+func _update_existing() -> void:
+	var root_node := _root_node()
+	if root_node.is_empty():
+		_structure = PackedStringArray()
+		_rebuild_boxes()
+		return
+	_update_state(root_node, root_node)
+	_apply_guard_results()
+	_apply_selection(_selected_id)
+	_resync_pending()
+
+
+func _update_state(node: Dictionary, parent_node: Dictionary) -> void:
+	var id := int(node.get("id", 0))
+	var box = _boxes_by_id.get(id)
+	if box == null:
+		return
+	box.update(node, _active_color(node), _is_active(node), bool(node.get("final", false)))
+	box.set_initial(int(parent_node.get("initial", 0)) == id)
+	for child in _children.get(id, []):
+		var child_id := int(child.get("id", 0))
+		match String(child.get("kind", "")):
+			"transition":
+				var row = _rows_by_id.get(child_id)
+				if row != null:
+					row.setup(child, _names)
+			"history":
+				var history = _history_by_id.get(child_id)
+				if history != null:
+					history.setup(child, _names)
+			"state", "parallel", "root":
+				_update_state(child, node)
+
+
+func _structure_signature() -> PackedStringArray:
+	var signature := PackedStringArray()
+	for node in _snapshot.get("nodes", []):
+		signature.append("%d:%d:%s" % [
+			int(node.get("id", 0)),
+			int(node.get("parent", 0)),
+			String(node.get("kind", "")),
+		])
+	return signature
 
 
 func _build_state(node: Dictionary, parent_node: Dictionary) -> Control:
@@ -171,6 +235,7 @@ func _build_state(node: Dictionary, parent_node: Dictionary) -> Control:
 				var history = HistoryBoxScene.instantiate()
 				history.setup(child, _names)
 				history.set_meta(&"history_id", int(child.get("id", 0)))
+				_history_by_id[int(child.get("id", 0))] = history
 				box.add_history(history)
 			"state", "parallel", "root":
 				var child_box := _build_state(child, node)
@@ -222,6 +287,7 @@ func _clear_boxes() -> void:
 		child.free()
 	_boxes_by_id.clear()
 	_rows_by_id.clear()
+	_history_by_id.clear()
 
 
 func _show_empty(show_empty: bool) -> void:
@@ -287,28 +353,42 @@ func _scroll_to(node_id: int) -> void:
 # Guard results and pending transitions ---------------------------------------
 
 func _apply_event(event: Dictionary) -> void:
+	var seq := int(event.get("seq", 0))
+	if seq > 0:
+		if _seen_seqs.has(seq):
+			return
+		_remember_seq(seq)
+
 	var kind := String(event.get("kind", ""))
-	match kind:
-		"st_guard":
-			var transition := int(event.get("transition", 0))
-			var result := {
-				"result": bool(event.get("result", false)),
-				"detail": String(event.get("detail", "")),
-				"trigger": String(event.get("trigger", "")),
-			}
-			_guard_results[transition] = result
-			var row = _rows_by_id.get(transition)
-			if row != null:
-				_apply_guard(row, result)
-		"st_pending":
-			_set_pending(
-					int(event.get("transition", 0)),
-					float(event.get("remaining_delay", 0.0)))
-		"st_pending_cancelled":
-			_clear_pending(int(event.get("transition", 0)))
-		"st_transition":
-			_clear_pending(int(event.get("transition", 0)))
+	if seq == 0 or seq > _snapshot_last_seq:
+		match kind:
+			"st_guard":
+				var transition := int(event.get("transition", 0))
+				var result := {
+					"result": bool(event.get("result", false)),
+					"detail": String(event.get("detail", "")),
+					"trigger": String(event.get("trigger", "")),
+				}
+				_guard_results[transition] = result
+				var row = _rows_by_id.get(transition)
+				if row != null:
+					_apply_guard(row, result)
+			"st_pending":
+				_set_pending(
+						int(event.get("transition", 0)),
+						float(event.get("remaining_delay", 0.0)))
+			"st_pending_cancelled":
+				_clear_pending(int(event.get("transition", 0)))
+			"st_transition":
+				_clear_pending(int(event.get("transition", 0)))
 	_log_event(event, kind)
+
+
+func _remember_seq(seq: int) -> void:
+	_seen_seqs[seq] = true
+	_seen_order.append(seq)
+	while _seen_order.size() > SEEN_SEQ_LIMIT:
+		_seen_seqs.erase(_seen_order.pop_front())
 
 
 func _apply_guard(row, result: Dictionary) -> void:
@@ -340,6 +420,32 @@ func _clear_pending(transition: int) -> void:
 	var row = _rows_by_id.get(transition)
 	if row != null:
 		row.set_pending(false)
+	_update_countdowns()
+
+
+func _resync_pending() -> void:
+	var wanted := {}
+	for node in _nodes.values():
+		var pending = node.get("pending_transition")
+		if pending is Dictionary and not pending.is_empty():
+			wanted[int(pending.get("transition", 0))] = float(pending.get("remaining_delay", 0.0))
+
+	var now := Time.get_ticks_usec()
+	for transition in _pending.keys():
+		if wanted.has(transition):
+			continue
+		_pending.erase(transition)
+		var stale = _rows_by_id.get(transition)
+		if stale != null:
+			stale.set_pending(false)
+	for transition in wanted:
+		_pending[transition] = {
+			"remaining": maxf(wanted[transition], 0.0),
+			"arrival_usec": now,
+		}
+		var row = _rows_by_id.get(transition)
+		if row != null:
+			row.set_pending(true)
 	_update_countdowns()
 
 
