@@ -37,7 +37,7 @@ unique_name_in_owner = true
 layout_mode = 2
 toggle_mode = true
 text = "Pause"
-tooltip_text = "Pause AI ticks in the running game."
+tooltip_text = "Pause using the selected scope."
 
 [node name="StepButton" type="Button" parent="PanelRoot/Content/Toolbar"]
 unique_name_in_owner = true
@@ -45,6 +45,17 @@ layout_mode = 2
 disabled = true
 text = "Step"
 tooltip_text = "Run exactly one more frame of AI ticks while paused."
+
+[node name="PauseScopeOption" type="OptionButton" parent="PanelRoot/Content/Toolbar"]
+unique_name_in_owner = true
+layout_mode = 2
+tooltip_text = "Choose whether Pause stops AI ticks or the whole game."
+item_count = 2
+selected = 0
+popup/item_0/text = "AI"
+popup/item_0/id = 0
+popup/item_1/text = "Game"
+popup/item_1/id = 1
 
 [node name="Separator" type="VSeparator" parent="PanelRoot/Content/Toolbar"]
 layout_mode = 2

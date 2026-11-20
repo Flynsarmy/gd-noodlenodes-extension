@@ -41,6 +41,7 @@ signal send_message(message: String, data: Array)
 @onready var _inspector = %Inspector
 @onready var _pause_button: Button = %PauseButton
 @onready var _step_button: Button = %StepButton
+@onready var _pause_scope_option: OptionButton = %PauseScopeOption
 @onready var _follow_button: Button = %FollowButton
 @onready var _layout_button: Button = %LayoutButton
 @onready var _float_button: Button = %FloatButton
@@ -65,6 +66,8 @@ var _view: Control
 var _view_type := ""
 var _replay_root_id := 0
 var _paused := false
+var _pause_scope := Protocol.PAUSE_SCOPE_AI
+var _syncing_pause_scope := false
 var _detached := false
 
 
@@ -74,6 +77,7 @@ func _ready() -> void:
 	_breadcrumbs.crumb_activated.connect(_navigate_to)
 	_pause_button.toggled.connect(_on_pause_toggled)
 	_step_button.pressed.connect(_on_step_pressed)
+	_pause_scope_option.item_selected.connect(_on_pause_scope_selected)
 	_follow_button.toggled.connect(_on_follow_toggled)
 	_layout_button.toggled.connect(_on_layout_toggled)
 	_float_button.toggled.connect(_on_float_toggled)
@@ -97,6 +101,9 @@ func handle_message(message: String, data: Array) -> void:
 		Protocol.SNAPSHOT:
 			if data.size() >= 2 and data[1] is Dictionary:
 				_on_snapshot(int(data[0]), data[1])
+		Protocol.SNAPSHOT_DELTA:
+			if data.size() >= 2 and data[1] is Dictionary:
+				_on_snapshot_delta(int(data[0]), data[1])
 		Protocol.EVENTS:
 			if data.size() >= 2 and data[1] is Array:
 				_on_events(int(data[0]), data[1])
@@ -108,7 +115,10 @@ func handle_message(message: String, data: Array) -> void:
 				_on_node_properties(int(data[0]), int(data[1]), data[2])
 		Protocol.PAUSED:
 			if data.size() >= 1:
-				_on_paused(bool(data[0]))
+				var scope := Protocol.PAUSE_SCOPE_AI
+				if data.size() >= 2:
+					scope = int(data[1])
+				_on_paused(bool(data[0]), scope)
 
 
 ## Forgets every root when the debugged session stops. Sends nothing.
@@ -202,6 +212,13 @@ func _on_snapshot(root_id: int, snapshot: Dictionary) -> void:
 		_apply_snapshot(snapshot)
 
 
+func _on_snapshot_delta(root_id: int, delta: Dictionary) -> void:
+	if not _latest_snapshots.has(root_id):
+		return
+	var previous: Dictionary = _latest_snapshots[root_id]
+	_on_snapshot(root_id, Protocol.apply_snapshot_delta(previous, delta))
+
+
 func _on_events(root_id: int, events: Array) -> void:
 	if not _events_by_root.has(root_id):
 		_events_by_root[root_id] = []
@@ -273,8 +290,9 @@ func _on_node_properties(root_id: int, node_id: int, properties: Dictionary) -> 
 	_inspector.set_properties(properties)
 
 
-func _on_paused(paused: bool) -> void:
+func _on_paused(paused: bool, scope: int) -> void:
 	_paused = paused
+	_pause_scope = _valid_scope(scope)
 	_update_pause_ui()
 
 
@@ -565,6 +583,32 @@ func _update_pause_ui() -> void:
 	_pause_button.set_pressed_no_signal(_paused)
 	_pause_button.text = "Resume" if _paused else "Pause"
 	_step_button.disabled = not _paused
+	var index := _pause_scope_option.get_item_index(_pause_scope)
+	if index < 0:
+		index = 0
+	_syncing_pause_scope = true
+	_pause_scope_option.select(index)
+	_syncing_pause_scope = false
+
+
+func _on_pause_scope_selected(index: int) -> void:
+	if _syncing_pause_scope:
+		return
+	var scope := _valid_scope(_pause_scope_option.get_item_id(index))
+	if scope == _pause_scope:
+		return
+	_pause_scope = scope
+	_save_setting("pause_scope", scope)
+	_emit(Protocol.PAUSE_SCOPE, [scope])
+
+
+func _valid_scope(scope: int) -> int:
+	return scope if scope == Protocol.PAUSE_SCOPE_GAME else Protocol.PAUSE_SCOPE_AI
+
+
+## Sends the saved scope; the plugin calls this once after hello.
+func send_pause_scope() -> void:
+	_emit(Protocol.PAUSE_SCOPE, [_pause_scope])
 
 
 func _on_follow_toggled(pressed: bool) -> void:
@@ -620,14 +664,17 @@ func _load_settings() -> void:
 	var vertical := false
 	var follow := false
 	var detached := false
+	var pause_scope := Protocol.PAUSE_SCOPE_AI
 	if settings != null:
 		vertical = str(_read_setting(settings, "layout", "horizontal")) == "vertical"
 		follow = bool(_read_setting(settings, "follow_active_path", false))
 		detached = bool(_read_setting(settings, "detached", false))
+		pause_scope = int(_read_setting(settings, "pause_scope", Protocol.PAUSE_SCOPE_AI))
 		if settings.has_setting(_setting_key("split_main")):
 			_main_split.split_offset = int(settings.get_setting(_setting_key("split_main")))
 		if settings.has_setting(_setting_key("split_inspector")):
 			_content_split.split_offset = int(settings.get_setting(_setting_key("split_inspector")))
+	_pause_scope = _valid_scope(pause_scope)
 	_main_split.vertical = vertical
 	_layout_button.set_pressed_no_signal(vertical)
 	_layout_button.text = "Vertical" if vertical else "Horizontal"
