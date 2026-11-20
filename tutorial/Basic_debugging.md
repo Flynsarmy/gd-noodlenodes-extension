@@ -49,7 +49,7 @@ Then, in the **Inspector-tab**, you will see the current values for all of the p
 
 You can **edit** these values through **the inspector-tab** and the changed values will be reflected in your game in real time. If you update the properties through code, that will override your manual input.  
 
-This applies to all the nodes you create, both Utility AI GDExtension and everything else. Note that there can be a slight delay when the values in the inspector are updated. This is due to the way the remote debugging feature works in Godot.
+This applies to all the nodes you create, both Noodle Nodes and everything else. Note that there can be a slight delay when the values in the inspector are updated. This is due to the way the remote debugging feature works in Godot.
 
 
 ## 2. The debugger overlay

@@ -12,7 +12,7 @@ To get started, we need a scene where the AI Agent will do its thing. Create a N
 Now that we have something to display on the screen, let's create the AI Agent node structure.
 
 # Creation of the AI Agent node structure
-The main node for the Utility AI GDExtension is the AI Agent node. It is under this node all the other nodes will be placed. So add an AI Agent node to your test scene, as a child of the Sprite2D. 
+The main node for utility AI in Noodle Nodes is the AI Agent node. It is under this node all the other nodes will be placed. So add an AI Agent node to your test scene, as a child of the Sprite2D. 
 |Add the AI Agent node|
 |--|
 |![Add the AI Agent node](images/tutorial_pic_1.png)|
@@ -26,7 +26,7 @@ The AI Agent uses `sensors` to observe what happens in the game world. For this 
 |--|
 |![Add the Sensor node](images/tutorial_pic_2.png)|
 
-For the Utility AI GDExtension each sensor should have a floating point input value between 0 and 1. 
+In Noodle Nodes each sensor should have a floating point input value between 0 and 1. 
 
 ## Adding the Behaviours
 The AI Agents works by evaluating different behaviours that have been defined for it. We will now add two behaviour nodes and use the Consideration and Action nodes to build their logic. Add two NNBehaviour nodes as the child of the AI Agent node. Name them "Move to Target Behaviour" and "Pickup Item Behaviour". 
@@ -290,4 +290,4 @@ func _on_entity_picked_up_item():
 # The result
 As a result you now should have an entity that goes to the label, picks it up and then goes to the new position of the label.
 
-Congratulations! You have now created your first AI entity with Utility AI GDExtension!
+Congratulations! You have now created your first AI entity with Noodle Nodes!

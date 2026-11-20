@@ -114,4 +114,4 @@ In the Inspector, expand the Query Results and the Query Result Scores. You can 
 # The result
 As a result you now have created a simple query using the Node Query System and seen what it returns. You can experiment by moving the nodes 1-5 to different locations and then adding the `NNDistanceToVector2SearchCriterion` as a child of the `NNNodeChildrenSearchSpace` and setting the `Distance To Vector` on the criterion to some value.
 
-Congratulations! You have now created your first Node Query System utility query with Utility AI GDExtension!
+Congratulations! You have now created your first Node Query System utility query with Noodle Nodes!

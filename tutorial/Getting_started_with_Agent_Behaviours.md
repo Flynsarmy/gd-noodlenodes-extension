@@ -4,13 +4,13 @@ In this beginner tutorial, you will learn how Agent Behaviours work and you will
 
  * What utility based Agent Behaviours are
  * How the Agent Behaviours work
- * How to construct utility based Agent Behaviours using Utility AI GDExtension
+ * How to construct utility based Agent Behaviours using Noodle Nodes
 
-For this tutorial, we'll start with an empty Godot 4.1  project. 
+For this tutorial, we'll start with an empty Godot 4.7 project. 
 
 **Contents:**
 
- 1. [Project creation and installation of Utility AI GDExtension](Getting_started_with_Agent_Behaviours.md#1-project-creation-and-installation-of-utility-ai-gdextension)
+ 1. [Project creation and installation of Noodle Nodes](Getting_started_with_Agent_Behaviours.md#1-project-creation-and-installation-of-noodle-nodes)
  2. [Setting up the project and assets](Getting_started_with_Agent_Behaviours.md#2-setting-up-the-project-and-assets)
  3. [About Agent Behaviours](Getting_started_with_Agent_Behaviours.md#3-about-agent-behaviours)
  4. [Creating the scenes](Getting_started_with_Agent_Behaviours.md#4-creating-the-scenes)
@@ -21,9 +21,9 @@ For this tutorial, we'll start with an empty Godot 4.1  project.
 
 
 
-## 1. Project creation and installation of Utility AI GDExtension
+## 1. Project creation and installation of Noodle Nodes
 
-Before we can begin, we need to create and setup the project, and add the assets we are going to use. To create a new Godot Engine project that uses Utility AI GDExtension, follow these steps: 
+Before we can begin, we need to create and setup the project, and add the assets we are going to use. To create a new Godot Engine project that uses Noodle Nodes, follow these steps: 
 
 
 1. Open Godot Engine.
@@ -49,21 +49,21 @@ Before we can begin, we need to create and setup the project, and add the assets
 5. The Godot Engine Editor main scene will open up.
 
 
-To install the Utility AI GDExtension addon, follow the [installation instructions](How_to_install_Utility_AI_GDExtension.md).
+To install Noodle Nodes, follow the [installation instructions](How_to_install_Noodle_Nodes.md).
 
 Once you have installed the extension, we are ready to set up the project and prepare the assets.
 
 
 ## 2. Setting up the project and assets
 
-For this project we are going to use the assets used in the *example project*. Go to the [Releases](https://github.com/JarkkoPar/Utility_AI_GDExtension/releases) and download the latest version of the example project.
+For this project we are going to use the assets from the demo project, which is the `demo` folder of the [Noodle Nodes repository](https://github.com/Flynsarmy/gd-noodlenodes-extension). Download or clone the repository to get it.
 
 
 1. Open your Godot project and create a folder named **Assets** in the project root folder.
 
 
 
-2. Open the example project folder you downloaded and copy the **"Standard sprites upd.png"** file to your own project, the Assets-folder.
+2. Copy the **"Standard sprites upd.png"** file from the repository's `demo/assets` folder to the Assets-folder of your own project.
 
 
 You now have all the assets we need for this tutorial. The setup in your FileSystem tab should look like this:

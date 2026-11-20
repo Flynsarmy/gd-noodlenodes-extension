@@ -1,6 +1,6 @@
 # Using the AIPerformanceMonitor
 
-The AIPerformanceMonitor-singleton included in the Utility AI GDExtension can be used to monitor the time the AI components you use consume each frame. This allows you to optimize the frame time the AI consumes and to improve the performance of your game. 
+The AIPerformanceMonitor-singleton included in Noodle Nodes can be used to monitor the time the AI components you use consume each frame. This allows you to optimize the frame time the AI consumes and to improve the performance of your game. 
 
 
 
@@ -31,9 +31,6 @@ In practice the time you have available for your AI is much less than 16,600 mic
 
 
 ## Setting up the AIPerformanceMonitor 
-
-> [!IMPORTANT]
-> This information applies to the Godot 4.1 version of the Utility AI GDExtension.
 
 To set up the AIPerformanceMonitor, you need to call the `initialize_performance_counters()` method of the singleton. In your main scene, in the `_ready()` method, add the following code:
 

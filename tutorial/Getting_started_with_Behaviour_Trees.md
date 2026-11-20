@@ -5,16 +5,16 @@ In this beginner tutorial, you will learn how Behaviour Trees work and you will 
  * What a Behaviour Tree is
  * How a Behaviour Tree works
  * What *ticking the tree* means, and
- * How to construct a behaviour tree using Utility AI GDExtension
+ * How to construct a behaviour tree using Noodle Nodes
 
-For this tutorial, we'll start with an empty Godot 4.1  project. 
+For this tutorial, we'll start with an empty Godot 4.7 project. 
 
 **Contents:**
 
- 1. [Project creation and installation of Utility AI GDExtension](Getting_started_with_Behaviour_Trees.md#1-project-creation-and-installation-of-utility-ai-gdextension)
+ 1. [Project creation and installation of Noodle Nodes](Getting_started_with_Behaviour_Trees.md#1-project-creation-and-installation-of-noodle-nodes)
  2. [Setting up the project and assets](Getting_started_with_Behaviour_Trees.md#2-setting-up-the-project-and-assets)
  3. [About Behaviour Trees](Getting_started_with_Behaviour_Trees.md#3-about-behaviour-trees)
- 4. [Utility enabled Behaviour Trees in Utility AI GDExtension](Getting_started_with_Behaviour_Trees.md#4-utility-enabled-behaviour-trees-in-utility-ai-gdextension)
+ 4. [Utility enabled Behaviour Trees in Noodle Nodes](Getting_started_with_Behaviour_Trees.md#4-utility-enabled-behaviour-trees-in-noodle-nodes)
  5. [Creating the scenes](Getting_started_with_Behaviour_Trees.md#5-creating-the-scenes)
  6. [Creating the Behaviour Tree for the AI-entity](Getting_started_with_Behaviour_Trees.md#6-creating-the-behaviour-tree-for-the-ai-entity)
  7. [Adding the on_tick() methods](Getting_started_with_Behaviour_Trees.md#7-adding-the-on_tick-methods)
@@ -24,9 +24,9 @@ For this tutorial, we'll start with an empty Godot 4.1  project.
 
 
 
-## 1. Project creation and installation of Utility AI GDExtension
+## 1. Project creation and installation of Noodle Nodes
 
-Before we can begin, we need to create and setup the project, and add the assets we are going to use. To create a new Godot Engine project that uses Utility AI GDExtension, follow these steps: 
+Before we can begin, we need to create and setup the project, and add the assets we are going to use. To create a new Godot Engine project that uses Noodle Nodes, follow these steps: 
 
 
 1. Open Godot Engine.
@@ -48,18 +48,18 @@ Before we can begin, we need to create and setup the project, and add the assets
 5. The Godot Engine Editor main scene will open up.
 
 
-To install the Utility AI GDExtension addon, follow the [installation instructions](How_to_install_Utility_AI_GDExtension.md).
+To install Noodle Nodes, follow the [installation instructions](How_to_install_Noodle_Nodes.md).
 
 Once you have installed the extension, we are ready to set up the project and prepare the assets.
 
 
 ## 2. Setting up the project and assets
 
-For this project we are going to use the assets used in the *example project*. Go to the [Releases](https://github.com/JarkkoPar/Utility_AI_GDExtension/releases) and download the latest version of the example project.
+For this project we are going to use the assets from the demo project, which is the `demo` folder of the [Noodle Nodes repository](https://github.com/Flynsarmy/gd-noodlenodes-extension). Download or clone the repository to get it.
 
 1. Open your Godot project and create a folder named **Assets** in the project root folder.
 
-2. Open the example project folder you downloaded and copy the **"Standard sprites upd.png"** file to your own project, the Assets-folder.
+2. Copy the **"Standard sprites upd.png"** file from the repository's `demo/assets` folder to the Assets-folder of your own project.
 
 
 You now have all the assets we need for this tutorial. The setup in your FileSystem tab should look like this:
@@ -67,7 +67,7 @@ You now have all the assets we need for this tutorial. The setup in your FileSys
 ![FileSystem](images/getting_started_bt_1_assets.png)<br>
 
 
-Before we get started with development, it is good review what Behaviour Trees are. If you already are experienced in using behaviour trees, you can hop on to [4. Utility enabled Behavour Trees in Utility AI GDExtension](Getting_started_with_Behaviour_Trees.md#4-utility-enabled-behaviour-trees-in-utility-ai-gdextension) to learn how the utility enabled behaviour trees in Utility AI GDExtension expand the classical Behaviour Tree functionality. Otherwise, read on.
+Before we get started with development, it is good review what Behaviour Trees are. If you already are experienced in using behaviour trees, you can hop on to [4. Utility enabled Behavour Trees in Noodle Nodes](Getting_started_with_Behaviour_Trees.md#4-utility-enabled-behaviour-trees-in-noodle-nodes) to learn how the utility enabled behaviour trees in Noodle Nodes expand the classical Behaviour Tree functionality. Otherwise, read on.
 
 
 ## 3. About Behaviour Trees
@@ -95,19 +95,19 @@ The ticking of the child nodes is done in a top-to-down order. The higher the no
 
 Each behaviour tree node returns a value, which is either *success*, *failure* or *running*. Usually it is one of the task nodes that ultimately sets what value is returned but the decorator and composite nodes can affect the value that is returned to the root node in the end.
  
-The return value is predetermined for most of the node types, but you decide what each *task node* will return. In Utility AI GDExtension the numerical values for these are as follows:
+The return value is predetermined for most of the node types, but you decide what each *task node* will return. In Noodle Nodes the numerical values for these are as follows:
 
  * **Running** 0
  * **Succeeded** 1
  * **Failed** -1
 
 > [!NOTE]
-> In Utility AI GDExtension the nodes can also return the *skip* value, but for the purposes of this tutorial we will only focus on the *success*, *failure* and *running* values. The numerical value for *skip* is -2.
+> In Noodle Nodes the nodes can also return the *skip* value, but for the purposes of this tutorial we will only focus on the *success*, *failure* and *running* values. The numerical value for *skip* is -2.
 
 
 ### 3.3 Commonly used nodes
 
-All behaviour trees need the **root** node. The root node is the *main node* for behaviour trees. The root node must have exactly one enabled behaviour tree child node (in Utility AI GDExtension it may have **Sensor** nodes as well). It ticks the first enabled child and returns that child's result; any additional enabled behaviour tree children are ignored and produce a one-time error when the tree ticks. The editor shows a configuration warning if the root does not have exactly one enabled behaviour tree child.
+All behaviour trees need the **root** node. The root node is the *main node* for behaviour trees. The root node must have exactly one enabled behaviour tree child node (in Noodle Nodes it may have **Sensor** nodes as well). It ticks the first enabled child and returns that child's result; any additional enabled behaviour tree children are ignored and produce a one-time error when the tree ticks. The editor shows a configuration warning if the root does not have exactly one enabled behaviour tree child.
 
 In addition to the root node, **task** or **leaf** nodes are always needed. As the *task* node's name implies, these nodes usually execute actions and other logic.
 
@@ -116,12 +116,12 @@ The most commonly used *composite* nodes are the **selector** (also known as the
  * The selector *ticks* (= runs the code) its child nodes one by one and checks if any of its child nodes succeeds. When one does, it stops ticking and returns *success* back to its parent node. If all fail, it returns back *failure* to its parent.  
  * The sequence *ticks* its child nodes one by one until one of them fails or until it has ticked all its child nodes. If a child node fails, the sequence returns *failure* back to its parent. If all succeed, it returns back *success*.
 
-Both the selector and sequence return back *running* if a child node they tick returns back running. Handing the *running* state can vary between Behaviour Tree implementations. In Utility AI GDExtension a node's run stays active across ticks, so the next tick continues ticking from the node that returned running until it either succeeds or fails. Per-run state, such as a sequence's child cursor, is reset when a new run starts on the first tick after the previous run ended. A *reactive* composite instead re-evaluates from child 0 on every tick. If a node should hold its finished result instead of starting a new run on the next tick, wrap it in the **RunOnce** decorator.
+Both the selector and sequence return back *running* if a child node they tick returns back running. Handing the *running* state can vary between Behaviour Tree implementations. In Noodle Nodes a node's run stays active across ticks, so the next tick continues ticking from the node that returned running until it either succeeds or fails. Per-run state, such as a sequence's child cursor, is reset when a new run starts on the first tick after the previous run ended. A *reactive* composite instead re-evaluates from child 0 on every tick. If a node should hold its finished result instead of starting a new run on the next tick, wrap it in the **RunOnce** decorator.
 
 There are also *decorator* nodes, which must have exactly one enabled behaviour tree child node. A decorator ticks the first enabled child and ignores any further enabled behaviour tree children, reporting them with a one-time error. The editor shows a configuration warning if a decorator does not have exactly one enabled behaviour tree child. The **inverter** is a very common one, and it changes the return value of its child node to the opposite value (a *success* becomes a *failure* and a *failure* a *success*; *running* stays as *running*). Other common decorator nodes are the **repeat until** node that repeats its child node until it either succeeds or fails, **cooldown** nodes run their child nodes and then allow it only to run after a certain cooldown period.
 
 > [!NOTE]
-> The *AlwaysSucceed* and *AlwaysFail* nodes are called **Succeeder** and **Failer** in Utility AI GDExtension. The **FixedResult** decorator node also lets you choose what result the node always returns.
+> The *AlwaysSucceed* and *AlwaysFail* nodes are called **Succeeder** and **Failer** in Noodle Nodes. The **FixedResult** decorator node also lets you choose what result the node always returns.
 
 
 ### 3.4 Challenges with behaviour trees
@@ -133,9 +133,9 @@ Moving between states is usually **cyclic**, meaning that you can transition bet
 If you find yourself wanting to move between states while building your behaviour tree, you should read up on [**State Trees**](Getting_started_with_State_Trees.md) and consider implementing your logic there instead, or host a state tree from the tree as described in section [9. Driving state trees from behaviour trees](Getting_started_with_Behaviour_Trees.md#9-driving-state-trees-from-behaviour-trees).
 
 
-## 4. Utility enabled Behaviour Trees in Utility AI GDExtension
+## 4. Utility enabled Behaviour Trees in Noodle Nodes
 
-You can use the utility enabled Behaviour Trees as the sole AI reasoning component, or as a sub-component of the AI Agent Behaviours or State Trees. Utility-based considerations can be attached to all of the nodes in Utility AI GDExtension, including the Behaviour Tree nodes. The considerations can be attached either as child nodes or in the Inspector as a property.
+You can use the utility enabled Behaviour Trees as the sole AI reasoning component, or as a sub-component of the AI Agent Behaviours or State Trees. Utility-based considerations can be attached to all of the nodes in Noodle Nodes, including the Behaviour Tree nodes. The considerations can be attached either as child nodes or in the Inspector as a property.
 
 <img src="images/getting_started_bt_2.png" height="256px"><img src="images/getting_started_bt_3.png" height="256px"><br>
 *Considerations can be child nodes or in the Inspector as properties.*<br>
@@ -377,12 +377,12 @@ What this code does:
  * The row `@onready var sensor_distance:NNDistanceVector2Sensor = $NNBTRoot/NNDistanceVector2Sensor` gets a reference to the Vector2 based distance sensor of the AI entity. This sensor is used to check the distance and to get the direction vector towards the target.
  * The row `var movement_speed:float = 0.0` defines a variable that we will use to control the movement speed of the AI entity.
  * In the `_physics_process(delta)` method we first set the distance sensor **from-position** as the global position of the AI entity, and the **to-position** as the location of the mouse cursor from the parent node. The sensor will use these two positions to calculate the distance from the AI entity to the mouse cursor, and also the direction vector that we will use later for movement.
- * The behaviour tree root ticks itself once per physics frame by default, so the script never calls `tick()` itself. Section [9. Next steps](Getting_started_with_Behaviour_Trees.md#9-next-steps) shows how to lower that rate with `tick_rate`, and how to drive the root from your own code by setting `process_thread` to `Manual`. The tree keeps its data in the root node's blackboard, and the task nodes reach the AI entity with `get_actor()`, which resolves the parent of the behaviour tree root node. In this scene that parent is the **ai_entity** node, so the `on_tick()` methods can use all the properties of the AI entity. A root nested below another Noodle Nodes root inherits that root's blackboard and actor instead of using its own, so a tree added under a state tree or an agent shares their context.
+ * The behaviour tree root ticks itself once per physics frame by default, so the script never calls `tick()` itself. Section [10. Next steps](Getting_started_with_Behaviour_Trees.md#10-next-steps) shows how to lower that rate with `tick_rate`, and how to drive the root from your own code by setting `process_thread` to `Manual`. The tree keeps its data in the root node's blackboard, and the task nodes reach the AI entity with `get_actor()`, which resolves the parent of the behaviour tree root node. In this scene that parent is the **ai_entity** node, so the `on_tick()` methods can use all the properties of the AI entity. A root nested below another Noodle Nodes root inherits that root's blackboard and actor instead of using its own, so a tree added under a state tree or an agent shares their context.
  * After the tree has been ticked, the row `self.global_position += sensor_distance.direction_vector * movement_speed * delta` moves the AI entity based on the direction vector calculated by the distance sensor. Delta time is used to scale the movement amount. The `movement_speed` is set by the behaviour tree task nodes.
  * The final rows of the method make sure the character sprite is facing the direction it is moving to by flipping the sprite horizontally when needed.
 
 > [!NOTE]
-> A behaviour tree root added to a scene ticks itself once per physics frame by default. This isn't what you usually want to do in a real game. See section [9. Next steps](Getting_started_with_Behaviour_Trees.md#9-next-steps) for more information.
+> A behaviour tree root added to a scene ticks itself once per physics frame by default. This isn't what you usually want to do in a real game. See section [10. Next steps](Getting_started_with_Behaviour_Trees.md#10-next-steps) for more information.
 
 
 2. In the **ai_entity** scene, in the **Scene-tab**, attach a script to the **Is too far from the cursor** node. Replace the code with the following code (see explanation for it below):

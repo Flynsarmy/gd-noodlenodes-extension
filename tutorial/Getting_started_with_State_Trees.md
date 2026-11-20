@@ -5,16 +5,16 @@ In this beginner tutorial, you will learn how State Trees work and you will buil
  * What a State Tree is
  * How a State Tree works
  * What *ticking the tree* means, and
- * How to construct a state tree using Utility AI GDExtension
+ * How to construct a state tree using Noodle Nodes
 
-For this tutorial, we'll start with an empty Godot 4.1  project. 
+For this tutorial, we'll start with an empty Godot 4.7 project. 
 
 **Contents:**
 
- 1. [Project creation and installation of Utility AI GDExtension](Getting_started_with_State_Trees.md#1-project-creation-and-installation-of-utility-ai-gdextension)
+ 1. [Project creation and installation of Noodle Nodes](Getting_started_with_State_Trees.md#1-project-creation-and-installation-of-noodle-nodes)
  2. [Setting up the project and assets](Getting_started_with_State_Trees.md#2-setting-up-the-project-and-assets)
  3. [About State Trees](Getting_started_with_State_Trees.md#3-about-state-trees)
- 4. [Utility enabled State Trees in Utility AI GDExtension](Getting_started_with_State_Trees.md#4-utility-enabled-state-trees-in-utility-ai-gdextension)
+ 4. [Utility enabled State Trees in Noodle Nodes](Getting_started_with_State_Trees.md#4-utility-enabled-state-trees-in-noodle-nodes)
  5. [Creating the scenes](Getting_started_with_State_Trees.md#5-creating-the-scenes)
  6. [Creating the State Tree for the AI-entity](Getting_started_with_State_Trees.md#6-creating-the-state-tree-for-the-ai-entity)
  7. [Adding the state handling methods](Getting_started_with_State_Trees.md#7-adding-the-state-handling-methods)
@@ -23,9 +23,9 @@ For this tutorial, we'll start with an empty Godot 4.1  project.
 
 
 
-## 1. Project creation and installation of Utility AI GDExtension
+## 1. Project creation and installation of Noodle Nodes
 
-Before we can begin, we need to create and setup the project, and add the assets we are going to use. To create a new Godot Engine project that uses Utility AI GDExtension, follow these steps: 
+Before we can begin, we need to create and setup the project, and add the assets we are going to use. To create a new Godot Engine project that uses Noodle Nodes, follow these steps: 
 
 
 1. Open Godot Engine.
@@ -51,21 +51,21 @@ Before we can begin, we need to create and setup the project, and add the assets
 5. The Godot Engine Editor main scene will open up.
 
 
-To install the Utility AI GDExtension addon, follow the [installation instructions](How_to_install_Utility_AI_GDExtension.md).
+To install Noodle Nodes, follow the [installation instructions](How_to_install_Noodle_Nodes.md).
 
 Once you have installed the extension, we are ready to set up the project and prepare the assets.
 
 
 ## 2. Setting up the project and assets
 
-For this project we are going to use the assets used in the *example project*. Go to the [Releases](https://github.com/JarkkoPar/Utility_AI_GDExtension/releases) and download the latest version of the example project.
+For this project we are going to use the assets from the demo project, which is the `demo` folder of the [Noodle Nodes repository](https://github.com/Flynsarmy/gd-noodlenodes-extension). Download or clone the repository to get it.
 
 
 1. Open your Godot project and create a folder named **Assets** in the project root folder.
 
 
 
-2. Open the example project folder you downloaded and copy the **"Standard sprites upd.png"** file to your own project, the Assets-folder.
+2. Copy the **"Standard sprites upd.png"** file from the repository's `demo/assets` folder to the Assets-folder of your own project.
 
 
 You now have all the assets we need for this tutorial. The setup in your FileSystem tab should look like this:
@@ -129,7 +129,7 @@ With the setup above, leaving `Combat` while `Attack` is active and then transit
 
 To handle state transitioning, entering, exiting and updating the states, four state handling methods can be defined for the state nodes: 
 
- * `func on_enter_condition() -> bool` is used to check if the state can be entered. This method should **always** return either **true** or **false**. Alternatively the *utility-based considerations* can be used (see 4. Utility enabled State Trees in Utility AI GDExtension for more details). 
+ * `func on_enter_condition() -> bool` is used to check if the state can be entered. This method should **always** return either **true** or **false**. Alternatively the *utility-based considerations* can be used (see 4. Utility enabled State Trees in Noodle Nodes for more details). 
  * `func on_enter_state()` is used to run any initialization the state needs to run before it is *ticked*.
  * `func on_exit_state()` is used to run any clean up after the state is no longer active.
  * `func on_tick(delta)` is used to run what ever code the state needs to do when it is *ticked*.
@@ -148,9 +148,9 @@ Removing or reparenting an active child exits it and its active descendants once
 
 
 
-## 4. Utility enabled State Trees in Utility AI GDExtension
+## 4. Utility enabled State Trees in Noodle Nodes
 
-You can use the utility enabled State Trees as the sole AI reasoning component, or as a sub-component of the AI Agent Behaviours or Behaviour Trees. Utility-based considerations can be attached to all of the nodes in Utility AI GDExtension, including the State Tree nodes. The considerations can be attached either as child nodes or in the Inspector as a property.
+You can use the utility enabled State Trees as the sole AI reasoning component, or as a sub-component of the AI Agent Behaviours or Behaviour Trees. Utility-based considerations can be attached to all of the nodes in Noodle Nodes, including the State Tree nodes. The considerations can be attached either as child nodes or in the Inspector as a property.
 
 For any of the **NNSTNode** state nodes you can control how they will evaluate their child nodes during a `transition_to()` call. This is done by selecting the **Child State Selection Rule** in the **Inspector**.
 

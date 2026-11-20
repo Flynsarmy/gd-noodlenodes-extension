@@ -5,28 +5,27 @@ In this beginner tutorial, you will learn how the Node Query System works and yo
  * What the Node Query System is
  * How Search Spaces work
  * How to run the queries, and
- * How to construct node queries using Utility AI GDExtension
+ * How to construct node queries using Noodle Nodes
 
-For this tutorial, we'll start with an empty Godot 4.1  project. 
+For this tutorial, we'll start with an empty Godot 4.7 project. 
 
 **Contents:**
 
- 1. [Project creation and installation of Utility AI GDExtension](Getting_started_with_the_Node_Query_System.md#1-project-creation-and-installation-of-utility-ai-gdextension)
+ 1. [Project creation and installation of Noodle Nodes](Getting_started_with_the_Node_Query_System.md#1-project-creation-and-installation-of-noodle-nodes)
  2. [Setting up the project and assets](Getting_started_with_the_Node_Query_System.md#2-setting-up-the-project-and-assets)
- 3. [About the Node Query System](Getting_started_with_the_Node_Query_System.md#3-about-behaviour-trees)
+ 3. [About the Node Query System](Getting_started_with_the_Node_Query_System.md#3-about-the-node-query-system)
  4. [Waiting is a super power](Getting_started_with_the_Node_Query_System.md#4-waiting-is-a-super-power)
  5. [Creating the scenes](Getting_started_with_the_Node_Query_System.md#5-creating-the-scenes)
- 6. [Creating the the AI entity scene
-](Getting_started_with_the_Node_Query_System.md#6-creating-the-ai-entity-scene)
+ 6. [Creating the AI entity scene](Getting_started_with_the_Node_Query_System.md#6-creating-the-ai-entity-scene)
  7. [Adding the ai_entity script](Getting_started_with_the_Node_Query_System.md#7-adding-the-ai_entity-script)
  8. [Running the main scene](Getting_started_with_the_Node_Query_System.md#8-running-the-main-scene)
  9. [Next steps](Getting_started_with_the_Node_Query_System.md#9-next-steps)
 
 
 
-## 1. Project creation and installation of Utility AI GDExtension
+## 1. Project creation and installation of Noodle Nodes
 
-Before we can begin, we need to create and setup the project, and add the assets we are going to use. To create a new Godot Engine project that uses Utility AI GDExtension, follow these steps: 
+Before we can begin, we need to create and setup the project, and add the assets we are going to use. To create a new Godot Engine project that uses Noodle Nodes, follow these steps: 
 
 
 1. Open Godot Engine.
@@ -48,18 +47,18 @@ Before we can begin, we need to create and setup the project, and add the assets
 5. The Godot Engine Editor main scene will open up.
 
 
-To install the Utility AI GDExtension addon, follow the [installation instructions](How_to_install_Utility_AI_GDExtension.md).
+To install Noodle Nodes, follow the [installation instructions](How_to_install_Noodle_Nodes.md).
 
 Once you have installed the extension, we are ready to set up the project and prepare the assets.
 
 
 ## 2. Setting up the project and assets
 
-For this project we are going to use the assets used in the *example project*. Go to the [Releases](https://github.com/JarkkoPar/Utility_AI_GDExtension/releases) and download the latest version of the example project.
+For this project we are going to use the assets from the demo project, which is the `demo` folder of the [Noodle Nodes repository](https://github.com/Flynsarmy/gd-noodlenodes-extension). Download or clone the repository to get it.
 
 1. Open your Godot project and create a folder named **Assets** in the project root folder.
 
-2. Open the example project folder you downloaded and copy the **"Standard sprites upd.png"** file to your own project, the Assets-folder.
+2. Copy the **"Standard sprites upd.png"** file from the repository's `demo/assets` folder to the Assets-folder of your own project.
 
 
 You now have all the assets we need for this tutorial. The setup in your FileSystem tab should look like this:
@@ -71,7 +70,7 @@ You now have all the assets we need for this tutorial. The setup in your FileSys
 
 In many games the AI must do **searches** in the game world to find things like *the best position to shoot from*, *the best item to use* or *the best tile to move to*, and so on. Behaviour Trees, State Machines and other systems used for reasoning don't usually cater for this need. One of the solutions is a **utility based querying system**.
 
-The Node Query System in Utility AI GDExtension aims to be a *generalized* querying system for all types of nodes in the Godot Engine. Somewhat similar systems in other engines are the *Environment Query System* in *Unreal Engine* and the *Spatial Query System* in *CryEngine*. Many of the queries in games do focus on finding locations in 3D or 2D worlds and NQS in Utility AI GDExtension can do these types of searches. It can do more, however, and search and rank any type of node in a scene.
+The Node Query System in Noodle Nodes aims to be a *generalized* querying system for all types of nodes in the Godot Engine. Somewhat similar systems in other engines are the *Environment Query System* in *Unreal Engine* and the *Spatial Query System* in *CryEngine*. Many of the queries in games do focus on finding locations in 3D or 2D worlds and NQS in Noodle Nodes can do these types of searches. It can do more, however, and search and rank any type of node in a scene.
 
 
 ### 3.1 The structure of query
@@ -293,7 +292,7 @@ This code will instantiate the given number of AI-entities to the main scene to 
 We are now done with the main scene. Next we will focus on creating the **ai_entity** scene and create a NQS query for it that will utilize the point grid we created. We will use a Behaviour Tree root node to post the query.
 
 
-## 6. Creating the the AI entity scene
+## 6. Creating the AI entity scene
 
 
 1. Select the **ai_entity** scene in the editor.
