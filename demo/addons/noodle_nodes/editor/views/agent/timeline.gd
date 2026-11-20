@@ -3,6 +3,8 @@ extends Control
 ## Chosen-behaviour timeline: one coloured segment per agent_choice event over a
 ## rolling window, plus an oscillation check over clustered back-and-forth flips.
 
+const EditorScale := preload("res://addons/noodle_nodes/editor/editor_scale.gd")
+
 const WINDOW_USEC := 30_000_000
 const OSCILLATION_WINDOW_USEC := 5_000_000
 const MIN_OSCILLATION_FLIPS := 2
@@ -12,12 +14,19 @@ const EMPTY := Color(0.25, 0.26, 0.3, 1.0)
 const TICK := Color(1.0, 1.0, 1.0, 0.06)
 const TOP := 6.0
 const BOTTOM := 8.0
+const MIN_HEIGHT := 48.0
+const TICK_WIDTH := 1.0
+const MIN_SEGMENT_WIDTH := 1.0
 const TICK_SEC := 5
 
 var _changes: Array = []
 var _now_usec: int = 0
 var _names: Dictionary = {}
 var _fallback: int = 0
+
+
+func _ready() -> void:
+	custom_minimum_size = Vector2(0.0, EditorScale.px(MIN_HEIGHT))
 
 
 func set_data(changes: Array, now_usec: int, names: Dictionary, fallback_behaviour: int) -> void:
@@ -99,18 +108,20 @@ func _draw() -> void:
 	draw_rect(Rect2(Vector2.ZERO, size), BACKGROUND)
 	if _now_usec <= 0:
 		return
-	var height := maxf(size.y - TOP - BOTTOM, 1.0)
+	var top := EditorScale.px(TOP)
+	var bottom := EditorScale.px(BOTTOM)
+	var height := maxf(size.y - top - bottom, EditorScale.px(MIN_SEGMENT_WIDTH))
 	for tick in range(TICK_SEC, int(WINDOW_USEC / 1000000.0), TICK_SEC):
 		var x := size.x * (1.0 - float(tick * 1000000) / float(WINDOW_USEC))
-		draw_line(Vector2(x, TOP), Vector2(x, TOP + height), TICK, 1.0)
+		draw_line(Vector2(x, top), Vector2(x, top + height), TICK, EditorScale.px(TICK_WIDTH))
 	var segments := get_segments()
 	if segments.is_empty():
-		draw_rect(Rect2(Vector2(0.0, TOP), Vector2(size.x, height)), EMPTY)
+		draw_rect(Rect2(Vector2(0.0, top), Vector2(size.x, height)), EMPTY)
 		return
 	for segment in segments:
 		var x0 := _time_to_x(segment["start_usec"])
 		var x1 := _time_to_x(segment["end_usec"])
-		draw_rect(Rect2(Vector2(x0, TOP), Vector2(maxf(x1 - x0, 1.0), height)), segment["color"])
+		draw_rect(Rect2(Vector2(x0, top), Vector2(maxf(x1 - x0, EditorScale.px(MIN_SEGMENT_WIDTH)), height)), segment["color"])
 
 
 func _get_tooltip(at_position: Vector2) -> String:

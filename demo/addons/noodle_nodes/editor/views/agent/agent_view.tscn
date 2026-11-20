@@ -41,8 +41,8 @@ theme_override_constants/separation = 4
 
 [node name="Title" type="Label" parent="Margin/Layout/Content/Behaviours"]
 layout_mode = 2
+theme_type_variation = &"HeaderSmall"
 theme_override_colors/font_color = Color(0.62, 0.66, 0.74, 1)
-theme_override_font_sizes/font_size = 11
 text = "BEHAVIOURS"
 
 [node name="Scroll" type="ScrollContainer" parent="Margin/Layout/Content/Behaviours"]
@@ -57,14 +57,13 @@ size_flags_horizontal = 3
 theme_override_constants/separation = 3
 
 [node name="Sensors" type="VBoxContainer" parent="Margin/Layout/Content"]
-custom_minimum_size = Vector2(180, 0)
 layout_mode = 2
 theme_override_constants/separation = 4
 
 [node name="Title" type="Label" parent="Margin/Layout/Content/Sensors"]
 layout_mode = 2
+theme_type_variation = &"HeaderSmall"
 theme_override_colors/font_color = Color(0.62, 0.66, 0.74, 1)
-theme_override_font_sizes/font_size = 11
 text = "SENSORS"
 
 [node name="Scroll" type="ScrollContainer" parent="Margin/Layout/Content/Sensors"]
@@ -84,8 +83,8 @@ theme_override_constants/separation = 6
 
 [node name="Title" type="Label" parent="Margin/Layout/TimelineHeader"]
 layout_mode = 2
+theme_type_variation = &"HeaderSmall"
 theme_override_colors/font_color = Color(0.62, 0.66, 0.74, 1)
-theme_override_font_sizes/font_size = 11
 text = "CHOSEN BEHAVIOUR · LAST 30 S"
 
 [node name="OscillationWarning" type="Label" parent="Margin/Layout/TimelineHeader"]
@@ -94,10 +93,8 @@ visible = false
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_colors/font_color = Color(1, 0.55, 0.3, 1)
-theme_override_font_sizes/font_size = 11
 horizontal_alignment = 2
 
 [node name="Timeline" parent="Margin/Layout" instance=ExtResource("2_timeline")]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(0, 48)
 layout_mode = 2
