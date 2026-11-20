@@ -43,6 +43,14 @@ func _node(snapshot: Dictionary, node_id: int) -> Dictionary:
 	return {}
 
 
+func _choice(seq: int, ago_usec: int, behaviour: int) -> Dictionary:
+	return {
+		"seq": seq, "t_usec": Fixtures.NOW_USEC - ago_usec, "frame": Fixtures.FRAME,
+		"kind": "agent_choice", "behaviour": behaviour, "group": 0, "action": 0,
+		"top": [{ "behaviour": Fixtures.AGENT_PATROL, "group": 0, "score": 0.5 }],
+	}
+
+
 static func _mouse_event(double_click: bool) -> InputEventMouseButton:
 	var event := InputEventMouseButton.new()
 	event.button_index = MOUSE_BUTTON_LEFT
@@ -200,6 +208,40 @@ func test_a_choice_before_the_window_keeps_the_first_visible_segment() -> void:
 	assert_eq(segments.size(), 2)
 	assert_eq(segments[0]["behaviour"], Fixtures.AGENT_INVESTIGATE)
 	assert_eq(segments[0]["start_usec"], Fixtures.NOW_USEC - window)
+
+
+func test_completion_choices_keep_one_segment_and_do_not_warn() -> void:
+	_view.set_snapshot(Fixtures.agent_snapshot())
+	var events := []
+	for i in 8:
+		var behaviour := Fixtures.AGENT_PATROL if i % 2 == 0 else 0
+		events.append(_choice(100 + i, 8_000_000 - i * 1_000_000, behaviour))
+
+	_view.apply_events(events)
+
+	var segments: Array = _view.get_node("%Timeline").get_segments()
+	assert_eq(segments.size(), 1)
+	assert_eq(segments[0]["behaviour"], Fixtures.AGENT_PATROL)
+	assert_eq(segments[0]["start_usec"], Fixtures.NOW_USEC - 8_000_000)
+	assert_eq(segments[0]["end_usec"], Fixtures.NOW_USEC)
+	assert_false(_view.get_node("%OscillationWarning").visible)
+
+
+func test_last_behaviour_is_marked_when_nothing_is_running() -> void:
+	var snapshot := Fixtures.agent_snapshot()
+	snapshot["current_behaviour"] = 0
+	snapshot["last_behaviour"] = Fixtures.AGENT_PATROL
+
+	_view.set_snapshot(snapshot)
+
+	var list = _view.get_node("%BehaviourList")
+	var last = _find_row(list, Fixtures.AGENT_PATROL)
+	var previous = _find_row(list, Fixtures.AGENT_INVESTIGATE)
+	assert_string_contains(last.get_node("%Badges").text, "last")
+	assert_false(last.get_node("%Badges").text.contains("current"))
+	assert_true(last.get_node("%Accent").visible)
+	assert_false(previous.get_node("%Badges").text.contains("current"))
+	assert_false(previous.get_node("%Accent").visible)
 
 
 func test_flip_flop_choices_warn_about_oscillation() -> void:

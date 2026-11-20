@@ -41,6 +41,7 @@ var _choice_seqs: Dictionary = {}
 var _now_usec: int = 0
 var _current_behaviour: int = 0
 var _current_behaviour_group: int = 0
+var _last_behaviour: int = 0
 
 
 func _ready() -> void:
@@ -58,6 +59,7 @@ func set_snapshot(snapshot: Dictionary) -> void:
 	_now_usec = int(snapshot.get("time_usec", 0))
 	_current_behaviour = int(snapshot.get("current_behaviour", 0))
 	_current_behaviour_group = int(snapshot.get("current_behaviour_group", 0))
+	_last_behaviour = int(snapshot.get("last_behaviour", 0))
 	_index_nodes(snapshot.get("nodes", []))
 	_sync_behaviours(snapshot)
 	_sync_sensors()
@@ -113,6 +115,7 @@ func _reset() -> void:
 	_now_usec = 0
 	_current_behaviour = 0
 	_current_behaviour_group = 0
+	_last_behaviour = 0
 	_selected_id = 0
 
 
@@ -150,6 +153,7 @@ func _sync_behaviours(snapshot: Dictionary) -> void:
 		var row = _rows[id]
 		row.configure(str(node.get("name", "")), float(node.get("score", 0.0)), _behaviour_badges(id, top_ranks))
 		row.set_current(_is_current_behaviour(id))
+		row.set_last(_is_last_behaviour(id))
 		row.set_selected(id == _selected_id)
 		_sync_details(id)
 		_refresh_expansion(row, id)
@@ -324,6 +328,8 @@ func _behaviour_badges(id: int, top_ranks: Dictionary) -> String:
 	var parts := PackedStringArray()
 	if _is_current_behaviour(id):
 		parts.append("current")
+	elif _is_last_behaviour(id):
+		parts.append("last")
 	if top_ranks.has(id):
 		parts.append("top %d" % int(top_ranks[id]))
 	var cooldown := float(node.get("cooldown_remaining", 0.0))
@@ -336,11 +342,15 @@ func _behaviour_badges(id: int, top_ranks: Dictionary) -> String:
 
 
 func _is_current_behaviour(id: int) -> bool:
-	if id == 0:
+	if id == 0 or _current_behaviour == 0:
 		return false
 	if id == _current_behaviour or id == _current_behaviour_group:
 		return true
 	return bool(_nodes.get(id, {}).get("selected", false))
+
+
+func _is_last_behaviour(id: int) -> bool:
+	return _current_behaviour == 0 and id != 0 and id == _last_behaviour
 
 
 func _connect_row(row: Variant) -> void:
@@ -380,7 +390,8 @@ func _refresh_timeline() -> void:
 	var names := {}
 	for id in _nodes:
 		names[id] = str(_nodes[id].get("name", "#%d" % id))
-	_timeline.set_data(_choices, now, names, _current_behaviour)
+	var fallback := _current_behaviour if _current_behaviour != 0 else _last_behaviour
+	_timeline.set_data(_choices, now, names, fallback)
 	_refresh_warning()
 
 
@@ -391,22 +402,29 @@ func _timeline_now() -> int:
 	return now
 
 
-## Keeps the latest choice that started before the window so its segment still
-## covers the left edge, and drops everything older than that.
+## Keeps only the latest running choice that started before the window, so its
+## segment still covers the left edge. Older choices and off-screen completion
+## choices (behaviour 0) carry no visible state and are dropped.
 func _prune_choices(now_usec: int) -> void:
-	if _choices.size() <= 1:
-		return
 	var window_start := now_usec - TimelineScript.WINDOW_USEC
-	var keep_from := 0
+	var drop_end := 0
+	var latest_running := -1
 	for i in _choices.size():
 		if int(_choices[i].get("t_usec", 0)) >= window_start:
 			break
-		keep_from = i
-	if keep_from == 0:
+		drop_end = i + 1
+		if int(_choices[i].get("behaviour", 0)) != 0:
+			latest_running = i
+	if drop_end == 0:
 		return
-	for i in keep_from:
-		_choice_seqs.erase(int(_choices[i].get("seq", 0)))
-	_choices = _choices.slice(keep_from)
+	for i in drop_end:
+		if i != latest_running:
+			_choice_seqs.erase(int(_choices[i].get("seq", 0)))
+	var kept := []
+	if latest_running >= 0:
+		kept.append(_choices[latest_running])
+	kept.append_array(_choices.slice(drop_end))
+	_choices = kept
 
 
 func _refresh_warning() -> void:
