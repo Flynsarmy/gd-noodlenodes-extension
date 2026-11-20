@@ -2,6 +2,7 @@ extends GutTest
 
 const Fixtures = preload("res://test/unit/debugger/fixtures/debugger_fixtures.gd")
 const OverlayScene: PackedScene = preload("res://addons/noodle_nodes/debugger/overlay/noodle_nodes_overlay.tscn")
+const Protocol = preload("res://addons/noodle_nodes/debugger/protocol.gd")
 
 const SECOND_ROOT := 7100
 const THIRD_ROOT := 7200
@@ -20,12 +21,14 @@ class FakeDebugger extends RefCounted:
 	signal root_added(info: Dictionary)
 	signal root_removed(root_id: int)
 	signal paused_changed(paused: bool)
+	signal pause_scope_changed(scope: int)
 
 	var roots: Array = []
 	var snapshots := {}
 	var events := {}
 	var watched := {}
 	var paused := false
+	var pause_scope := 0
 	var steps := 0
 
 	func get_roots() -> Array:
@@ -56,6 +59,15 @@ class FakeDebugger extends RefCounted:
 
 	func is_paused() -> bool:
 		return paused
+
+	func set_pause_scope(scope: int) -> void:
+		if pause_scope == scope:
+			return
+		pause_scope = scope
+		pause_scope_changed.emit(scope)
+
+	func get_pause_scope() -> int:
+		return pause_scope
 
 	func step() -> void:
 		steps += 1
@@ -113,6 +125,10 @@ func before_each() -> void:
 	_layer.add_child(_overlay)
 
 
+func after_each() -> void:
+	get_tree().paused = false
+
+
 func _remap_owner(info: Dictionary, entity: Node) -> Dictionary:
 	var copy := info.duplicate(true)
 	copy["owner_id"] = entity.get_instance_id()
@@ -127,6 +143,23 @@ func _with_search_space(snapshot: Dictionary, node_id: int, search_space_id: int
 	for node: Dictionary in copy["nodes"]:
 		if int(node["id"]) == node_id:
 			node["badges"]["nqs_search_space"] = search_space_id
+	return copy
+
+
+func _with_agent_search_space(snapshot: Dictionary, sensor_id: int, search_space_id: int) -> Dictionary:
+	var copy := snapshot.duplicate(true)
+	for node: Dictionary in copy["nodes"]:
+		if int(node["id"]) == sensor_id:
+			node["nqs_search_space"] = search_space_id
+	return copy
+
+
+func _without_search_spaces(snapshot: Dictionary) -> Dictionary:
+	var copy := snapshot.duplicate(true)
+	for node: Dictionary in copy["nodes"]:
+		var badges: Variant = node.get("badges", {})
+		if badges is Dictionary:
+			badges.erase("nqs_search_space")
 	return copy
 
 
@@ -363,6 +396,46 @@ func test_pause_and_step_buttons_drive_the_debugger() -> void:
 	assert_eq(_debugger.steps, 1)
 
 
+func test_scope_selector_drives_and_reflects_the_pause_scope() -> void:
+	_overlay.select_entity(_owner_a.get_instance_id())
+	var selector: OptionButton = _overlay.get_node("%ScopeSelector")
+	assert_eq(selector.item_count, 2)
+	assert_eq(selector.get_item_text(0), "AI")
+	assert_eq(selector.get_item_text(1), "Game")
+	assert_eq(selector.selected, Protocol.PAUSE_SCOPE_AI)
+
+	selector.select(Protocol.PAUSE_SCOPE_GAME)
+	selector.item_selected.emit(Protocol.PAUSE_SCOPE_GAME)
+
+	assert_eq(_debugger.get_pause_scope(), Protocol.PAUSE_SCOPE_GAME)
+
+	_debugger.set_pause_scope(Protocol.PAUSE_SCOPE_AI)
+
+	assert_eq(selector.selected, Protocol.PAUSE_SCOPE_AI)
+
+
+func test_overlay_keeps_working_while_the_tree_is_paused() -> void:
+	_overlay.select_entity(_owner_a.get_instance_id())
+	var pause_button: Button = _overlay.get_node("%PauseButton")
+	var step_button: Button = _overlay.get_node("%StepButton")
+	pause_button.button_pressed = true
+	assert_false(step_button.disabled)
+
+	get_tree().paused = true
+	var st := Fixtures.st_snapshot()
+	st["active_states"] = [Fixtures.ST_ROOT]
+	_debugger.snapshots[Fixtures.ST_ROOT] = st
+
+	await get_tree().create_timer(0.15).timeout
+
+	assert_true(_overlay.can_process())
+	assert_eq(_label_texts()[0], "Investigate › SneakToCover › MoveToCover")
+	assert_true(step_button.can_process())
+	assert_true(_overlay._nqs_drawer.can_process())
+	step_button.pressed.emit()
+	assert_eq(_debugger.steps, 1)
+
+
 func test_hiding_or_freeing_the_overlay_unwatches_everything() -> void:
 	_overlay.select_entity(_owner_a.get_instance_id())
 	assert_gt(_debugger.watched.size(), 0)
@@ -389,6 +462,7 @@ func test_selecting_an_entity_draws_the_search_space_of_its_running_query() -> v
 	var drawer: Node = _overlay._nqs_drawer
 	assert_not_null(drawer)
 	assert_true(drawer is Node2D)
+	assert_eq(drawer.process_mode, Node.PROCESS_MODE_ALWAYS)
 	assert_eq(drawer.get_search_space_id(), _search_space.get_instance_id())
 	assert_eq(drawer.get_viewport(), _owner_a.get_viewport())
 	assert_false(_layer.is_ancestor_of(drawer))
@@ -411,6 +485,22 @@ func test_nqs_draw_prefers_the_running_path_and_retargets_the_same_drawer() -> v
 
 	assert_same(_overlay._nqs_drawer, drawer)
 	assert_eq(drawer.get_search_space_id(), other_space.get_instance_id())
+
+
+func test_nqs_draw_falls_back_to_an_agent_query_sensor() -> void:
+	var sensor_space := NNNQSSearchSpaces.new()
+	add_child_autofree(sensor_space)
+	_debugger.snapshots[Fixtures.AGENT] = _with_agent_search_space(
+			Fixtures.agent_snapshot(), Fixtures.AGENT_COVER_SENSOR, sensor_space.get_instance_id())
+	_overlay.select_entity(_owner_a.get_instance_id())
+
+	assert_eq(_overlay._nqs_drawer.get_search_space_id(), _search_space.get_instance_id(),
+			"the running behaviour tree query still wins")
+
+	_debugger.snapshots[Fixtures.COVER_BT] = _without_search_spaces(Fixtures.bt_snapshot())
+	_overlay.refresh()
+
+	assert_eq(_overlay._nqs_drawer.get_search_space_id(), sensor_space.get_instance_id())
 
 
 func test_nqs_draw_matches_the_owner_type() -> void:
