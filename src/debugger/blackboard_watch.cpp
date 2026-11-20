@@ -7,6 +7,7 @@
 #include "debug_root.h"
 #include "snapshot_common.h"
 
+#include <godot_cpp/classes/time.hpp>
 #include <godot_cpp/core/object.hpp>
 #include <godot_cpp/variant/callable_method_pointer.hpp>
 
@@ -47,6 +48,13 @@ void NNBlackboardDebugWatch::on_value_changed(const String &p_key, const Variant
 		return;
 	}
 
+	const uint64_t now = Time::get_singleton()->get_ticks_usec();
+	uint64_t *last_set = _last_set_usec.getptr(p_key);
+	if (last_set != nullptr && now - *last_set < SET_WINDOW_USEC) {
+		return;
+	}
+	_last_set_usec[p_key] = now;
+
 	Dictionary fields;
 	fields["key"] = p_key;
 	fields["value"] = NNBlackboard::sanitize_debug_value(p_value);
@@ -59,6 +67,8 @@ void NNBlackboardDebugWatch::on_value_erased(const String &p_key) {
 		return;
 	}
 
+	_last_set_usec.erase(p_key);
+
 	Dictionary fields;
 	fields["key"] = p_key;
 	debug_root->record("bb_erase", fields);
@@ -66,9 +76,12 @@ void NNBlackboardDebugWatch::on_value_erased(const String &p_key) {
 
 void NNBlackboardDebugWatch::on_cleared() {
 	NNDebugRoot *debug_root = nn_debug_watched_root(_owner);
-	if (debug_root != nullptr) {
-		debug_root->record("bb_clear");
+	if (debug_root == nullptr) {
+		return;
 	}
+
+	_last_set_usec.clear();
+	debug_root->record("bb_clear");
 }
 
 void NNBlackboardDebugWatch::_connect() {
@@ -88,6 +101,9 @@ void NNBlackboardDebugWatch::_connect() {
 }
 
 void NNBlackboardDebugWatch::_disconnect() {
+	// Windows are only meaningful for the connection that saw them: unwatching
+	// or moving to another board starts fresh.
+	_last_set_usec.clear();
 	if (_board_id.is_null()) {
 		return;
 	}

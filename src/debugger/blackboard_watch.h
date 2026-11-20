@@ -3,6 +3,7 @@
 #ifdef DEBUG_ENABLED
 
 #include <godot_cpp/core/object_id.hpp>
+#include <godot_cpp/templates/hash_map.hpp>
 #include <godot_cpp/variant/string.hpp>
 #include <godot_cpp/variant/variant.hpp>
 
@@ -31,12 +32,18 @@ public:
 	void on_cleared();
 
 private:
+	// A genuine change every frame must not evict the rest of the ring buffer.
+	// The snapshot carries the current value, so one event per key per window
+	// is enough for the event log.
+	static constexpr uint64_t SET_WINDOW_USEC = 100000;
+
 	void _connect();
 	void _disconnect();
 
 	NoodleNodes *_owner;
 	ObjectID _board_id;
 	bool _watched;
+	HashMap<String, uint64_t> _last_set_usec;
 };
 
 } //namespace godot

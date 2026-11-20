@@ -393,6 +393,39 @@ func test_a_freed_watched_root_disconnects_its_board() -> void:
 	assert_eq(_debugger.get_events(root_id).size(), 0, "a freed root is gone from the registry")
 
 
+func test_blackboard_sets_are_rate_limited_per_key() -> void:
+	if not _require_debugger():
+		return
+	var root := BT.build_tree(BT.make_leaf(), [])
+	add_child_autofree(root)
+	var board := root.get_blackboard_resource()
+	_watch(root)
+
+	for i in range(50):
+		board.set_value("threat_alert", float(i))
+	var set_events := _events_of(root, "bb_set")
+	assert_eq(set_events.size(), 1, "every change in one frame coalesces into one event")
+	assert_eq(set_events[0].key, "threat_alert")
+	assert_eq(set_events[0].value, 0.0)
+
+	OS.delay_msec(110)
+	board.set_value("threat_alert", 50.0)
+	assert_eq(_events_of(root, "bb_set").size(), 2, "a change after the window is recorded")
+	assert_eq(_last_of(root, "bb_set").value, 50.0)
+
+	board.erase_value("threat_alert")
+	assert_eq(_events_of(root, "bb_erase").size(), 1, "an erase is never throttled")
+	board.set_value("threat_alert", 0.5)
+	assert_eq(_events_of(root, "bb_set").size(), 3, "an erase resets the key's window")
+
+	board.set_value("threat_alert", 0.7)
+	assert_eq(_events_of(root, "bb_set").size(), 3, "the window is still active")
+	board.clear()
+	assert_eq(_events_of(root, "bb_clear").size(), 1)
+	board.set_value("threat_alert", 0.9)
+	assert_eq(_events_of(root, "bb_set").size(), 4, "a clear resets the window")
+
+
 func test_event_capacity_drops_the_oldest_events() -> void:
 	if not _require_debugger():
 		return

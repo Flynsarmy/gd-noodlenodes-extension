@@ -210,7 +210,7 @@ monotonic, never reused (gaps mean the ring buffer dropped events).
 | `htn_plan_finished` | `succeeded` | |
 | `agent_choice` | `behaviour`, `group`, `action`, `top: Array[{behaviour, group, score}]` | behaviour changed |
 | `agent_action` | `action` | action changed |
-| `bb_set` | `key`, `value` (sanitised) | blackboard `value_changed` |
+| `bb_set` | `key`, `value` (sanitised) | blackboard `value_changed`, at most one per key per 100 ms per root (the snapshot carries the current value) |
 | `bb_erase` | `key` | `value_erased` |
 | `bb_clear` | | `cleared` |
 
