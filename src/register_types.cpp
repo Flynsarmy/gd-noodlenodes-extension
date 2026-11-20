@@ -9,6 +9,11 @@
 // Performance monitor singleton.
 #include "performance_monitor_singleton.h"
 
+#ifdef DEBUG_ENABLED
+// Debugger singleton.
+#include "debugger/debugger.h"
+#endif
+
 // AI AGENT
 
 // Core nodes
@@ -171,6 +176,9 @@ using namespace godot;
 // Singletons
 static NNNodeQuerySystem *gpNodeQuerySystem;
 static NNPerformanceMonitorSingleton *gpAIPerformanceMonitor;
+#ifdef DEBUG_ENABLED
+static NNDebugger *gpNoodleNodesDebugger;
+#endif
 
 void register_scene_classes() {
 	GDREGISTER_VIRTUAL_CLASS(NoodleNodes);
@@ -323,6 +331,18 @@ void register_scene_classes() {
 	GDREGISTER_CLASS(NNPerformanceMonitorSingleton);
 	gpAIPerformanceMonitor = memnew(NNPerformanceMonitorSingleton);
 	Engine::get_singleton()->register_singleton("AIPerformanceMonitor", gpAIPerformanceMonitor);
+
+#ifdef DEBUG_ENABLED
+	GDREGISTER_CLASS(NNDebugger);
+	// The editor runs no game roots, so the game-side singleton belongs to a
+	// running game only.
+	if (!Engine::get_singleton()->is_editor_hint()) {
+		gpNoodleNodesDebugger = memnew(NNDebugger);
+		NNDebugRoot::set_registry(gpNoodleNodesDebugger);
+		Engine::get_singleton()->register_singleton("NoodleNodesDebugger", gpNoodleNodesDebugger);
+		gpNoodleNodesDebugger->install_transport();
+	}
+#endif
 }
 
 void initialize_noodle_nodes_module(ModuleInitializationLevel p_level) {
@@ -347,6 +367,15 @@ void uninitialize_noodle_nodes_module(ModuleInitializationLevel p_level) {
 
 	Engine::get_singleton()->unregister_singleton("AIPerformanceMonitor");
 	memdelete(gpAIPerformanceMonitor);
+
+#ifdef DEBUG_ENABLED
+	if (gpNoodleNodesDebugger != nullptr) {
+		NNDebugRoot::set_registry(nullptr);
+		Engine::get_singleton()->unregister_singleton("NoodleNodesDebugger");
+		memdelete(gpNoodleNodesDebugger);
+		gpNoodleNodesDebugger = nullptr;
+	}
+#endif
 }
 
 extern "C" {

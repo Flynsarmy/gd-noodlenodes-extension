@@ -1,0 +1,124 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="NNDebugger" inherits="Object" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
+	<brief_description>
+		Runtime side of the Noodle Nodes debugger: the root registry, snapshot and event access, and the pause/step gate.
+	</brief_description>
+	<description>
+		The [b]NoodleNodesDebugger[/b] engine singleton. It lists every Noodle Nodes root that is currently in the scene tree, exposes each root's snapshot, events and node properties, and forwards them to the editor over [EngineDebugger]. It also owns the process-wide pause and step state.
+		This class only exists in debug builds, and only in a running game: it is not registered in the editor process or in release builds. GDScript callers must guard every use with [code]Engine.has_singleton("NoodleNodesDebugger")[/code].
+		Roots register themselves while they are in the tree. Watching a root is reference counted and starts its event recording. The editor debugger plugin subscribes to roots for you; custom tools can call [method watch], [method get_snapshot] and [method get_events] directly.
+		Pausing only affects roots that step from the SceneTree's frame signals. Roots with [code]process_thread[/code] set to [code]MANUAL[/code] and direct [code]tick()[/code] calls keep running, and hosted roots follow their host.
+	</description>
+	<tutorials>
+	</tutorials>
+	<methods>
+		<method name="get_event_capacity" qualifiers="const">
+			<return type="int" />
+			<description>
+				Returns the event ring-buffer capacity applied to every root, current and future. See [method set_event_capacity].
+			</description>
+		</method>
+		<method name="get_events" qualifiers="const">
+			<return type="Array[Dictionary]" />
+			<param index="0" name="root_id" type="int" />
+			<param index="1" name="after_seq" type="int" default="0" />
+			<description>
+				Returns the events recorded by the root with [param root_id] whose [code]seq[/code] is greater than [param after_seq], oldest first. Returns an empty array when the root is gone. Events are only recorded while the root is watched, and the ring buffer drops the oldest events first.
+			</description>
+		</method>
+		<method name="get_node_properties" qualifiers="const">
+			<return type="Dictionary" />
+			<param index="0" name="node_id" type="int" />
+			<description>
+				Returns the current values of the properties of any live [Object] that have storage, editor or script-variable usage, keyed by property name. That includes exported and plain script variables, but not groups, categories or internal engine properties. Values are sanitised like [method NNBlackboard.get_debug_data], so they hold no [Object]. Returns an empty dictionary when the object is gone.
+			</description>
+		</method>
+		<method name="get_root_info" qualifiers="const">
+			<return type="Dictionary" />
+			<param index="0" name="root_id" type="int" />
+			<description>
+				Returns the information dictionary of one registered root, or an empty dictionary when the root is gone. See [method get_roots] for the keys.
+			</description>
+		</method>
+		<method name="get_roots" qualifiers="const">
+			<return type="Array[Dictionary]" />
+			<description>
+				Returns one information dictionary for every live registered root, in registration order. Each dictionary holds [code]id[/code], [code]type[/code] ([code]"agent"[/code], [code]"bt"[/code], [code]"st"[/code] or [code]"htn"[/code]), [code]class[/code], [code]name[/code], [code]path[/code], [code]owner_id[/code], [code]owner_name[/code], [code]owner_path[/code], [code]host_root_id[/code], [code]host_node_id[/code], [code]host_node_name[/code] and [code]host_node_class[/code]. The host fields are [code]0[/code] and empty strings for a top-level root.
+			</description>
+		</method>
+		<method name="get_snapshot" qualifiers="const">
+			<return type="Dictionary" />
+			<param index="0" name="root_id" type="int" />
+			<description>
+				Returns the latest snapshot of the root with [param root_id], or an empty dictionary when the root is gone. The snapshot is built on demand and does not require watching.
+			</description>
+		</method>
+		<method name="is_paused" qualifiers="const">
+			<return type="bool" />
+			<description>
+				Returns [code]true[/code] while scheduler-driven roots are paused. See [method set_paused].
+			</description>
+		</method>
+		<method name="is_watched" qualifiers="const">
+			<return type="bool" />
+			<param index="0" name="root_id" type="int" />
+			<description>
+				Returns [code]true[/code] while the root has at least one watcher. Returns [code]false[/code] when the root is gone.
+			</description>
+		</method>
+		<method name="set_event_capacity">
+			<return type="void" />
+			<param index="0" name="capacity" type="int" />
+			<description>
+				Sets the number of events each root keeps. It applies to every current root and to roots that register later. Values below [code]1[/code] clamp to [code]1[/code]. Dropping events makes gaps in the [code]seq[/code] numbers reported by [method get_events].
+			</description>
+		</method>
+		<method name="set_paused">
+			<return type="void" />
+			<param index="0" name="paused" type="bool" />
+			<description>
+				Pauses or resumes the scheduled steps of every root that steps from the SceneTree's [code]process_frame[/code] or [code]physics_frame[/code] signal. Frames that pass while paused are dropped, so resuming does not produce a catch-up tick. Roots with [code]process_thread[/code] set to [code]MANUAL[/code] and direct [code]tick()[/code] calls are never blocked. Emits [signal paused_changed] when the state changes.
+			</description>
+		</method>
+		<method name="step">
+			<return type="void" />
+			<description>
+				While paused, advances every scheduled root by one of its own frames on its process thread, then pauses again. Each root consumes its own step, so a [code]PHYSICS[/code] root and an [code]IDLE[/code] root each tick exactly once regardless of how many physics steps the next process frame contains. Does nothing while not paused.
+			</description>
+		</method>
+		<method name="unwatch">
+			<return type="void" />
+			<param index="0" name="root_id" type="int" />
+			<description>
+				Removes one watcher from the root. Event recording stops, and the recorded events are dropped, when the last watcher leaves. Unknown or freed root ids are ignored.
+			</description>
+		</method>
+		<method name="watch">
+			<return type="void" />
+			<param index="0" name="root_id" type="int" />
+			<description>
+				Adds one watcher to the root and starts its event recording. Watching is reference counted, so every [method watch] must be matched by one [method unwatch]. Unknown or freed root ids are ignored.
+			</description>
+		</method>
+	</methods>
+	<signals>
+		<signal name="paused_changed">
+			<param index="0" name="paused" type="bool" />
+			<description>
+				Emitted after [method set_paused] changes the pause state.
+			</description>
+		</signal>
+		<signal name="root_added">
+			<param index="0" name="info" type="Dictionary" />
+			<description>
+				Emitted when a root enters the tree and becomes registered. [param info] has the keys documented in [method get_roots].
+			</description>
+		</signal>
+		<signal name="root_removed">
+			<param index="0" name="root_id" type="int" />
+			<description>
+				Emitted when a registered root leaves the tree or is freed.
+			</description>
+		</signal>
+	</signals>
+</class>
