@@ -12,6 +12,8 @@ const NqsDraw3DScene: PackedScene = preload("res://addons/noodle_nodes/debugger/
 
 const SEGMENT_SEPARATOR := " › "
 const MAX_RECENT_EVENTS := 8
+const MAX_EVENT_HISTORY := 32
+const LABEL_MARGIN := 4.0
 const TYPE_COLORS := {
 	Protocol.TYPE_AGENT: Color(0.45, 0.95, 0.6),
 	Protocol.TYPE_BT: Color(0.5, 0.72, 1.0),
@@ -45,6 +47,7 @@ var _watched := {}
 var _selected_entity := 0
 var _rows_nodes: Array[Node] = []
 var _event_rows: Array[Node] = []
+var _event_history: Array[Dictionary] = []
 var _event_log: Array[Dictionary] = []
 var _event_roots: Array[int] = []
 var _last_seq := {}
@@ -217,6 +220,7 @@ func _set_label_text(entity_id: int) -> void:
 func _update_label_positions() -> void:
 	if not is_inside_tree():
 		return
+	var bounds := _label_bounds()
 	for entity_id in _entity_labels:
 		var label: Control = _entity_labels[entity_id]
 		var entity_node := _spatial_entity(entity_id)
@@ -236,7 +240,25 @@ func _update_label_positions() -> void:
 		label.visible = on_screen and not label.text.is_empty()
 		if on_screen:
 			label.reset_size()
-			label.position = screen_position - Vector2(label.size.x * 0.5, label.size.y + 6.0)
+			var position := screen_position - Vector2(label.size.x * 0.5, label.size.y + 6.0)
+			label.position = _clamp_label(position, label.size, bounds)
+
+
+func _label_bounds() -> Rect2:
+	var bounds := _labels_root.get_rect()
+	if bounds.size.x <= 0.0 or bounds.size.y <= 0.0:
+		bounds = get_viewport_rect()
+	return bounds
+
+
+## Clamps each axis separately so the label stays as close to its entity as the screen edge allows.
+func _clamp_label(position: Vector2, size: Vector2, bounds: Rect2) -> Vector2:
+	var minimum := bounds.position + Vector2(LABEL_MARGIN, LABEL_MARGIN)
+	var maximum := bounds.end - size - Vector2(LABEL_MARGIN, LABEL_MARGIN)
+	return Vector2(
+		clampf(position.x, minimum.x, maxf(minimum.x, maximum.x)),
+		clampf(position.y, minimum.y, maxf(minimum.y, maximum.y))
+	)
 
 
 func _sync_watches() -> void:
@@ -491,6 +513,7 @@ func _collect_events() -> void:
 		chain = _active_chain(_selected_entity)
 	if chain != _event_roots:
 		_event_roots = chain
+		_event_history.clear()
 		_event_log.clear()
 		_last_seq.clear()
 		_state_event_names.clear()
@@ -501,29 +524,75 @@ func _collect_events() -> void:
 	for root_id in chain:
 		var after := int(_last_seq.get(root_id, 0))
 		var events: Array = debugger.call("get_events", root_id, after)
-		if events.size() > MAX_RECENT_EVENTS:
-			events = events.slice(events.size() - MAX_RECENT_EVENTS)
 		var snapshot := _snapshot(root_id)
+		var recent: Array[Dictionary] = []
 		for event in events:
 			var seq := int(event.get("seq", 0))
 			if seq <= after:
 				continue
 			after = seq
+			if String(event.get("kind", "")) == "bt_tick":
+				continue
 			_remember_state_event(root_id, event)
-			fresh.append({
+			recent.append({
 				"type": String(snapshot.get("type", "")),
 				"text": _event_text(root_id, snapshot, event),
 				"t_usec": int(event.get("t_usec", 0)),
 				"seq": seq,
 			})
+			if recent.size() > MAX_EVENT_HISTORY:
+				recent.pop_front()
 		_last_seq[root_id] = after
+		fresh.append_array(recent)
 	if fresh.is_empty():
 		return
 	fresh.sort_custom(_event_before)
-	for entry in fresh:
-		_event_log.append(entry)
+	_event_history.append_array(fresh)
+	while _event_history.size() > MAX_EVENT_HISTORY:
+		_event_history.pop_front()
+	_event_log = _collapse_events(_event_history)
 	while _event_log.size() > MAX_RECENT_EVENTS:
 		_event_log.pop_front()
+
+
+## Merges runs of the same line, plus alternating pairs, so a repeating enter/exit loop stays compact.
+func _collapse_events(events: Array[Dictionary]) -> Array[Dictionary]:
+	var collapsed: Array[Dictionary] = []
+	var index := 0
+	while index < events.size():
+		var entry: Dictionary = events[index]
+		var repeats := 1
+		while index + repeats < events.size() and _same_line(entry, events[index + repeats]):
+			repeats += 1
+		if repeats > 1:
+			collapsed.append(_with_count(entry, repeats))
+			index += repeats
+			continue
+		if index + 1 < events.size():
+			var second: Dictionary = events[index + 1]
+			var cycles := 1
+			while index + 2 * cycles + 1 < events.size() \
+					and _same_line(entry, events[index + 2 * cycles]) \
+					and _same_line(second, events[index + 2 * cycles + 1]):
+				cycles += 1
+			if cycles > 1:
+				collapsed.append(_with_count(entry, cycles))
+				collapsed.append(_with_count(second, cycles))
+				index += 2 * cycles
+				continue
+		collapsed.append(_with_count(entry, 1))
+		index += 1
+	return collapsed
+
+
+func _same_line(a: Dictionary, b: Dictionary) -> bool:
+	return a["type"] == b["type"] and a["text"] == b["text"]
+
+
+func _with_count(entry: Dictionary, count: int) -> Dictionary:
+	var copy := entry.duplicate()
+	copy["count"] = count
+	return copy
 
 
 func _event_before(a: Dictionary, b: Dictionary) -> bool:
@@ -546,10 +615,6 @@ func _event_text(root_id: int, snapshot: Dictionary, event: Dictionary) -> Strin
 				_node_name(snapshot, int(event.get("node", 0))),
 				String(event.get("result", "")),
 			]
-		"bt_tick":
-			var running := _node_name(snapshot, int(event.get("running_node", 0)))
-			var result := String(event.get("result", ""))
-			return "tick %s → %s" % [result, running] if not running.is_empty() else "tick %s" % result
 		"st_event":
 			return "event %s on %s" % [
 				String(event.get("name", "")),
@@ -613,7 +678,7 @@ func _event_text(root_id: int, snapshot: Dictionary, event: Dictionary) -> Strin
 		"agent_action":
 			return "action %s" % _node_name(snapshot, int(event.get("action", 0)))
 		"bb_set":
-			return "%s = %s" % [String(event.get("key", "")), str(event.get("value"))]
+			return "%s = %s" % [String(event.get("key", "")), _format_value(event.get("value"))]
 		"bb_erase":
 			return "erase %s" % String(event.get("key", ""))
 		"bb_clear":
@@ -627,6 +692,19 @@ func _occurrence_name(snapshot: Dictionary, occurrence_id: int) -> String:
 			if int(step.get("occurrence_id", 0)) == occurrence_id:
 				return String(step.get("task", ""))
 	return "step %d" % occurrence_id
+
+
+func _format_value(value: Variant) -> String:
+	match typeof(value):
+		TYPE_FLOAT:
+			return "%.2f" % value
+		TYPE_VECTOR2:
+			var vector2: Vector2 = value
+			return "(%.2f, %.2f)" % [vector2.x, vector2.y]
+		TYPE_VECTOR3:
+			var vector3: Vector3 = value
+			return "(%.2f, %.2f, %.2f)" % [vector3.x, vector3.y, vector3.z]
+	return str(value)
 
 
 func _sync_event_rows() -> void:
@@ -643,7 +721,9 @@ func _sync_event_rows() -> void:
 		var type_label: Label = _event_rows[i].get_node("%Type")
 		type_label.text = String(Protocol.TYPE_LABELS.get(entry["type"], entry["type"]))
 		type_label.add_theme_color_override("font_color", TYPE_COLORS.get(entry["type"], StatusPalette.PENDING))
-		_event_rows[i].get_node("%What").text = String(entry["text"])
+		var count := int(entry.get("count", 1))
+		var text := String(entry["text"])
+		_event_rows[i].get_node("%What").text = text + (" ×%d" % count if count > 1 else "")
 
 
 func _clear_event_rows() -> void:

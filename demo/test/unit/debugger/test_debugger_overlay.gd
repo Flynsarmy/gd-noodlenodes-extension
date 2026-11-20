@@ -5,8 +5,10 @@ const OverlayScene: PackedScene = preload("res://addons/noodle_nodes/debugger/ov
 
 const SECOND_ROOT := 7100
 const THIRD_ROOT := 7200
+const TEST_VIEWPORT_SIZE := Vector2i(800, 600)
 
 var _debugger: FakeDebugger
+var _viewport: SubViewport
 var _overlay: Control
 var _layer: CanvasLayer
 var _owner_a: Node2D
@@ -73,8 +75,12 @@ class FakeDebugger extends RefCounted:
 
 func before_each() -> void:
 	_debugger = FakeDebugger.new()
+	# The root window is 64x64 headless, too small to lay out real labels; use a fixed viewport.
+	_viewport = SubViewport.new()
+	_viewport.size = TEST_VIEWPORT_SIZE
+	add_child_autofree(_viewport)
 	_layer = CanvasLayer.new()
-	add_child_autofree(_layer)
+	_viewport.add_child(_layer)
 	_owner_a = Node2D.new()
 	_owner_a.name = "NpcA"
 	add_child_autofree(_owner_a)
@@ -183,6 +189,27 @@ func test_labels_group_and_track_the_actor_not_the_scene_owner() -> void:
 	assert_almost_eq(label.position.x + label.size.x * 0.5, 400.0, 0.5)
 
 
+func test_labels_clamp_inside_the_viewport_at_the_screen_edge() -> void:
+	await get_tree().process_frame
+	var bounds: Control = _overlay.get_node("%Labels")
+	var label: Control = _labels()[0]
+	assert_eq(bounds.size, Vector2(TEST_VIEWPORT_SIZE))
+
+	_owner_a.position = Vector2(-100.0, 200.0)
+	_overlay._process(0.0)
+
+	assert_almost_eq(label.position.x, 4.0, 0.01, "left edge clamps to the margin")
+	assert_lte(label.position.x + label.size.x, bounds.size.x)
+
+	_owner_a.position = Vector2(bounds.size.x + 100.0, bounds.size.y + 100.0)
+	_overlay._process(0.0)
+
+	assert_gte(label.position.x, 0.0)
+	assert_lte(label.position.x + label.size.x, bounds.size.x)
+	assert_gte(label.position.y, 0.0)
+	assert_lte(label.position.y + label.size.y, bounds.size.y)
+
+
 func test_selecting_an_entity_watches_its_chain_and_switching_unwatches_it() -> void:
 	_overlay.select_entity(_owner_a.get_instance_id())
 
@@ -205,10 +232,11 @@ func test_recent_events_show_the_latest_across_the_watched_chain() -> void:
 	var rows: Array[Node] = _overlay.get_node("%Events").get_children()
 	assert_eq(rows.size(), 8)
 	assert_eq(rows[0].get_node("%Type").text, "ST")
-	assert_eq(rows[0].get_node("%What").text, "pending Stop in 1.5s")
-	assert_eq(rows[6].get_node("%Type").text, "BT")
-	assert_eq(rows[6].get_node("%What").text, "MoveToCover entered")
-	assert_eq(rows[7].get_node("%What").text, "tick running → MoveToCover")
+	assert_eq(rows[0].get_node("%What").text, "entered Run")
+	assert_eq(rows[1].get_node("%What").text, "pending Stop in 1.5s")
+	assert_eq(rows[7].get_node("%Type").text, "BT")
+	assert_eq(rows[7].get_node("%What").text, "MoveToCover entered")
+	assert_does_not_have(_event_texts(), "tick running → MoveToCover")
 
 
 func test_recent_events_are_worded_per_system() -> void:
@@ -223,6 +251,48 @@ func test_recent_events_are_worded_per_system() -> void:
 	_overlay.select_entity(_owner_a.get_instance_id())
 
 	assert_has(_event_texts(), "chose Investigate 0.64")
+
+
+func test_repeated_event_lines_collapse_with_a_count() -> void:
+	var now := Fixtures.NOW_USEC
+	_debugger.events = {Fixtures.COVER_BT: [
+		{"seq": 70, "t_usec": now - 300_000, "kind": "bt_enter", "node": Fixtures.COVER_MOVE},
+		{"seq": 71, "t_usec": now - 290_000, "kind": "bt_enter", "node": Fixtures.COVER_MOVE},
+		{"seq": 72, "t_usec": now - 280_000, "kind": "bt_enter", "node": Fixtures.COVER_MOVE},
+	]}
+	_overlay.select_entity(_owner_a.get_instance_id())
+
+	assert_eq(_event_texts(), ["MoveToCover entered ×3"])
+
+
+func test_repeating_event_pairs_collapse_with_a_count() -> void:
+	var now := Fixtures.NOW_USEC
+	var events: Array = []
+	for i in 3:
+		events.append({"seq": 70 + i * 2, "t_usec": now - 300_000 + i * 20_000, "kind": "bt_enter", "node": Fixtures.COVER_MOVE})
+		events.append({"seq": 71 + i * 2, "t_usec": now - 290_000 + i * 20_000, "kind": "bt_exit", "node": Fixtures.COVER_MOVE, "result": "success"})
+	_debugger.events = {Fixtures.COVER_BT: events}
+	_overlay.select_entity(_owner_a.get_instance_id())
+
+	assert_eq(_event_texts(), [
+		"MoveToCover entered ×3",
+		"MoveToCover exited success ×3",
+	])
+
+
+func test_blackboard_event_values_round_to_two_decimals() -> void:
+	var now := Fixtures.NOW_USEC
+	_debugger.events = {Fixtures.HTN: [
+		{"seq": 30, "t_usec": now - 300_000, "kind": "bb_set", "key": "threat_alert", "value": 0.51040338369516},
+		{"seq": 31, "t_usec": now - 290_000, "kind": "bb_set", "key": "threat_position", "value": Vector2(412.34567, 230.98765)},
+		{"seq": 32, "t_usec": now - 280_000, "kind": "bb_set", "key": "cover_point", "value": Vector3(1.23456, 2.5, 3.14159)},
+	]}
+	_overlay.select_entity(_owner_a.get_instance_id())
+
+	var texts := _event_texts()
+	assert_has(texts, "threat_alert = 0.51")
+	assert_has(texts, "threat_position = (412.35, 230.99)")
+	assert_has(texts, "cover_point = (1.23, 2.50, 3.14)")
 
 
 func test_clicking_a_label_selects_its_entity() -> void:
