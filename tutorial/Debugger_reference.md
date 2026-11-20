@@ -90,17 +90,23 @@ The snapshot API (`get_snapshot()`) does not need a watch. Watching only affects
 
 `get_node_properties(node_id)` returns the current values of the properties of any live object that have storage, editor or script-variable usage, keyed by property name. That includes exported and plain script variables but not groups, categories or internal engine properties. It is what the editor inspector uses when you select a node.
 
+`diff_snapshots(previous, current)` returns a delta that turns one snapshot into another without sending the whole snapshot again. The format is described in section 6.2. Neither argument is modified.
+
 ### 3.4 Pause, step and event capacity
 
 | Method | Behaviour |
 |---|---|
 | `set_paused(paused)` | Pauses or resumes every root that steps from the SceneTree's `process_frame` or `physics_frame` signal. Emits `paused_changed`. |
-| `is_paused()` | Current pause state. |
-| `step()` | While paused, lets each scheduled root run exactly one more of its own frames, then pauses again. Does nothing while running. |
+| `is_paused()` | The debugger's own pause flag. Whether the SceneTree is paused too depends on the pause scope. |
+| `set_pause_scope(scope)` | `PAUSE_SCOPE_AI` pauses only the scheduled AI ticks; `PAUSE_SCOPE_GAME` also pauses the SceneTree. Emits `pause_scope_changed`. |
+| `get_pause_scope()` | The current `PauseScope`, `PAUSE_SCOPE_AI` by default. |
+| `step()` | While paused, lets each scheduled root run exactly one more of its own frames, then pauses again. In the game scope it also unpauses the SceneTree for exactly one complete frame. Does nothing while running. |
 | `set_event_capacity(capacity)` | Sets the event ring-buffer size for every current and future root. Values below `1` clamp to `1`. |
 | `get_event_capacity()` | The current capacity. |
 
-Pausing does not reset delta accumulation, so resuming does not produce a catch-up tick: frames that pass while paused are discarded. Roots with `process_thread` set to `MANUAL`, direct `tick()` calls, and hosted roots are not gated by the pause flag; hosted roots follow the host that drives them. Each root consumes its own step, so a physics-driven and an idle-driven root each tick once per `step()` regardless of how many physics frames the next process frame contains.
+The two pause scopes are `PAUSE_SCOPE_AI` (`0`) and `PAUSE_SCOPE_GAME` (`1`). In the AI scope the rest of the game keeps running: your own `_process` and `_physics_process` code, nodes outside Noodle Nodes, roots with `process_thread` set to `MANUAL` and direct `tick()` calls. In the game scope the SceneTree is paused as well, and the tree's own pause state is captured when the debugger pauses it and restored on resume, so a tree the game paused itself stays paused. Changing the scope while paused applies or releases the tree pause immediately. Values other than `PAUSE_SCOPE_GAME` fall back to `PAUSE_SCOPE_AI`.
+
+Pausing does not reset delta accumulation, so resuming does not produce a catch-up tick: frames that pass while paused are discarded. Hosted roots are not gated by the pause flag directly; they follow the host that drives them. Each root consumes its own step, so a physics-driven and an idle-driven root each tick once per `step()` regardless of how many physics frames the next process frame contains.
 
 The event capacity defaults to 512 per root. When the buffer is full the oldest event is dropped, so a consumer can see gaps in `seq`. That is the only meaning of a gap: sequences are per root, monotonic and never reused.
 
@@ -111,6 +117,7 @@ The event capacity defaults to 512 per root. When the buffer is full the oldest 
 | `root_added` | `info: Dictionary` | A root entered the tree and registered. |
 | `root_removed` | `root_id: int` | A registered root left the tree or was freed. |
 | `paused_changed` | `paused: bool` | The pause state changed. |
+| `pause_scope_changed` | `scope: int` (`PauseScope`) | The pause scope changed. |
 
 ## 4. Snapshots
 
@@ -147,6 +154,8 @@ Each entry in `nodes` is a flat list entry; the tree is reconstructed with `pare
 | `hosted_root` | `int` | Only present on a node that hosts another root: that root's id. |
 
 A hosted root's subtree is **not** expanded inside the host's snapshot. The hosted root appears only as the `hosted_root` id on its host node, a **portal**, and the consumer opens it as a separate root with its own snapshot. One node can host at most one root; extra nested roots remain reachable through `get_roots()`.
+
+A root that is nested in another root's subtree without being hosted (for example demo_08's `NNAgent` directly under its `NNSTRoot`) is still reported as a portal on the nearest ancestor node, and its own snapshot reports it `active` while it is enabled and in the tree. It is represented exactly like a hosted root, so consumers need no special handling.
 
 ### 4.3 The active path
 
@@ -328,7 +337,7 @@ Node extras depend on `kind`:
   | `curve` | `PackedVector2Array` | 32 samples of the activation curve over `0..1`, or empty when there is no curve. |
   | `aggregation` | `String` | The group's evaluation method: `"sum"`, `"min"`, `"max"`, `"mean"`, `"multiply"` or `"first_non_zero"`. Present on groups only. |
 
-- `"sensor"`, `"sensor_group"`: `value` (the sanitised sensor value) and `last_evaluated_usec`.
+- `"sensor"`, `"sensor_group"`: `value` (the sanitised sensor value) and `last_evaluated_usec`. An `NNNQSQuerySensor` also has `nqs_search_space`, the search space's instance id; other sensors do not.
 
 - `"action"`, `"action_group"`: `active` (whether the current action is this node or a descendant) and `finished`.
 
@@ -378,30 +387,60 @@ An `htn_attempt` is the full tracing record, not the snapshot summary. Besides t
 
 The game and the editor talk over a Godot debugger capture named `noodle_nodes`. The game side is implemented in `NNDebugger`; an editor tool implements `EditorDebuggerPlugin`. Register a capture for the prefix and route the messages you want. Every message is sent only while `EngineDebugger.is_active()`, and only subscribed roots stream.
 
+### 6.1 Message reference
+
 Game to editor:
 
 | Message | Data | Notes |
 |---|---|---|
 | `noodle_nodes:root_added` | `[info]` | One root's information dictionary. |
 | `noodle_nodes:root_removed` | `[root_id]` | |
-| `noodle_nodes:snapshot` | `[root_id, snapshot]` | Subscribed roots only, at most 10 times per second per root. |
+| `noodle_nodes:snapshot` | `[root_id, snapshot]` | A full snapshot. Sent on subscribe and on inspect, and as a fallback when the game has no baseline to diff against. |
+| `noodle_nodes:snapshot_delta` | `[root_id, delta]` | Subscribed roots only, at most 10 times per second per root, after the initial full snapshot. See section 6.2. |
 | `noodle_nodes:events` | `[root_id, events]` | Subscribed roots only, flushed once per frame when non-empty. |
 | `noodle_nodes:htn_history` | `[root_id, attempts]` | Full `get_search_history()` for an HTN root, once right after subscribing. |
-| `noodle_nodes:node_properties` | `[root_id, node_id, properties]` | With each snapshot while a node is being inspected. |
-| `noodle_nodes:paused` | `[paused]` | After a pause change, and in the reply to `hello`. |
+| `noodle_nodes:node_properties` | `[root_id, node_id, properties]` | With each snapshot or delta while a node is being inspected. |
+| `noodle_nodes:paused` | `[paused: bool, scope: int]` | After a pause or scope change, and in the reply to `hello`. `scope` is a `PauseScope` value. |
 
 Editor to game:
 
 | Message | Data | Notes |
 |---|---|---|
 | `noodle_nodes:hello` | `[]` | The game replies with `root_added` for every live root, then `paused`. |
-| `noodle_nodes:subscribe` | `[root_id]` | Watches the root and sends a snapshot immediately. Subscribing twice is ignored. |
+| `noodle_nodes:subscribe` | `[root_id]` | Watches the root and sends a full snapshot immediately. Subscribing twice is ignored. |
 | `noodle_nodes:unsubscribe` | `[root_id]` | Unwatches the root. |
-| `noodle_nodes:inspect` | `[root_id, node_id]` | Sends `node_properties` for that node with each snapshot; `node_id` `0` stops inspecting. |
+| `noodle_nodes:inspect` | `[root_id, node_id]` | Sends a full snapshot immediately, then `node_properties` for that node with each snapshot or delta; `node_id` `0` stops inspecting. |
 | `noodle_nodes:pause` | `[paused: bool]` | |
+| `noodle_nodes:pause_scope` | `[scope: int]` | Sets the `PauseScope` used by pause and step. |
 | `noodle_nodes:step` | `[]` | |
 
 Subscription is the editor's watch: `subscribe` calls `watch()` and `unsubscribe` or the end of the session calls `unwatch()`. The `hello` reply lets a tool rebuild its root list after attaching to a session that is already running.
+
+### 6.2 Snapshot deltas
+
+A subscribed root sends one full `snapshot` first, then `snapshot_delta` messages. The game keeps the last snapshot it sent per root, diffs each new one with `diff_snapshots(previous, current)` and sends only the difference. If the difference is nothing but the envelope's `time_usec` and `frame`, no message is sent at all, so an idle root costs nothing.
+
+A delta is a dictionary with these keys:
+
+| Key | Type | Meaning |
+|---|---|---|
+| `set` | `Dictionary` | Every top-level snapshot key except `nodes` whose value changed, with its new value. May be empty. |
+| `nodes` | `Array[Dictionary]` | The **whole** node array, present only when its structure changed. |
+| `nodes_changed` | `Array[Dictionary]` | Only the node entries that changed, present only when the structure is unchanged. |
+
+The node array's structure is the ordered sequence of each node's `id` and `parent`. When that sequence is the same, node entries are matched by `id`: `nodes_changed` holds full replacement entries, not partial field dictionaries. When a node was added, removed or reparented, the structure changes and the delta carries every node instead.
+
+Apply a delta by keeping the previous snapshot and merging it:
+
+```gdscript
+const Protocol := preload("res://addons/noodle_nodes/debugger/protocol.gd")
+
+var current := Protocol.apply_snapshot_delta(previous, delta)
+```
+
+`apply_snapshot_delta(previous, delta)` copies `previous`, applies every key in `set`, replaces the node array when `nodes` is present, and otherwise replaces only the entries listed in `nodes_changed` while keeping the existing order. The editor shell uses exactly this helper; use it as-is or port its few lines to your own editor side. Always keep the result as the current snapshot, because the next delta is relative to it.
+
+A full snapshot arrives again after re-subscribing, when inspecting a node, or when the game had no baseline to diff against. A consumer must therefore handle both messages and never assume that every update is a delta.
 
 ## 7. A minimal tool
 

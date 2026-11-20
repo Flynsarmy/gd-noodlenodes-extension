@@ -45,7 +45,7 @@ The tab has four parts:
 - **The system view** in the middle. It changes with the root type.
 - **Inspector** at the bottom: the selected node's live properties, the root's blackboard, and the recent events that mention the selected node.
 
-The toolbar has the pause and step buttons, the **Follow active path** toggle, a **Horizontal**/**Vertical** layout toggle and **Float**. **Float** moves the whole panel into its own window so you can put it on a second monitor; **Dock** brings it back. The split positions, layout, follow state and float state are saved in the editor settings under `noodle_nodes/debugger/`.
+The toolbar has the pause and step buttons, the **AI**/**Game** pause scope selector, the **Follow active path** toggle, a **Horizontal**/**Vertical** layout toggle and **Float**. **Float** moves the whole panel into its own window so you can put it on a second monitor; **Dock** brings it back. The split positions, layout, follow state, float state and pause scope are saved in the editor settings under `noodle_nodes/debugger/`.
 
 If several game sessions run at once, each has its own **Noodle Nodes** tab.
 
@@ -61,19 +61,25 @@ Movement (ST)  ›  NNAgent (Agent)  ›  InvestigateAction (Agent action)  › 
 
 The grey crumbs are host nodes; the light crumbs are roots. Click any crumb to go back to it. The same nesting appears in the root list, so you can reach any root either by drilling in from a portal or by opening it directly.
 
-A root that is nested inside another root's node subtree without being driven by a host is still listed under that root. For example, an agent placed under a state tree root appears under it in the root list and in the breadcrumbs, even though the state tree does not tick it.
+A root that is nested inside another root's node subtree without being driven by a host is still listed under that root. For example, the integrated NPC's `NNAgent` sits directly under its `NNSTRoot` without a host node: it appears as a portal on the state tree's root box in the state tree view and in the breadcrumbs, and its own snapshot reports it active while it is enabled and in the tree. The state tree still does not tick it.
 
 ## 4. Pause and step
 
-**Pause** stops every root that steps from the scene tree's frame signals. The game keeps rendering and drawing, so you can look at the views and the overlay while the AI is frozen. **Step** lets every paused root advance by exactly one of its own frames on its own process thread, then pauses again. A physics-driven root and an idle-driven root each tick once per step.
+The toolbar has **Pause**, **Step** and an **AI**/**Game** scope selector.
 
-Pausing does not accumulate delta time: frames that pass while paused are dropped, so resuming does not produce a large catch-up tick.
+With the **AI** scope, **Pause** stops every root that steps from the scene tree's frame signals. The rest of the game keeps running: your own `_process` and `_physics_process` code, nodes that do not belong to Noodle Nodes, and roots with `process_thread` set to `MANUAL` or direct `tick()` calls. **Step** lets every paused root advance by exactly one of its own frames on its own process thread, then pauses again. A physics-driven root and an idle-driven root each tick once per step.
 
-Pause and step gate Noodle Nodes' scheduled AI ticks only. Your own `_process` and `_physics_process` code keeps running while the AI is paused, so a sprite that your script moves still moves. Roots with `process_thread` set to `MANUAL` and direct `tick()` calls are never blocked, and hosted roots follow the host that drives them, so pausing the host also freezes the hosted systems.
+With the **Game** scope, **Pause** also pauses the `SceneTree`, so ordinary node processing stops too. Resuming restores the pause state the tree had before the debugger paused it: a tree the game paused itself stays paused. **Step** unpauses the tree for exactly one complete frame, so one frame of ordinary node processing runs in addition to the AI tick, then pauses it again.
 
-You can pause and step from the editor tab, from the in-game overlay, or from code:
+Pausing does not accumulate delta time: frames that pass while paused are dropped, so resuming does not produce a large catch-up tick. Hosted roots follow the host that drives them, so pausing the host also freezes the hosted systems.
+
+The scope is saved in the editor settings under `noodle_nodes/debugger/pause_scope` and is sent to the game when the debugger attaches, so the running game adopts the scope you last used. The in-game overlay has the same selector. It keeps running while the tree is paused because it uses `PROCESS_MODE_ALWAYS`, so you can always resume from it.
+
+You can pause, step and choose the scope from code:
 
 ```gdscript
+const PAUSE_SCOPE_GAME := 1 # NNDebugger.PAUSE_SCOPE_GAME
+
 func toggle_pause() -> void:
     if Engine.has_singleton("NoodleNodesDebugger"):
         var debugger := Engine.get_singleton("NoodleNodesDebugger")
@@ -83,6 +89,11 @@ func toggle_pause() -> void:
 func step_once() -> void:
     if Engine.has_singleton("NoodleNodesDebugger"):
         Engine.get_singleton("NoodleNodesDebugger").step()
+
+
+func pause_the_whole_game() -> void:
+    if Engine.has_singleton("NoodleNodesDebugger"):
+        Engine.get_singleton("NoodleNodesDebugger").set_pause_scope(PAUSE_SCOPE_GAME)
 ```
 
 ## 5. Follow active path
@@ -172,7 +183,7 @@ The overlay does nothing when the debugger singleton is absent, so it is safe to
 
 The overlay groups roots by the node each root acts for, its **actor**, and falls back to the scene owner when a root has no actor. It anchors a label at that node when it is a `Node2D` or `Node3D`, keeping the label inside the viewport when the entity is near an edge, and shows the entity's active path with one colour-coded segment per system: the active state path, the running behaviour, the running task or plan step, and the running behaviour tree node. In the showcase each entity is its own scene, so every entity gets a label; in the integrated NPC all of the roots act for the same NPC, so there is one label anchored at the NPC. Click a label to select that entity, or press **Tab** to cycle through them. The selected entity's label stays bright; the others dim.
 
-The panel in the top-right follows the selected entity through its hosted roots. Each row is one root on the chain, with its system, name and the root's active-path text; a status column adds the running behaviour tree result, the current plan step, the running action, or `halted` when the state tree exceeded its per-pass transition budget (its infinite-loop guard). Under the rows, **Recent events** lists recent events from any root on the active chain, newest last, with tick events left out and repeated lines collapsed into a count. The panel's **Pause** and **Step** buttons are the same pause and step as the editor tab.
+The panel in the top-right follows the selected entity through its hosted roots. Each row is one root on the chain, with its system, name and the root's active-path text; a status column adds the running behaviour tree result, the current plan step, the running action, or `halted` when the state tree exceeded its per-pass transition budget (its infinite-loop guard). Under the rows, **Recent events** lists recent events from any root on the active chain, newest last, with tick events left out and repeated lines collapsed into a count. The panel's **Pause**, **Step** and **AI**/**Game** controls use the same pause scope as the editor tab, and the overlay keeps running while the tree is paused so you can always resume.
 
 The demos wire **F1** to toggle the overlay and open it on start:
 
@@ -188,9 +199,9 @@ The overlay refreshes ten times per second. It watches events only for the roots
 
 ### Drawing the selected entity's query
 
-The overlay draws the selected entity's query automatically. It looks at the selected entity's active path for a behaviour tree and takes the search space from its running query node's `nqs_search_space` badge, or from the most recently run query node when the tree is between queries. It mounts the matching 2D or 3D drawer in the world and retargets it when the selection changes. Every candidate that survived the query is drawn as a point coloured by its score, with the winner highlighted. Select a different entity with **Tab** and the drawing follows it; when the selection has no query, the drawer is removed.
+The overlay draws the selected entity's query automatically. It looks at the selected entity's active path for a behaviour tree and takes the search space from its running query node's `nqs_search_space` badge, or from the most recently run query node when the tree is between queries. When no behaviour tree on the chain reports a query, it falls back to the search space of the agent's `NNNQSQuerySensor`. It mounts the matching 2D or 3D drawer in the world and retargets it when the selection changes. Every candidate that survived the query is drawn as a point coloured by its score, with the winner highlighted. Select a different entity with **Tab** and the drawing follows it; when the selection has no query, the drawer is removed.
 
-Only behaviour tree query nodes feed this view: the badge comes from `NNBTRunNQSQuery`. A query owned by an `NNNQSQuerySensor` is not part of the agent snapshot, so the overlay does not draw it; use a drawer with that search space directly, as described next. This is still the quickest way to see whether a tree's query is scoring the candidates you expect without leaving the game window.
+Both sources are in the snapshot: behaviour tree query nodes through the `nqs_search_space` badge and agent query sensors through the `nqs_search_space` key on the sensor node. A query owned by a sensor is therefore drawn too, without extra setup. This is still the quickest way to see whether a query is scoring the candidates you expect without leaving the game window.
 
 ## 12. Drawing queries in the viewport
 
@@ -248,8 +259,8 @@ Tips that help whatever tool you use:
 
 ## 15. Demo scenes
 
-`demo/demo_06_debugger/tutorial_scene.tscn` is the debugger showcase. It spawns six agents, six behaviour trees and six state trees, each entity in its own scene, so the overlay has labels for every entity. Run it from the editor and open the **Noodle Nodes** tab to see the root list, or leave the overlay open to watch the labels. **F1** toggles the overlay, **Tab** cycles the selected entity, **Space** spawns a random entity, **Backspace** removes the last one, **P** pauses the AI through the debugger and **N** steps it. The status bar shows the current pause state and the number of live entities.
+`demo/demo_06_debugger/tutorial_scene.tscn` is the debugger showcase. It spawns six agents, six behaviour trees and six state trees, each entity in its own scene, so the overlay has labels for every entity. Run it from the editor and open the **Noodle Nodes** tab to see the root list, or leave the overlay open to watch the labels. **F1** toggles the overlay, **Tab** cycles the selected entity, **Space** spawns a random entity, **Backspace** removes the last one, **P** pauses the AI through the debugger, **G** switches the pause scope between AI and Game, and **N** steps it. The status bar shows the current pause state and scope and the number of live entities.
 
-`demo/demo_08_integrated_npc/tutorial_scene.tscn` is the integrated NPC. Its tree is the nesting used throughout this tutorial: a movement state tree hosts the agent, the agent's action hosts a goal tree, and the Investigate planner's task hosts a behaviour tree. Open the **Noodle Nodes** tab, enable **Follow active path** and watch the view move from the state tree into the current goal, then into the current plan task as the threat changes. **F1** toggles the overlay here too. See [Combining the systems](Combining_the_systems.md#8-debugging-nested-roots) for the guided tour.
+`demo/demo_08_integrated_npc/tutorial_scene.tscn` is the integrated NPC. Its tree is the nesting used throughout this tutorial: a movement state tree hosts the agent, the agent's action hosts a goal tree, and the Investigate planner's task hosts a behaviour tree. Its planner has `track_search` enabled, so the HTN view's **Attempts** and **Trace** tabs have data as soon as the planner runs. Open the **Noodle Nodes** tab, enable **Follow active path** and watch the view move from the state tree into the current goal, then into the current plan task as the threat changes. **F1** toggles the overlay here too. See [Combining the systems](Combining_the_systems.md#8-debugging-nested-roots) for the guided tour.
 
 If you build your own tools on the debugger, read the [Debugger reference](Debugger_reference.md) for the singleton API, the snapshot schema and the event and message formats.
