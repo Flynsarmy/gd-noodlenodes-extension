@@ -3,6 +3,7 @@ extends PanelContainer
 ## One behaviour tree graph node: class icon, name, status colour and decorator badges.
 
 const StatusPalette := preload("res://addons/noodle_nodes/debugger/status_palette.gd")
+const EditorScale := preload("res://addons/noodle_nodes/editor/editor_scale.gd")
 
 const DEFAULT_ICON := "res://addons/noodle_nodes/icons/NNDefault.svg"
 
@@ -16,9 +17,12 @@ var hosted_root := 0
 var selected := false
 
 var _style: StyleBoxFlat
+var _border := 1
+var _status_border := 3
 
 
 func _ready() -> void:
+	EditorScale.apply_to_scene(self)
 	_ensure_style()
 
 
@@ -64,6 +68,8 @@ func _ensure_style() -> void:
 	if _style != null:
 		return
 	_style = (get_theme_stylebox("panel") as StyleBoxFlat).duplicate()
+	_border = maxi(_style.border_width_top, 1)
+	_status_border = maxi(_style.border_width_left, 1)
 	add_theme_stylebox_override("panel", _style)
 
 
@@ -72,5 +78,5 @@ func _apply_style() -> void:
 		return
 	_style.border_color = status_color
 	_style.bg_color = Color(0.1, 0.11, 0.13).lerp(status_color, 0.3 if selected else 0.16)
-	_style.set_border_width_all(2 if selected else 1)
-	_style.border_width_left = 4 if selected else 3
+	_style.set_border_width_all(_border * 2 if selected else _border)
+	_style.border_width_left = _status_border + (_border if selected else 0)

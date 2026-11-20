@@ -3,6 +3,7 @@ extends "res://addons/noodle_nodes/editor/views/debug_view.gd"
 ## Behaviour tree debugger view: auto-laid-out tree graph plus a tick-history scrubber.
 
 const BTGraph := preload("res://addons/noodle_nodes/editor/views/bt/bt_graph.gd")
+const EditorScale := preload("res://addons/noodle_nodes/editor/editor_scale.gd")
 
 const MAX_TICKS := 120
 
@@ -23,6 +24,7 @@ var _syncing_scrubber := false
 
 
 func _ready() -> void:
+	EditorScale.apply_to_scene(self)
 	_graph.node_clicked.connect(_on_node_clicked)
 	_graph.portal_activated.connect(_on_portal_activated)
 	_fit_button.pressed.connect(_graph.fit)

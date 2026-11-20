@@ -29,7 +29,7 @@ theme_override_constants/separation = 6
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
-theme_override_font_sizes/font_size = 12
+theme_type_variation = &"HeaderSmall"
 text = "No behaviour tree"
 clip_text = true
 
@@ -60,7 +60,6 @@ theme_override_constants/separation = 6
 unique_name_in_owner = true
 custom_minimum_size = Vector2(88, 0)
 layout_mode = 2
-theme_override_font_sizes/font_size = 11
 text = "No ticks"
 
 [node name="Scrubber" type="HSlider" parent="Layout/ScrubRow"]
