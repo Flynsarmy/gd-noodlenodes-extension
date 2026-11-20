@@ -13,9 +13,11 @@ const MAX_TICKS := 120
 @onready var _scrub_label: Label = %ScrubLabel
 
 var _snapshot := {}
+var _snapshot_seq := 0
 var _statuses := {}
 var _running := 0
 var _history: Array[Dictionary] = []
+var _tick_seqs := {}
 var _scrub_index := -1
 var _syncing_scrubber := false
 
@@ -33,6 +35,7 @@ func set_snapshot(snapshot: Dictionary) -> void:
 		clear()
 		return
 	_snapshot = snapshot
+	_snapshot_seq = int(snapshot.get("last_seq", 0))
 	_statuses.clear()
 	for entry in snapshot.get("nodes", []):
 		_statuses[int(entry.get("id", 0))] = str(entry.get("status", "unvisited"))
@@ -45,19 +48,21 @@ func apply_events(events: Array) -> void:
 	if _snapshot.is_empty():
 		return
 	for event in events:
+		var newer := _is_newer(event)
 		match str(event.get("kind", "")):
 			"bt_enter":
 				var entered := int(event.get("node", 0))
-				if entered != 0:
+				if newer and entered != 0:
 					_statuses[entered] = "running"
 			"bt_exit":
 				var exited := int(event.get("node", 0))
-				if exited != 0:
+				if newer and exited != 0:
 					_statuses[exited] = str(event.get("result", "success"))
 			"bt_tick":
-				_running = int(event.get("running_node", 0))
-				if _statuses.has(_running):
-					_statuses[_running] = "running"
+				if newer:
+					_running = int(event.get("running_node", 0))
+					if _statuses.has(_running):
+						_statuses[_running] = "running"
 				_record_tick(event)
 	_refresh()
 	_sync_scrubber()
@@ -69,14 +74,22 @@ func select_node(node_id: int) -> void:
 
 func clear() -> void:
 	_snapshot = {}
+	_snapshot_seq = 0
 	_statuses.clear()
 	_running = 0
 	_history.clear()
+	_tick_seqs.clear()
 	_scrub_index = -1
 	_graph.set_nodes([], 0, 0)
 	_graph.select(0)
 	_summary.text = "No behaviour tree"
 	_sync_scrubber()
+
+
+## Events the latest snapshot already reflects must not overwrite its statuses.
+func _is_newer(event: Dictionary) -> bool:
+	var seq := int(event.get("seq", 0))
+	return seq == 0 or seq > _snapshot_seq
 
 
 func _refresh() -> void:
@@ -92,13 +105,20 @@ func _refresh() -> void:
 
 
 func _record_tick(event: Dictionary) -> void:
+	var seq := int(event.get("seq", 0))
+	if seq != 0 and _tick_seqs.has(seq):
+		return
 	_history.append({
+		"seq": seq,
 		"time_usec": int(event.get("t_usec", 0)),
 		"statuses": _statuses.duplicate(),
 		"running_node": _running,
 	})
+	if seq != 0:
+		_tick_seqs[seq] = true
 	if _history.size() > MAX_TICKS:
-		_history.pop_front()
+		var dropped: Dictionary = _history.pop_front()
+		_tick_seqs.erase(int(dropped.get("seq", 0)))
 		if _scrub_index >= 0:
 			_scrub_index = maxi(_scrub_index - 1, 0)
 

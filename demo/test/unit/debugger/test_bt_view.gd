@@ -162,6 +162,23 @@ func test_click_emits_node_selected_and_select_node_does_not() -> void:
 	assert_false(_graph().get_item(DebuggerFixtures.COVER_MOVE).selected)
 
 
+func test_events_the_snapshot_already_covers_do_not_overwrite_its_statuses() -> void:
+	var snapshot := DebuggerFixtures.bt_snapshot()
+	_view.set_snapshot(snapshot)
+	var stamp := int(snapshot["last_seq"])
+	var find: Control = _graph().get_item(DebuggerFixtures.COVER_FIND)
+	assert_eq(find.status, "success")
+
+	_view.apply_events([{ "seq": stamp - 1, "t_usec": DebuggerFixtures.NOW_USEC - 300_000, "frame": 0, "kind": "bt_enter", "node": DebuggerFixtures.COVER_FIND }])
+	assert_eq(find.status, "success", "an event the snapshot already reflects is ignored")
+
+	_view.apply_events([{ "seq": stamp + 1, "t_usec": DebuggerFixtures.NOW_USEC, "frame": 0, "kind": "bt_enter", "node": DebuggerFixtures.COVER_FIND }])
+	assert_eq(find.status, "running", "an event newer than the snapshot applies")
+
+	_view.apply_events([{ "seq": 0, "t_usec": DebuggerFixtures.NOW_USEC, "frame": 0, "kind": "bt_enter", "node": DebuggerFixtures.COVER_HAS }])
+	assert_eq(_graph().get_item(DebuggerFixtures.COVER_HAS).status, "running", "an unstamped event always applies")
+
+
 func test_scrubber_records_ticks_and_shows_historical_statuses() -> void:
 	_view.set_snapshot(DebuggerFixtures.bt_snapshot())
 	var events := DebuggerFixtures.bt_events()
@@ -169,9 +186,10 @@ func test_scrubber_records_ticks_and_shows_historical_statuses() -> void:
 	events.append({ "seq": 65, "t_usec": t - 200_000, "frame": DebuggerFixtures.FRAME - 6, "kind": "bt_exit", "node": DebuggerFixtures.COVER_MOVE, "result": "success" })
 	events.append({ "seq": 66, "t_usec": t - 100_000, "frame": DebuggerFixtures.FRAME - 3, "kind": "bt_tick", "result": "success", "running_node": 0 })
 	_view.apply_events(events)
+	_view.apply_events(events)
 
 	var scrubber: HSlider = _view.get_node("%Scrubber")
-	assert_eq(scrubber.max_value, 2.0, "every bt_tick is recorded")
+	assert_eq(scrubber.max_value, 2.0, "every bt_tick is recorded once, even if a batch is replayed")
 	assert_eq(scrubber.value, scrubber.max_value, "the scrubber follows the live end")
 	assert_eq(_graph().get_item(DebuggerFixtures.COVER_MOVE).status, "success")
 
