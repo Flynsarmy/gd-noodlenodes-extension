@@ -1,0 +1,69 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://addons/noodle_nodes/editor/views/htn/attempt_row.gd" id="1_row"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_row"]
+content_margin_left = 6.0
+content_margin_top = 4.0
+content_margin_right = 6.0
+content_margin_bottom = 4.0
+bg_color = Color(0.09, 0.1, 0.12, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.35, 0.35, 0.4, 1)
+corner_radius_top_left = 3
+corner_radius_top_right = 3
+corner_radius_bottom_right = 3
+corner_radius_bottom_left = 3
+
+[node name="AttemptRow" type="PanelContainer"]
+offset_right = 380.0
+offset_bottom = 40.0
+theme_override_styles/panel = SubResource("StyleBoxFlat_row")
+script = ExtResource("1_row")
+
+[node name="Body" type="VBoxContainer" parent="."]
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/separation = 1
+
+[node name="Head" type="HBoxContainer" parent="Body"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/separation = 6
+
+[node name="Id" type="Label" parent="Body/Head"]
+unique_name_in_owner = true
+layout_mode = 2
+mouse_filter = 2
+text = "#0"
+theme_override_font_sizes/font_size = 12
+
+[node name="Result" type="Label" parent="Body/Head"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+mouse_filter = 2
+clip_text = true
+text = "Found"
+theme_override_colors/font_color = Color(0.35, 0.85, 0.4, 1)
+theme_override_font_sizes/font_size = 12
+
+[node name="Flags" type="Label" parent="Body/Head"]
+unique_name_in_owner = true
+layout_mode = 2
+mouse_filter = 2
+text = "optimal, installed"
+theme_override_colors/font_color = Color(0.72, 0.78, 0.85, 1)
+theme_override_font_sizes/font_size = 11
+
+[node name="Meta" type="Label" parent="Body"]
+unique_name_in_owner = true
+layout_mode = 2
+mouse_filter = 2
+clip_text = true
+text = "0 expansions · cost 0.0 · 00:00:00"
+theme_override_colors/font_color = Color(0.63, 0.68, 0.74, 1)
+theme_override_font_sizes/font_size = 11
