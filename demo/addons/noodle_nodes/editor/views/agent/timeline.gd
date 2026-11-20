@@ -16,8 +16,8 @@ const TICK_LABEL := Color(0.7, 0.73, 0.78, 1.0)
 const SEGMENT_LABEL := Color(0.06, 0.07, 0.09, 0.9)
 const TOP := 6.0
 const BOTTOM := 8.0
-const MIN_HEIGHT := 48.0
-const MIN_WIDTH := 240.0
+const HEIGHT := 84.0
+const MIN_WIDTH := 200.0
 const TICK_WIDTH := 1.0
 const MIN_SEGMENT_WIDTH := 1.0
 const SEGMENT_LABEL_PADDING := 6.0
@@ -31,7 +31,7 @@ var _fallback: int = 0
 
 
 func _ready() -> void:
-	custom_minimum_size = Vector2(EditorScale.px(MIN_WIDTH), EditorScale.px(MIN_HEIGHT))
+	custom_minimum_size = Vector2(EditorScale.px(MIN_WIDTH), EditorScale.px(HEIGHT))
 
 
 func set_data(changes: Array, now_usec: int, names: Dictionary, fallback_behaviour: int) -> void:
@@ -138,10 +138,7 @@ func _draw() -> void:
 	var font := _label_font()
 	var font_size := _label_font_size()
 	var top := EditorScale.px(TOP)
-	var bottom := EditorScale.px(BOTTOM)
-	if font != null:
-		bottom = maxf(bottom, font.get_height(font_size) + EditorScale.px(TICK_PADDING))
-	var height := maxf(size.y - top - bottom, EditorScale.px(MIN_SEGMENT_WIDTH))
+	var height := get_band_rect().size.y
 	_draw_time_axis(font, font_size, top, height)
 	var segments := get_segments()
 	if segments.is_empty():
@@ -175,6 +172,12 @@ func _draw_time_axis(font: Font, font_size: int, top: float, height: float) -> v
 			label_x = x - text_width * 0.5
 		var baseline := size.y - EditorScale.px(TICK_PADDING) - font.get_descent(font_size)
 		draw_string(font, Vector2(label_x, baseline), text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, TICK_LABEL)
+
+
+## The coloured band, excluding the tick row drawn underneath it.
+func get_band_rect() -> Rect2:
+	var top := EditorScale.px(TOP)
+	return Rect2(Vector2(0.0, top), Vector2(size.x, maxf(size.y - top - _bottom_margin(), EditorScale.px(MIN_SEGMENT_WIDTH))))
 
 
 func _get_tooltip(at_position: Vector2) -> String:
@@ -225,6 +228,13 @@ func _segment(behaviour: int, start_usec: int, end_usec: int, change: Variant) -
 		"change": change,
 		"color": colour_for(behaviour),
 	}
+
+
+func _bottom_margin() -> float:
+	var font := _label_font()
+	if font == null:
+		return EditorScale.px(BOTTOM)
+	return maxf(EditorScale.px(BOTTOM), font.get_height(_label_font_size()) + EditorScale.px(TICK_PADDING))
 
 
 func _label_font() -> Font:
