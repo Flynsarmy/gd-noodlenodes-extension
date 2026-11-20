@@ -260,11 +260,18 @@ func test_log_filters_search_and_max_lines() -> void:
 	_view.apply_events(Fixtures.st_events())
 	assert_eq(_log_rows().size(), 7)
 
-	var guards := _view.get_node("%FilterGuards") as CheckBox
-	guards.button_pressed = false
+	var popup := (_view.get_node("%FilterMenu") as MenuButton).get_popup()
+	var guards := -1
+	for index in popup.item_count:
+		if popup.get_item_text(index) == "Guards":
+			guards = index
+	assert_gte(guards, 0)
+	popup.set_item_checked(guards, false)
+	popup.id_pressed.emit(popup.get_item_id(guards))
 	assert_eq(_visible_log_rows().size(), 6)
 	assert_false(_log_row("st_guard").visible)
-	guards.button_pressed = true
+	popup.set_item_checked(guards, true)
+	popup.id_pressed.emit(popup.get_item_id(guards))
 	assert_eq(_visible_log_rows().size(), 7)
 
 	var search := _view.get_node("%Search") as LineEdit
@@ -292,6 +299,26 @@ func test_log_filters_search_and_max_lines() -> void:
 		more[index]["seq"] = 100 + index
 	_view.apply_events(more)
 	assert_eq(_log_rows().size(), 3)
+
+
+func test_view_fits_the_default_debugger_height() -> void:
+	_view.set_snapshot(Fixtures.st_snapshot())
+	_view.apply_events(Fixtures.st_events())
+	assert_true(_view.clip_contents, "the view must clip content to its own rect")
+	assert_lte(_view.get_combined_minimum_size().y, 150.0)
+
+	_view.set_anchors_and_offsets_preset(Control.PRESET_TOP_LEFT)
+	_view.size = Vector2(1100, 170)
+	await get_tree().process_frame
+	await get_tree().process_frame
+
+	var rows := _visible_log_rows()
+	assert_gte(rows.size(), 2)
+	var scroll := _view.get_node("%LogScroll") as ScrollContainer
+	var second := rows[1] as Control
+	assert_true(second.is_visible_in_tree())
+	assert_true(second.get_global_rect().end.y <= scroll.get_global_rect().end.y + 0.5)
+	assert_gte(scroll.size.y, second.size.y * 2.0)
 
 
 func test_clicking_log_entry_highlights_its_transition() -> void:

@@ -24,6 +24,9 @@ const LOG_CATEGORY_BY_KIND := {
 ## Enough to cover the 512-event ring buffer with replays to spare.
 const SEEN_SEQ_LIMIT := 4096
 
+const FILTER_CATEGORIES := ["event", "transition", "guard", "pending", "cancelled", "state"]
+const FILTER_LABELS := ["Events", "Transitions", "Guards", "Pending", "Cancelled", "Enter/Exit"]
+
 @onready var _boxes: VBoxContainer = %Boxes
 @onready var _empty: Label = %Empty
 @onready var _box_scroll: ScrollContainer = %BoxScroll
@@ -31,6 +34,7 @@ const SEEN_SEQ_LIMIT := 4096
 @onready var _log_count: Label = %LogCount
 @onready var _search: LineEdit = %Search
 @onready var _max_lines: SpinBox = %MaxLines
+@onready var _filter_menu: MenuButton = %FilterMenu
 
 var _snapshot := {}
 var _structure := PackedStringArray()
@@ -48,24 +52,18 @@ var _selected_id := 0
 var _root_labels := {}
 var _guard_results := {}
 var _pending := {}
-var _filters := {}
 var _log_rows: Array = []
 var _selected_log_row: Button = null
 
 
 func _ready() -> void:
 	EditorScale.apply_to_scene(self)
-	_filters = {
-		"event": %FilterEvents,
-		"transition": %FilterTransitions,
-		"guard": %FilterGuards,
-		"pending": %FilterPending,
-		"cancelled": %FilterCancelled,
-		"state": %FilterStates,
-	}
-	for category in _filters:
-		var check: CheckBox = _filters[category]
-		check.toggled.connect(_on_filter_toggled.bind(category))
+	var popup := _filter_menu.get_popup()
+	popup.clear()
+	for index in FILTER_CATEGORIES.size():
+		popup.add_check_item(FILTER_LABELS[index], index)
+		popup.set_item_checked(index, true)
+	popup.id_pressed.connect(_on_filter_toggled)
 	_search.text_changed.connect(_on_search_changed)
 	_max_lines.value_changed.connect(_on_max_lines_changed)
 	%Copy.pressed.connect(_copy_log)
@@ -496,8 +494,8 @@ func _log_event(event: Dictionary, kind: String) -> void:
 
 
 func _row_matches(row) -> bool:
-	var check: CheckBox = _filters.get(row.category)
-	if check != null and not check.button_pressed:
+	var index := FILTER_CATEGORIES.find(row.category)
+	if index != -1 and not _filter_menu.get_popup().is_item_checked(index):
 		return false
 	var query := _search.text.strip_edges().to_lower()
 	if query == "":
@@ -511,7 +509,7 @@ func _apply_log_filters() -> void:
 			row.visible = _row_matches(row)
 
 
-func _on_filter_toggled(_pressed: bool, _category: String) -> void:
+func _on_filter_toggled(_id: int) -> void:
 	_apply_log_filters()
 
 
