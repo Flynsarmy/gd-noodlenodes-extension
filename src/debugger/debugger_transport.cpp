@@ -20,6 +20,7 @@ const char *const PREFIX = "noodle_nodes";
 const char *const MESSAGE_ROOT_ADDED = "noodle_nodes:root_added";
 const char *const MESSAGE_ROOT_REMOVED = "noodle_nodes:root_removed";
 const char *const MESSAGE_SNAPSHOT = "noodle_nodes:snapshot";
+const char *const MESSAGE_SNAPSHOT_DELTA = "noodle_nodes:snapshot_delta";
 const char *const MESSAGE_EVENTS = "noodle_nodes:events";
 const char *const MESSAGE_HTN_HISTORY = "noodle_nodes:htn_history";
 const char *const MESSAGE_NODE_PROPERTIES = "noodle_nodes:node_properties";
@@ -30,6 +31,7 @@ const char *const COMMAND_SUBSCRIBE = "subscribe";
 const char *const COMMAND_UNSUBSCRIBE = "unsubscribe";
 const char *const COMMAND_INSPECT = "inspect";
 const char *const COMMAND_PAUSE = "pause";
+const char *const COMMAND_PAUSE_SCOPE = "pause_scope";
 const char *const COMMAND_STEP = "step";
 
 const char *const TYPE_HTN = "htn";
@@ -39,6 +41,23 @@ constexpr int64_t SNAPSHOT_INTERVAL_USEC = 100000;
 bool _is_debugger_active() {
 	EngineDebugger *debugger = EngineDebugger::get_singleton();
 	return debugger != nullptr && debugger->is_active();
+}
+
+// A delta that carries nothing but the envelope timestamps is not worth a
+// message; the consumer already has every visible value.
+bool _is_quiet_snapshot_delta(const Dictionary &p_delta) {
+	if (p_delta.has("nodes") || p_delta.has("nodes_changed")) {
+		return false;
+	}
+	const Dictionary changed = p_delta.get("set", Dictionary());
+	const Array keys = changed.keys();
+	for (int i = 0; i < keys.size(); i++) {
+		const String key = keys[i];
+		if (key != "time_usec" && key != "frame") {
+			return false;
+		}
+	}
+	return true;
 }
 
 bool _read_int(const Array &p_data, int p_index, int64_t &r_value) {
@@ -129,6 +148,13 @@ bool NNDebuggerTransport::handle_message(const String &p_message, const Array &p
 		}
 		return true;
 	}
+	if (p_message == COMMAND_PAUSE_SCOPE) {
+		int64_t scope = 0;
+		if (_read_int(p_data, 0, scope) && _debugger != nullptr) {
+			_debugger->set_pause_scope((int)scope);
+		}
+		return true;
+	}
 	if (p_message == COMMAND_STEP) {
 		if (_debugger != nullptr) {
 			_debugger->step();
@@ -157,8 +183,8 @@ void NNDebuggerTransport::on_root_removed(int64_t p_root_id) {
 	_send(MESSAGE_ROOT_REMOVED, Array::make(p_root_id));
 }
 
-void NNDebuggerTransport::on_paused_changed(bool p_paused) {
-	_send(MESSAGE_PAUSED, Array::make(p_paused));
+void NNDebuggerTransport::on_paused_changed(bool p_paused, int p_scope) {
+	_send(MESSAGE_PAUSED, Array::make(p_paused, p_scope));
 }
 
 void NNDebuggerTransport::flush() {
@@ -193,7 +219,7 @@ void NNDebuggerTransport::flush() {
 		if (now_usec - subscription.last_snapshot_usec < SNAPSHOT_INTERVAL_USEC) {
 			continue;
 		}
-		_send_snapshot(root_id);
+		_send_snapshot_delta(root_id);
 	}
 }
 
@@ -202,7 +228,7 @@ void NNDebuggerTransport::_send_hello() {
 	for (int i = 0; i < roots.size(); i++) {
 		_send(MESSAGE_ROOT_ADDED, Array::make(roots[i]));
 	}
-	_send(MESSAGE_PAUSED, Array::make(_debugger->is_paused()));
+	_send(MESSAGE_PAUSED, Array::make(_debugger->is_paused(), _debugger->get_pause_scope()));
 }
 
 void NNDebuggerTransport::_subscribe(int64_t p_root_id) {
@@ -222,7 +248,7 @@ void NNDebuggerTransport::_subscribe(int64_t p_root_id) {
 	subscription.last_sent_seq = _debugger->get_last_seq(p_root_id);
 	_subscriptions[p_root_id] = subscription;
 	_connect_frame();
-	_send_snapshot(p_root_id);
+	_send_full_snapshot(p_root_id);
 
 	if (String(info.get("type", String())) == TYPE_HTN) {
 		NNHTNRoot *htn_root = Object::cast_to<NNHTNRoot>(ObjectDB::get_instance(ObjectID(p_root_id)));
@@ -256,11 +282,11 @@ void NNDebuggerTransport::_inspect(int64_t p_root_id, int64_t p_node_id) {
 	_inspected_root_id = p_root_id;
 	_inspected_node_id = p_node_id;
 	if (_debugger != nullptr && _subscriptions.find(p_root_id) != _subscriptions.end()) {
-		_send(MESSAGE_NODE_PROPERTIES, Array::make(p_root_id, p_node_id, _debugger->get_node_properties(p_node_id)));
+		_send_full_snapshot(p_root_id);
 	}
 }
 
-void NNDebuggerTransport::_send_snapshot(int64_t p_root_id) {
+void NNDebuggerTransport::_send_full_snapshot(int64_t p_root_id) {
 	std::map<int64_t, Subscription>::iterator subscription_it = _subscriptions.find(p_root_id);
 	if (subscription_it == _subscriptions.end() || _debugger == nullptr) {
 		return;
@@ -273,7 +299,36 @@ void NNDebuggerTransport::_send_snapshot(int64_t p_root_id) {
 	if (snapshot.is_empty()) {
 		return;
 	}
+	subscription_it->second.last_snapshot = snapshot;
 	_send(MESSAGE_SNAPSHOT, Array::make(p_root_id, snapshot));
+	if (_inspected_root_id == p_root_id && _inspected_node_id != 0) {
+		_send(MESSAGE_NODE_PROPERTIES, Array::make(p_root_id, _inspected_node_id, _debugger->get_node_properties(_inspected_node_id)));
+	}
+}
+
+void NNDebuggerTransport::_send_snapshot_delta(int64_t p_root_id) {
+	std::map<int64_t, Subscription>::iterator subscription_it = _subscriptions.find(p_root_id);
+	if (subscription_it == _subscriptions.end() || _debugger == nullptr) {
+		return;
+	}
+	subscription_it->second.last_snapshot_usec = Time::get_singleton()->get_ticks_usec();
+
+	const Dictionary snapshot = _debugger->get_snapshot(p_root_id);
+	if (snapshot.is_empty()) {
+		return;
+	}
+	if (subscription_it->second.last_snapshot.is_empty()) {
+		// No baseline (the first full snapshot was unavailable): fall back.
+		subscription_it->second.last_snapshot = snapshot;
+		_send(MESSAGE_SNAPSHOT, Array::make(p_root_id, snapshot));
+	} else {
+		const Dictionary delta = _debugger->diff_snapshots(subscription_it->second.last_snapshot, snapshot);
+		if (_is_quiet_snapshot_delta(delta)) {
+			return;
+		}
+		subscription_it->second.last_snapshot = snapshot;
+		_send(MESSAGE_SNAPSHOT_DELTA, Array::make(p_root_id, delta));
+	}
 	if (_inspected_root_id == p_root_id && _inspected_node_id != 0) {
 		_send(MESSAGE_NODE_PROPERTIES, Array::make(p_root_id, _inspected_node_id, _debugger->get_node_properties(_inspected_node_id)));
 	}

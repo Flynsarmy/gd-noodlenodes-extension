@@ -6,6 +6,8 @@
 #include "debugger_transport.h"
 
 #include <godot_cpp/classes/object.hpp>
+#include <godot_cpp/classes/ref.hpp>
+#include <godot_cpp/classes/scene_tree_timer.hpp>
 #include <godot_cpp/core/object_id.hpp>
 #include <godot_cpp/variant/dictionary.hpp>
 #include <godot_cpp/variant/typed_array.hpp>
@@ -16,6 +18,7 @@
 namespace godot {
 
 class NoodleNodes;
+class SceneTree;
 
 // Registry, EngineDebugger transport and pause gate for every debug root.
 // Registered as the NoodleNodesDebugger engine singleton in debug builds.
@@ -27,13 +30,30 @@ private:
 	NNDebuggerTransport _transport;
 	int _event_capacity;
 
+	Ref<SceneTreeTimer> _game_step_timer;
+	int _pause_scope;
+	bool _tree_pause_captured;
+	bool _tree_was_paused;
+
 	NoodleNodes *_resolve_root(int64_t p_root_id) const;
 	Dictionary _build_root_info(NoodleNodes *p_root) const;
+	SceneTree *_get_tree() const;
+	void _apply_tree_pause();
+	void _release_tree_pause();
+	void _start_game_step();
+	void _on_game_step_arm();
+	void _on_game_step_disarm();
+	void _clear_game_step_timer();
 
 protected:
 	static void _bind_methods();
 
 public:
+	enum PauseScope {
+		PAUSE_SCOPE_AI = 0,
+		PAUSE_SCOPE_GAME = 1,
+	};
+
 	NNDebugger();
 	~NNDebugger();
 
@@ -52,8 +72,11 @@ public:
 	Dictionary get_snapshot(int64_t p_root_id) const;
 	TypedArray<Dictionary> get_events(int64_t p_root_id, int64_t p_after_seq = 0) const;
 	Dictionary get_node_properties(int64_t p_node_id) const;
+	Dictionary diff_snapshots(const Dictionary &p_previous, const Dictionary &p_current) const;
 	void set_paused(bool p_paused);
 	bool is_paused() const;
+	void set_pause_scope(int p_scope);
+	int get_pause_scope() const;
 	void step();
 	void set_event_capacity(int p_capacity);
 	int get_event_capacity() const;
@@ -65,5 +88,7 @@ public:
 };
 
 } //namespace godot
+
+VARIANT_ENUM_CAST(NNDebugger::PauseScope);
 
 #endif

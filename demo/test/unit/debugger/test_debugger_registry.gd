@@ -12,6 +12,13 @@ class InspectorLeaf extends NNBTLeaf:
 		return RUNNING
 
 
+class ProcessingNode extends Node:
+	var process_count: int = 0
+
+	func _process(_delta: float) -> void:
+		process_count += 1
+
+
 var debugger: Object
 
 
@@ -22,12 +29,16 @@ func before_all() -> void:
 
 func before_each() -> void:
 	if debugger != null:
+		debugger.set_pause_scope(NNDebugger.PAUSE_SCOPE_AI)
 		debugger.set_paused(false)
+	get_tree().paused = false
 
 
 func after_each() -> void:
 	if debugger != null:
+		debugger.set_pause_scope(NNDebugger.PAUSE_SCOPE_AI)
 		debugger.set_paused(false)
+	get_tree().paused = false
 
 
 func _make_root() -> NNBTRoot:
@@ -296,6 +307,102 @@ func test_resume_does_not_catch_up_the_paused_time() -> void:
 	await get_tree().physics_frame
 
 	assert_almost_eq(leaf.last_delta, 1.0 / 60.0, 0.001, "paused frames are dropped instead of accumulating")
+
+
+func test_ai_scope_pauses_ai_but_leaves_the_tree_running() -> void:
+	var leaf := BT.make_leaf(NNBTNodes.RUNNING)
+	var root := BT.build_root(leaf)
+	var process_node := ProcessingNode.new()
+	add_child_autofree(root)
+	add_child_autofree(process_node)
+
+	debugger.set_pause_scope(NNDebugger.PAUSE_SCOPE_AI)
+	debugger.set_paused(true)
+	assert_false(get_tree().paused, "AI scope leaves the tree running")
+	var ai_count: int = leaf.tick_count
+	var process_count: int = process_node.process_count
+
+	await get_tree().process_frame
+	await get_tree().process_frame
+
+	assert_eq(leaf.tick_count, ai_count, "AI ticks are paused")
+	assert_gt(process_node.process_count, process_count, "ordinary nodes keep processing")
+
+
+func test_game_scope_pauses_the_tree_and_ai() -> void:
+	var leaf := BT.make_leaf(NNBTNodes.RUNNING)
+	var root := BT.build_root(leaf)
+	var process_node := ProcessingNode.new()
+	add_child_autofree(root)
+	add_child_autofree(process_node)
+
+	debugger.set_pause_scope(NNDebugger.PAUSE_SCOPE_GAME)
+	debugger.set_paused(true)
+	assert_true(get_tree().paused, "GAME scope pauses the tree")
+	var ai_count: int = leaf.tick_count
+	var process_count: int = process_node.process_count
+
+	await get_tree().physics_frame
+	await get_tree().process_frame
+	await get_tree().process_frame
+
+	assert_eq(leaf.tick_count, ai_count, "AI ticks are paused")
+	assert_eq(process_node.process_count, process_count, "ordinary nodes are paused")
+
+	debugger.set_paused(false)
+	assert_false(get_tree().paused, "resuming releases the tree pause")
+
+
+func test_unpause_restores_a_tree_the_game_paused_itself() -> void:
+	get_tree().paused = true
+	debugger.set_pause_scope(NNDebugger.PAUSE_SCOPE_GAME)
+	debugger.set_paused(true)
+	assert_true(get_tree().paused)
+
+	debugger.set_paused(false)
+
+	assert_true(get_tree().paused, "the game's own pause is restored, not cleared")
+
+
+func test_scope_change_while_paused_applies_or_releases_the_tree_pause() -> void:
+	var root := _make_root()
+	add_child_autofree(root)
+	watch_signals(debugger)
+
+	debugger.set_pause_scope(NNDebugger.PAUSE_SCOPE_AI)
+	debugger.set_paused(true)
+	assert_false(get_tree().paused)
+
+	debugger.set_pause_scope(NNDebugger.PAUSE_SCOPE_GAME)
+	assert_true(get_tree().paused, "switching to GAME pauses the tree immediately")
+	assert_signal_emitted_with_parameters(debugger, "pause_scope_changed", [NNDebugger.PAUSE_SCOPE_GAME])
+
+	debugger.set_pause_scope(NNDebugger.PAUSE_SCOPE_AI)
+	assert_false(get_tree().paused, "switching to AI releases the tree pause immediately")
+	assert_true(debugger.is_paused(), "the AI pause survives the scope change")
+
+
+func test_game_scope_step_runs_one_process_frame_and_one_ai_tick() -> void:
+	var leaf := BT.make_leaf(NNBTNodes.RUNNING)
+	var root := BT.build_root(leaf)
+	var process_node := ProcessingNode.new()
+	add_child_autofree(root)
+	add_child_autofree(process_node)
+
+	debugger.set_pause_scope(NNDebugger.PAUSE_SCOPE_GAME)
+	debugger.set_paused(true)
+	await get_tree().process_frame
+	var ai_count: int = leaf.tick_count
+	var process_count: int = process_node.process_count
+	assert_true(get_tree().paused)
+
+	debugger.step()
+	await get_tree().process_frame
+	await get_tree().process_frame
+
+	assert_eq(process_node.process_count, process_count + 1, "one whole frame of _process runs")
+	assert_eq(leaf.tick_count, ai_count + 1, "one AI tick runs in that frame")
+	assert_true(get_tree().paused, "the tree is paused again after the stepped frame")
 
 
 func test_node_properties_returns_sanitised_live_values() -> void:

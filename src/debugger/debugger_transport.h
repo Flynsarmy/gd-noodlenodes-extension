@@ -5,6 +5,7 @@
 #include <godot_cpp/core/object_id.hpp>
 #include <godot_cpp/variant/array.hpp>
 #include <godot_cpp/variant/callable.hpp>
+#include <godot_cpp/variant/dictionary.hpp>
 #include <godot_cpp/variant/string.hpp>
 
 #include <cstdint>
@@ -29,7 +30,7 @@ public:
 
 	void on_root_added(int64_t p_root_id);
 	void on_root_removed(int64_t p_root_id);
-	void on_paused_changed(bool p_paused);
+	void on_paused_changed(bool p_paused, int p_scope);
 
 	// Once per process frame while at least one root is subscribed.
 	void flush();
@@ -38,13 +39,15 @@ private:
 	struct Subscription {
 		int64_t last_sent_seq = 0;
 		int64_t last_snapshot_usec = 0;
+		godot::Dictionary last_snapshot;
 	};
 
 	void _send_hello();
 	void _subscribe(int64_t p_root_id);
 	void _unsubscribe(int64_t p_root_id);
 	void _inspect(int64_t p_root_id, int64_t p_node_id);
-	void _send_snapshot(int64_t p_root_id);
+	void _send_full_snapshot(int64_t p_root_id);
+	void _send_snapshot_delta(int64_t p_root_id);
 	void _clear_subscriptions();
 	void _connect_frame();
 	void _disconnect_frame();

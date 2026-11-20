@@ -10,6 +10,7 @@
 #include <godot_cpp/classes/engine.hpp>
 #include <godot_cpp/classes/global_constants.hpp>
 #include <godot_cpp/classes/node.hpp>
+#include <godot_cpp/classes/scene_tree.hpp>
 #include <godot_cpp/core/class_db.hpp>
 #include <godot_cpp/core/object.hpp>
 #include <godot_cpp/variant/callable_method_pointer.hpp>
@@ -21,6 +22,9 @@ using namespace godot;
 // Method binds.
 
 void NNDebugger::_bind_methods() {
+	BIND_ENUM_CONSTANT(PAUSE_SCOPE_AI);
+	BIND_ENUM_CONSTANT(PAUSE_SCOPE_GAME);
+
 	ClassDB::bind_method(D_METHOD("get_roots"), &NNDebugger::get_roots);
 	ClassDB::bind_method(D_METHOD("get_root_info", "root_id"), &NNDebugger::get_root_info);
 	ClassDB::bind_method(D_METHOD("watch", "root_id"), &NNDebugger::watch);
@@ -29,8 +33,11 @@ void NNDebugger::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_snapshot", "root_id"), &NNDebugger::get_snapshot);
 	ClassDB::bind_method(D_METHOD("get_events", "root_id", "after_seq"), &NNDebugger::get_events, DEFVAL(0));
 	ClassDB::bind_method(D_METHOD("get_node_properties", "node_id"), &NNDebugger::get_node_properties);
+	ClassDB::bind_method(D_METHOD("diff_snapshots", "previous", "current"), &NNDebugger::diff_snapshots);
 	ClassDB::bind_method(D_METHOD("set_paused", "paused"), &NNDebugger::set_paused);
 	ClassDB::bind_method(D_METHOD("is_paused"), &NNDebugger::is_paused);
+	ClassDB::bind_method(D_METHOD("set_pause_scope", "scope"), &NNDebugger::set_pause_scope);
+	ClassDB::bind_method(D_METHOD("get_pause_scope"), &NNDebugger::get_pause_scope);
 	ClassDB::bind_method(D_METHOD("step"), &NNDebugger::step);
 	ClassDB::bind_method(D_METHOD("set_event_capacity", "capacity"), &NNDebugger::set_event_capacity);
 	ClassDB::bind_method(D_METHOD("get_event_capacity"), &NNDebugger::get_event_capacity);
@@ -38,15 +45,21 @@ void NNDebugger::_bind_methods() {
 	ADD_SIGNAL(MethodInfo("root_added", PropertyInfo(Variant::DICTIONARY, "info")));
 	ADD_SIGNAL(MethodInfo("root_removed", PropertyInfo(Variant::INT, "root_id")));
 	ADD_SIGNAL(MethodInfo("paused_changed", PropertyInfo(Variant::BOOL, "paused")));
+	ADD_SIGNAL(MethodInfo("pause_scope_changed", PropertyInfo(Variant::INT, "scope", PROPERTY_HINT_ENUM, "", PROPERTY_USAGE_DEFAULT | PROPERTY_USAGE_CLASS_IS_ENUM, "NNDebugger.PauseScope")));
 }
 
 // Constructor and destructor.
 
 NNDebugger::NNDebugger() :
-		_event_capacity(NNDebugRoot::DEFAULT_EVENT_CAPACITY) {
+		_event_capacity(NNDebugRoot::DEFAULT_EVENT_CAPACITY),
+		_pause_scope(PAUSE_SCOPE_AI),
+		_tree_pause_captured(false),
+		_tree_was_paused(false) {
 }
 
 NNDebugger::~NNDebugger() {
+	_clear_game_step_timer();
+	_release_tree_pause();
 	_transport.uninstall();
 }
 
@@ -238,14 +251,66 @@ int NNDebugger::get_event_capacity() const {
 	return _event_capacity;
 }
 
+Dictionary NNDebugger::diff_snapshots(const Dictionary &p_previous, const Dictionary &p_current) const {
+	Dictionary delta;
+
+	Dictionary changed;
+	const Array keys = p_current.keys();
+	for (int i = 0; i < keys.size(); i++) {
+		const Variant &key = keys[i];
+		if (String(key) == "nodes") {
+			continue;
+		}
+		const Variant &value = p_current[key];
+		if (p_previous.get(key, Variant()) != value) {
+			changed[key] = value;
+		}
+	}
+	delta["set"] = changed;
+
+	const Array previous_nodes = p_previous.get("nodes", Array());
+	const Array current_nodes = p_current.get("nodes", Array());
+	bool same_structure = previous_nodes.size() == current_nodes.size();
+	for (int i = 0; same_structure && i < previous_nodes.size(); i++) {
+		const Dictionary previous_node = previous_nodes[i];
+		const Dictionary current_node = current_nodes[i];
+		same_structure = (int64_t)previous_node.get("id", 0) == (int64_t)current_node.get("id", 0) &&
+				(int64_t)previous_node.get("parent", 0) == (int64_t)current_node.get("parent", 0);
+	}
+
+	if (!same_structure) {
+		delta["nodes"] = current_nodes;
+		return delta;
+	}
+
+	Array changed_nodes;
+	for (int i = 0; i < current_nodes.size(); i++) {
+		if (previous_nodes[i] != current_nodes[i]) {
+			changed_nodes.push_back(current_nodes[i]);
+		}
+	}
+	if (!changed_nodes.is_empty()) {
+		delta["nodes_changed"] = changed_nodes;
+	}
+	return delta;
+}
+
 // Pause and step.
 
 void NNDebugger::set_paused(bool p_paused) {
-	if (NNTickScheduler::is_debugger_paused() == p_paused) {
+	if (is_paused() == p_paused) {
 		return;
 	}
 	NNTickScheduler::set_debugger_paused(p_paused);
-	_transport.on_paused_changed(p_paused);
+	if (p_paused) {
+		if (_pause_scope == PAUSE_SCOPE_GAME) {
+			_apply_tree_pause();
+		}
+	} else {
+		_clear_game_step_timer();
+		_release_tree_pause();
+	}
+	_transport.on_paused_changed(p_paused, _pause_scope);
 	emit_signal("paused_changed", p_paused);
 }
 
@@ -253,8 +318,126 @@ bool NNDebugger::is_paused() const {
 	return NNTickScheduler::is_debugger_paused();
 }
 
+void NNDebugger::set_pause_scope(int p_scope) {
+	const int scope = p_scope == PAUSE_SCOPE_GAME ? PAUSE_SCOPE_GAME : PAUSE_SCOPE_AI;
+	if (_pause_scope == scope) {
+		return;
+	}
+	_pause_scope = scope;
+
+	if (is_paused()) {
+		if (scope == PAUSE_SCOPE_GAME) {
+			_apply_tree_pause();
+		} else {
+			_clear_game_step_timer();
+			_release_tree_pause();
+		}
+	}
+
+	_transport.on_paused_changed(is_paused(), _pause_scope);
+	emit_signal("pause_scope_changed", scope);
+}
+
+int NNDebugger::get_pause_scope() const {
+	return _pause_scope;
+}
+
 void NNDebugger::step() {
+	if (!is_paused()) {
+		return;
+	}
+	if (_pause_scope == PAUSE_SCOPE_GAME) {
+		_start_game_step();
+		return;
+	}
 	NNTickScheduler::debugger_step();
+}
+
+SceneTree *NNDebugger::_get_tree() const {
+	Engine *engine = Engine::get_singleton();
+	return engine != nullptr ? Object::cast_to<SceneTree>(engine->get_main_loop()) : nullptr;
+}
+
+void NNDebugger::_apply_tree_pause() {
+	if (_tree_pause_captured) {
+		return;
+	}
+	SceneTree *tree = _get_tree();
+	if (tree == nullptr) {
+		return;
+	}
+	_tree_was_paused = tree->is_paused();
+	_tree_pause_captured = true;
+	tree->set_pause(true);
+}
+
+void NNDebugger::_release_tree_pause() {
+	if (!_tree_pause_captured) {
+		return;
+	}
+	_tree_pause_captured = false;
+	SceneTree *tree = _get_tree();
+	if (tree != nullptr) {
+		tree->set_pause(_tree_was_paused);
+	}
+}
+
+void NNDebugger::_start_game_step() {
+	if (_game_step_timer.is_valid()) {
+		return;
+	}
+	SceneTree *tree = _get_tree();
+	if (tree == nullptr) {
+		NNTickScheduler::debugger_step();
+		return;
+	}
+	// The step runs on the next complete frame: arming at the end of this one
+	// leaves every scheduled root and every pausable node between the timers.
+	_game_step_timer = tree->create_timer(0.0, true);
+	_game_step_timer->connect("timeout", callable_mp(this, &NNDebugger::_on_game_step_arm));
+}
+
+void NNDebugger::_on_game_step_arm() {
+	_game_step_timer = Ref<SceneTreeTimer>();
+	if (!is_paused() || _pause_scope != PAUSE_SCOPE_GAME) {
+		return;
+	}
+	SceneTree *tree = _get_tree();
+	if (tree == nullptr) {
+		NNTickScheduler::debugger_step();
+		return;
+	}
+
+	tree->set_pause(false);
+	NNTickScheduler::debugger_step();
+	_game_step_timer = tree->create_timer(0.0, true);
+	_game_step_timer->connect("timeout", callable_mp(this, &NNDebugger::_on_game_step_disarm));
+}
+
+void NNDebugger::_on_game_step_disarm() {
+	_game_step_timer = Ref<SceneTreeTimer>();
+	if (!is_paused() || _pause_scope != PAUSE_SCOPE_GAME || !_tree_pause_captured) {
+		return;
+	}
+	SceneTree *tree = _get_tree();
+	if (tree != nullptr) {
+		tree->set_pause(true);
+	}
+}
+
+void NNDebugger::_clear_game_step_timer() {
+	if (_game_step_timer.is_null()) {
+		return;
+	}
+	const Callable arm = callable_mp(this, &NNDebugger::_on_game_step_arm);
+	const Callable disarm = callable_mp(this, &NNDebugger::_on_game_step_disarm);
+	if (_game_step_timer->is_connected("timeout", arm)) {
+		_game_step_timer->disconnect("timeout", arm);
+	}
+	if (_game_step_timer->is_connected("timeout", disarm)) {
+		_game_step_timer->disconnect("timeout", disarm);
+	}
+	_game_step_timer = Ref<SceneTreeTimer>();
 }
 
 // Transport.
