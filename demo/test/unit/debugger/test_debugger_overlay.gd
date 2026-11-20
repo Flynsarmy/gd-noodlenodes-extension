@@ -19,12 +19,20 @@ class FakeDebugger extends RefCounted:
 
 	var roots: Array = []
 	var snapshots := {}
+	var events := {}
 	var watched := {}
 	var paused := false
 	var steps := 0
 
 	func get_roots() -> Array:
 		return roots.duplicate()
+
+	func get_events(root_id: int, after_seq: int = 0) -> Array:
+		var result: Array = []
+		for event in events.get(root_id, []):
+			if int(event["seq"]) > after_seq:
+				result.append(event)
+		return result
 
 	func watch(root_id: int) -> void:
 		watched[root_id] = true
@@ -75,6 +83,9 @@ func before_each() -> void:
 	for info in Fixtures.root_infos():
 		_debugger.add_root(_remap_owner(info, _owner_a), Fixtures.snapshot_for(int(info["id"])))
 
+	for root_id in [Fixtures.ST_ROOT, Fixtures.AGENT, Fixtures.HTN, Fixtures.COVER_BT]:
+		_debugger.events[root_id] = Fixtures.events_for(root_id)
+
 	var second_info := _remap_owner(Fixtures.root_infos()[4], _owner_b)
 	second_info["id"] = SECOND_ROOT
 	second_info["host_root_id"] = 0
@@ -107,12 +118,32 @@ func _label_texts() -> Array[String]:
 	return texts
 
 
+func _event_texts() -> Array[String]:
+	var texts: Array[String] = []
+	for row in _overlay.get_node("%Events").get_children():
+		texts.append(row.get_node("%What").text)
+	return texts
+
+
 func test_shows_one_label_per_owner_with_its_active_path() -> void:
 	assert_eq(_labels().size(), 2)
 	assert_eq(_label_texts(), [
 		"Alerted/Run › Investigate › SneakToCover › MoveToCover",
 		"MoveToCover",
 	])
+
+
+func test_labels_track_moving_owners_every_frame() -> void:
+	assert_true(_overlay.is_processing())
+	var label: Control = _labels()[0]
+
+	_owner_a.position = Vector2(100.0, 100.0)
+	_overlay._process(0.0)
+	var before := label.position
+	_owner_a.position = Vector2(300.0, 100.0)
+	_overlay._process(0.0)
+
+	assert_ne(label.position, before)
 
 
 func test_selecting_an_entity_watches_its_chain_and_switching_unwatches_it() -> void:
@@ -129,6 +160,32 @@ func test_selecting_an_entity_watches_its_chain_and_switching_unwatches_it() -> 
 	for root_id in [Fixtures.ST_ROOT, Fixtures.AGENT, Fixtures.HTN, Fixtures.COVER_BT]:
 		assert_false(_debugger.is_watched(root_id), "root %d should be unwatched" % root_id)
 	assert_true(_debugger.is_watched(SECOND_ROOT))
+
+
+func test_recent_events_show_the_latest_across_the_watched_chain() -> void:
+	_overlay.select_owner(_owner_a.get_instance_id())
+
+	var rows: Array[Node] = _overlay.get_node("%Events").get_children()
+	assert_eq(rows.size(), 8)
+	assert_eq(rows[0].get_node("%Type").text, "ST")
+	assert_eq(rows[0].get_node("%What").text, "pending Stop in 1.5s")
+	assert_eq(rows[6].get_node("%Type").text, "BT")
+	assert_eq(rows[6].get_node("%What").text, "MoveToCover entered")
+	assert_eq(rows[7].get_node("%What").text, "tick running → MoveToCover")
+
+
+func test_recent_events_are_worded_per_system() -> void:
+	_debugger.events = {Fixtures.ST_ROOT: Fixtures.st_events()}
+	_overlay.select_owner(_owner_a.get_instance_id())
+	var texts := _event_texts()
+	assert_has(texts, "Idle → Run (event run)")
+	assert_has(texts, "entered Run")
+
+	_debugger.events = {Fixtures.AGENT: Fixtures.agent_events()}
+	_overlay.select_owner(_owner_b.get_instance_id())
+	_overlay.select_owner(_owner_a.get_instance_id())
+
+	assert_has(_event_texts(), "chose Investigate 0.64")
 
 
 func test_clicking_a_label_selects_its_entity() -> void:
@@ -166,6 +223,7 @@ func test_does_nothing_when_no_debugger_exists() -> void:
 	_overlay.refresh()
 
 	assert_eq(_labels().size(), 0)
+	assert_false(_overlay.is_processing())
 	assert_false(_overlay.get_node("%Panel").visible)
 
 
@@ -191,9 +249,11 @@ func test_hiding_or_freeing_the_overlay_unwatches_everything() -> void:
 
 	_overlay.visible = false
 	assert_eq(_debugger.watched.size(), 0)
+	assert_false(_overlay.is_processing())
 
 	_overlay.visible = true
 	assert_gt(_debugger.watched.size(), 0)
+	assert_true(_overlay.is_processing())
 
 	_overlay.free()
 	_overlay = null
