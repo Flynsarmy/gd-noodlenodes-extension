@@ -3,6 +3,7 @@ extends Control
 
 const Protocol := preload("res://addons/noodle_nodes/debugger/protocol.gd")
 const EditorScale := preload("res://addons/noodle_nodes/editor/editor_scale.gd")
+const RootLabel := preload("res://addons/noodle_nodes/editor/shell/root_label.gd")
 const GenericViewScene := preload("res://addons/noodle_nodes/editor/views/generic/generic_view.tscn")
 
 const VIEW_SCENES := {
@@ -465,11 +466,13 @@ func _ensure_view(type: String) -> void:
 func _refresh_root_labels() -> void:
 	if _view == null or not _view.has_method("set_root_labels"):
 		return
+	var duplicate_names := RootLabel.count_names(_root_infos)
 	var labels := {}
 	for root_id in _root_infos:
 		var info: Dictionary = _root_infos[root_id]
 		var type := String(info.get("type", ""))
-		labels[root_id] = "%s (%s)" % [String(info.get("name", "")), String(Protocol.TYPE_LABELS.get(type, type))]
+		var type_label := String(Protocol.TYPE_LABELS.get(type, type))
+		labels[root_id] = "%s (%s)" % [RootLabel.label(info, duplicate_names), type_label]
 	_view.call("set_root_labels", labels)
 
 

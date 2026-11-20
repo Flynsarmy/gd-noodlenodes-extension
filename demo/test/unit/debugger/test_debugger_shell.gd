@@ -17,12 +17,16 @@ class SpyView:
 
 	var snapshots: Array = []
 	var events: Array = []
+	var root_labels: Dictionary = {}
 
 	func set_snapshot(snapshot: Dictionary) -> void:
 		snapshots.append(snapshot)
 
 	func apply_events(batch: Array) -> void:
 		events.append_array(batch)
+
+	func set_root_labels(labels: Dictionary) -> void:
+		root_labels = labels
 
 	func clear() -> void:
 		pass
@@ -684,6 +688,19 @@ func test_default_split_gives_the_view_most_of_the_height() -> void:
 	assert_gt(view.size.y, inspector.size.y, "the view gets more room than the inspector")
 	assert_lt(inspector.size.y, split.size.y * 0.4, "the inspector stays around a third of the height")
 	assert_gt(inspector.size.y, split.size.y * 0.2, "the inspector still gets usable room")
+
+
+func test_portal_labels_disambiguate_repeated_root_names() -> void:
+	_add_roots()
+	var spy := SpyView.new()
+	_panel.get_node("%ViewHost").add_child(spy)
+	_panel._view = spy
+	_panel.handle_message(Protocol.ROOT_ADDED, [{ "id": 7001, "type": "bt", "class": "NNBTRoot", "name": "Extra",
+		"path": "/root/Extra", "owner_id": 0, "owner_name": "", "owner_path": "",
+		"host_root_id": 0, "host_node_id": 0, "host_node_name": "", "host_node_class": "" }])
+
+	assert_eq(spy.root_labels[Fixtures.PATROL_BT], "PatrolAction › NNBTRoot (BT)")
+	assert_eq(spy.root_labels[Fixtures.COVER_BT], "SneakToCover › NNBTRoot (BT)")
 
 
 func test_snapshot_delta_updates_the_cached_snapshot_and_view() -> void:
