@@ -189,11 +189,13 @@ func select_node(node_id: int) -> void:
 
 ## Selects a recorded attempt and shows its decision trace. Re-selecting the
 ## attempt already on screen keeps its graph state and selected decision.
-func select_attempt(attempt_id: int) -> void:
+## Following a new attempt ([param reveal] false) must not steal the tab the
+## user is reading.
+func select_attempt(attempt_id: int, reveal := false) -> void:
 	if not _attempts.has(attempt_id):
 		return
-	if _selected_attempt_id != attempt_id:
-		_selected_attempt_id = attempt_id
+	_selected_attempt_id = attempt_id
+	if reveal:
 		_tags.current_tab = 1
 	var attempt: Dictionary = _attempts[attempt_id]
 	_trace_heading.text = _attempt_heading(attempt)
@@ -531,8 +533,7 @@ func _refresh_attempt_selection() -> void:
 
 
 func _on_attempt_row_selected(attempt_id: int) -> void:
-	_tags.current_tab = 1
-	select_attempt(attempt_id)
+	select_attempt(attempt_id, true)
 
 
 func _attempt_status(attempt: Dictionary) -> String:

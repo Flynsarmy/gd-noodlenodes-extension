@@ -205,6 +205,23 @@ func test_a_new_snapshot_keeps_the_selected_trace_decision() -> void:
 	assert_string_contains(condition.text, "clue_found")
 
 
+func test_a_followed_attempt_keeps_the_current_tab() -> void:
+	view.set_snapshot(Fixtures.htn_snapshot())
+	assert_eq(view.get_node("%DetailTabs").current_tab, 0, "Mounting must not leave the Plan tab")
+
+	var attempt := Fixtures.htn_attempt()
+	attempt["id"] = 4
+	attempt["timestamp"] = "2026-11-20T11:40:05"
+	view.apply_events([{ "seq": 0, "kind": "htn_attempt", "attempt": attempt }])
+
+	assert_eq(view.get_node("%DetailTabs").current_tab, 0, "Following a replan must not switch tabs")
+	assert_string_contains(view.get_node("%TraceHeading").text, "Attempt #4")
+	assert_eq(_graph().get_records().size(), attempt.events.size())
+
+	view.select_attempt(4, true)
+	assert_eq(view.get_node("%DetailTabs").current_tab, 1, "An explicit selection reveals the trace")
+
+
 func test_state_diff_reports_a_key_changed_since_the_attempt() -> void:
 	view.set_snapshot(Fixtures.htn_snapshot())
 	view.apply_events(Fixtures.htn_events())
