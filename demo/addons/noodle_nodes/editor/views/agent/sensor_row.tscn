@@ -35,6 +35,8 @@ unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
 text = "Sensor"
+clip_text = true
+text_overrun_behavior = 3
 
 [node name="Value" type="Label" parent="Row"]
 unique_name_in_owner = true

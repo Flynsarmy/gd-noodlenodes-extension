@@ -78,6 +78,7 @@ layout_mode = 2
 size_flags_horizontal = 3
 text = "Behaviour"
 clip_text = true
+text_overrun_behavior = 3
 
 [node name="Badges" type="Label" parent="Row/Body/Header"]
 unique_name_in_owner = true

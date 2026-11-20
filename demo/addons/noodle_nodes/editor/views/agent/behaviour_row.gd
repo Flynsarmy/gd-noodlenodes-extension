@@ -11,6 +11,7 @@ extends "res://addons/noodle_nodes/editor/views/agent/node_row.gd"
 
 func configure(display_name: String, score: float, badges: String) -> void:
 	_name.text = display_name
+	_name.tooltip_text = display_name
 	_score.text = "%.2f" % score
 	_score_bar.value = clampf(score, 0.0, 1.0)
 	_badges.text = badges

@@ -348,6 +348,30 @@ func test_view_fits_godots_default_bottom_panel_height() -> void:
 	assert_true(row.get_global_rect().size.y > 0.0)
 	assert_true(row.get_global_rect().end.y <= view.get_global_rect().end.y)
 
+	var scroll = view.get_node("Margin/Panes/Behaviours/Scroll")
+	assert_eq(scroll.horizontal_scroll_mode, ScrollContainer.SCROLL_MODE_DISABLED)
+	var name_label = row.get_node("%Name")
+	assert_eq(name_label.text, "Investigate")
+	assert_eq(name_label.tooltip_text, "Investigate")
+	assert_true(row.get_global_rect().position.x >= scroll.get_global_rect().position.x - 0.5,
+			"the behaviour row starts inside its pane, not scrolled out")
+
 	assert_true(timeline.is_visible_in_tree())
 	assert_true(timeline.get_global_rect().size.y >= 48.0)
 	assert_true(timeline.get_global_rect().end.y <= view.get_global_rect().end.y)
+
+
+func test_timeline_band_is_capped_in_a_tall_panel() -> void:
+	var frame := Control.new()
+	frame.size = Vector2(1100, 500)
+	add_child_autofree(frame)
+	var view = AgentViewScene.instantiate()
+	frame.add_child(view)
+	view.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	view.set_snapshot(Fixtures.agent_snapshot())
+	view.apply_events(Fixtures.agent_events())
+	await get_tree().process_frame
+
+	var timeline = view.get_node("%Timeline")
+	assert_true(timeline.get_band_rect().size.y <= 66.0, "the timeline band keeps its cap when the panel grows")
+	assert_true(timeline.get_global_rect().end.y < view.get_global_rect().end.y, "the timeline stays top-aligned")
