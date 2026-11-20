@@ -43,17 +43,18 @@ func get_segments() -> Array:
 	if _now_usec <= 0:
 		return segments
 	var window_start := _now_usec - WINDOW_USEC
-	if _changes.is_empty():
+	var runs := _runs()
+	if runs.is_empty():
 		if _fallback != 0:
 			segments.append(_segment(_fallback, window_start, _now_usec, null))
 		return segments
-	for i in _changes.size():
-		var change: Dictionary = _changes[i]
-		var start := int(change.get("t_usec", 0))
-		var end := int(_changes[i + 1].get("t_usec", _now_usec)) if i + 1 < _changes.size() else _now_usec
+	for i in runs.size():
+		var run: Dictionary = runs[i]
+		var start := int(run["start_usec"])
+		var end := int(runs[i + 1]["start_usec"]) if i + 1 < runs.size() else _now_usec
 		if end <= window_start or start >= _now_usec:
 			continue
-		segments.append(_segment(int(change.get("behaviour", 0)), maxi(start, window_start), mini(end, _now_usec), change))
+		segments.append(_segment(int(run["behaviour"]), maxi(start, window_start), mini(end, _now_usec), run["change"]))
 	return segments
 
 
@@ -138,13 +139,29 @@ func _get_tooltip(at_position: Vector2) -> String:
 	return "\n".join(lines)
 
 
-func _sequence() -> Array:
-	var sequence := []
+## Runs of one running behaviour. Behaviour-0 choices report the previous
+## behaviour completing, so they neither split a run nor count as a flip.
+func _runs() -> Array:
+	var runs := []
 	for change in _changes:
 		var behaviour := int(change.get("behaviour", 0))
-		if not sequence.is_empty() and sequence[-1]["behaviour"] == behaviour:
+		if behaviour == 0:
 			continue
-		sequence.append({ "t_usec": int(change.get("t_usec", 0)), "behaviour": behaviour })
+		if runs.is_empty() or runs[-1]["behaviour"] != behaviour:
+			runs.append({
+				"behaviour": behaviour,
+				"start_usec": int(change.get("t_usec", 0)),
+				"change": change,
+			})
+		else:
+			runs[-1]["change"] = change
+	return runs
+
+
+func _sequence() -> Array:
+	var sequence := []
+	for run in _runs():
+		sequence.append({ "t_usec": run["start_usec"], "behaviour": run["behaviour"] })
 	return sequence
 
 

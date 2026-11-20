@@ -9,6 +9,7 @@ signal expanded_changed(node_id: int, expanded: bool)
 
 const ACCENT_SELECTED := Color(0.35, 0.75, 1.0)
 const ACCENT_CURRENT := Color(1.0, 0.8, 0.2)
+const ACCENT_LAST := Color(0.45, 0.85, 0.6)
 
 const EditorScale := preload("res://addons/noodle_nodes/editor/editor_scale.gd")
 
@@ -17,6 +18,7 @@ var is_portal: bool = false
 
 var _selected: bool = false
 var _current: bool = false
+var _last: bool = false
 var _expanded: bool = false
 
 @onready var _accent: ColorRect = get_node_or_null(^"%Accent")
@@ -56,6 +58,11 @@ func set_current(value: bool) -> void:
 	_refresh_accent()
 
 
+func set_last(value: bool) -> void:
+	_last = value
+	_refresh_accent()
+
+
 func set_expandable(value: bool) -> void:
 	if _expand:
 		_expand.visible = value
@@ -82,5 +89,10 @@ func _on_expand_toggled(value: bool) -> void:
 func _refresh_accent() -> void:
 	if _accent == null:
 		return
-	_accent.visible = _selected or _current
-	_accent.color = ACCENT_SELECTED if _selected else ACCENT_CURRENT
+	_accent.visible = _selected or _current or _last
+	if _selected:
+		_accent.color = ACCENT_SELECTED
+	elif _current:
+		_accent.color = ACCENT_CURRENT
+	else:
+		_accent.color = ACCENT_LAST
