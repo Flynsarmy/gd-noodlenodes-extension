@@ -282,6 +282,23 @@ func _settle_layout(frames: int = 3) -> void:
 		await get_tree().process_frame
 
 
+func test_the_view_fits_a_default_height_bottom_panel() -> void:
+	view.set_snapshot(Fixtures.htn_snapshot())
+	view.apply_events(Fixtures.htn_events())
+	view.select_attempt(3, true)
+
+	assert_true(view.clip_contents, "The view must clip anything that overflows it")
+	assert_lte(view.get_combined_minimum_size().y, 150.0, "The view must fit the default bottom panel")
+
+	view.anchor_right = 0.0
+	view.anchor_bottom = 0.0
+	view.size = Vector2(1100, 170)
+	await _settle_layout()
+
+	var graph_frame: Control = view.get_node("%GraphFrame")
+	assert_gte(graph_frame.size.y, 100.0, "The trace graph must still get usable height")
+
+
 func test_the_trace_panel_is_hidden_until_a_decision_is_selected() -> void:
 	view.anchor_right = 0.0
 	view.anchor_bottom = 0.0

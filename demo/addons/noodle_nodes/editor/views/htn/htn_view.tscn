@@ -35,94 +35,65 @@ corner_radius_top_right = 4
 corner_radius_bottom_right = 4
 corner_radius_bottom_left = 4
 
-[node name="HtnView" type="Control"]
+[node name="HtnView" type="MarginContainer"]
+clip_contents = true
 layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
+theme_override_constants/margin_left = 2
+theme_override_constants/margin_top = 2
+theme_override_constants/margin_right = 2
+theme_override_constants/margin_bottom = 2
 script = ExtResource("1_view")
 
-[node name="Margins" type="MarginContainer" parent="."]
-layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
-theme_override_constants/margin_left = 4
-theme_override_constants/margin_top = 4
-theme_override_constants/margin_right = 4
-theme_override_constants/margin_bottom = 4
-
-[node name="MainSplit" type="HSplitContainer" parent="Margins"]
+[node name="MainSplit" type="HSplitContainer" parent="."]
 unique_name_in_owner = true
 layout_mode = 2
 split_offset = 420
 
-[node name="Sidebar" type="VBoxContainer" parent="Margins/MainSplit"]
+[node name="Sidebar" type="VBoxContainer" parent="MainSplit"]
 unique_name_in_owner = true
+clip_contents = true
 custom_minimum_size = Vector2(400, 0)
 layout_mode = 2
 theme_override_constants/separation = 4
 
-[node name="Header" type="PanelContainer" parent="Margins/MainSplit/Sidebar"]
+[node name="Header" type="PanelContainer" parent="MainSplit/Sidebar"]
 layout_mode = 2
 theme_override_styles/panel = SubResource("StyleBoxFlat_header")
 
-[node name="HeaderBody" type="VBoxContainer" parent="Margins/MainSplit/Sidebar/Header"]
-layout_mode = 2
-theme_override_constants/separation = 1
-
-[node name="SearchLabel" type="Label" parent="Margins/MainSplit/Sidebar/Header/HeaderBody"]
+[node name="SummaryLabel" type="Label" parent="MainSplit/Sidebar/Header"]
 unique_name_in_owner = true
 layout_mode = 2
+mouse_filter = 1
 clip_text = true
+text_overrun_behavior = 3
 text = "Search: —"
 
-[node name="DependenciesLabel" type="Label" parent="Margins/MainSplit/Sidebar/Header/HeaderBody"]
-unique_name_in_owner = true
-layout_mode = 2
-clip_text = true
-text = "Dependencies: —"
-theme_override_colors/font_color = Color(0.72, 0.78, 0.85, 1)
-
-[node name="TriggersLabel" type="Label" parent="Margins/MainSplit/Sidebar/Header/HeaderBody"]
-unique_name_in_owner = true
-layout_mode = 2
-clip_text = true
-text = "Triggers: —"
-theme_override_colors/font_color = Color(0.72, 0.78, 0.85, 1)
-
-[node name="RepairLabel" type="Label" parent="Margins/MainSplit/Sidebar/Header/HeaderBody"]
-unique_name_in_owner = true
-layout_mode = 2
-clip_text = true
-text = "Repair: —"
-theme_override_colors/font_color = Color(0.72, 0.78, 0.85, 1)
-
-[node name="SidebarTabs" type="TabContainer" parent="Margins/MainSplit/Sidebar"]
+[node name="SidebarTabs" type="TabContainer" parent="MainSplit/Sidebar"]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_vertical = 3
 current_tab = 0
 
-[node name="Domain" type="MarginContainer" parent="Margins/MainSplit/Sidebar/SidebarTabs"]
+[node name="Domain" type="MarginContainer" parent="MainSplit/Sidebar/SidebarTabs"]
 layout_mode = 2
 theme_override_constants/margin_left = 2
 theme_override_constants/margin_top = 2
 theme_override_constants/margin_right = 2
 theme_override_constants/margin_bottom = 2
 
-[node name="DomainTree" type="Tree" parent="Margins/MainSplit/Sidebar/SidebarTabs/Domain"]
+[node name="DomainTree" type="Tree" parent="MainSplit/Sidebar/SidebarTabs/Domain"]
 unique_name_in_owner = true
 layout_mode = 2
 columns = 2
 column_titles_visible = true
 hide_root = true
 
-[node name="Attempts" type="MarginContainer" parent="Margins/MainSplit/Sidebar/SidebarTabs"]
+[node name="Attempts" type="MarginContainer" parent="MainSplit/Sidebar/SidebarTabs"]
 visible = false
 layout_mode = 2
 theme_override_constants/margin_left = 2
@@ -130,28 +101,28 @@ theme_override_constants/margin_top = 2
 theme_override_constants/margin_right = 2
 theme_override_constants/margin_bottom = 2
 
-[node name="AttemptsLayout" type="VBoxContainer" parent="Margins/MainSplit/Sidebar/SidebarTabs/Attempts"]
+[node name="AttemptsLayout" type="VBoxContainer" parent="MainSplit/Sidebar/SidebarTabs/Attempts"]
 layout_mode = 2
 theme_override_constants/separation = 2
 
-[node name="AttemptsEmpty" type="Label" parent="Margins/MainSplit/Sidebar/SidebarTabs/Attempts/AttemptsLayout"]
+[node name="AttemptsEmpty" type="Label" parent="MainSplit/Sidebar/SidebarTabs/Attempts/AttemptsLayout"]
 unique_name_in_owner = true
 layout_mode = 2
 text = "No search attempts recorded."
 theme_override_colors/font_color = Color(0.6, 0.65, 0.7, 1)
 
-[node name="AttemptScroll" type="ScrollContainer" parent="Margins/MainSplit/Sidebar/SidebarTabs/Attempts/AttemptsLayout"]
+[node name="AttemptScroll" type="ScrollContainer" parent="MainSplit/Sidebar/SidebarTabs/Attempts/AttemptsLayout"]
 layout_mode = 2
 size_flags_vertical = 3
 horizontal_scroll_mode = 0
 
-[node name="AttemptRows" type="VBoxContainer" parent="Margins/MainSplit/Sidebar/SidebarTabs/Attempts/AttemptsLayout/AttemptScroll"]
+[node name="AttemptRows" type="VBoxContainer" parent="MainSplit/Sidebar/SidebarTabs/Attempts/AttemptsLayout/AttemptScroll"]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_constants/separation = 2
 
-[node name="Timeline" type="MarginContainer" parent="Margins/MainSplit/Sidebar/SidebarTabs"]
+[node name="Timeline" type="MarginContainer" parent="MainSplit/Sidebar/SidebarTabs"]
 visible = false
 layout_mode = 2
 theme_override_constants/margin_left = 2
@@ -159,82 +130,83 @@ theme_override_constants/margin_top = 2
 theme_override_constants/margin_right = 2
 theme_override_constants/margin_bottom = 2
 
-[node name="TimelineTree" type="Tree" parent="Margins/MainSplit/Sidebar/SidebarTabs/Timeline"]
+[node name="TimelineTree" type="Tree" parent="MainSplit/Sidebar/SidebarTabs/Timeline"]
 unique_name_in_owner = true
 layout_mode = 2
 columns = 3
 column_titles_visible = true
 hide_root = true
 
-[node name="DetailTabs" type="TabContainer" parent="Margins/MainSplit"]
+[node name="DetailTabs" type="TabContainer" parent="MainSplit"]
 unique_name_in_owner = true
+clip_contents = true
 layout_mode = 2
 size_flags_horizontal = 3
 current_tab = 0
 
-[node name="Plan" type="MarginContainer" parent="Margins/MainSplit/DetailTabs"]
+[node name="Plan" type="MarginContainer" parent="MainSplit/DetailTabs"]
 layout_mode = 2
 theme_override_constants/margin_left = 6
 theme_override_constants/margin_top = 6
 theme_override_constants/margin_right = 6
 theme_override_constants/margin_bottom = 6
 
-[node name="PlanLayout" type="VBoxContainer" parent="Margins/MainSplit/DetailTabs/Plan"]
+[node name="PlanLayout" type="VBoxContainer" parent="MainSplit/DetailTabs/Plan"]
 layout_mode = 2
 theme_override_constants/separation = 4
 
-[node name="CurrentPlanLabel" type="Label" parent="Margins/MainSplit/DetailTabs/Plan/PlanLayout"]
+[node name="CurrentPlanLabel" type="Label" parent="MainSplit/DetailTabs/Plan/PlanLayout"]
 layout_mode = 2
 theme_type_variation = &"HeaderSmall"
 text = "Current plan"
 
-[node name="PlanScroll" type="ScrollContainer" parent="Margins/MainSplit/DetailTabs/Plan/PlanLayout"]
+[node name="PlanScroll" type="ScrollContainer" parent="MainSplit/DetailTabs/Plan/PlanLayout"]
 layout_mode = 2
 size_flags_vertical = 3
 horizontal_scroll_mode = 0
 
-[node name="PlanScrollBody" type="VBoxContainer" parent="Margins/MainSplit/DetailTabs/Plan/PlanLayout/PlanScroll"]
+[node name="PlanScrollBody" type="VBoxContainer" parent="MainSplit/DetailTabs/Plan/PlanLayout/PlanScroll"]
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_constants/separation = 3
 
-[node name="PlanEmpty" type="Label" parent="Margins/MainSplit/DetailTabs/Plan/PlanLayout/PlanScroll/PlanScrollBody"]
+[node name="PlanEmpty" type="Label" parent="MainSplit/DetailTabs/Plan/PlanLayout/PlanScroll/PlanScrollBody"]
 unique_name_in_owner = true
 layout_mode = 2
 text = "No plan installed."
 theme_override_colors/font_color = Color(0.6, 0.65, 0.7, 1)
 
-[node name="PlanRows" type="VBoxContainer" parent="Margins/MainSplit/DetailTabs/Plan/PlanLayout/PlanScroll/PlanScrollBody"]
+[node name="PlanRows" type="VBoxContainer" parent="MainSplit/DetailTabs/Plan/PlanLayout/PlanScroll/PlanScrollBody"]
 unique_name_in_owner = true
 layout_mode = 2
 theme_override_constants/separation = 3
 
-[node name="CompletedLabel" type="Label" parent="Margins/MainSplit/DetailTabs/Plan/PlanLayout/PlanScroll/PlanScrollBody"]
+[node name="CompletedLabel" type="Label" parent="MainSplit/DetailTabs/Plan/PlanLayout/PlanScroll/PlanScrollBody"]
 layout_mode = 2
 theme_type_variation = &"HeaderSmall"
 text = "Completed"
 
-[node name="CompletedEmpty" type="Label" parent="Margins/MainSplit/DetailTabs/Plan/PlanLayout/PlanScroll/PlanScrollBody"]
+[node name="CompletedEmpty" type="Label" parent="MainSplit/DetailTabs/Plan/PlanLayout/PlanScroll/PlanScrollBody"]
 unique_name_in_owner = true
 layout_mode = 2
 text = "No completed steps."
 theme_override_colors/font_color = Color(0.6, 0.65, 0.7, 1)
 
-[node name="CompletedRows" type="VBoxContainer" parent="Margins/MainSplit/DetailTabs/Plan/PlanLayout/PlanScroll/PlanScrollBody"]
+[node name="CompletedRows" type="VBoxContainer" parent="MainSplit/DetailTabs/Plan/PlanLayout/PlanScroll/PlanScrollBody"]
 unique_name_in_owner = true
 layout_mode = 2
 theme_override_constants/separation = 3
 
-[node name="Trace" type="VBoxContainer" parent="Margins/MainSplit/DetailTabs"]
+[node name="Trace" type="VBoxContainer" parent="MainSplit/DetailTabs"]
 visible = false
 layout_mode = 2
-theme_override_constants/separation = 4
+theme_override_constants/separation = 2
 
-[node name="Toolbar" type="HBoxContainer" parent="Margins/MainSplit/DetailTabs/Trace"]
+[node name="Toolbar" type="HBoxContainer" parent="MainSplit/DetailTabs/Trace"]
 layout_mode = 2
 theme_override_constants/separation = 8
 
-[node name="TraceHeading" type="Label" parent="Margins/MainSplit/DetailTabs/Trace/Toolbar"]
+[node name="TraceHeading" type="Label" parent="MainSplit/DetailTabs/Trace/Toolbar"]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
@@ -243,22 +215,22 @@ clip_text = true
 text_overrun_behavior = 3
 text = "No attempt selected."
 
-[node name="FitButton" type="Button" parent="Margins/MainSplit/DetailTabs/Trace/Toolbar"]
+[node name="FitButton" type="Button" parent="MainSplit/DetailTabs/Trace/Toolbar"]
 layout_mode = 2
 text = "Fit"
 
-[node name="TraceSplit" type="HSplitContainer" parent="Margins/MainSplit/DetailTabs/Trace"]
+[node name="TraceSplit" type="HSplitContainer" parent="MainSplit/DetailTabs/Trace"]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_vertical = 3
 
-[node name="GraphFrame" type="PanelContainer" parent="Margins/MainSplit/DetailTabs/Trace/TraceSplit"]
+[node name="GraphFrame" type="PanelContainer" parent="MainSplit/DetailTabs/Trace/TraceSplit"]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_styles/panel = SubResource("StyleBoxFlat_graph")
 
-[node name="GraphClip" type="Control" parent="Margins/MainSplit/DetailTabs/Trace/TraceSplit/GraphFrame"]
+[node name="GraphClip" type="Control" parent="MainSplit/DetailTabs/Trace/TraceSplit/GraphFrame"]
 unique_name_in_owner = true
 clip_contents = true
 layout_mode = 2
@@ -266,11 +238,11 @@ focus_mode = 2
 tooltip_text = "Drag or two-finger scroll to pan · wheel or pinch to zoom · right-click or F to fit · double-click to expand or collapse"
 script = ExtResource("2_graph")
 
-[node name="Canvas" type="Control" parent="Margins/MainSplit/DetailTabs/Trace/TraceSplit/GraphFrame/GraphClip"]
+[node name="Canvas" type="Control" parent="MainSplit/DetailTabs/Trace/TraceSplit/GraphFrame/GraphClip"]
 unique_name_in_owner = true
 mouse_filter = 2
 
-[node name="EmptyLabel" type="Label" parent="Margins/MainSplit/DetailTabs/Trace/TraceSplit/GraphFrame/GraphClip"]
+[node name="EmptyLabel" type="Label" parent="MainSplit/DetailTabs/Trace/TraceSplit/GraphFrame/GraphClip"]
 unique_name_in_owner = true
 layout_mode = 1
 anchors_preset = 15
@@ -285,85 +257,85 @@ vertical_alignment = 1
 autowrap_mode = 3
 theme_override_colors/font_color = Color(0.6, 0.65, 0.7, 1)
 
-[node name="DetailScroll" type="ScrollContainer" parent="Margins/MainSplit/DetailTabs/Trace/TraceSplit"]
+[node name="DetailScroll" type="ScrollContainer" parent="MainSplit/DetailTabs/Trace/TraceSplit"]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(260, 0)
 layout_mode = 2
 horizontal_scroll_mode = 0
 
-[node name="NodeDetail" type="VBoxContainer" parent="Margins/MainSplit/DetailTabs/Trace/TraceSplit/DetailScroll"]
+[node name="NodeDetail" type="VBoxContainer" parent="MainSplit/DetailTabs/Trace/TraceSplit/DetailScroll"]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_constants/separation = 4
 
-[node name="DetailHint" type="Label" parent="Margins/MainSplit/DetailTabs/Trace/TraceSplit/DetailScroll/NodeDetail"]
+[node name="DetailHint" type="Label" parent="MainSplit/DetailTabs/Trace/TraceSplit/DetailScroll/NodeDetail"]
 unique_name_in_owner = true
 layout_mode = 2
 text = "Click a decision to see its details."
 autowrap_mode = 3
 theme_override_colors/font_color = Color(0.6, 0.65, 0.7, 1)
 
-[node name="NodeTitle" type="Label" parent="Margins/MainSplit/DetailTabs/Trace/TraceSplit/DetailScroll/NodeDetail"]
+[node name="NodeTitle" type="Label" parent="MainSplit/DetailTabs/Trace/TraceSplit/DetailScroll/NodeDetail"]
 unique_name_in_owner = true
 visible = false
 layout_mode = 2
 autowrap_mode = 3
 
-[node name="NodeKind" type="Label" parent="Margins/MainSplit/DetailTabs/Trace/TraceSplit/DetailScroll/NodeDetail"]
-unique_name_in_owner = true
-visible = false
-layout_mode = 2
-autowrap_mode = 3
-theme_override_colors/font_color = Color(0.72, 0.78, 0.85, 1)
-
-[node name="NodePath" type="Label" parent="Margins/MainSplit/DetailTabs/Trace/TraceSplit/DetailScroll/NodeDetail"]
+[node name="NodeKind" type="Label" parent="MainSplit/DetailTabs/Trace/TraceSplit/DetailScroll/NodeDetail"]
 unique_name_in_owner = true
 visible = false
 layout_mode = 2
 autowrap_mode = 3
 theme_override_colors/font_color = Color(0.72, 0.78, 0.85, 1)
 
-[node name="NodeOutcome" type="Label" parent="Margins/MainSplit/DetailTabs/Trace/TraceSplit/DetailScroll/NodeDetail"]
+[node name="NodePath" type="Label" parent="MainSplit/DetailTabs/Trace/TraceSplit/DetailScroll/NodeDetail"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+autowrap_mode = 3
+theme_override_colors/font_color = Color(0.72, 0.78, 0.85, 1)
+
+[node name="NodeOutcome" type="Label" parent="MainSplit/DetailTabs/Trace/TraceSplit/DetailScroll/NodeDetail"]
 unique_name_in_owner = true
 visible = false
 layout_mode = 2
 autowrap_mode = 3
 
-[node name="NodeReason" type="Label" parent="Margins/MainSplit/DetailTabs/Trace/TraceSplit/DetailScroll/NodeDetail"]
+[node name="NodeReason" type="Label" parent="MainSplit/DetailTabs/Trace/TraceSplit/DetailScroll/NodeDetail"]
 unique_name_in_owner = true
 visible = false
 layout_mode = 2
 autowrap_mode = 3
 
-[node name="NodeCondition" type="Label" parent="Margins/MainSplit/DetailTabs/Trace/TraceSplit/DetailScroll/NodeDetail"]
+[node name="NodeCondition" type="Label" parent="MainSplit/DetailTabs/Trace/TraceSplit/DetailScroll/NodeDetail"]
 unique_name_in_owner = true
 visible = false
 layout_mode = 2
 autowrap_mode = 3
 theme_override_colors/font_color = Color(0.95, 0.6, 0.45, 1)
 
-[node name="NodeArgs" type="Label" parent="Margins/MainSplit/DetailTabs/Trace/TraceSplit/DetailScroll/NodeDetail"]
+[node name="NodeArgs" type="Label" parent="MainSplit/DetailTabs/Trace/TraceSplit/DetailScroll/NodeDetail"]
 unique_name_in_owner = true
 visible = false
 layout_mode = 2
 autowrap_mode = 3
 theme_override_colors/font_color = Color(0.75, 0.82, 0.9, 1)
 
-[node name="NodeDetailText" type="Label" parent="Margins/MainSplit/DetailTabs/Trace/TraceSplit/DetailScroll/NodeDetail"]
+[node name="NodeDetailText" type="Label" parent="MainSplit/DetailTabs/Trace/TraceSplit/DetailScroll/NodeDetail"]
 unique_name_in_owner = true
 visible = false
 layout_mode = 2
 autowrap_mode = 3
 
-[node name="NodeState" type="Label" parent="Margins/MainSplit/DetailTabs/Trace/TraceSplit/DetailScroll/NodeDetail"]
+[node name="NodeState" type="Label" parent="MainSplit/DetailTabs/Trace/TraceSplit/DetailScroll/NodeDetail"]
 unique_name_in_owner = true
 visible = false
 layout_mode = 2
 autowrap_mode = 3
 theme_override_colors/font_color = Color(0.7, 0.78, 0.8, 1)
 
-[node name="Diff" type="MarginContainer" parent="Margins/MainSplit/DetailTabs"]
+[node name="Diff" type="MarginContainer" parent="MainSplit/DetailTabs"]
 visible = false
 layout_mode = 2
 theme_override_constants/margin_left = 6
@@ -371,23 +343,23 @@ theme_override_constants/margin_top = 6
 theme_override_constants/margin_right = 6
 theme_override_constants/margin_bottom = 6
 
-[node name="DiffLayout" type="VBoxContainer" parent="Margins/MainSplit/DetailTabs/Diff"]
+[node name="DiffLayout" type="VBoxContainer" parent="MainSplit/DetailTabs/Diff"]
 layout_mode = 2
 theme_override_constants/separation = 4
 
-[node name="DiffHeader" type="Label" parent="Margins/MainSplit/DetailTabs/Diff/DiffLayout"]
+[node name="DiffHeader" type="Label" parent="MainSplit/DetailTabs/Diff/DiffLayout"]
 layout_mode = 2
 theme_type_variation = &"HeaderSmall"
 text = "Planning state (selected attempt) against the current blackboard"
 
-[node name="DiffEmpty" type="Label" parent="Margins/MainSplit/DetailTabs/Diff/DiffLayout"]
+[node name="DiffEmpty" type="Label" parent="MainSplit/DetailTabs/Diff/DiffLayout"]
 unique_name_in_owner = true
 layout_mode = 2
 text = "Select a search attempt to compare its planning state with the current blackboard."
 autowrap_mode = 3
 theme_override_colors/font_color = Color(0.6, 0.65, 0.7, 1)
 
-[node name="DiffTree" type="Tree" parent="Margins/MainSplit/DetailTabs/Diff/DiffLayout"]
+[node name="DiffTree" type="Tree" parent="MainSplit/DetailTabs/Diff/DiffLayout"]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_vertical = 3
@@ -395,8 +367,8 @@ columns = 4
 column_titles_visible = true
 hide_root = true
 
-[connection signal="pressed" from="Margins/MainSplit/DetailTabs/Trace/Toolbar/FitButton" to="Margins/MainSplit/DetailTabs/Trace/TraceSplit/GraphFrame/GraphClip" method="fit_to_view"]
-[connection signal="node_selected" from="Margins/MainSplit/DetailTabs/Trace/TraceSplit/GraphFrame/GraphClip" to="." method="_on_trace_node_selected"]
-[connection signal="node_deselected" from="Margins/MainSplit/DetailTabs/Trace/TraceSplit/GraphFrame/GraphClip" to="." method="_on_trace_node_deselected"]
-[connection signal="item_selected" from="Margins/MainSplit/Sidebar/SidebarTabs/Domain/DomainTree" to="." method="_on_domain_item_selected"]
-[connection signal="item_activated" from="Margins/MainSplit/Sidebar/SidebarTabs/Domain/DomainTree" to="." method="_on_domain_item_activated"]
+[connection signal="pressed" from="MainSplit/DetailTabs/Trace/Toolbar/FitButton" to="Margins/MainSplit/DetailTabs/Trace/TraceSplit/GraphFrame/GraphClip" method="fit_to_view"]
+[connection signal="node_selected" from="MainSplit/DetailTabs/Trace/TraceSplit/GraphFrame/GraphClip" to="." method="_on_trace_node_selected"]
+[connection signal="node_deselected" from="MainSplit/DetailTabs/Trace/TraceSplit/GraphFrame/GraphClip" to="." method="_on_trace_node_deselected"]
+[connection signal="item_selected" from="MainSplit/Sidebar/SidebarTabs/Domain/DomainTree" to="." method="_on_domain_item_selected"]
+[connection signal="item_activated" from="MainSplit/Sidebar/SidebarTabs/Domain/DomainTree" to="." method="_on_domain_item_activated"]
