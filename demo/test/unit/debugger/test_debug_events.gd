@@ -130,11 +130,18 @@ func _guarded_state_tree() -> Dictionary:
 	transition.event_name = "walk"
 	transition.to = NodePath("../../Walk")
 	transition.guard = guard
+	var sprint := NNSTTransition.new()
+	sprint.name = "StartRunning"
+	sprint.event_name = "run"
+	sprint.to = NodePath("../../Walk")
+	sprint.delay_in_seconds = "2.0"
+	sprint.guard = guard
 	idle.add_child(transition)
+	idle.add_child(sprint)
 	root.add_child(idle)
 	root.add_child(walk)
 	root.set_expression_property("alert", 0.1)
-	return { "root": root, "idle": idle, "walk": walk, "transition": transition }
+	return { "root": root, "idle": idle, "walk": walk, "transition": transition, "sprint": sprint }
 
 
 func test_state_tree_events_explain_the_transition() -> void:
@@ -181,16 +188,28 @@ func test_state_tree_events_cover_pending_and_cancelled_transitions() -> void:
 	root.tick(0.1)
 
 	root.send_event("walk")
-	root.tick(0.5)
-	var pending_event := _last_of(root, "st_pending")
+	var pending_events := _events_of(root, "st_pending")
+	assert_eq(pending_events.size(), 1, "a pending transition is recorded when it becomes pending")
+	var pending_event: Dictionary = pending_events[0]
 	assert_eq(pending_event.transition, tree.transition.get_instance_id())
 	assert_eq(pending_event.state, tree.idle.get_instance_id())
 	assert_almost_eq(pending_event.initial_delay, 1.5, 0.0001)
-	assert_almost_eq(pending_event.remaining_delay, 1.0, 0.0001)
+	assert_almost_eq(pending_event.remaining_delay, 1.5, 0.0001)
+
+	root.tick(0.5)
+	assert_eq(_events_of(root, "st_pending").size(), 1, "the countdown is not recorded per tick")
+	root.send_event("walk")
+	assert_eq(_events_of(root, "st_pending").size(), 1, "re-requesting the pending transition does not record it again")
+
+	root.send_event("run")
+	var replaced := _events_of(root, "st_pending")
+	assert_eq(replaced.size(), 2, "a replacing pending transition is recorded")
+	assert_eq(replaced[1].transition, tree.sprint.get_instance_id())
+	assert_almost_eq(replaced[1].remaining_delay, 2.0, 0.0001)
 
 	assert_true(tree.idle.transition_to(tree.idle.get_path_to(tree.walk)))
 	var cancelled := _last_of(root, "st_pending_cancelled")
-	assert_eq(cancelled.transition, tree.transition.get_instance_id())
+	assert_eq(cancelled.transition, tree.sprint.get_instance_id())
 	assert_eq(cancelled.state, tree.idle.get_instance_id())
 
 

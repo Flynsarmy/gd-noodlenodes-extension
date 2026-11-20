@@ -198,7 +198,7 @@ monotonic, never reused (gaps mean the ring buffer dropped events).
 | `st_event` | `name`, `state` (state that received it, root id for the root) | `event_received` |
 | `st_guard` | `transition`, `trigger`, `result: bool`, `detail: String` | guard evaluated for a transition |
 | `st_transition` | `transition`, `from`, `to`, `trigger` | `taken` |
-| `st_pending` | `transition`, `state`, `initial_delay`, `remaining_delay` | `transition_pending` |
+| `st_pending` | `transition`, `state`, `initial_delay`, `remaining_delay` | when a transition becomes pending (and again if it is re-armed or replaced); the view counts down locally |
 | `st_pending_cancelled` | `transition`, `state` | pending transition dropped (state exited) |
 | `st_enter` / `st_exit` | `state` | `state_entered` / `state_exited` |
 | `htn_attempt` | `attempt`: the `trace_attempt_recorded` Dictionary verbatim (note its `status` is the `NNHTNRoot.SearchStatus` int) | |

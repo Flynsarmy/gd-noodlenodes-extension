@@ -595,6 +595,19 @@ bool NNSTTickedNodes::_request_transition(NNSTTransition *transition, bool immed
 			_pending_transition_id = ObjectID(transition->get_instance_id());
 			_pending_initial_delay = delay;
 			_pending_remaining_delay = delay;
+#ifdef DEBUG_ENABLED
+			// Recorded once per pending period: the view counts down locally and
+			// resyncs from snapshots, so a per-tick event would only flood the
+			// ring buffer.
+			if (NNDebugRoot *debug_root = nn_debug_watched_root(this)) {
+				Dictionary fields;
+				fields["transition"] = (int64_t)_pending_transition_id;
+				fields["state"] = (int64_t)get_instance_id();
+				fields["initial_delay"] = _pending_initial_delay;
+				fields["remaining_delay"] = _pending_remaining_delay;
+				debug_root->record("st_pending", fields);
+			}
+#endif
 			return true;
 		}
 	}
@@ -688,16 +701,6 @@ void NNSTTickedNodes::_process_pending_transition(float delta) {
 	_pending_remaining_delay -= delta;
 	const float remaining_delay = _pending_remaining_delay > 0.0f ? _pending_remaining_delay : 0.0f;
 	const ObjectID pending_id = _pending_transition_id;
-#ifdef DEBUG_ENABLED
-	if (NNDebugRoot *debug_root = nn_debug_watched_root(this)) {
-		Dictionary fields;
-		fields["transition"] = (int64_t)pending_id;
-		fields["state"] = (int64_t)get_instance_id();
-		fields["initial_delay"] = _pending_initial_delay;
-		fields["remaining_delay"] = remaining_delay;
-		debug_root->record("st_pending", fields);
-	}
-#endif
 	emit_signal("transition_pending", _pending_initial_delay, remaining_delay);
 
 	if (_pending_remaining_delay > 0.0f) {
