@@ -184,6 +184,7 @@ static func _curve(kind: String) -> PackedVector2Array:
 static func agent_snapshot() -> Dictionary:
 	var snapshot := _envelope(AGENT, "agent", "NNAgent", "NNAgent", HTN, 41)
 	snapshot["current_behaviour"] = AGENT_INVESTIGATE
+	snapshot["last_behaviour"] = AGENT_INVESTIGATE
 	snapshot["current_behaviour_group"] = 0
 	snapshot["current_action"] = AGENT_INVESTIGATE_ACTION
 	snapshot["top_scoring"] = [
@@ -335,6 +336,7 @@ static func _bt_node(id: int, parent: int, node_name: String, cls: String, statu
 static func bt_snapshot() -> Dictionary:
 	var snapshot := _envelope(COVER_BT, "bt", "NNBTRoot", "NNBTRoot", 0, 64)
 	snapshot["running_node"] = COVER_MOVE
+	snapshot["last_leaf"] = COVER_MOVE
 	snapshot["tick_count"] = 31
 	snapshot["elapsed_time"] = 0.52
 	snapshot["last_result"] = "running"
@@ -353,6 +355,7 @@ static func patrol_bt_snapshot() -> Dictionary:
 	var snapshot := _envelope(PATROL_BT, "bt", "NNBTRoot", "NNBTRoot", 0, 9)
 	snapshot["active"] = false
 	snapshot["running_node"] = 0
+	snapshot["last_leaf"] = PATROL_WALKER
 	snapshot["tick_count"] = 140
 	snapshot["elapsed_time"] = 2.3
 	snapshot["last_result"] = "interrupted"
