@@ -2,6 +2,7 @@
 extends "res://addons/noodle_nodes/editor/views/debug_view.gd"
 
 const StatusPalette := preload("res://addons/noodle_nodes/debugger/status_palette.gd")
+const EditorScale := preload("res://addons/noodle_nodes/editor/editor_scale.gd")
 
 @onready var _tree: Tree = %Tree
 @onready var _empty: Label = %Empty
@@ -13,13 +14,14 @@ var _suppress_select := false
 
 
 func _ready() -> void:
+	EditorScale.apply_to_scene(self)
 	_tree.item_activated.connect(_on_item_activated)
 	_tree.item_selected.connect(_on_item_selected)
 	_tree.set_column_expand(0, true)
 	_tree.set_column_expand(1, false)
 	_tree.set_column_expand(2, false)
-	_tree.set_column_custom_minimum_width(1, 150)
-	_tree.set_column_custom_minimum_width(2, 120)
+	_tree.set_column_custom_minimum_width(1, int(EditorScale.px(180)))
+	_tree.set_column_custom_minimum_width(2, int(EditorScale.px(120)))
 	_apply_empty_state()
 
 

@@ -3,6 +3,7 @@ extends PanelContainer
 
 const KvRowScene := preload("res://addons/noodle_nodes/editor/shell/kv_row.tscn")
 const EventRowScene := preload("res://addons/noodle_nodes/editor/shell/event_row.tscn")
+const EditorScale := preload("res://addons/noodle_nodes/editor/editor_scale.gd")
 const MAX_EVENTS := 100
 
 @onready var _header: Label = %NodeHeader
@@ -16,6 +17,10 @@ const MAX_EVENTS := 100
 var _property_rows: Dictionary = {}
 var _blackboard_rows: Dictionary = {}
 var _event_rows: Dictionary = {}
+
+
+func _ready() -> void:
+	EditorScale.apply_to_scene(self)
 
 
 func set_selected_node(node_id: int, node: Dictionary) -> void:

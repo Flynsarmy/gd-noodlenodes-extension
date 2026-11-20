@@ -3,6 +3,7 @@
 [ext_resource type="Script" path="res://addons/noodle_nodes/editor/shell/root_list.gd" id="1"]
 
 [node name="RootList" type="VBoxContainer"]
+custom_minimum_size = Vector2(210, 0)
 theme_override_constants/separation = 4
 script = ExtResource("1")
 

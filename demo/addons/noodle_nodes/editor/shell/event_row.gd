@@ -1,9 +1,15 @@
 @tool
 extends HBoxContainer
 
+const EditorScale := preload("res://addons/noodle_nodes/editor/editor_scale.gd")
+
 @onready var _frame: Label = %Frame
 @onready var _kind: Label = %Kind
 @onready var _detail: Label = %Detail
+
+
+func _ready() -> void:
+	EditorScale.apply_to_scene(self)
 
 
 func set_event(event: Dictionary, node_names: Dictionary) -> void:
