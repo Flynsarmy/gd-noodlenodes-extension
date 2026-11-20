@@ -2,6 +2,7 @@
 extends HBoxContainer
 
 const EditorScale := preload("res://addons/noodle_nodes/editor/editor_scale.gd")
+const ValueFormat := preload("res://addons/noodle_nodes/debugger/value_format.gd")
 
 const FLASH_COLOR := Color(1.0, 0.85, 0.35)
 const FLASH_SEC := 0.5
@@ -19,9 +20,8 @@ func _ready() -> void:
 func set_values(key: String, value: Variant) -> void:
 	_key.text = key
 	_key.tooltip_text = key
-	var text := var_to_str(value)
-	_value.text = text
-	_value.tooltip_text = text
+	_value.text = ValueFormat.format(value)
+	_value.tooltip_text = ValueFormat.full(value)
 
 
 func flash() -> void:

@@ -5,6 +5,7 @@ signal root_activated(root_id: int)
 
 const Protocol := preload("res://addons/noodle_nodes/debugger/protocol.gd")
 const EditorScale := preload("res://addons/noodle_nodes/editor/editor_scale.gd")
+const RootLabel := preload("res://addons/noodle_nodes/editor/shell/root_label.gd")
 
 const TYPE_COLUMN_WIDTH := 56
 
@@ -19,6 +20,7 @@ var _rebuilding := false
 var _match_cache: Dictionary = {}
 var _match_visiting: Dictionary = {}
 var _root_items: Dictionary = {}
+var _duplicate_names: Dictionary = {}
 
 
 func _ready() -> void:
@@ -38,6 +40,7 @@ func set_roots(infos: Array, current_root_id: int) -> void:
 		if info is Dictionary and info.has("id"):
 			_infos[int(info["id"])] = info
 	_current_root_id = current_root_id
+	_duplicate_names = RootLabel.count_names(_infos)
 	_rebuild()
 
 
@@ -83,9 +86,9 @@ func _create_root_item(root_id: int, parent_item: TreeItem) -> TreeItem:
 	var item := _tree.create_item(parent_item)
 	_root_items[root_id] = item
 	item.set_metadata(0, root_id)
-	item.set_text(0, str(info.get("name", "")))
+	item.set_text(0, RootLabel.label(info, _duplicate_names))
 	item.set_text(1, _type_label(info))
-	item.set_tooltip_text(0, str(info.get("path", "")))
+	item.set_tooltip_text(0, RootLabel.tooltip(info, _duplicate_names))
 	item.set_tooltip_text(1, "%s — %s" % [info.get("class", ""), info.get("path", "")])
 	var icon := _type_icon(info)
 	if icon != null:
@@ -138,6 +141,7 @@ func _matches(info: Dictionary) -> bool:
 		str(info.get("class", "")),
 		type,
 		str(Protocol.TYPE_LABELS.get(type, "")),
+		RootLabel.label(info, _duplicate_names),
 	]
 	for haystack: String in haystacks:
 		if haystack.to_lower().contains(_query):
