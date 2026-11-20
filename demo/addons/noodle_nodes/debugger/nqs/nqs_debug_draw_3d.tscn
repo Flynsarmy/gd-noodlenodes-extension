@@ -1,0 +1,23 @@
+[gd_scene load_steps=4 format=3]
+
+[ext_resource type="Script" path="res://addons/noodle_nodes/debugger/nqs/nqs_debug_draw_3d.gd" id="1_draw"]
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_points"]
+shading_mode = 0
+vertex_color_use_as_albedo = true
+no_depth_test = true
+cull_mode = 2
+
+[sub_resource type="ImmediateMesh" id="ImmediateMesh_points"]
+resource_local_to_scene = true
+
+[node name="NqsDebugDraw3D" type="Node3D"]
+script = ExtResource("1_draw")
+
+[node name="Points" type="MeshInstance3D" parent="."]
+unique_name_in_owner = true
+mesh = SubResource("ImmediateMesh_points")
+material_override = SubResource("StandardMaterial3D_points")
+
+[node name="Scores" type="Node3D" parent="."]
+unique_name_in_owner = true

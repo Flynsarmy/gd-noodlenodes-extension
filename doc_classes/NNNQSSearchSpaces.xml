@@ -19,10 +19,34 @@
 				The [method execute_query] method fetches the search space nodes based on its configuration and then applies the search criteria in top-down order. [param time_budget_usec] limits the time, in microseconds, this call spends on the query; a query that runs out of time resumes where it left off on the next call. A budget of [code]0[/code] runs the query to completion in this call. Returns [code]false[/code] if the query hasn't finished (time has run out) and [code]true[/code] otherwise.
 			</description>
 		</method>
+		<method name="get_debug_scored_nodes">
+			<return type="Node[]" />
+			<description>
+				Debug builds only. Every candidate that survived the search criteria in the last completed query, in search-space order. Empty unless the search space is being watched with [method watch_debug_scores]. Unlike [member query_results] this is not limited to the top [member top_n_to_find] nodes.
+			</description>
+		</method>
+		<method name="get_debug_scored_scores">
+			<return type="PackedFloat64Array" />
+			<description>
+				Debug builds only. The final scores of the nodes returned by [method get_debug_scored_nodes], index for index.
+			</description>
+		</method>
 		<method name="initialize_search_space">
 			<return type="void" />
 			<description>
 				Runs the search space's internal initialization (for example, generating point-grid nodes or connecting area signals). This is called automatically from the native [method Node._ready] implementation. If a script attached to this node overrides [method Node._ready], the native [method Node._ready] will not run and you must call [method initialize_search_space] yourself.
+			</description>
+		</method>
+		<method name="unwatch_debug_scores">
+			<return type="void" />
+			<description>
+				Debug builds only. Releases one [method watch_debug_scores] call. Recording stops, and the copies returned by [method get_debug_scored_nodes] and [method get_debug_scored_scores] are cleared, when the last watcher releases its call.
+			</description>
+		</method>
+		<method name="watch_debug_scores">
+			<return type="void" />
+			<description>
+				Debug builds only. Starts copying every surviving candidate and its final score, as returned by [method get_debug_scored_nodes] and [method get_debug_scored_scores], when a query completes. This lets the debugger draw all scored points instead of only the top [member top_n_to_find] results. Calls are reference counted, so several watchers can watch the same search space; each one must pair its call with [method unwatch_debug_scores]. The copy costs time proportional to the search space size on every completed query, so watch only while something is inspecting the query.
 			</description>
 		</method>
 	</methods>
