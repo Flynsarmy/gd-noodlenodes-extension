@@ -1,14 +1,14 @@
 extends Node2D
 
 # A showcase for the Noodle Nodes debugger overlay. Three populations of AI
-# entities share the same arena so the overlay's Agent Behaviours, Behaviour
-# Trees and State Trees views all have live roots to inspect.
+# entities share the same arena so the overlay has live roots to label and
+# inspect.
 
 const AGENT_SCENE: PackedScene = preload("agent_entity.tscn")
 const BEHAVIOUR_TREE_SCENE: PackedScene = preload("behaviour_tree_entity.tscn")
 const STATE_TREE_SCENE: PackedScene = preload("state_tree_entity.tscn")
 
-const OVERLAY_NAME := "NoodleNodesDebuggerOverlay"
+const OVERLAY_NAME := "NoodleNodesOverlay"
 const AGENT := 1
 const BEHAVIOUR_TREE := 2
 const STATE_TREE := 3
@@ -24,7 +24,6 @@ const TYPE_COLORS := {
 @onready var status_label: Label = $HudLayer/StatusBar/Label
 @onready var title_label: Label = $Backdrop/Title
 @onready var subtitle_label: Label = $Backdrop/Subtitle
-@onready var _debugger: Object = _find_debugger()
 
 var mouse_position: Vector2
 var ai_paused := false
@@ -62,12 +61,6 @@ func _unhandled_input(event: InputEvent) -> void:
 	match event.keycode:
 		KEY_F1:
 			_toggle_overlay()
-		KEY_1:
-			_select_overlay_category(AGENT)
-		KEY_2:
-			_select_overlay_category(BEHAVIOUR_TREE)
-		KEY_3:
-			_select_overlay_category(STATE_TREE)
 		KEY_SPACE:
 			_spawn_random_entity()
 		KEY_BACKSPACE:
@@ -185,52 +178,22 @@ func _live_entity_count() -> int:
 	return count
 
 
-func _find_debugger() -> Object:
-	# The overlay singleton only exists in debug builds.
-	if not Engine.has_singleton("AIDebuggerOverlay"):
-		return null
-	return Engine.get_singleton("AIDebuggerOverlay")
-
-
 func _overlay_node() -> Node:
 	return debugger_layer.get_node_or_null(OVERLAY_NAME)
 
 
 func _overlay_is_open() -> bool:
 	var overlay := _overlay_node()
-	return overlay != null and not overlay.is_queued_for_deletion()
+	return overlay != null and overlay.visible
 
 
 func _open_overlay() -> void:
-	if _debugger == null:
-		return
-
-	if not _overlay_is_open():
-		_debugger.call("add_as_child_of", debugger_layer)
-
-	# Start on Agent Behaviours with its first root selected so the overlay shows
-	# a live hierarchy immediately instead of an empty tree.
-	_debugger.call("on_type_item_selected", AGENT)
-	_debugger.call("on_root_item_selected", 1)
-	_update_status()
+	_overlay_node().visible = true
 
 
 func _toggle_overlay() -> void:
-	if _overlay_is_open():
-		_overlay_node().queue_free()
-		_update_status()
-	else:
-		_open_overlay()
-
-
-func _select_overlay_category(kind: int) -> void:
-	if not _overlay_is_open():
-		_open_overlay()
-
-	if _debugger == null:
-		return
-	_debugger.call("on_type_item_selected", kind)
-	_debugger.call("on_root_item_selected", 1)
+	_overlay_node().visible = not _overlay_is_open()
+	_update_status()
 
 
 func _toggle_pause() -> void:
@@ -248,7 +211,7 @@ func _update_status() -> void:
 
 	var overlay_state := "open" if overlay_open else "closed"
 	var pause_state := "on" if ai_paused else "off"
-	status_label.text = "F1 debugger (%s)  |  1/2/3 category  |  Space spawn  |  Backspace remove  |  P pause AI (%s)  |  Move the mouse to steer  |  %d AI roots" % [
+	status_label.text = "F1 debugger (%s)  |  Space spawn  |  Backspace remove  |  P pause AI (%s)  |  Move the mouse to steer  |  %d AI roots" % [
 		overlay_state,
 		pause_state,
 		_live_entity_count(),

@@ -1,4 +1,4 @@
-[gd_scene load_steps=19 format=3]
+[gd_scene load_steps=20 format=3]
 
 [ext_resource type="Script" path="res://demo_08_integrated_npc/tutorial_scene.gd" id="1_scene"]
 [ext_resource type="Script" path="res://demo_08_integrated_npc/integrated_npc.gd" id="2_npc"]
@@ -7,6 +7,7 @@
 [ext_resource type="Script" path="res://demo_08_integrated_npc/moving.gd" id="5_moving"]
 [ext_resource type="Texture2D" path="res://icon.svg" id="6_icon"]
 [ext_resource type="Texture2D" path="res://assets/Standard sprites upd.png" id="7_sprites"]
+[ext_resource type="PackedScene" path="res://addons/noodle_nodes/debugger/overlay/noodle_nodes_overlay.tscn" id="8_overlay"]
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_idle"]
 atlas = ExtResource("7_sprites")
@@ -423,6 +424,8 @@ state = NodePath("../../../../../../../Run")
 fixed_result = 0
 
 [node name="DebuggerLayer" type="CanvasLayer" parent="."]
+
+[node name="NoodleNodesOverlay" parent="DebuggerLayer" instance=ExtResource("8_overlay")]
 
 [node name="HudLayer" type="CanvasLayer" parent="."]
 layer = 2
