@@ -163,6 +163,10 @@ func _fit_if_needed() -> void:
 		fit_to_view()
 
 
+func get_zoom() -> float:
+	return _zoom
+
+
 ## The part of the canvas currently visible in the pane, in canvas coordinates.
 ## Used by tests and tooling to check that a fit kept the trace on screen.
 func get_visible_rect() -> Rect2:
