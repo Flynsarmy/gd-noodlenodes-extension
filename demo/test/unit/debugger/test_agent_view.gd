@@ -27,6 +27,17 @@ func _row_names() -> Array:
 	return names
 
 
+func _fits_chars(label, count: int) -> bool:
+	if label.text.length() < count:
+		return false
+	var font = label.get_theme_font("font")
+	if font == null:
+		return false
+	var font_size = label.get_theme_font_size("font_size")
+	var prefix: String = label.text.substr(0, count)
+	return label.size.x >= font.get_string_size(prefix, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x
+
+
 func _find_row(root: Node, node_id: int):
 	for child in root.get_children():
 		if child.has_method("set_selected") and int(child.get("node_id")) == node_id:
@@ -333,6 +344,7 @@ func test_view_fits_godots_default_bottom_panel_height() -> void:
 	view.set_snapshot(Fixtures.agent_snapshot())
 	view.apply_events(Fixtures.agent_events())
 	await get_tree().process_frame
+	await get_tree().process_frame
 
 	assert_true(view.clip_contents, "the view clips its own content")
 	assert_true(view.get_combined_minimum_size().y <= 150.0)
@@ -353,8 +365,13 @@ func test_view_fits_godots_default_bottom_panel_height() -> void:
 	var name_label = row.get_node("%Name")
 	assert_eq(name_label.text, "Investigate")
 	assert_eq(name_label.tooltip_text, "Investigate")
+	assert_true(_fits_chars(name_label, 6), "the current behaviour name keeps at least 6 characters")
 	assert_true(row.get_global_rect().position.x >= scroll.get_global_rect().position.x - 0.5,
 			"the behaviour row starts inside its pane, not scrolled out")
+
+	var sensor_row = _find_row(view.get_node("%SensorList"), Fixtures.AGENT_ALERT_SENSOR)
+	assert_not_null(sensor_row, "a sensor row exists")
+	assert_true(_fits_chars(sensor_row.get_node("%Name"), 6), "the sensor name keeps at least 6 characters")
 
 	assert_true(timeline.is_visible_in_tree())
 	assert_true(timeline.get_global_rect().size.y >= 48.0)
@@ -375,3 +392,41 @@ func test_timeline_band_is_capped_in_a_tall_panel() -> void:
 	var timeline = view.get_node("%Timeline")
 	assert_true(timeline.get_band_rect().size.y <= 66.0, "the timeline band keeps its cap when the panel grows")
 	assert_true(timeline.get_global_rect().end.y < view.get_global_rect().end.y, "the timeline stays top-aligned")
+
+
+func test_behaviour_name_survives_a_650_px_wide_view() -> void:
+	# Simulates the editor's larger scaled font inside a 1x pane width.
+	var theme := Theme.new()
+	theme.default_font_size = 32
+	var frame := Control.new()
+	frame.theme = theme
+	frame.size = Vector2(650, 170)
+	add_child_autofree(frame)
+	var view = AgentViewScene.instantiate()
+	frame.add_child(view)
+	view.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	view.set_snapshot(Fixtures.agent_snapshot())
+	view.apply_events(Fixtures.agent_events())
+	await get_tree().process_frame
+	await get_tree().process_frame
+
+	var row = _find_row(view.get_node("%BehaviourList"), Fixtures.AGENT_INVESTIGATE)
+	assert_not_null(row)
+	assert_true(_fits_chars(row.get_node("%Name"), 6), "the behaviour name keeps at least 6 characters at 650 px")
+
+
+func test_timeline_tick_labels_do_not_overlap() -> void:
+	_view.set_snapshot(Fixtures.agent_snapshot())
+	_view.apply_events(Fixtures.agent_events())
+	var timeline = _view.get_node("%Timeline")
+	timeline.size = Vector2(300, 84)
+
+	var labels: Array = timeline.get_tick_labels()
+	assert_gt(labels.size(), 1)
+	assert_eq(labels[0]["text"], "-30s")
+	assert_eq(labels[-1]["text"], "now")
+	for i in labels.size():
+		var rect: Rect2 = labels[i]["rect"]
+		for j in range(i + 1, labels.size()):
+			var other: Rect2 = labels[j]["rect"]
+			assert_false(rect.intersects(other), "tick labels must not overlap")

@@ -23,6 +23,7 @@ const MIN_SEGMENT_WIDTH := 1.0
 const SEGMENT_LABEL_PADDING := 6.0
 const TICK_PADDING := 2.0
 const TICK_SEC := 5
+const TICK_LABEL_GAP := 2.0
 
 var _changes: Array = []
 var _now_usec: int = 0
@@ -158,20 +159,57 @@ func _draw() -> void:
 func _draw_time_axis(font: Font, font_size: int, top: float, height: float) -> void:
 	var seconds := int(WINDOW_USEC / 1000000.0)
 	for tick in range(0, seconds + 1, TICK_SEC):
-		var x := size.x * (1.0 - float(tick) / float(seconds))
-		if tick > 0 and tick < seconds:
-			draw_line(Vector2(x, top), Vector2(x, top + height), TICK, EditorScale.px(TICK_WIDTH))
-		if font == null:
+		if tick <= 0 or tick >= seconds:
 			continue
+		var x := size.x * float(tick) / float(seconds)
+		draw_line(Vector2(x, top), Vector2(x, top + height), TICK, EditorScale.px(TICK_WIDTH))
+	if font == null:
+		return
+	for label in get_tick_labels():
+		var rect: Rect2 = label["rect"]
+		draw_string(font, Vector2(rect.position.x, rect.end.y - font.get_descent(font_size)),
+				label["text"], HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, TICK_LABEL)
+
+
+## Tick labels that fit without overlapping; tick lines are still drawn for every tick.
+func get_tick_labels() -> Array:
+	var labels := []
+	if _now_usec <= 0 or size.x <= 0.0:
+		return labels
+	var font := _label_font()
+	if font == null:
+		return labels
+	var font_size := _label_font_size()
+	var seconds := int(WINDOW_USEC / 1000000.0)
+	var baseline := size.y - EditorScale.px(TICK_PADDING) - font.get_descent(font_size)
+	var candidates := []
+	for tick in range(0, seconds + 1, TICK_SEC):
+		var x := size.x * float(tick) / float(seconds)
 		var text := "now" if tick == seconds else "-%ds" % (seconds - tick)
-		var text_width := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x
-		var label_x := x
+		var width := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x
+		var left := x
 		if tick == seconds:
-			label_x = x - text_width
+			left = x - width
 		elif tick > 0:
-			label_x = x - text_width * 0.5
-		var baseline := size.y - EditorScale.px(TICK_PADDING) - font.get_descent(font_size)
-		draw_string(font, Vector2(label_x, baseline), text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, TICK_LABEL)
+			left = x - width * 0.5
+		candidates.append({
+			"text": text,
+			"rect": Rect2(Vector2(left, baseline - font.get_ascent(font_size)), Vector2(width, font.get_height(font_size))),
+		})
+	# Keep labels from the right so "now" always survives, then restore time order.
+	var gap := EditorScale.px(TICK_LABEL_GAP)
+	for i in range(candidates.size() - 1, -1, -1):
+		var rect: Rect2 = candidates[i]["rect"]
+		var overlaps := false
+		for kept in labels:
+			var other: Rect2 = kept["rect"]
+			if rect.intersects(other.grow(gap)):
+				overlaps = true
+				break
+		if not overlaps:
+			labels.append(candidates[i])
+	labels.reverse()
+	return labels
 
 
 ## The coloured band, excluding the tick row drawn underneath it.
