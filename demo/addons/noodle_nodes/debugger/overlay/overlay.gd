@@ -4,6 +4,7 @@ extends Control
 
 const Protocol = preload("res://addons/noodle_nodes/debugger/protocol.gd")
 const StatusPalette = preload("res://addons/noodle_nodes/debugger/status_palette.gd")
+const ValueFormat = preload("res://addons/noodle_nodes/debugger/value_format.gd")
 const EntityLabelScene: PackedScene = preload("res://addons/noodle_nodes/debugger/overlay/entity_label.tscn")
 const RootRowScene: PackedScene = preload("res://addons/noodle_nodes/debugger/overlay/root_row.tscn")
 const EventRowScene: PackedScene = preload("res://addons/noodle_nodes/debugger/overlay/event_row.tscn")
@@ -809,7 +810,7 @@ func _event_text(root_id: int, snapshot: Dictionary, event: Dictionary) -> Strin
 			var action := int(event.get("action", 0))
 			return "no action" if action == 0 else "action %s" % _node_name(snapshot, action)
 		"bb_set":
-			return "%s = %s" % [String(event.get("key", "")), _format_value(event.get("value"))]
+			return "%s = %s" % [String(event.get("key", "")), ValueFormat.format(event.get("value"))]
 		"bb_erase":
 			return "erase %s" % String(event.get("key", ""))
 		"bb_clear":
@@ -823,19 +824,6 @@ func _occurrence_name(snapshot: Dictionary, occurrence_id: int) -> String:
 			if int(step.get("occurrence_id", 0)) == occurrence_id:
 				return String(step.get("task", ""))
 	return "step %d" % occurrence_id
-
-
-func _format_value(value: Variant) -> String:
-	match typeof(value):
-		TYPE_FLOAT:
-			return "%.2f" % value
-		TYPE_VECTOR2:
-			var vector2: Vector2 = value
-			return "(%.2f, %.2f)" % [vector2.x, vector2.y]
-		TYPE_VECTOR3:
-			var vector3: Vector3 = value
-			return "(%.2f, %.2f, %.2f)" % [vector3.x, vector3.y, vector3.z]
-	return str(value)
 
 
 func _sync_event_rows() -> void:
