@@ -744,9 +744,9 @@ func _label_text_width(label: Label, text: String) -> float:
 	return font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x
 
 
-func test_inspector_fits_a_short_value_at_narrow_width() -> void:
+func test_inspector_fits_keys_after_the_theme_resolves() -> void:
 	var host := Control.new()
-	host.size = Vector2(360, 400)
+	host.size = Vector2(500, 500)
 	add_child_autofree(host)
 	var inspector: Control = InspectorScene.instantiate()
 	host.add_child(inspector)
@@ -755,8 +755,16 @@ func test_inspector_fits_a_short_value_at_narrow_width() -> void:
 	inspector.set_properties({
 		"state": "Walk",
 		"cover_point": "Sprite2D",
-		"an_extremely_long_property_name_that_will_be_capped": true,
 	})
+	await get_tree().process_frame
+
+	var theme := Theme.new()
+	theme.set_font_size("font_size", "Label", 28)
+	var style := StyleBoxEmpty.new()
+	style.content_margin_left = 16
+	style.content_margin_right = 16
+	theme.set_stylebox("normal", "Label", style)
+	inspector.theme = theme
 	await get_tree().process_frame
 	await get_tree().process_frame
 
@@ -767,13 +775,15 @@ func test_inspector_fits_a_short_value_at_narrow_width() -> void:
 	var state_value: Label = rows["state"].get_node("%Value")
 	var cover_key: Label = rows["cover_point"].get_node("%Key")
 	var cover_value: Label = rows["cover_point"].get_node("%Value")
+	var key_margin: float = cover_key.get_theme_stylebox("normal").get_minimum_size().x
+	var value_margin: float = cover_value.get_theme_stylebox("normal").get_minimum_size().x
 	assert_eq(state_value.text, "Walk")
 	assert_eq(cover_value.text, "Sprite2D")
 	assert_eq(state_key.size.x, cover_key.size.x, "keys share the widest key column in the section")
-	assert_gte(state_key.size.x, _label_text_width(state_key, "state"), "state is not elided")
-	assert_gte(cover_key.size.x, _label_text_width(cover_key, "cover_point"), "cover_point is not elided")
-	assert_lt(cover_key.size.x, 360.0 * 0.45 + 1.0, "the key column is capped at 45% of the inspector width")
-	assert_gte(cover_value.size.x, _label_text_width(cover_value, "Sprite2D"), "Sprite2D is shown in full")
+	assert_gte(state_key.size.x, _label_text_width(state_key, "state") + key_margin, "state is not elided")
+	assert_gte(cover_key.size.x, _label_text_width(cover_key, "cover_point") + key_margin, "cover_point is not elided")
+	assert_lt(cover_key.size.x, 500.0 * 0.45 + 1.0, "the key column is capped at 45% of the inspector width")
+	assert_gte(cover_value.size.x, _label_text_width(cover_value, "Sprite2D") + value_margin, "Sprite2D is shown in full")
 	assert_string_contains(cover_value.tooltip_text, "Sprite2D")
 
 

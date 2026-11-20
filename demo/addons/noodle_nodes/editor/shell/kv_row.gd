@@ -18,6 +18,11 @@ func _ready() -> void:
 	EditorScale.apply_to_scene(self)
 
 
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_THEME_CHANGED and _key != null and is_inside_tree():
+		set_key_width(measured_key_width() + EditorScale.px(KEY_PADDING))
+
+
 func set_values(key: String, value: Variant) -> void:
 	_key.text = key
 	_key.tooltip_text = key
@@ -32,7 +37,11 @@ func measured_key_width() -> float:
 	if font == null:
 		return 0.0
 	var font_size := _key.get_theme_font_size("font_size")
-	return ceilf(font.get_string_size(_key.text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x)
+	var width := font.get_string_size(_key.text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x
+	var style := _key.get_theme_stylebox("normal")
+	if style != null:
+		width += style.get_minimum_size().x
+	return ceilf(width)
 
 
 func set_key_width(width: float) -> void:

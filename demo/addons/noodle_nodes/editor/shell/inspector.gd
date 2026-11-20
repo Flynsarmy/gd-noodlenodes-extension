@@ -27,6 +27,11 @@ func _ready() -> void:
 	resized.connect(_relayout_kv_rows)
 
 
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_THEME_CHANGED:
+		_relayout_kv_rows.call_deferred()
+
+
 func set_selected_node(node_id: int, node: Dictionary) -> void:
 	_property_rows.clear()
 	_clear_rows(_properties)
@@ -132,6 +137,7 @@ func _sync_kv_rows(container: VBoxContainer, rows: Dictionary, values: Dictionar
 		container.move_child(row, index)
 		index += 1
 	_layout_kv_rows(rows)
+	_relayout_kv_rows.call_deferred()
 
 
 func _set_blackboard_value(key: String, value: Variant, flash: bool) -> void:
@@ -145,6 +151,7 @@ func _set_blackboard_value(key: String, value: Variant, flash: bool) -> void:
 	if flash:
 		row.call("flash")
 	_layout_kv_rows(_blackboard_rows)
+	_relayout_kv_rows.call_deferred()
 
 
 func _erase_blackboard_value(key: String) -> void:
@@ -155,6 +162,7 @@ func _erase_blackboard_value(key: String) -> void:
 	_blackboard.remove_child(row)
 	row.free()
 	_layout_kv_rows(_blackboard_rows)
+	_relayout_kv_rows.call_deferred()
 
 
 func _relayout_kv_rows() -> void:
