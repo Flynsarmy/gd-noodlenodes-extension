@@ -1,0 +1,35 @@
+[gd_scene format=3]
+
+[node name="RootRow" type="HBoxContainer"]
+theme_override_constants/separation = 6
+mouse_filter = 2
+
+[node name="Type" type="Label" parent="."]
+unique_name_in_owner = true
+layout_mode = 2
+custom_minimum_size = Vector2(30, 0)
+theme_override_font_sizes/font_size = 12
+text = "BT"
+
+[node name="RootName" type="Label" parent="."]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.72, 0.78, 0.9, 1)
+theme_override_font_sizes/font_size = 12
+text = "Root"
+
+[node name="State" type="Label" parent="."]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.88, 0.92, 1, 1)
+theme_override_font_sizes/font_size = 12
+text = "State"
+text_overrun_behavior = 3
+
+[node name="Status" type="Label" parent="."]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.9, 0.9, 0.9, 1)
+theme_override_font_sizes/font_size = 12
+horizontal_alignment = 2

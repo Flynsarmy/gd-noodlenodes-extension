@@ -1,8 +1,6 @@
 extends Node2D
 
-const OVERLAY_NAME := "NoodleNodesDebuggerOverlay"
-const AGENT_VIEW := 1
-const FIRST_ROOT_ITEM := 1
+const OVERLAY_NAME := "NoodleNodesOverlay"
 const STATUS_INTERVAL := 0.1
 
 @onready var agent: NNAgent = $Npc/Movement/NNAgent
@@ -16,7 +14,6 @@ const STATUS_INTERVAL := 0.1
 	$Npc/Movement/Walk,
 	$Npc/Movement/Run,
 ]
-@onready var _debugger: Object = _find_debugger()
 
 var _status_cooldown := 0.0
 var _status_labels_visible := true
@@ -56,36 +53,21 @@ func _exit_tree() -> void:
 	NodeQuerySystem.clear_queries()
 
 
-func _find_debugger() -> Object:
-	# The overlay singleton only exists in debug builds.
-	if not Engine.has_singleton("AIDebuggerOverlay"):
-		return null
-	return Engine.get_singleton("AIDebuggerOverlay")
-
-
 func _overlay_node() -> Node:
 	return debugger_layer.get_node_or_null(OVERLAY_NAME)
 
 
 func _overlay_is_open() -> bool:
 	var overlay := _overlay_node()
-	return overlay != null and not overlay.is_queued_for_deletion()
+	return overlay != null and overlay.visible
 
 
 func _open_overlay() -> void:
-	if _debugger == null:
-		return
-	if not _overlay_is_open():
-		_debugger.call("add_as_child_of", debugger_layer)
-	_debugger.call("on_type_item_selected", AGENT_VIEW)
-	_debugger.call("on_root_item_selected", FIRST_ROOT_ITEM)
+	_overlay_node().visible = true
 
 
 func _toggle_overlay() -> void:
-	if _overlay_is_open():
-		_overlay_node().queue_free()
-	else:
-		_open_overlay()
+	_overlay_node().visible = not _overlay_is_open()
 	_update_status()
 
 

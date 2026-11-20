@@ -8,6 +8,7 @@
 [ext_resource type="PackedScene" path="res://demo_07_htn/objects/cloud.tscn" id="5_myusx"]
 [ext_resource type="PackedScene" path="res://demo_07_htn/npc/npc.tscn" id="6_1cce1"]
 [ext_resource type="PackedScene" path="res://demo_07_htn/objects/coin_spawner.tscn" id="7_f5mne"]
+[ext_resource type="PackedScene" path="res://addons/noodle_nodes/debugger/overlay/noodle_nodes_overlay.tscn" id="8_overlay"]
 
 [node name="Main" type="Node3D"]
 script = ExtResource("0_demo")
@@ -135,6 +136,9 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 17.2828, 2.1578, 8.12897)
 
 
 [node name="DebuggerLayer" type="CanvasLayer" parent="."]
+
+[node name="NoodleNodesOverlay" parent="DebuggerLayer" instance=ExtResource("8_overlay")]
+visible = false
 
 [node name="HudLayer" type="CanvasLayer" parent="."]
 

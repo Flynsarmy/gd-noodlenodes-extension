@@ -1,0 +1,21 @@
+[gd_scene format=3]
+
+[node name="EventRow" type="HBoxContainer"]
+theme_override_constants/separation = 6
+mouse_filter = 2
+
+[node name="Type" type="Label" parent="."]
+unique_name_in_owner = true
+layout_mode = 2
+custom_minimum_size = Vector2(42, 0)
+theme_override_font_sizes/font_size = 11
+text = "BT"
+
+[node name="What" type="Label" parent="."]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.8, 0.84, 0.92, 1)
+theme_override_font_sizes/font_size = 11
+text = "event"
+text_overrun_behavior = 3
