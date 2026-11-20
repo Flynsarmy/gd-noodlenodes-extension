@@ -177,9 +177,12 @@ Top-level keys:
 | Key | Type | Meaning |
 |---|---|---|
 | `running_node` | `int` | The deepest node currently running, or `0`. |
+| `last_leaf` | `int` | The deepest node reached by the latest tick, or `0`. Its status is in that node's entry. |
 | `tick_count` | `int` | Number of root ticks so far. |
 | `elapsed_time` | `float` | Seconds since the root started ticking. |
 | `last_result` | `String` | The root's last result: `"running"`, `"success"`, `"failure"`, `"skip"` or `"unvisited"`. |
+
+A tree that finishes inside a tick has `running_node` `0` between ticks. `last_leaf` still names the deepest node the last tick reached, so a consumer can show what the tree just did and whether it succeeded or failed instead of an empty tree.
 
 Node extras:
 
@@ -310,11 +313,14 @@ Top-level keys:
 | Key | Type | Meaning |
 |---|---|---|
 | `current_behaviour` | `int` | The selected behaviour's id, or `0`. |
+| `last_behaviour` | `int` | The most recently chosen non-zero behaviour's id, or `0`. It persists after the behaviour completes and reads `0` again only if that node is freed. |
 | `current_behaviour_group` | `int` | The selected behaviour group's id, or `0`. |
 | `current_action` | `int` | The current action's id, or `0`. |
 | `top_scoring` | `Array[Dictionary]` | `{ "behaviour": int, "group": int, "score": float }`, best first, at most `num_behaviours_to_select` entries. |
 | `current_behaviour_bias` | `float` | The bias applied to the current behaviour's score. |
 | `num_behaviours_to_select` | `int` | How many behaviours the agent selects from each evaluation. |
+
+An agent whose behaviours have no actions, or whose actions finish immediately, can start and complete a behaviour within one update. Between updates `current_behaviour` is then `0`, while `last_behaviour` still names the behaviour that was just chosen. A consumer should fall back to `last_behaviour` when `current_behaviour` is `0` to keep showing what the agent is doing.
 
 Node extras depend on `kind`:
 
@@ -373,7 +379,7 @@ Events are only recorded while the root is watched, and the oldest are dropped w
 | `htn_repair` | `succeeded`, `attempts`, `reason` | A local repair finishes. |
 | `htn_replan` | `trigger_keys: PackedStringArray`, `urgent: bool` | A replan starts. |
 | `htn_plan_finished` | `succeeded` | The plan finishes. |
-| `agent_choice` | `behaviour`, `group`, `action`, `top` (the same array as `top_scoring`) | The selected behaviour changes. |
+| `agent_choice` | `behaviour`, `group`, `action`, `top` (the same array as `top_scoring`) | The selected behaviour changes. A `behaviour` of `0` means the previous behaviour completed rather than a switch; treat it as the previous run ending, not a new choice. |
 | `agent_action` | `action` | The current action changes. |
 | `bb_set` | `key`, `value` (sanitised) | A blackboard value is set. At most one per key per 100 ms per root; the snapshot's `blackboard.values` always holds the current value. |
 | `bb_erase` | `key` | A blackboard value is erased. |
