@@ -1,0 +1,32 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://addons/noodle_nodes/editor/shell/root_list.gd" id="1"]
+
+[node name="RootList" type="VBoxContainer"]
+theme_override_constants/separation = 4
+script = ExtResource("1")
+
+[node name="Filter" type="LineEdit" parent="."]
+unique_name_in_owner = true
+layout_mode = 2
+placeholder_text = "Filter by name, owner or type"
+clear_button_enabled = true
+
+[node name="Tree" type="Tree" parent="."]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 3
+columns = 2
+column_titles_visible = true
+column_0_title = "Root"
+column_1_title = "Type"
+hide_root = true
+select_mode = 0
+allow_reselect = true
+
+[node name="CopyPathButton" type="Button" parent="."]
+unique_name_in_owner = true
+layout_mode = 2
+disabled = true
+text = "Copy node path"
+tooltip_text = "Copies the selected root's absolute node path."

@@ -1,0 +1,6 @@
+[gd_scene load_steps=1 format=3]
+
+[node name="Crumb" type="Button"]
+flat = true
+mouse_default_cursor_shape = 2
+theme_override_font_sizes/font_size = 12
