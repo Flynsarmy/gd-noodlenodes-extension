@@ -274,7 +274,8 @@ func test_the_trace_heading_ellipsises_with_the_full_text_as_a_tooltip() -> void
 	assert_true(heading.clip_text)
 	assert_eq(heading.text_overrun_behavior, TextServer.OVERRUN_TRIM_ELLIPSIS)
 	assert_string_contains(heading.text, "6 expansions")
-	assert_eq(heading.tooltip_text, heading.text)
+	assert_string_contains(heading.tooltip_text, heading.text)
+	assert_string_contains(heading.tooltip_text, Fixtures.htn_attempt().timestamp)
 
 
 func _settle_layout(frames: int = 3) -> void:
@@ -367,6 +368,52 @@ func _records_outside_visible_rect(graph) -> Array:
 		if not visible_rect.encloses(Rect2(record.position, TraceGraph.NODE_SIZE)):
 			outside.append(record.path)
 	return outside
+
+
+func test_fit_frames_the_whole_trace_when_above_the_zoom_floor() -> void:
+	view.anchor_right = 0.0
+	view.anchor_bottom = 0.0
+	view.size = Vector2(2000, 900)
+	view.set_snapshot(Fixtures.htn_snapshot())
+	view.apply_events(Fixtures.htn_events())
+	view.select_attempt(3, true)
+	await _settle_layout()
+
+	var graph = _graph()
+	assert_gt(graph.get_zoom(), TraceGraph.FIT_MIN_ZOOM, "This size must not need the floor")
+	assert_eq(_records_outside_visible_rect(graph), [], "The fit must frame every node in full")
+
+
+func test_fit_stops_at_the_floor_and_keeps_the_first_decision_visible() -> void:
+	view.anchor_right = 0.0
+	view.anchor_bottom = 0.0
+	view.size = Vector2(900, 300)
+	view.set_snapshot(Fixtures.htn_snapshot())
+	view.apply_events(Fixtures.htn_events())
+	view.select_attempt(3, true)
+	await _settle_layout()
+
+	var graph = _graph()
+	graph.fit_to_view()
+	assert_almost_eq(graph.get_zoom(), TraceGraph.FIT_MIN_ZOOM, 0.0001)
+	var first: Dictionary = graph.get_records()[0]
+	var visible: Rect2 = graph.get_visible_rect().grow(1.0)
+	assert_true(visible.encloses(Rect2(first.position, TraceGraph.NODE_SIZE)), "The first decision must stay visible")
+
+
+func test_attempt_ages_are_relative_game_time() -> void:
+	view.set_snapshot(Fixtures.htn_snapshot())
+	view.apply_events(Fixtures.htn_events())
+	view.select_attempt(3, true)
+
+	var heading: Label = view.get_node("%TraceHeading")
+	assert_string_contains(heading.text, "1.6s ago")
+	assert_false(heading.text.contains("2026-11-20T"), "The heading must not show the wall clock")
+	assert_string_contains(heading.tooltip_text, Fixtures.htn_attempt().timestamp)
+
+	var rows := _attempt_rows()
+	assert_string_contains(rows[0].get_node("%Meta").text, "ago")
+	assert_string_contains(rows[1].get_node("%Meta").text, "11:39:58")
 
 
 func test_pane_sizes_follow_the_editor_scale() -> void:

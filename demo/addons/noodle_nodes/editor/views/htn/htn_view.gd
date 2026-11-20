@@ -64,6 +64,8 @@ var _completed: Array = []
 var _current_occurrence := 0
 var _step_overrides: Dictionary = {}
 var _attempts: Dictionary = {}
+## Attempt id -> event ticks-usec when it was recorded, for the relative age.
+var _attempt_times: Dictionary = {}
 var _selected_attempt_id := -1
 var _timeline: Array = []
 var _timeline_items: Array = []
@@ -151,6 +153,7 @@ func set_snapshot(snapshot: Dictionary) -> void:
 	_render_domain()
 	_render_attempts()
 	_render_diff()
+	_refresh_attempt_heading()
 	_maybe_select_latest(previous_latest)
 
 
@@ -196,6 +199,10 @@ func apply_events(events: Array) -> void:
 				var attempt: Dictionary = event.get("attempt", {})
 				if not attempt.is_empty():
 					attempts_changed = _merge_attempt(attempt) or attempts_changed
+					var attempt_id := int(attempt.get("id", -1))
+					var event_t_usec := int(event.get("t_usec", 0))
+					if attempt_id >= 0 and event_t_usec > 0:
+						_attempt_times[attempt_id] = event_t_usec
 			"bb_set", "bb_erase", "bb_clear":
 				if current:
 					_record_blackboard_change(event)
@@ -232,8 +239,7 @@ func select_attempt(attempt_id: int, reveal := false) -> void:
 	if reveal:
 		_tags.current_tab = 1
 	var attempt: Dictionary = _attempts[attempt_id]
-	_trace_heading.text = _attempt_heading(attempt)
-	_trace_heading.tooltip_text = _trace_heading.text
+	_refresh_attempt_heading()
 	var events: Array = attempt.get("events", [])
 	_graph.set_trace(events, "" if not events.is_empty() else "No decision records were retained for attempt #%d." % attempt_id)
 	_show_trace_event(_graph.get_selected_record())
@@ -249,6 +255,7 @@ func clear() -> void:
 	_current_occurrence = 0
 	_step_overrides = {}
 	_attempts = {}
+	_attempt_times = {}
 	_selected_attempt_id = -1
 	_timeline = []
 	_timeline_seqs = {}
@@ -521,7 +528,9 @@ func _merge_attempt(attempt: Dictionary) -> bool:
 		var ids: Array = _attempts.keys()
 		ids.sort()
 		while ids.size() > MAX_ATTEMPTS:
-			_attempts.erase(ids.pop_front())
+			var dropped: int = ids.pop_front()
+			_attempts.erase(dropped)
+			_attempt_times.erase(dropped)
 		if not _attempts.has(_selected_attempt_id):
 			_selected_attempt_id = -1
 			_trace_heading.text = ""
@@ -529,6 +538,40 @@ func _merge_attempt(attempt: Dictionary) -> bool:
 			_graph.clear_trace()
 			_show_trace_event({})
 	return true
+
+
+## Game time since the attempt was recorded. Attempts delivered from history or
+## a snapshot summary carry no ticks-usec, so they fall back to the clock time.
+func _attempt_when(attempt_id: int) -> String:
+	var recorded := int(_attempt_times.get(attempt_id, 0))
+	var now := int(_snapshot.get("time_usec", 0))
+	if recorded <= 0 or now <= 0:
+		return ""
+	return _format_age(now - recorded)
+
+
+func _format_age(age_usec: int) -> String:
+	var seconds := maxf(0.0, float(age_usec) / 1000000.0)
+	if seconds < 1.0:
+		return "%dms ago" % int(seconds * 1000.0)
+	if seconds < 60.0:
+		return "%.1fs ago" % seconds
+	if seconds < 3600.0:
+		return "%dm %ds ago" % [int(seconds) / 60, int(seconds) % 60]
+	return "%dh %dm ago" % [int(seconds) / 3600, (int(seconds) / 60) % 60]
+
+
+func _refresh_attempt_heading() -> void:
+	var attempt: Dictionary = _attempts.get(_selected_attempt_id, {})
+	if attempt.is_empty():
+		_trace_heading.text = ""
+		_trace_heading.tooltip_text = ""
+		return
+	_trace_heading.text = _attempt_heading(attempt)
+	var timestamp := str(attempt.get("timestamp", ""))
+	_trace_heading.tooltip_text = _trace_heading.text
+	if not timestamp.is_empty():
+		_trace_heading.tooltip_text += "\n" + timestamp
 
 
 func _latest_attempt_id() -> int:
@@ -572,14 +615,15 @@ func _fill_attempt_row(row, attempt: Dictionary) -> void:
 	var status := _attempt_status(attempt)
 	var flags := _attempt_flags(attempt)
 	var timestamp := str(attempt.get("timestamp", ""))
+	var when := _attempt_when(attempt_id)
+	if when.is_empty():
+		when = _short_timestamp(timestamp)
 	row.configure(
 		attempt_id,
 		status,
 		_attempt_status_color(attempt),
 		flags,
-		"%d expansions · cost %s · %s" % [
-			int(attempt.get("expansions", 0)), str(attempt.get("cost", 0.0)), _short_timestamp(timestamp)
-		],
+		"%d expansions · cost %s · %s" % [int(attempt.get("expansions", 0)), str(attempt.get("cost", 0.0)), when],
 		attempt_id == _selected_attempt_id
 	)
 	row.tooltip_text = "Attempt #%d · %s · %s · %s" % [attempt_id, status, flags, timestamp]
@@ -637,9 +681,9 @@ func _attempt_flags(attempt: Dictionary) -> String:
 
 func _attempt_heading(attempt: Dictionary) -> String:
 	var parts: Array[String] = ["Attempt #%d" % int(attempt.get("id", 0))]
-	var timestamp := str(attempt.get("timestamp", ""))
-	if not timestamp.is_empty():
-		parts.append(timestamp)
+	var when := _attempt_when(int(attempt.get("id", 0)))
+	if not when.is_empty():
+		parts.append(when)
 	parts.append(_attempt_status(attempt))
 	parts.append(_attempt_flags(attempt))
 	parts.append("%d expansions" % int(attempt.get("expansions", 0)))
