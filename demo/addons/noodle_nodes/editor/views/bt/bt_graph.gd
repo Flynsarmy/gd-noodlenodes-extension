@@ -27,7 +27,9 @@ const EDGE_ALPHA := 0.8
 
 var _nodes := {}
 var _items := {}
-var _edges: Array[Vector2i] = []
+## Edges as [parent_id, child_id] pairs. Instance ids exceed 32 bits, so they must
+## stay in 64-bit containers: Vector2i/PackedInt32Array would truncate them.
+var _edges: Array[PackedInt64Array] = []
 var _structure := PackedInt64Array()
 var _running_edges := {}
 var _selected_id := 0
@@ -78,6 +80,20 @@ func get_items() -> Array:
 	return _items.values()
 
 
+## Every edge as a [parent_id, child_id] pair.
+func get_edges() -> Array:
+	return _edges.duplicate()
+
+
+## The edges from the root down to the running node, as [parent_id, child_id] pairs.
+func get_running_edges() -> Array:
+	var running := []
+	for edge in _edges:
+		if _running_edges.has(edge[1]):
+			running.append(edge)
+	return running
+
+
 func get_selected() -> int:
 	return _selected_id
 
@@ -124,16 +140,16 @@ func _draw() -> void:
 		return
 	draw_set_transform(_canvas.position, 0.0, _canvas.scale)
 	for edge in _edges:
-		if not _running_edges.has(edge.y):
+		if not _running_edges.has(edge[1]):
 			_draw_edge(edge, false)
 	for edge in _edges:
-		if _running_edges.has(edge.y):
+		if _running_edges.has(edge[1]):
 			_draw_edge(edge, true)
 
 
-func _draw_edge(edge: Vector2i, running: bool) -> void:
-	var from_item: Control = _items.get(edge.x)
-	var to_item: Control = _items.get(edge.y)
+func _draw_edge(edge: PackedInt64Array, running: bool) -> void:
+	var from_item: Control = _items.get(edge[0])
+	var to_item: Control = _items.get(edge[1])
 	if from_item == null or to_item == null:
 		return
 	var start := from_item.position + Vector2(from_item.size.x * 0.5, from_item.size.y)
@@ -142,7 +158,7 @@ func _draw_edge(edge: Vector2i, running: bool) -> void:
 	if running:
 		_draw_dashed(points, StatusPalette.RUNNING, FLOW_WIDTH * _scale)
 		return
-	var entry: Dictionary = _nodes[edge.y]
+	var entry: Dictionary = _nodes[edge[1]]
 	var color: Color = StatusPalette.for_status(str(entry.get("status", "unvisited")))
 	color = StatusPalette.faded(color, _now_usec - int(entry.get("last_visited_usec", 0)))
 	color.a = EDGE_ALPHA
@@ -178,7 +194,7 @@ func _sync_items() -> void:
 			_items[id] = _create_item()
 		var parent := int(_nodes[id].get("parent", 0))
 		if parent != 0 and _nodes.has(parent):
-			_edges.append(Vector2i(parent, id))
+			_edges.append(PackedInt64Array([parent, id]))
 
 
 func _create_item() -> Control:
