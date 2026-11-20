@@ -322,6 +322,13 @@ func test_agent_snapshot_describes_the_selection_and_node_scores() -> void:
 	var sensor := NNSensor.new()
 	sensor.name = "Sensor"
 	sensor.sensor_value = 0.8
+	var search_space := NNNodeChildrenSearchSpace.new()
+	search_space.name = "CoverSpaces"
+	add_child_autofree(search_space)
+	var cover_sensor := NNNQSQuerySensor.new()
+	cover_sensor.name = "CoverSensor"
+	cover_sensor.is_enabled = false
+	cover_sensor.nqs_search_space = search_space
 	var consideration := AgentHelpers.CountingConsideration.new()
 	consideration.name = "Curious"
 	consideration.score_value = 0.64
@@ -332,7 +339,7 @@ func test_agent_snapshot_describes_the_selection_and_node_scores() -> void:
 	behaviour.name = "Investigate"
 	behaviour.add_child(consideration)
 	behaviour.add_child(action)
-	var agent := Fixtures.add_manual_agent(self, [sensor, behaviour])
+	var agent := Fixtures.add_manual_agent(self, [sensor, cover_sensor, behaviour])
 	agent.name = "NNAgent"
 
 	AgentHelpers.select(agent)
@@ -353,6 +360,10 @@ func test_agent_snapshot_describes_the_selection_and_node_scores() -> void:
 	assert_eq(nodes[sensor.get_instance_id()].kind, "sensor")
 	assert_almost_eq(nodes[sensor.get_instance_id()].value, 0.8, 0.0001)
 	assert_gt(nodes[sensor.get_instance_id()].last_evaluated_usec, 0)
+	assert_false(nodes[sensor.get_instance_id()].has("nqs_search_space"), "only NQS sensors carry a search space")
+	var cover_node: Dictionary = nodes[cover_sensor.get_instance_id()]
+	assert_eq(cover_node.kind, "sensor")
+	assert_eq(cover_node.nqs_search_space, search_space.get_instance_id())
 	var behaviour_node: Dictionary = nodes[behaviour.get_instance_id()]
 	assert_eq(behaviour_node.kind, "behaviour")
 	assert_true(behaviour_node.selected)
@@ -368,6 +379,11 @@ func test_agent_snapshot_describes_the_selection_and_node_scores() -> void:
 	assert_eq(action_node.kind, "action")
 	assert_true(action_node.active)
 	assert_false(action_node.finished)
+
+	search_space.free()
+	snapshot = agent.get_debug_snapshot()
+	nodes = _nodes_by_id(snapshot)
+	assert_eq(nodes[cover_sensor.get_instance_id()].nqs_search_space, 0, "a freed search space reads as 0")
 
 
 # Hosted roots ----------------------------------------------------------------

@@ -24,6 +24,7 @@ const ST_SEARCH_SPACES := 2010
 const AGENT := 3000
 const AGENT_ALERT_SENSOR := 3001
 const AGENT_COVER_SENSOR := 3002
+const AGENT_COVER_SEARCH_SPACE := 2014
 const AGENT_PATROL := 3010
 const AGENT_CALM := 3011
 const AGENT_PATROL_ACTION := 3012
@@ -195,7 +196,7 @@ static func agent_snapshot() -> Dictionary:
 	snapshot["nodes"] = [
 		_node(AGENT, 0, "NNAgent", "NNAgent", { "kind": "other" }),
 		_node(AGENT_ALERT_SENSOR, AGENT, "AlertSensor", "NNBlackboardSensor", { "kind": "sensor", "value": 0.8, "last_evaluated_usec": evaluated }),
-		_node(AGENT_COVER_SENSOR, AGENT, "CoverSensor", "NNNQSQuerySensor", { "kind": "sensor", "value": 0.55, "last_evaluated_usec": evaluated }),
+		_node(AGENT_COVER_SENSOR, AGENT, "CoverSensor", "NNNQSQuerySensor", { "kind": "sensor", "value": 0.55, "last_evaluated_usec": evaluated, "nqs_search_space": AGENT_COVER_SEARCH_SPACE }),
 		_node(AGENT_PATROL, AGENT, "Patrol", "NNBehaviour", {
 			"kind": "behaviour", "score": 0.2, "selected": false, "cooldown_remaining": 0.0,
 			"cooldown_turns_remaining": 0, "last_evaluated_usec": evaluated,

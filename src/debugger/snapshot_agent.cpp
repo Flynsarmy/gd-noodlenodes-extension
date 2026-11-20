@@ -9,6 +9,7 @@
 #include "../agent_behaviours/consideration_group.h"
 #include "../agent_behaviours/sensor_group.h"
 #include "../agent_behaviours/sensors.h"
+#include "../agent_behaviours/sensors/nqs_query.h"
 #include "../blackboard.h"
 #include "debug_root.h"
 #include "snapshot_common.h"
@@ -98,6 +99,9 @@ Dictionary _sensor_extras(NNSensors *p_sensor) {
 	extras["kind"] = Object::cast_to<NNSensorGroup>(p_sensor) != nullptr ? "sensor_group" : "sensor";
 	extras["value"] = NNBlackboard::sanitize_debug_value(p_sensor->get_sensor_value());
 	extras["last_evaluated_usec"] = (int64_t)p_sensor->get_last_evaluated_timestamp();
+	if (NNNQSQuerySensor *query_sensor = Object::cast_to<NNNQSQuerySensor>(p_sensor)) {
+		extras["nqs_search_space"] = nn_debug_id(query_sensor->get_nqs_search_space());
+	}
 	return extras;
 }
 
