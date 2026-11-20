@@ -19,6 +19,7 @@ var _rebuilding := false
 var _match_cache: Dictionary = {}
 var _match_visiting: Dictionary = {}
 var _root_items: Dictionary = {}
+var _duplicate_names: Dictionary = {}
 
 
 func _ready() -> void:
@@ -38,6 +39,7 @@ func set_roots(infos: Array, current_root_id: int) -> void:
 		if info is Dictionary and info.has("id"):
 			_infos[int(info["id"])] = info
 	_current_root_id = current_root_id
+	_recount_names()
 	_rebuild()
 
 
@@ -83,9 +85,9 @@ func _create_root_item(root_id: int, parent_item: TreeItem) -> TreeItem:
 	var item := _tree.create_item(parent_item)
 	_root_items[root_id] = item
 	item.set_metadata(0, root_id)
-	item.set_text(0, str(info.get("name", "")))
+	item.set_text(0, _root_label(info))
 	item.set_text(1, _type_label(info))
-	item.set_tooltip_text(0, str(info.get("path", "")))
+	item.set_tooltip_text(0, _root_tooltip(info))
 	item.set_tooltip_text(1, "%s — %s" % [info.get("class", ""), info.get("path", "")])
 	var icon := _type_icon(info)
 	if icon != null:
@@ -138,11 +140,35 @@ func _matches(info: Dictionary) -> bool:
 		str(info.get("class", "")),
 		type,
 		str(Protocol.TYPE_LABELS.get(type, "")),
+		_root_label(info),
 	]
 	for haystack: String in haystacks:
 		if haystack.to_lower().contains(_query):
 			return true
 	return false
+
+
+func _recount_names() -> void:
+	_duplicate_names.clear()
+	for root_id: int in _infos:
+		var root_name := str(_infos[root_id].get("name", ""))
+		_duplicate_names[root_name] = int(_duplicate_names.get(root_name, 0)) + 1
+
+
+func _root_label(info: Dictionary) -> String:
+	var root_name := str(info.get("name", ""))
+	var host_name := str(info.get("host_node_name", ""))
+	if host_name.is_empty():
+		return root_name
+	var generic := root_name == str(info.get("class", ""))
+	var duplicated := int(_duplicate_names.get(root_name, 0)) > 1
+	return "%s › %s" % [host_name, root_name] if generic or duplicated else root_name
+
+
+func _root_tooltip(info: Dictionary) -> String:
+	var label := _root_label(info)
+	var path := str(info.get("path", ""))
+	return label if path.is_empty() else "%s\n%s" % [label, path]
 
 
 func _is_on_path_to_current(root_id: int) -> bool:

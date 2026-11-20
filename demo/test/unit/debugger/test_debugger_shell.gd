@@ -4,6 +4,8 @@ const Fixtures := preload("res://test/unit/debugger/fixtures/debugger_fixtures.g
 const Protocol := preload("res://addons/noodle_nodes/debugger/protocol.gd")
 const PanelScene := preload("res://addons/noodle_nodes/editor/shell/debugger_panel.tscn")
 const InspectorScene := preload("res://addons/noodle_nodes/editor/shell/inspector.tscn")
+const KvRowScene := preload("res://addons/noodle_nodes/editor/shell/kv_row.tscn")
+const EventRowScene := preload("res://addons/noodle_nodes/editor/shell/event_row.tscn")
 const GenericViewScene := preload("res://addons/noodle_nodes/editor/views/generic/generic_view.tscn")
 
 var _panel
@@ -172,7 +174,7 @@ func test_root_list_groups_by_owner_and_hosted_root() -> void:
 	assert_eq(patrol.get_parent(), agent)
 	var htn := _item_for(Fixtures.HTN)
 	assert_eq(htn.get_parent(), agent)
-	assert_eq(htn.get_text(0), "NNHTNRoot")
+	assert_eq(htn.get_text(0), "InvestigateAction › NNHTNRoot")
 	assert_eq(htn.get_text(1), "HTN")
 	var cover := _item_for(Fixtures.COVER_BT)
 	assert_eq(cover.get_parent(), htn)
@@ -387,14 +389,14 @@ func test_blackboard_rows_track_events_and_flash_changes() -> void:
 
 	var rows := _blackboard_rows()
 	assert_eq(rows.size(), 5)
-	assert_eq(rows["alert"].get_node("%Value").text, "0.8")
-	assert_eq(rows["cover_point"].get_node("%Value").text, "\"CoverPoint2\"")
+	assert_eq(rows["alert"].get_node("%Value").text, "0.80")
+	assert_eq(rows["cover_point"].get_node("%Value").text, "CoverPoint2")
 
 	_send_events(Fixtures.ST_ROOT, [
 		{ "seq": 19, "t_usec": Fixtures.NOW_USEC, "frame": Fixtures.FRAME, "kind": "bb_set", "key": "alert", "value": 0.1 },
 	])
 	rows = _blackboard_rows()
-	assert_eq(rows["alert"].get_node("%Value").text, "0.1")
+	assert_eq(rows["alert"].get_node("%Value").text, "0.10")
 	assert_ne(rows["alert"].modulate, Color.WHITE, "a changed value flashes")
 
 	_send_events(Fixtures.ST_ROOT, [
@@ -417,7 +419,7 @@ func test_stale_blackboard_events_cannot_override_a_newer_snapshot() -> void:
 	snapshot["blackboard"]["values"]["alert"] = 0.5
 	snapshot["blackboard"]["values"].erase("clue_found")
 	_send_snapshot_data(Fixtures.ST_ROOT, snapshot)
-	assert_eq(_blackboard_rows()["alert"].get_node("%Value").text, "0.5")
+	assert_eq(_blackboard_rows()["alert"].get_node("%Value").text, "0.50")
 
 	_send_events(Fixtures.ST_ROOT, [
 		{ "seq": 20, "t_usec": Fixtures.NOW_USEC, "frame": Fixtures.FRAME, "kind": "bb_set", "key": "alert", "value": 0.1 },
@@ -425,19 +427,19 @@ func test_stale_blackboard_events_cannot_override_a_newer_snapshot() -> void:
 		{ "seq": 30, "t_usec": Fixtures.NOW_USEC, "frame": Fixtures.FRAME, "kind": "bb_clear" },
 	])
 	var rows := _blackboard_rows()
-	assert_eq(rows["alert"].get_node("%Value").text, "0.5", "events at or before last_seq are already in the snapshot")
+	assert_eq(rows["alert"].get_node("%Value").text, "0.50", "events at or before last_seq are already in the snapshot")
 	assert_false(rows.has("clue_found"))
 	assert_eq(rows.size(), 4)
 
 	_send_events(Fixtures.ST_ROOT, [
 		{ "seq": 31, "t_usec": Fixtures.NOW_USEC, "frame": Fixtures.FRAME, "kind": "bb_set", "key": "alert", "value": 0.2 },
 	])
-	assert_eq(_blackboard_rows()["alert"].get_node("%Value").text, "0.2")
+	assert_eq(_blackboard_rows()["alert"].get_node("%Value").text, "0.20")
 
 	_send_events(Fixtures.ST_ROOT, [
 		{ "t_usec": Fixtures.NOW_USEC, "frame": Fixtures.FRAME, "kind": "bb_set", "key": "alert", "value": 0.3 },
 	])
-	assert_eq(_blackboard_rows()["alert"].get_node("%Value").text, "0.3", "a missing seq is treated as newer")
+	assert_eq(_blackboard_rows()["alert"].get_node("%Value").text, "0.30", "a missing seq is treated as newer")
 
 
 func test_snapshots_update_the_root_list_breadcrumbs_and_rows_in_place() -> void:
@@ -627,6 +629,61 @@ func test_inspector_lists_have_visible_height_at_minimum_size() -> void:
 	assert_eq(inspector.get_node("%PropertiesList").get_child_count(), 14)
 	assert_eq(inspector.get_node("%BlackboardList").get_child_count(), 4)
 	assert_eq(inspector.get_node("%EventsList").get_child_count(), 100)
+
+
+func test_root_list_labels_disambiguate_repeated_root_names() -> void:
+	_add_roots()
+	var patrol := _item_for(Fixtures.PATROL_BT)
+	var cover := _item_for(Fixtures.COVER_BT)
+	assert_eq(patrol.get_text(0), "PatrolAction › NNBTRoot")
+	assert_eq(cover.get_text(0), "SneakToCover › NNBTRoot")
+	assert_ne(patrol.get_text(0), cover.get_text(0))
+	assert_string_contains(patrol.get_tooltip_text(0), str(Fixtures.root_infos()[2]["path"]))
+
+	_filter("PatrolAction")
+	assert_eq(_visible_root_ids(), [Fixtures.ST_ROOT, Fixtures.AGENT, Fixtures.PATROL_BT])
+	_filter("SneakToCover")
+	assert_eq(_visible_root_ids(), [
+		Fixtures.ST_ROOT, Fixtures.AGENT, Fixtures.HTN, Fixtures.COVER_BT,
+	])
+
+
+func test_value_formatter_formats_property_and_event_values() -> void:
+	var row = KvRowScene.instantiate()
+	add_child_autofree(row)
+	row.set_values("threat_alert", 0.35791884202223556)
+	assert_eq(row.get_node("%Value").text, "0.36")
+	assert_string_contains(row.get_node("%Value").tooltip_text, "0.35791884202223556")
+
+	row.set_values("state", NodePath("../../Walk"))
+	assert_eq(row.get_node("%Value").text, "Walk")
+	assert_string_contains(row.get_node("%Value").tooltip_text, "../../Walk")
+
+	row.set_values("label", "Walk")
+	assert_eq(row.get_node("%Value").text, "Walk")
+	assert_eq(row.get_node("%Value").tooltip_text, "")
+
+	var event_row = EventRowScene.instantiate()
+	add_child_autofree(event_row)
+	event_row.set_event({ "seq": 1, "frame": 12, "kind": "bb_set", "key": "threat_alert", "value": 0.35791884202223556 }, {})
+	assert_eq(event_row.get_node("%Detail").text, "threat_alert = 0.36")
+	assert_string_contains(event_row.tooltip_text, "0.35791884202223556")
+
+
+func test_default_split_gives_the_view_most_of_the_height() -> void:
+	var host := Control.new()
+	host.size = Vector2(1200, 900)
+	add_child_autofree(host)
+	var panel = PanelScene.instantiate()
+	host.add_child(panel)
+	await get_tree().process_frame
+	await get_tree().process_frame
+	var split: SplitContainer = panel.get_node("%ContentSplit")
+	var view: Control = split.get_child(0)
+	var inspector: Control = split.get_child(1)
+	assert_gt(view.size.y, inspector.size.y, "the view gets more room than the inspector")
+	assert_lt(inspector.size.y, split.size.y * 0.4, "the inspector stays around a third of the height")
+	assert_gt(inspector.size.y, split.size.y * 0.2, "the inspector still gets usable room")
 
 
 func test_snapshot_delta_updates_the_cached_snapshot_and_view() -> void:

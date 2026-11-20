@@ -2,6 +2,7 @@
 extends HBoxContainer
 
 const EditorScale := preload("res://addons/noodle_nodes/editor/editor_scale.gd")
+const ValueFormat := preload("res://addons/noodle_nodes/debugger/value_format.gd")
 
 @onready var _frame: Label = %Frame
 @onready var _kind: Label = %Kind
@@ -41,7 +42,7 @@ func _describe(event: Dictionary, node_names: Dictionary) -> String:
 			return _name(event.get("state", 0), node_names)
 		"htn_attempt":
 			var attempt: Dictionary = event.get("attempt", {})
-			return "attempt %s: %s, %d expansions, cost %s" % [attempt.get("id", "?"), attempt.get("status", "?"), int(attempt.get("expansions", 0)), attempt.get("cost", 0.0)]
+			return "attempt %s: %s, %d expansions, cost %s" % [attempt.get("id", "?"), attempt.get("status", "?"), int(attempt.get("expansions", 0)), ValueFormat.format(attempt.get("cost", 0.0))]
 		"htn_plan_set":
 			var occurrences: Array = event.get("occurrences", [])
 			return "%d steps" % occurrences.size()
@@ -61,7 +62,7 @@ func _describe(event: Dictionary, node_names: Dictionary) -> String:
 		"agent_action":
 			return _name(event.get("action", 0), node_names)
 		"bb_set":
-			return "%s = %s" % [event.get("key", ""), var_to_str(event.get("value"))]
+			return "%s = %s" % [event.get("key", ""), ValueFormat.format(event.get("value"))]
 		"bb_erase":
 			return str(event.get("key", ""))
 		"bb_clear":
@@ -80,5 +81,5 @@ func _joined_fields(event: Dictionary) -> String:
 	for key in event:
 		if key in ["seq", "t_usec", "frame", "kind"]:
 			continue
-		parts.append("%s=%s" % [key, var_to_str(event[key])])
+		parts.append("%s=%s" % [key, ValueFormat.format(event[key])])
 	return ", ".join(parts)
