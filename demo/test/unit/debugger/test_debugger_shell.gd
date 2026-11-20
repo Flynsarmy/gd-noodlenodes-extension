@@ -3,6 +3,7 @@ extends GutTest
 const Fixtures := preload("res://test/unit/debugger/fixtures/debugger_fixtures.gd")
 const Protocol := preload("res://addons/noodle_nodes/debugger/protocol.gd")
 const PanelScene := preload("res://addons/noodle_nodes/editor/shell/debugger_panel.tscn")
+const InspectorScene := preload("res://addons/noodle_nodes/editor/shell/inspector.tscn")
 const GenericViewScene := preload("res://addons/noodle_nodes/editor/views/generic/generic_view.tscn")
 
 var _panel
@@ -175,6 +176,7 @@ func test_root_list_groups_by_owner_and_hosted_root() -> void:
 	assert_eq(htn.get_text(1), "HTN")
 	var cover := _item_for(Fixtures.COVER_BT)
 	assert_eq(cover.get_parent(), htn)
+	assert_false(_tree().column_titles_visible, "the root list has no column title bar")
 
 	assert_true(movement.is_selected(0), "the first top-level root is selected on arrival")
 	assert_eq(_crumb_labels(), ["Movement (ST)"])
@@ -597,6 +599,34 @@ func test_generic_view_drills_into_portal_rows() -> void:
 
 	tree.item_activated.emit(portal)
 	assert_signal_emitted_with_parameters(view, "drill_into", [Fixtures.HTN])
+
+
+func test_inspector_lists_have_visible_height_at_minimum_size() -> void:
+	var inspector: Control = InspectorScene.instantiate()
+	add_child_autofree(inspector)
+	inspector.size = Vector2(600, inspector.custom_minimum_size.y)
+	inspector.set_selected_node(Fixtures.COVER_MOVE, { "name": "MoveToCover", "class": "NNBTActionLeaf" })
+	var properties := {}
+	for i in 14:
+		properties["property_%d" % i] = i
+	inspector.set_properties(properties)
+	var blackboard := {}
+	for i in 4:
+		blackboard["key_%d" % i] = i
+	inspector.set_blackboard(blackboard)
+	var events: Array = []
+	for i in 100:
+		events.append({ "seq": i + 1, "kind": "bt_enter", "node": Fixtures.COVER_MOVE, "frame": i })
+	inspector.set_events(events, { Fixtures.COVER_MOVE: "MoveToCover" })
+	await get_tree().process_frame
+	await get_tree().process_frame
+
+	assert_gt(inspector.get_node("%InspectorScroll").size.y, 0.0, "the inspector scrolls as a whole")
+	for list_name in ["%PropertiesScroll", "%BlackboardScroll", "%EventsScroll"]:
+		assert_gt(inspector.get_node(list_name).size.y, 0.0, "%s has visible height at the inspector minimum" % list_name)
+	assert_eq(inspector.get_node("%PropertiesList").get_child_count(), 14)
+	assert_eq(inspector.get_node("%BlackboardList").get_child_count(), 4)
+	assert_eq(inspector.get_node("%EventsList").get_child_count(), 100)
 
 
 func test_snapshot_delta_updates_the_cached_snapshot_and_view() -> void:
