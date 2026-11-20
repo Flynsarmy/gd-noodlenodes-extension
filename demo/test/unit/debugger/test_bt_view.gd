@@ -43,6 +43,31 @@ func test_every_node_gets_its_own_graph_item_without_overlap() -> void:
 		assert_lt(parent.position.y, graph.get_item(entry["id"]).position.y, "%s is laid out above %s" % [entry["name"], entry["parent"]])
 
 
+func test_every_edge_resolves_and_only_the_running_path_animates() -> void:
+	var snapshot := DebuggerFixtures.bt_snapshot()
+	_view.set_snapshot(snapshot)
+	var graph := _graph()
+
+	var edges: Array = graph.get_edges()
+	assert_eq(edges.size(), snapshot["nodes"].size() - 1, "one edge per non-root node")
+	for edge in edges:
+		assert_not_null(graph.get_item(edge[0]), "edge parent %d resolves to an item" % edge[0])
+		assert_not_null(graph.get_item(edge[1]), "edge child %d resolves to an item" % edge[1])
+
+	var expected := [
+		[DebuggerFixtures.COVER_BT, DebuggerFixtures.COVER_SEQUENCE],
+		[DebuggerFixtures.COVER_SEQUENCE, DebuggerFixtures.COVER_COOLDOWN],
+		[DebuggerFixtures.COVER_COOLDOWN, DebuggerFixtures.COVER_MOVE],
+	]
+	var running: Array = graph.get_running_edges()
+	assert_eq(running.size(), expected.size(), "only the root to running node edges animate")
+	var running_keys := []
+	for edge in running:
+		running_keys.append("%d:%d" % [edge[0], edge[1]])
+	for pair in expected:
+		assert_true(running_keys.has("%d:%d" % [pair[0], pair[1]]), "edge %s is on the running path" % [pair])
+
+
 func test_statuses_are_coloured_and_fade_with_recency() -> void:
 	_view.set_snapshot(DebuggerFixtures.bt_snapshot())
 	var running: Control = _graph().get_item(DebuggerFixtures.COVER_MOVE)
