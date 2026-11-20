@@ -45,6 +45,7 @@ const MAX_BLACKBOARD_CHANGES := 512
 @onready var _diff_empty: Label = %DiffEmpty
 @onready var _trace_heading: Label = %TraceHeading
 @onready var _graph: Variant = %GraphClip
+@onready var _detail_scroll: ScrollContainer = %DetailScroll
 @onready var _detail: VBoxContainer = %NodeDetail
 @onready var _detail_hint: Label = %DetailHint
 @onready var _search_label: Label = %SearchLabel
@@ -90,6 +91,7 @@ var _diff_signature := ""
 
 func _ready() -> void:
 	EditorScale.apply_to_scene(self)
+	_detail_scroll.visible = false
 	_set_column_titles(_domain_tree, ["Node", "Step"])
 	_set_column_titles(_timeline_tree, ["Time", "Event", "Detail"])
 	_set_column_titles(_diff_tree, ["Key", "Change", "Attempt state", "Current"])
@@ -195,7 +197,10 @@ func select_node(node_id: int) -> void:
 func select_attempt(attempt_id: int, reveal := false) -> void:
 	if not _attempts.has(attempt_id):
 		return
+	var changed := _selected_attempt_id != attempt_id
 	_selected_attempt_id = attempt_id
+	if changed:
+		_graph.clear_selection()
 	if reveal:
 		_tags.current_tab = 1
 	var attempt: Dictionary = _attempts[attempt_id]
@@ -601,10 +606,12 @@ func _on_trace_node_deselected() -> void:
 
 
 func _show_trace_event(record: Dictionary) -> void:
+	var selected := not record.is_empty()
+	_detail_scroll.visible = selected
 	for child in _detail.get_children():
 		if child is Label and child != _detail_hint:
 			child.visible = false
-	if record.is_empty():
+	if not selected:
 		_detail_hint.visible = true
 		return
 	_detail_hint.visible = false
