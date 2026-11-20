@@ -217,9 +217,10 @@ func test_root_removal_and_freed_owners_drop_their_labels() -> void:
 func test_does_nothing_when_no_debugger_exists() -> void:
 	_overlay.free()
 	_overlay = OverlayScene.instantiate()
+	# Release builds have no singleton; debug builds do, so the absence is injected.
+	_overlay.debugger = null
 	_layer.add_child(_overlay)
 
-	assert_null(_overlay.debugger)
 	_overlay.refresh()
 
 	assert_eq(_labels().size(), 0)
