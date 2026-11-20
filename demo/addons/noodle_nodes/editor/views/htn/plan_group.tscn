@@ -19,8 +19,6 @@ corner_radius_bottom_right = 3
 corner_radius_bottom_left = 3
 
 [node name="PlanGroup" type="PanelContainer"]
-offset_right = 400.0
-offset_bottom = 80.0
 mouse_filter = 2
 theme_override_styles/panel = SubResource("StyleBoxFlat_group")
 script = ExtResource("1_group")
@@ -35,7 +33,6 @@ unique_name_in_owner = true
 layout_mode = 2
 mouse_filter = 2
 theme_override_colors/font_color = Color(0.65, 0.78, 0.9, 1)
-theme_override_font_sizes/font_size = 11
 text = "Parallel group"
 
 [node name="Rows" type="VBoxContainer" parent="Body"]

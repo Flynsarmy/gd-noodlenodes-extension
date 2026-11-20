@@ -15,9 +15,6 @@ corner_radius_bottom_right = 4
 corner_radius_bottom_left = 4
 
 [node name="TraceNode" type="PanelContainer"]
-custom_minimum_size = Vector2(224, 58)
-offset_right = 224.0
-offset_bottom = 58.0
 mouse_filter = 2
 theme_override_styles/panel = SubResource("StyleBoxFlat_panel")
 script = ExtResource("1_node")
@@ -29,7 +26,6 @@ theme_override_constants/separation = 0
 
 [node name="Accent" type="ColorRect" parent="Body"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(4, 0)
 layout_mode = 2
 size_flags_vertical = 3
 mouse_filter = 2
@@ -56,7 +52,6 @@ mouse_filter = 2
 clip_text = true
 text = "Decision"
 theme_override_colors/font_color = Color(0.93, 0.95, 0.97, 1)
-theme_override_font_sizes/font_size = 13
 
 [node name="Subtitle" type="Label" parent="Body/Padding/Text"]
 unique_name_in_owner = true
@@ -64,12 +59,10 @@ layout_mode = 2
 mouse_filter = 2
 clip_text = true
 text = "Subtitle"
-theme_override_font_sizes/font_size = 11
 
 [node name="Badge" type="Label" parent="Body"]
 unique_name_in_owner = true
 layout_mode = 2
 mouse_filter = 2
 theme_override_colors/font_color = Color(0.63, 0.68, 0.74, 1)
-theme_override_font_sizes/font_size = 11
 vertical_alignment = 1

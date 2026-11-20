@@ -5,7 +5,9 @@ extends PanelContainer
 
 signal selected(attempt_id: int)
 
+const EditorScale = preload("res://addons/noodle_nodes/editor/editor_scale.gd")
 const SELECTED_INK := Color(0.35, 0.75, 1.0)
+const SELECTED_BORDER_WIDTH := 2.0
 
 @onready var _id: Label = %Id
 @onready var _result: Label = %Result
@@ -25,7 +27,7 @@ func configure(attempt_id_value: int, result: String, result_color: Color, flags
 
 	var style: StyleBoxFlat = get_theme_stylebox("panel").duplicate()
 	style.border_color = SELECTED_INK if is_selected else Color(0.35, 0.35, 0.4)
-	style.set_border_width_all(2 if is_selected else 0)
+	style.set_border_width_all(int(EditorScale.px(SELECTED_BORDER_WIDTH)) if is_selected else 0)
 	style.bg_color = Color(0.13, 0.16, 0.2) if is_selected else Color(0.09, 0.1, 0.12)
 	add_theme_stylebox_override("panel", style)
 

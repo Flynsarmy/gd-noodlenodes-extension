@@ -265,6 +265,27 @@ func test_timeline_orders_events_by_sequence() -> void:
 	assert_eq(_items("TimelineTree").size(), 7, "Replayed events must not duplicate timeline rows")
 
 
+func test_pane_sizes_follow_the_editor_scale() -> void:
+	# The scene no longer carries fixed pane sizes; they are applied on ready so
+	# they can follow the editor's display scale.
+	assert_gt(view.get_node("%Sidebar").custom_minimum_size.x, 0.0)
+	assert_gt(view.get_node("%MainSplit").split_offset, 0)
+	assert_gt(view.get_node("%DetailScroll").custom_minimum_size.x, 0.0)
+
+
+func test_trace_nodes_are_large_enough_for_their_labels() -> void:
+	view.set_snapshot(Fixtures.htn_snapshot())
+	view.apply_events(Fixtures.htn_events())
+	view.select_attempt(3)
+
+	var nodes: Array = view.get_node("%Canvas").get_children()
+	assert_gt(nodes.size(), 0)
+	for node in nodes:
+		var minimum: Vector2 = node.get_combined_minimum_size()
+		assert_lte(minimum.x, TraceGraph.NODE_SIZE.x, "%s overflows its node width" % node.get_node("%Title").text)
+		assert_lte(minimum.y, TraceGraph.NODE_SIZE.y, "%s overflows its node height" % node.get_node("%Title").text)
+
+
 func test_select_node_highlights_without_emitting() -> void:
 	view.set_snapshot(Fixtures.htn_snapshot())
 	watch_signals(view)

@@ -2,7 +2,9 @@
 extends PanelContainer
 ## One installed plan step. Instanced from plan_step_row.tscn by htn_view.gd.
 
+const EditorScale = preload("res://addons/noodle_nodes/editor/editor_scale.gd")
 const StatusPalette = preload("res://addons/noodle_nodes/debugger/status_palette.gd")
+const STRIP_WIDTH := 4.0
 
 @onready var _strip: ColorRect = %StateStrip
 @onready var _current_dot: Label = %CurrentDot
@@ -13,6 +15,10 @@ const StatusPalette = preload("res://addons/noodle_nodes/debugger/status_palette
 @onready var _path: Label = %Path
 @onready var _args: Label = %Args
 @onready var _failure: Label = %Failure
+
+
+func _ready() -> void:
+	_strip.custom_minimum_size.x = EditorScale.px(STRIP_WIDTH)
 
 
 func configure(step: Dictionary, is_current: bool) -> void:

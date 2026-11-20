@@ -57,11 +57,11 @@ theme_override_constants/margin_right = 4
 theme_override_constants/margin_bottom = 4
 
 [node name="MainSplit" type="HSplitContainer" parent="Margins"]
+unique_name_in_owner = true
 layout_mode = 2
-split_offset = 420
 
 [node name="Sidebar" type="VBoxContainer" parent="Margins/MainSplit"]
-custom_minimum_size = Vector2(400, 0)
+unique_name_in_owner = true
 layout_mode = 2
 theme_override_constants/separation = 4
 
@@ -78,7 +78,6 @@ unique_name_in_owner = true
 layout_mode = 2
 clip_text = true
 text = "Search: —"
-theme_override_font_sizes/font_size = 11
 
 [node name="DependenciesLabel" type="Label" parent="Margins/MainSplit/Sidebar/Header/HeaderBody"]
 unique_name_in_owner = true
@@ -86,7 +85,6 @@ layout_mode = 2
 clip_text = true
 text = "Dependencies: —"
 theme_override_colors/font_color = Color(0.72, 0.78, 0.85, 1)
-theme_override_font_sizes/font_size = 11
 
 [node name="TriggersLabel" type="Label" parent="Margins/MainSplit/Sidebar/Header/HeaderBody"]
 unique_name_in_owner = true
@@ -94,7 +92,6 @@ layout_mode = 2
 clip_text = true
 text = "Triggers: —"
 theme_override_colors/font_color = Color(0.72, 0.78, 0.85, 1)
-theme_override_font_sizes/font_size = 11
 
 [node name="RepairLabel" type="Label" parent="Margins/MainSplit/Sidebar/Header/HeaderBody"]
 unique_name_in_owner = true
@@ -102,7 +99,6 @@ layout_mode = 2
 clip_text = true
 text = "Repair: —"
 theme_override_colors/font_color = Color(0.72, 0.78, 0.85, 1)
-theme_override_font_sizes/font_size = 11
 
 [node name="SidebarTabs" type="TabContainer" parent="Margins/MainSplit/Sidebar"]
 unique_name_in_owner = true
@@ -141,7 +137,6 @@ unique_name_in_owner = true
 layout_mode = 2
 text = "No search attempts recorded."
 theme_override_colors/font_color = Color(0.6, 0.65, 0.7, 1)
-theme_override_font_sizes/font_size = 12
 
 [node name="AttemptScroll" type="ScrollContainer" parent="Margins/MainSplit/Sidebar/SidebarTabs/Attempts/AttemptsLayout"]
 layout_mode = 2
@@ -188,8 +183,8 @@ theme_override_constants/separation = 4
 
 [node name="CurrentPlanLabel" type="Label" parent="Margins/MainSplit/DetailTabs/Plan/PlanLayout"]
 layout_mode = 2
+theme_type_variation = &"HeaderSmall"
 text = "Current plan"
-theme_override_font_sizes/font_size = 12
 
 [node name="PlanScroll" type="ScrollContainer" parent="Margins/MainSplit/DetailTabs/Plan/PlanLayout"]
 layout_mode = 2
@@ -206,7 +201,6 @@ unique_name_in_owner = true
 layout_mode = 2
 text = "No plan installed."
 theme_override_colors/font_color = Color(0.6, 0.65, 0.7, 1)
-theme_override_font_sizes/font_size = 12
 
 [node name="PlanRows" type="VBoxContainer" parent="Margins/MainSplit/DetailTabs/Plan/PlanLayout/PlanScroll/PlanScrollBody"]
 unique_name_in_owner = true
@@ -215,16 +209,14 @@ theme_override_constants/separation = 3
 
 [node name="CompletedLabel" type="Label" parent="Margins/MainSplit/DetailTabs/Plan/PlanLayout/PlanScroll/PlanScrollBody"]
 layout_mode = 2
+theme_type_variation = &"HeaderSmall"
 text = "Completed"
-theme_override_colors/font_color = Color(0.72, 0.78, 0.85, 1)
-theme_override_font_sizes/font_size = 12
 
 [node name="CompletedEmpty" type="Label" parent="Margins/MainSplit/DetailTabs/Plan/PlanLayout/PlanScroll/PlanScrollBody"]
 unique_name_in_owner = true
 layout_mode = 2
 text = "No completed steps."
 theme_override_colors/font_color = Color(0.6, 0.65, 0.7, 1)
-theme_override_font_sizes/font_size = 12
 
 [node name="CompletedRows" type="VBoxContainer" parent="Margins/MainSplit/DetailTabs/Plan/PlanLayout/PlanScroll/PlanScrollBody"]
 unique_name_in_owner = true
@@ -246,7 +238,6 @@ layout_mode = 2
 size_flags_horizontal = 3
 clip_text = true
 text = "No attempt selected."
-theme_override_font_sizes/font_size = 12
 
 [node name="FitButton" type="Button" parent="Margins/MainSplit/DetailTabs/Trace/Toolbar"]
 layout_mode = 2
@@ -287,10 +278,9 @@ horizontal_alignment = 1
 vertical_alignment = 1
 autowrap_mode = 3
 theme_override_colors/font_color = Color(0.6, 0.65, 0.7, 1)
-theme_override_font_sizes/font_size = 12
 
 [node name="DetailScroll" type="ScrollContainer" parent="Margins/MainSplit/DetailTabs/Trace/TraceSplit"]
-custom_minimum_size = Vector2(260, 0)
+unique_name_in_owner = true
 layout_mode = 2
 horizontal_scroll_mode = 0
 
@@ -306,14 +296,12 @@ layout_mode = 2
 text = "Click a decision to see its details."
 autowrap_mode = 3
 theme_override_colors/font_color = Color(0.6, 0.65, 0.7, 1)
-theme_override_font_sizes/font_size = 12
 
 [node name="NodeTitle" type="Label" parent="Margins/MainSplit/DetailTabs/Trace/TraceSplit/DetailScroll/NodeDetail"]
 unique_name_in_owner = true
 visible = false
 layout_mode = 2
 autowrap_mode = 3
-theme_override_font_sizes/font_size = 14
 
 [node name="NodeKind" type="Label" parent="Margins/MainSplit/DetailTabs/Trace/TraceSplit/DetailScroll/NodeDetail"]
 unique_name_in_owner = true
@@ -321,7 +309,6 @@ visible = false
 layout_mode = 2
 autowrap_mode = 3
 theme_override_colors/font_color = Color(0.72, 0.78, 0.85, 1)
-theme_override_font_sizes/font_size = 12
 
 [node name="NodePath" type="Label" parent="Margins/MainSplit/DetailTabs/Trace/TraceSplit/DetailScroll/NodeDetail"]
 unique_name_in_owner = true
@@ -329,21 +316,18 @@ visible = false
 layout_mode = 2
 autowrap_mode = 3
 theme_override_colors/font_color = Color(0.72, 0.78, 0.85, 1)
-theme_override_font_sizes/font_size = 12
 
 [node name="NodeOutcome" type="Label" parent="Margins/MainSplit/DetailTabs/Trace/TraceSplit/DetailScroll/NodeDetail"]
 unique_name_in_owner = true
 visible = false
 layout_mode = 2
 autowrap_mode = 3
-theme_override_font_sizes/font_size = 12
 
 [node name="NodeReason" type="Label" parent="Margins/MainSplit/DetailTabs/Trace/TraceSplit/DetailScroll/NodeDetail"]
 unique_name_in_owner = true
 visible = false
 layout_mode = 2
 autowrap_mode = 3
-theme_override_font_sizes/font_size = 12
 
 [node name="NodeCondition" type="Label" parent="Margins/MainSplit/DetailTabs/Trace/TraceSplit/DetailScroll/NodeDetail"]
 unique_name_in_owner = true
@@ -351,7 +335,6 @@ visible = false
 layout_mode = 2
 autowrap_mode = 3
 theme_override_colors/font_color = Color(0.95, 0.6, 0.45, 1)
-theme_override_font_sizes/font_size = 12
 
 [node name="NodeArgs" type="Label" parent="Margins/MainSplit/DetailTabs/Trace/TraceSplit/DetailScroll/NodeDetail"]
 unique_name_in_owner = true
@@ -359,14 +342,12 @@ visible = false
 layout_mode = 2
 autowrap_mode = 3
 theme_override_colors/font_color = Color(0.75, 0.82, 0.9, 1)
-theme_override_font_sizes/font_size = 12
 
 [node name="NodeDetailText" type="Label" parent="Margins/MainSplit/DetailTabs/Trace/TraceSplit/DetailScroll/NodeDetail"]
 unique_name_in_owner = true
 visible = false
 layout_mode = 2
 autowrap_mode = 3
-theme_override_font_sizes/font_size = 12
 
 [node name="NodeState" type="Label" parent="Margins/MainSplit/DetailTabs/Trace/TraceSplit/DetailScroll/NodeDetail"]
 unique_name_in_owner = true
@@ -374,7 +355,6 @@ visible = false
 layout_mode = 2
 autowrap_mode = 3
 theme_override_colors/font_color = Color(0.7, 0.78, 0.8, 1)
-theme_override_font_sizes/font_size = 12
 
 [node name="Diff" type="MarginContainer" parent="Margins/MainSplit/DetailTabs"]
 visible = false
@@ -390,8 +370,8 @@ theme_override_constants/separation = 4
 
 [node name="DiffHeader" type="Label" parent="Margins/MainSplit/DetailTabs/Diff/DiffLayout"]
 layout_mode = 2
+theme_type_variation = &"HeaderSmall"
 text = "Planning state (selected attempt) against the current blackboard"
-theme_override_font_sizes/font_size = 12
 
 [node name="DiffEmpty" type="Label" parent="Margins/MainSplit/DetailTabs/Diff/DiffLayout"]
 unique_name_in_owner = true
@@ -399,7 +379,6 @@ layout_mode = 2
 text = "Select a search attempt to compare its planning state with the current blackboard."
 autowrap_mode = 3
 theme_override_colors/font_color = Color(0.6, 0.65, 0.7, 1)
-theme_override_font_sizes/font_size = 12
 
 [node name="DiffTree" type="Tree" parent="Margins/MainSplit/DetailTabs/Diff/DiffLayout"]
 unique_name_in_owner = true

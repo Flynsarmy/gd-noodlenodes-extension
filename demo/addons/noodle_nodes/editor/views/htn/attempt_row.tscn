@@ -19,8 +19,6 @@ corner_radius_bottom_right = 3
 corner_radius_bottom_left = 3
 
 [node name="AttemptRow" type="PanelContainer"]
-offset_right = 380.0
-offset_bottom = 40.0
 theme_override_styles/panel = SubResource("StyleBoxFlat_row")
 script = ExtResource("1_row")
 
@@ -39,7 +37,6 @@ unique_name_in_owner = true
 layout_mode = 2
 mouse_filter = 2
 text = "#0"
-theme_override_font_sizes/font_size = 12
 
 [node name="Result" type="Label" parent="Body/Head"]
 unique_name_in_owner = true
@@ -49,7 +46,6 @@ mouse_filter = 2
 clip_text = true
 text = "Found"
 theme_override_colors/font_color = Color(0.35, 0.85, 0.4, 1)
-theme_override_font_sizes/font_size = 12
 
 [node name="Flags" type="Label" parent="Body/Head"]
 unique_name_in_owner = true
@@ -57,7 +53,6 @@ layout_mode = 2
 mouse_filter = 2
 text = "optimal, installed"
 theme_override_colors/font_color = Color(0.72, 0.78, 0.85, 1)
-theme_override_font_sizes/font_size = 11
 
 [node name="Meta" type="Label" parent="Body"]
 unique_name_in_owner = true
@@ -66,4 +61,3 @@ mouse_filter = 2
 clip_text = true
 text = "0 expansions · cost 0.0 · 00:00:00"
 theme_override_colors/font_color = Color(0.63, 0.68, 0.74, 1)
-theme_override_font_sizes/font_size = 11

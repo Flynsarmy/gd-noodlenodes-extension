@@ -11,6 +11,7 @@ extends Control
 signal node_selected(record: Dictionary)
 signal node_deselected
 
+const EditorScale = preload("res://addons/noodle_nodes/editor/editor_scale.gd")
 const TraceNode = preload("res://addons/noodle_nodes/editor/views/htn/trace_node.tscn")
 
 const NODE_SIZE := Vector2(224.0, 58.0)
@@ -24,6 +25,8 @@ const MAX_ZOOM := 1.8
 const FIT_MIN_ZOOM := 0.75
 const WHEEL_ZOOM_STEP := 1.12
 const PAN_SPEED := 24.0
+const EDGE_WIDTH := 1.5
+const DRAG_THRESHOLD := 4.0
 const DENSE_LIMIT := 250
 
 const COLOR_FINAL := Color(0.25, 0.72, 0.35)
@@ -48,6 +51,13 @@ var _views: Dictionary = {}
 var _heights: Dictionary = {}
 var _widths: Dictionary = {}
 var _bounds := Rect2()
+var _node_size := NODE_SIZE
+var _gap_x := GAP_X
+var _gap_y := GAP_Y
+var _padding := PADDING
+var _pan_speed := PAN_SPEED
+var _edge_width := EDGE_WIDTH
+var _drag_threshold := DRAG_THRESHOLD
 var _zoom := 1.0
 var _pan := Vector2.ZERO
 var _selected_id := -1
@@ -57,6 +67,16 @@ var _dragging := false
 var _drag_moved := false
 var _drag_origin := Vector2.ZERO
 var _pan_origin := Vector2.ZERO
+
+
+func _ready() -> void:
+	_node_size = Vector2(EditorScale.px(NODE_SIZE.x), EditorScale.px(NODE_SIZE.y))
+	_gap_x = EditorScale.px(GAP_X)
+	_gap_y = EditorScale.px(GAP_Y)
+	_padding = EditorScale.px(PADDING)
+	_pan_speed = EditorScale.px(PAN_SPEED)
+	_edge_width = EditorScale.px(EDGE_WIDTH)
+	_drag_threshold = EditorScale.px(DRAG_THRESHOLD)
 
 
 func _notification(what: int) -> void:
@@ -129,7 +149,7 @@ func fit_to_view() -> void:
 	else:
 		# Oversized traces start at the top-left so the root decision and the
 		# beginning of the accepted path stay visible.
-		_pan = Vector2(PADDING, PADDING) - _bounds.position * _zoom
+		_pan = Vector2(_padding, _padding) - _bounds.position * _zoom
 	_apply_transform()
 
 
@@ -310,10 +330,10 @@ func _layout() -> void:
 		_mark_visible(root_id)
 	_heights.clear()
 	_widths.clear()
-	var cursor := PADDING
+	var cursor := _padding
 	for root_id in _roots:
-		_place(root_id, PADDING, cursor)
-		cursor += _subtree_height(root_id) + GAP_Y
+		_place(root_id, _padding, cursor)
+		cursor += _subtree_height(root_id) + _gap_y
 	_update_bounds()
 
 
@@ -334,13 +354,13 @@ func _subtree_height(node_id: int) -> float:
 		_heights[node_id] = 0.0
 		return 0.0
 	var children := _ordered_children(record)
-	var height := NODE_SIZE.y
+	var height := _node_size.y
 	if not children.is_empty():
 		var total := 0.0
 		if _is_alternative(record):
 			for child_id in children:
 				total += _subtree_height(int(child_id))
-			total += GAP_Y * maxf(0.0, children.size() - 1.0)
+			total += _gap_y * maxf(0.0, children.size() - 1.0)
 		else:
 			for child_id in children:
 				total = maxf(total, _subtree_height(int(child_id)))
@@ -357,19 +377,19 @@ func _subtree_width(node_id: int) -> float:
 		_widths[node_id] = 0.0
 		return 0.0
 	var children := _ordered_children(record)
-	var width := NODE_SIZE.x
+	var width := _node_size.x
 	if not children.is_empty():
 		if _is_alternative(record):
 			var widest := 0.0
 			for child_id in children:
 				widest = maxf(widest, _subtree_width(int(child_id)))
-			width += GAP_X + widest
+			width += _gap_x + widest
 		else:
 			var total := 0.0
 			for child_id in children:
 				total += _subtree_width(int(child_id))
-			total += GAP_X * maxf(0.0, children.size() - 1.0)
-			width += GAP_X + total
+			total += _gap_x * maxf(0.0, children.size() - 1.0)
+			width += _gap_x + total
 	_widths[node_id] = width
 	return width
 
@@ -380,16 +400,16 @@ func _place(node_id: int, x: float, y: float) -> void:
 	var children := _ordered_children(record)
 	if children.is_empty():
 		return
-	var child_x := x + NODE_SIZE.x + GAP_X
+	var child_x := x + _node_size.x + _gap_x
 	if not _is_alternative(record):
 		for child_id in children:
 			_place(int(child_id), child_x, y)
-			child_x += _subtree_width(int(child_id)) + GAP_X
+			child_x += _subtree_width(int(child_id)) + _gap_x
 		return
 	var cursor := y
 	for child_id in children:
 		_place(int(child_id), child_x, cursor)
-		cursor += _subtree_height(int(child_id)) + GAP_Y
+		cursor += _subtree_height(int(child_id)) + _gap_y
 
 
 func _update_bounds() -> void:
@@ -397,11 +417,11 @@ func _update_bounds() -> void:
 	for record in _records:
 		if not bool(record["visible"]):
 			continue
-		var rect := Rect2(record["position"], NODE_SIZE)
+		var rect := Rect2(record["position"], _node_size)
 		_bounds = rect if first else _bounds.merge(rect)
 		first = false
 	if not first:
-		_bounds = _bounds.grow(PADDING)
+		_bounds = _bounds.grow(_padding)
 
 
 # Nodes ------------------------------------------------------------------------
@@ -413,7 +433,7 @@ func _create_views() -> void:
 		_views[int(record["id"])] = view
 		_configure_view(record)
 		view.position = record["position"]
-		view.size = NODE_SIZE
+		view.size = _node_size
 		view.visible = bool(record["visible"])
 
 
@@ -430,7 +450,7 @@ func _update_positions() -> void:
 		if view == null:
 			continue
 		view.position = record["position"]
-		view.size = NODE_SIZE
+		view.size = _node_size
 		view.visible = bool(record["visible"])
 
 
@@ -460,13 +480,13 @@ func _draw() -> void:
 		var parent: Dictionary = _by_id[parent_id]
 		if not bool(parent["visible"]):
 			continue
-		var start: Vector2 = parent["position"] + Vector2(NODE_SIZE.x, NODE_SIZE.y * 0.5)
-		var end: Vector2 = record["position"] + Vector2(0.0, NODE_SIZE.y * 0.5)
+		var start: Vector2 = parent["position"] + Vector2(_node_size.x, _node_size.y * 0.5)
+		var end: Vector2 = record["position"] + Vector2(0.0, _node_size.y * 0.5)
 		var mid_x := (start.x + end.x) * 0.5
 		draw_polyline(
 			PackedVector2Array([start, Vector2(mid_x, start.y), Vector2(mid_x, end.y), end]),
 			EDGE_INK,
-			1.5,
+			_edge_width,
 			true
 		)
 	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
@@ -483,7 +503,7 @@ func _gui_input(event: InputEvent) -> void:
 		_zoom_at(event.position, maxf(0.01, event.factor))
 		accept_event()
 	elif event is InputEventPanGesture:
-		_pan -= event.delta * PAN_SPEED
+		_pan -= event.delta * _pan_speed
 		_apply_transform()
 		accept_event()
 	elif event is InputEventKey:
@@ -526,7 +546,7 @@ func _handle_mouse_motion(motion: InputEventMouseMotion) -> void:
 	if not _dragging:
 		return
 	var delta := motion.position - _drag_origin
-	if delta.length() > 4.0:
+	if delta.length() > _drag_threshold:
 		_drag_moved = true
 	_pan = _pan_origin + delta
 	_apply_transform()
@@ -580,7 +600,7 @@ func _hit_test(at: Vector2) -> int:
 		var record: Dictionary = _records[index]
 		if not bool(record["visible"]):
 			continue
-		if Rect2(record["position"], NODE_SIZE).has_point(local):
+		if Rect2(record["position"], _node_size).has_point(local):
 			return int(record["id"])
 	return -1
 

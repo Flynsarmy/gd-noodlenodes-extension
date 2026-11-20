@@ -5,6 +5,7 @@ extends "res://addons/noodle_nodes/editor/views/debug_view.gd"
 ## events and the selected attempt's planning state against the live blackboard.
 ## Implemented against src/debugger/PROTOCOL.md section 5.1.
 
+const EditorScale = preload("res://addons/noodle_nodes/editor/editor_scale.gd")
 const StatusPalette = preload("res://addons/noodle_nodes/debugger/status_palette.gd")
 const PlanStepRow = preload("res://addons/noodle_nodes/editor/views/htn/plan_step_row.tscn")
 const PlanGroup = preload("res://addons/noodle_nodes/editor/views/htn/plan_group.tscn")
@@ -25,6 +26,10 @@ const KIND_ICONS := {
 const TIMELINE_KINDS := ["htn_step", "htn_verification_failed", "htn_repair", "htn_replan", "htn_plan_set"]
 const IDENTIFIER_PATTERN := "[A-Za-z_][A-Za-z_0-9]*"
 const EXPRESSION_KEYWORDS := ["true", "false", "null", "not", "and", "or", "in", "if", "else"]
+
+const SIDEBAR_WIDTH := 400.0
+const SPLIT_OFFSET := 420.0
+const DETAIL_WIDTH := 260.0
 
 ## Timelines and attempts are bounded so a long session cannot grow the view
 ## without limit. The newest entries are always kept.
@@ -89,6 +94,9 @@ var _diff_signature := ""
 
 
 func _ready() -> void:
+	%Sidebar.custom_minimum_size.x = EditorScale.px(SIDEBAR_WIDTH)
+	%MainSplit.split_offset = int(EditorScale.px(SPLIT_OFFSET))
+	%DetailScroll.custom_minimum_size.x = EditorScale.px(DETAIL_WIDTH)
 	_set_column_titles(_domain_tree, ["Node", "Step"])
 	_set_column_titles(_timeline_tree, ["Time", "Event", "Detail"])
 	_set_column_titles(_diff_tree, ["Key", "Change", "Attempt state", "Current"])

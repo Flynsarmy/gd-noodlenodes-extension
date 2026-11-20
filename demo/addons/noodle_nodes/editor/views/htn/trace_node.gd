@@ -3,12 +3,20 @@ extends PanelContainer
 ## One decision record in the HTN trace graph. Instanced from trace_node.tscn by
 ## trace_graph.gd; the graph owns layout and input.
 
+const EditorScale = preload("res://addons/noodle_nodes/editor/editor_scale.gd")
 const TITLE_INK := Color(0.93, 0.95, 0.97)
+const ACCENT_WIDTH := 4.0
+const BORDER_WIDTH := 1.0
+const SELECTED_BORDER_WIDTH := 2.0
 
 @onready var _accent: ColorRect = %Accent
 @onready var _title: Label = %Title
 @onready var _subtitle: Label = %Subtitle
 @onready var _badge: Label = %Badge
+
+
+func _ready() -> void:
+	_accent.custom_minimum_size.x = EditorScale.px(ACCENT_WIDTH)
 
 
 func configure(record: Dictionary, accent: Color, collapsed: bool, selected: bool) -> void:
@@ -23,5 +31,6 @@ func configure(record: Dictionary, accent: Color, collapsed: bool, selected: boo
 	var style: StyleBoxFlat = get_theme_stylebox("panel").duplicate()
 	style.bg_color = accent.darkened(0.82)
 	style.border_color = accent if selected else accent.darkened(0.35)
-	style.set_border_width_all(2 if selected else 1)
+	var border := SELECTED_BORDER_WIDTH if selected else BORDER_WIDTH
+	style.set_border_width_all(maxi(1, int(EditorScale.px(border))))
 	add_theme_stylebox_override("panel", style)
