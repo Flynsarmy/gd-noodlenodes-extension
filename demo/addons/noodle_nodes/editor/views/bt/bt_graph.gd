@@ -14,7 +14,8 @@ const NODE_MIN_HEIGHT := 44.0
 const H_GAP := 22.0
 const V_GAP := 40.0
 const FIT_PADDING := 24.0
-const MIN_ZOOM := 0.3
+## Low enough that fit can show a whole tree in the default short panel.
+const MIN_ZOOM := 0.05
 const MAX_ZOOM := 2.0
 const EDGE_WIDTH := 1.5
 const FLOW_WIDTH := 2.0

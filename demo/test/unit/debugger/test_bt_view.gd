@@ -293,6 +293,22 @@ func test_showing_a_different_root_refits_after_the_user_moved_the_view() -> voi
 	assert_true(_all_items_visible(graph), "the first snapshot after clear is fitted")
 
 
+func test_the_view_fits_the_default_panel_height() -> void:
+	var host := PanelContainer.new()
+	host.size = Vector2(1100, 170)
+	add_child_autofree(host)
+	var view: BTView = ViewScene.instantiate()
+	host.add_child(view)
+	view.set_snapshot(DebuggerFixtures.bt_snapshot())
+	await wait_process_frames(2)
+
+	assert_true(view.clip_contents, "the view clips content to its own rect")
+	assert_true(view.get_combined_minimum_size().y <= 150, "the view minimum fits the default panel height")
+	var graph: BTGraph = view.get_node("%Graph")
+	assert_true(graph.size.y >= 100, "the graph keeps the space at the default panel height, got %s" % graph.size)
+	assert_true(_all_items_visible(graph), "the tree is fitted inside the graph")
+
+
 func _graph() -> BTGraph:
 	return _view.get_node("%Graph")
 
