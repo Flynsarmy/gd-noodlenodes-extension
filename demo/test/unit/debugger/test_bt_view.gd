@@ -67,6 +67,24 @@ func test_statuses_are_coloured_and_fade_with_recency() -> void:
 	assert_lt(_color_distance(fresh.status_color, StatusPalette.INTERRUPTED), 0.05, "a fresh visit shows the interrupted colour")
 
 
+func test_graph_nodes_grow_to_fit_long_text() -> void:
+	var snapshot := DebuggerFixtures.bt_snapshot()
+	_view.set_snapshot(snapshot)
+	var before: float = _graph().get_item(DebuggerFixtures.COVER_HAS).size.x
+
+	var long_name := "HasCoverInThePatrolSequenceWithAVeryLongName"
+	for entry in snapshot["nodes"]:
+		if int(entry["id"]) == DebuggerFixtures.COVER_HAS:
+			entry["name"] = long_name
+	_view.set_snapshot(snapshot)
+
+	var item: Control = _graph().get_item(DebuggerFixtures.COVER_HAS)
+	var label: Label = item.get_node("%NameLabel")
+	assert_eq(label.text, long_name)
+	assert_gt(item.size.x, before, "the node box grows for a long name")
+	assert_true(item.size.x >= label.get_minimum_size().x, "the name fits inside the node")
+
+
 func test_status_only_snapshots_update_items_in_place() -> void:
 	var snapshot := DebuggerFixtures.bt_snapshot()
 	_view.set_snapshot(snapshot)

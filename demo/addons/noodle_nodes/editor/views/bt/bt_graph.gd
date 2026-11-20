@@ -6,14 +6,18 @@ signal node_clicked(node_id: int)
 signal portal_activated(root_id: int)
 
 const StatusPalette := preload("res://addons/noodle_nodes/debugger/status_palette.gd")
+const EditorScale := preload("res://addons/noodle_nodes/editor/editor_scale.gd")
 const GraphNodeScene := preload("res://addons/noodle_nodes/editor/views/bt/bt_graph_node.tscn")
 
-const NODE_SIZE := Vector2(196, 62)
+const NODE_MIN_WIDTH := 150.0
+const NODE_MIN_HEIGHT := 44.0
 const H_GAP := 22.0
 const V_GAP := 40.0
 const FIT_PADDING := 24.0
 const MIN_ZOOM := 0.3
 const MAX_ZOOM := 2.0
+const EDGE_WIDTH := 1.5
+const FLOW_WIDTH := 2.0
 const DASH_LENGTH := 9.0
 const DASH_GAP := 7.0
 const DASH_SPEED := 45.0
@@ -28,6 +32,8 @@ var _structure := PackedInt64Array()
 var _running_edges := {}
 var _selected_id := 0
 var _now_usec := 0
+var _scale := 1.0
+var _node_size := Vector2.ZERO
 var _dash_offset := 0.0
 var _zoom := 1.0
 var _pan := Vector2.ZERO
@@ -39,6 +45,10 @@ var _layout_positions := {}
 var _layout_cursor := 0.0
 
 
+func _ready() -> void:
+	_scale = EditorScale.get_scale()
+
+
 func set_nodes(nodes: Array, now_usec: int, running_node: int) -> void:
 	_now_usec = now_usec
 	_nodes.clear()
@@ -48,11 +58,15 @@ func set_nodes(nodes: Array, now_usec: int, running_node: int) -> void:
 		_nodes[id] = entry
 		structure.append(id)
 		structure.append(int(entry.get("parent", 0)))
-	if structure != _structure:
+	var structural := structure != _structure
+	if structural:
 		_structure = structure
-		_rebuild()
+		_sync_items()
 	_update_running_path(running_node)
 	_refresh()
+	var resized := _measure()
+	if structural or resized:
+		_place_items()
 	queue_redraw()
 
 
@@ -79,10 +93,11 @@ func select(node_id: int) -> void:
 func fit() -> void:
 	if _items.is_empty() or size.x < 1.0 or size.y < 1.0:
 		return
-	var bounds := Rect2(_items.values()[0].position, NODE_SIZE)
+	var padding := FIT_PADDING * _scale
+	var bounds := Rect2(_items.values()[0].position, _node_size)
 	for item in _items.values():
 		bounds = bounds.merge(Rect2(item.position, item.size))
-	var available := size - Vector2(FIT_PADDING, FIT_PADDING) * 2.0
+	var available := size - Vector2(padding, padding) * 2.0
 	_zoom = clampf(minf(available.x / maxf(bounds.size.x, 1.0), available.y / maxf(bounds.size.y, 1.0)), MIN_ZOOM, 1.0)
 	_pan = (size - bounds.size * _zoom) * 0.5 - bounds.position * _zoom
 	_fitted = true
@@ -99,7 +114,8 @@ func _notification(what: int) -> void:
 
 
 func _process(delta: float) -> void:
-	_dash_offset = fmod(_dash_offset + delta * DASH_SPEED, DASH_LENGTH + DASH_GAP)
+	var step := (DASH_LENGTH + DASH_GAP) * _scale
+	_dash_offset = fmod(_dash_offset + delta * DASH_SPEED * _scale, step)
 	queue_redraw()
 
 
@@ -124,13 +140,13 @@ func _draw_edge(edge: Vector2i, running: bool) -> void:
 	var end := to_item.position + Vector2(to_item.size.x * 0.5, 0.0)
 	var points := _edge_points(start, end)
 	if running:
-		_draw_dashed(points, StatusPalette.RUNNING, 2.0)
+		_draw_dashed(points, StatusPalette.RUNNING, FLOW_WIDTH * _scale)
 		return
 	var entry: Dictionary = _nodes[edge.y]
 	var color: Color = StatusPalette.for_status(str(entry.get("status", "unvisited")))
 	color = StatusPalette.faded(color, _now_usec - int(entry.get("last_visited_usec", 0)))
 	color.a = EDGE_ALPHA
-	draw_polyline(points, color, 1.5, true)
+	draw_polyline(points, color, EDGE_WIDTH * _scale, true)
 
 
 func _gui_input(event: InputEvent) -> void:
@@ -150,34 +166,19 @@ func _gui_input(event: InputEvent) -> void:
 		accept_event()
 
 
-func _rebuild() -> void:
+func _sync_items() -> void:
 	for id in _items.keys():
 		if not _nodes.has(id):
 			_items[id].hide()
 			_items[id].queue_free()
 			_items.erase(id)
 	_edges.clear()
-	var children := {}
 	for id in _nodes:
+		if not _items.has(id):
+			_items[id] = _create_item()
 		var parent := int(_nodes[id].get("parent", 0))
-		if parent == 0 or not _nodes.has(parent):
-			continue
-		_edges.append(Vector2i(parent, id))
-		if not children.has(parent):
-			children[parent] = []
-		children[parent].append(id)
-	var positions := _layout(children)
-	for id in _nodes:
-		var item: Control = _items.get(id)
-		if item == null:
-			item = _create_item()
-			_items[id] = item
-		item.position = positions.get(id, Vector2.ZERO)
-		item.size = NODE_SIZE
-	if _items.is_empty():
-		_fitted = false
-	elif not _fitted:
-		fit()
+		if parent != 0 and _nodes.has(parent):
+			_edges.append(Vector2i(parent, id))
 
 
 func _create_item() -> Control:
@@ -185,6 +186,39 @@ func _create_item() -> Control:
 	item.gui_input.connect(_on_item_gui_input.bind(item))
 	_canvas.add_child(item)
 	return item
+
+
+## Uniform node size from the largest child's content minimum, so theme-scaled
+## text always fits inside its box.
+func _measure() -> bool:
+	var size := Vector2(NODE_MIN_WIDTH, NODE_MIN_HEIGHT) * _scale
+	for item in _items.values():
+		size = size.max(item.get_combined_minimum_size())
+	if size.is_equal_approx(_node_size):
+		return false
+	_node_size = size
+	for item in _items.values():
+		item.size = _node_size
+	return true
+
+
+func _place_items() -> void:
+	var children := {}
+	for id in _nodes:
+		var parent := int(_nodes[id].get("parent", 0))
+		if parent == 0 or not _nodes.has(parent):
+			continue
+		if not children.has(parent):
+			children[parent] = []
+		children[parent].append(id)
+	var positions := _layout(children)
+	for id in _items:
+		_items[id].position = positions.get(id, Vector2.ZERO)
+		_items[id].size = _node_size
+	if _items.is_empty():
+		_fitted = false
+	elif not _fitted:
+		fit()
 
 
 func _layout(children: Dictionary) -> Dictionary:
@@ -202,7 +236,7 @@ func _place(id: int, depth: int) -> void:
 	var kids: Array = _layout_children.get(id, [])
 	var x := _layout_cursor
 	if kids.is_empty():
-		_layout_cursor += NODE_SIZE.x + H_GAP
+		_layout_cursor += _node_size.x + H_GAP * _scale
 	else:
 		var first := 0.0
 		var last := 0.0
@@ -213,7 +247,7 @@ func _place(id: int, depth: int) -> void:
 				first = child_x
 			last = child_x
 		x = (first + last) * 0.5
-	_layout_positions[id] = Vector2(x, float(depth) * (NODE_SIZE.y + V_GAP))
+	_layout_positions[id] = Vector2(x, float(depth) * (_node_size.y + V_GAP * _scale))
 
 
 func _refresh() -> void:
@@ -275,7 +309,8 @@ func _edge_points(start: Vector2, end: Vector2) -> PackedVector2Array:
 
 
 func _draw_dashed(points: PackedVector2Array, color: Color, width: float) -> void:
-	var step := DASH_LENGTH + DASH_GAP
+	var step := (DASH_LENGTH + DASH_GAP) * _scale
+	var dash := DASH_LENGTH * _scale
 	var phase := fmod(_dash_offset, step) - step
 	for i in points.size() - 1:
 		var from_point := points[i]
@@ -287,7 +322,7 @@ func _draw_dashed(points: PackedVector2Array, color: Color, width: float) -> voi
 		var pos := phase
 		while pos < length:
 			var dash_from := maxf(pos, 0.0)
-			var dash_to := minf(pos + DASH_LENGTH, length)
+			var dash_to := minf(pos + dash, length)
 			if dash_to > dash_from:
 				draw_line(from_point + direction * dash_from, from_point + direction * dash_to, color, width, true)
 			pos += step

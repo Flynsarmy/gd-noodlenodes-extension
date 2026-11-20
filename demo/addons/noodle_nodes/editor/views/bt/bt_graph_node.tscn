@@ -19,13 +19,11 @@ corner_radius_bottom_right = 3
 corner_radius_bottom_left = 3
 
 [node name="BTGraphNode" type="PanelContainer"]
-custom_minimum_size = Vector2(196, 62)
-offset_right = 196.0
-offset_bottom = 62.0
 theme_override_styles/panel = SubResource("StyleBoxFlat_item")
 script = ExtResource("1_node")
 
 [node name="Row" type="HBoxContainer" parent="."]
+unique_name_in_owner = true
 layout_mode = 2
 theme_override_constants/separation = 6
 
@@ -45,26 +43,22 @@ theme_override_constants/separation = 0
 [node name="NameLabel" type="Label" parent="Row/Text"]
 unique_name_in_owner = true
 layout_mode = 2
-theme_override_font_sizes/font_size = 12
 text = "Node"
-clip_text = true
 
 [node name="ClassLabel" type="Label" parent="Row/Text"]
 unique_name_in_owner = true
 layout_mode = 2
 theme_override_colors/font_color = Color(0.6, 0.62, 0.66, 1)
-theme_override_font_sizes/font_size = 10
 text = "NNBTNode"
-clip_text = true
 
 [node name="Meta" type="HBoxContainer" parent="Row/Text"]
+unique_name_in_owner = true
 layout_mode = 2
 theme_override_constants/separation = 4
 
 [node name="StatusLabel" type="Label" parent="Row/Text/Meta"]
 unique_name_in_owner = true
 layout_mode = 2
-theme_override_font_sizes/font_size = 10
 text = "unvisited"
 
 [node name="BadgeLabel" type="Label" parent="Row/Text/Meta"]
@@ -72,9 +66,7 @@ unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_colors/font_color = Color(0.72, 0.74, 0.78, 1)
-theme_override_font_sizes/font_size = 10
 horizontal_alignment = 2
-clip_text = true
 
 [node name="PortalTag" type="Label" parent="Row"]
 unique_name_in_owner = true
@@ -82,5 +74,4 @@ visible = false
 layout_mode = 2
 size_flags_vertical = 0
 theme_override_colors/font_color = Color(0.35, 0.75, 1, 1)
-theme_override_font_sizes/font_size = 13
 text = "⧉"
