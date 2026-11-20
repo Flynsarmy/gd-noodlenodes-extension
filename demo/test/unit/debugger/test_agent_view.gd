@@ -67,6 +67,23 @@ func test_rows_re_sort_when_a_snapshot_swaps_scores() -> void:
 	assert_eq(_row_names(), ["Patrol", "Investigate"])
 
 
+func test_rows_are_updated_in_place_when_a_snapshot_swaps_scores() -> void:
+	_view.set_snapshot(Fixtures.agent_snapshot())
+	var list = _view.get_node("%BehaviourList")
+	var patrol = _find_row(list, Fixtures.AGENT_PATROL)
+	var investigate = _find_row(list, Fixtures.AGENT_INVESTIGATE)
+	var snapshot := Fixtures.agent_snapshot()
+	_node(snapshot, Fixtures.AGENT_PATROL)["score"] = 0.9
+	_node(snapshot, Fixtures.AGENT_INVESTIGATE)["score"] = 0.3
+
+	_view.set_snapshot(snapshot)
+
+	assert_same(_find_row(list, Fixtures.AGENT_PATROL), patrol)
+	assert_same(_find_row(list, Fixtures.AGENT_INVESTIGATE), investigate)
+	assert_eq(patrol.get_node("%Score").text, "0.90")
+	assert_eq(_row_names(), ["Patrol", "Investigate"])
+
+
 func test_current_behaviour_is_marked() -> void:
 	_view.set_snapshot(Fixtures.agent_snapshot())
 	var list = _view.get_node("%BehaviourList")
@@ -159,6 +176,30 @@ func test_timeline_tooltip_lists_scores_at_the_switch() -> void:
 	assert_string_contains(tooltip, "Investigate")
 	assert_string_contains(tooltip, "0.52")
 	assert_string_contains(tooltip, "0.48")
+
+
+func test_a_choice_before_the_window_keeps_the_first_visible_segment() -> void:
+	_view.set_snapshot(Fixtures.agent_snapshot())
+	var timeline = _view.get_node("%Timeline")
+	var window := int(timeline.WINDOW_USEC)
+	var before = Fixtures.agent_events()[0].duplicate()
+	before["seq"] = 20
+	before["t_usec"] = Fixtures.NOW_USEC - window - 10_000_000
+	var previous = before.duplicate()
+	previous["seq"] = 21
+	previous["t_usec"] = Fixtures.NOW_USEC - window - 1_000_000
+	previous["behaviour"] = Fixtures.AGENT_INVESTIGATE
+	var recent = previous.duplicate()
+	recent["seq"] = 22
+	recent["t_usec"] = Fixtures.NOW_USEC - 1_000_000
+	recent["behaviour"] = Fixtures.AGENT_PATROL
+
+	_view.apply_events([before, previous, recent])
+
+	var segments: Array = timeline.get_segments()
+	assert_eq(segments.size(), 2)
+	assert_eq(segments[0]["behaviour"], Fixtures.AGENT_INVESTIGATE)
+	assert_eq(segments[0]["start_usec"], Fixtures.NOW_USEC - window)
 
 
 func test_flip_flop_choices_warn_about_oscillation() -> void:
