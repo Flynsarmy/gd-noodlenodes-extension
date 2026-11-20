@@ -46,7 +46,7 @@
 			<return type="Dictionary" />
 			<param index="0" name="node_id" type="int" />
 			<description>
-				Returns the current values of the properties of any live [Object] that have storage, editor or script-variable usage, keyed by property name. That includes exported and plain script variables, but not groups, categories or internal engine properties. Values are sanitised like [method NNBlackboard.get_debug_data], so they hold no [Object]. Returns an empty dictionary when the object is gone.
+				Returns the current values of the properties of any live [Object] that have storage, editor or script-variable usage, keyed by property name. That includes exported and plain script variables, but not groups, categories or internal engine properties. Integer properties with an enum hint report the matching enum name (for example [code]"Multiply"[/code]) instead of the raw number, falling back to the number when no name matches; flags and other hints keep their values. Values are sanitised like [method NNBlackboard.get_debug_data], so they hold no [Object]. Returns an empty dictionary when the object is gone.
 			</description>
 		</method>
 		<method name="get_pause_scope" qualifiers="const">

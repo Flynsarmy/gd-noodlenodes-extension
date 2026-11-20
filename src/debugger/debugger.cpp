@@ -19,6 +19,29 @@
 
 using namespace godot;
 
+namespace {
+
+// Mirrors the editor's enum hint parsing: a bare name takes the next integer,
+// "Name:value" sets an explicit value. The first name for a value wins.
+String _enum_hint_name(const String &p_hint_string, int64_t p_value) {
+	int64_t current_value = 0;
+	const PackedStringArray options = p_hint_string.split(",");
+	for (int i = 0; i < options.size(); i++) {
+		const String &option = options[i];
+		if (option.get_slice_count(":") != 1) {
+			current_value = option.get_slice(":", 1).to_int();
+		}
+		const String name = option.get_slice(":", 0);
+		if (!name.is_empty() && current_value == p_value) {
+			return name;
+		}
+		current_value++;
+	}
+	return String();
+}
+
+} // namespace
+
 // Method binds.
 
 void NNDebugger::_bind_methods() {
@@ -232,7 +255,16 @@ Dictionary NNDebugger::get_node_properties(int64_t p_node_id) const {
 			continue;
 		}
 		const String name = property.get("name", String());
-		properties[name] = NNBlackboard::sanitize_debug_value(object->get(name));
+		Variant value = object->get(name);
+		if ((int64_t)property.get("type", Variant::NIL) == Variant::INT &&
+				(int64_t)property.get("hint", PROPERTY_HINT_NONE) == PROPERTY_HINT_ENUM &&
+				value.get_type() == Variant::INT) {
+			const String enum_name = _enum_hint_name(property.get("hint_string", String()), (int64_t)value);
+			if (!enum_name.is_empty()) {
+				value = enum_name;
+			}
+		}
+		properties[name] = NNBlackboard::sanitize_debug_value(value);
 	}
 	return properties;
 }
