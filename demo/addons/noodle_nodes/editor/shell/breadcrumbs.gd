@@ -34,6 +34,19 @@ func set_chain(chain: Array) -> void:
 		button.pressed.connect(func() -> void: crumb_activated.emit(root_id))
 		add_child(button)
 	visible = not chain.is_empty()
+	_scroll_to_last_crumb()
+
+
+func _scroll_to_last_crumb() -> void:
+	if not is_inside_tree():
+		return
+	var scroll := get_parent() as ScrollContainer
+	if scroll == null or get_child_count() == 0:
+		return
+	var last := get_child(get_child_count() - 1)
+	await get_tree().process_frame
+	if is_instance_valid(scroll) and is_instance_valid(last) and last.get_parent() == self:
+		scroll.ensure_control_visible(last)
 
 
 func clear() -> void:

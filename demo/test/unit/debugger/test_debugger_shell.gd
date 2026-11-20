@@ -665,7 +665,7 @@ func test_value_formatter_formats_property_and_event_values() -> void:
 
 	row.set_values("label", "Walk")
 	assert_eq(row.get_node("%Value").text, "Walk")
-	assert_eq(row.get_node("%Value").tooltip_text, "")
+	assert_eq(row.get_node("%Value").tooltip_text, "Walk")
 
 	var event_row = EventRowScene.instantiate()
 	add_child_autofree(event_row)
@@ -711,6 +711,54 @@ func test_portal_labels_use_plain_name_and_type() -> void:
 
 	assert_eq(spy.root_labels[Fixtures.PATROL_BT], "NNBTRoot (BT)")
 	assert_eq(spy.root_labels[Fixtures.COVER_BT], "NNBTRoot (BT)")
+
+
+func test_breadcrumbs_scroll_to_the_last_crumb_without_a_scrollbar() -> void:
+	var host := Control.new()
+	host.size = Vector2(400, 208)
+	add_child_autofree(host)
+	var panel = PanelScene.instantiate()
+	host.add_child(panel)
+	await get_tree().process_frame
+
+	var breadcrumbs: Control = panel.get_node("%Breadcrumbs")
+	var scroll: ScrollContainer = panel.get_node("%BreadcrumbScroll")
+	assert_eq(scroll.horizontal_scroll_mode, ScrollContainer.SCROLL_MODE_SHOW_NEVER)
+
+	var chain: Array = []
+	for i in 10:
+		chain.append({ "label": "A very long breadcrumb %d" % i, "root_id": i + 1, "is_host": false })
+	breadcrumbs.set_chain(chain)
+	await get_tree().process_frame
+	await get_tree().process_frame
+
+	var bar := scroll.get_h_scroll_bar()
+	assert_almost_eq(float(scroll.scroll_horizontal), bar.max_value - bar.page, 1.0, "scrolled to the end")
+	var last: Control = breadcrumbs.get_child(breadcrumbs.get_child_count() - 1)
+	assert_true(last.get_global_rect().end.x <= scroll.get_global_rect().end.x + 1.0, "the last crumb is visible")
+
+
+func test_inspector_fits_a_short_value_at_narrow_width() -> void:
+	var host := Control.new()
+	host.size = Vector2(360, 400)
+	add_child_autofree(host)
+	var inspector: Control = InspectorScene.instantiate()
+	host.add_child(inspector)
+	inspector.set_selected_node(Fixtures.COVER_MOVE, { "name": "MoveToCover", "class": "NNBTActionLeaf" })
+	inspector.set_properties({ "cover": "Sprite2D" })
+	await get_tree().process_frame
+	await get_tree().process_frame
+
+	var row: Control = inspector.get_node("%PropertiesList").get_child(0)
+	var key: Label = row.get_node("%Key")
+	var value: Label = row.get_node("%Value")
+	assert_eq(value.text, "Sprite2D")
+	var font := value.get_theme_font("font")
+	var font_size := value.get_theme_font_size("font_size")
+	var needed := font.get_string_size("Sprite2D", HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x
+	assert_gte(value.size.x, needed, "the value column fits the short value")
+	assert_lt(key.size.x, 150.0, "the key column is content-sized, not the old fixed width")
+	assert_string_contains(value.tooltip_text, "Sprite2D")
 
 
 func test_snapshot_delta_updates_the_cached_snapshot_and_view() -> void:
