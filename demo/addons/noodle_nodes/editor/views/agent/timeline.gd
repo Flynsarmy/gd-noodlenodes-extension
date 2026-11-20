@@ -12,11 +12,15 @@ const MIN_OSCILLATION_FLIPS := 2
 const BACKGROUND := Color(0.08, 0.09, 0.11, 1.0)
 const EMPTY := Color(0.25, 0.26, 0.3, 1.0)
 const TICK := Color(1.0, 1.0, 1.0, 0.06)
+const TICK_LABEL := Color(0.7, 0.73, 0.78, 1.0)
+const SEGMENT_LABEL := Color(0.06, 0.07, 0.09, 0.9)
 const TOP := 6.0
 const BOTTOM := 8.0
 const MIN_HEIGHT := 96.0
 const TICK_WIDTH := 1.0
 const MIN_SEGMENT_WIDTH := 1.0
+const SEGMENT_LABEL_PADDING := 6.0
+const TICK_PADDING := 2.0
 const TICK_SEC := 5
 
 var _changes: Array = []
@@ -56,6 +60,27 @@ func get_segments() -> Array:
 			continue
 		segments.append(_segment(int(run["behaviour"]), maxi(start, window_start), mini(end, _now_usec), run["change"]))
 	return segments
+
+
+## Names drawn inside segments that are wide enough to hold them.
+func get_segment_labels() -> Array:
+	var labels := []
+	if _now_usec <= 0 or size.x <= 0.0:
+		return labels
+	var font := _label_font()
+	if font == null:
+		return labels
+	var font_size := _label_font_size()
+	var padding := EditorScale.px(SEGMENT_LABEL_PADDING)
+	for segment in get_segments():
+		var text := _name_of(segment["behaviour"])
+		var text_width := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x
+		var x0 := _time_to_x(segment["start_usec"])
+		var x1 := _time_to_x(segment["end_usec"])
+		if text_width + padding * 2.0 > x1 - x0:
+			continue
+		labels.append({ "behaviour": segment["behaviour"], "text": text, "x": x0 + padding, "width": text_width })
+	return labels
 
 
 ## Behaviour that flips back and forth within a short window, {} when stable.
@@ -109,12 +134,14 @@ func _draw() -> void:
 	draw_rect(Rect2(Vector2.ZERO, size), BACKGROUND)
 	if _now_usec <= 0:
 		return
+	var font := _label_font()
+	var font_size := _label_font_size()
 	var top := EditorScale.px(TOP)
 	var bottom := EditorScale.px(BOTTOM)
+	if font != null:
+		bottom = maxf(bottom, font.get_height(font_size) + EditorScale.px(TICK_PADDING))
 	var height := maxf(size.y - top - bottom, EditorScale.px(MIN_SEGMENT_WIDTH))
-	for tick in range(TICK_SEC, int(WINDOW_USEC / 1000000.0), TICK_SEC):
-		var x := size.x * (1.0 - float(tick * 1000000) / float(WINDOW_USEC))
-		draw_line(Vector2(x, top), Vector2(x, top + height), TICK, EditorScale.px(TICK_WIDTH))
+	_draw_time_axis(font, font_size, top, height)
 	var segments := get_segments()
 	if segments.is_empty():
 		draw_rect(Rect2(Vector2(0.0, top), Vector2(size.x, height)), EMPTY)
@@ -123,6 +150,30 @@ func _draw() -> void:
 		var x0 := _time_to_x(segment["start_usec"])
 		var x1 := _time_to_x(segment["end_usec"])
 		draw_rect(Rect2(Vector2(x0, top), Vector2(maxf(x1 - x0, EditorScale.px(MIN_SEGMENT_WIDTH)), height)), segment["color"])
+	if font == null:
+		return
+	var baseline := top + (height + font.get_ascent(font_size) - font.get_descent(font_size)) * 0.5
+	for label in get_segment_labels():
+		draw_string(font, Vector2(label["x"], baseline), label["text"], HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, SEGMENT_LABEL)
+
+
+func _draw_time_axis(font: Font, font_size: int, top: float, height: float) -> void:
+	var seconds := int(WINDOW_USEC / 1000000.0)
+	for tick in range(0, seconds + 1, TICK_SEC):
+		var x := size.x * (1.0 - float(tick) / float(seconds))
+		if tick > 0 and tick < seconds:
+			draw_line(Vector2(x, top), Vector2(x, top + height), TICK, EditorScale.px(TICK_WIDTH))
+		if font == null:
+			continue
+		var text := "now" if tick == seconds else "-%ds" % (seconds - tick)
+		var text_width := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x
+		var label_x := x
+		if tick == seconds:
+			label_x = x - text_width
+		elif tick > 0:
+			label_x = x - text_width * 0.5
+		var baseline := size.y - EditorScale.px(TICK_PADDING) - font.get_descent(font_size)
+		draw_string(font, Vector2(label_x, baseline), text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, TICK_LABEL)
 
 
 func _get_tooltip(at_position: Vector2) -> String:
@@ -173,6 +224,14 @@ func _segment(behaviour: int, start_usec: int, end_usec: int, change: Variant) -
 		"change": change,
 		"color": colour_for(behaviour),
 	}
+
+
+func _label_font() -> Font:
+	return get_theme_font("font", "Label")
+
+
+func _label_font_size() -> int:
+	return get_theme_font_size("font_size", "Label")
 
 
 func _name_of(behaviour_id: int) -> String:

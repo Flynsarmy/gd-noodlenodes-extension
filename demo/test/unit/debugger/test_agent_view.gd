@@ -2,6 +2,7 @@ extends GutTest
 
 const Fixtures = preload("res://test/unit/debugger/fixtures/debugger_fixtures.gd")
 const AgentViewScene = preload("res://addons/noodle_nodes/editor/views/agent/agent_view.tscn")
+const TimelineScript = preload("res://addons/noodle_nodes/editor/views/agent/timeline.gd")
 
 var _view
 
@@ -242,6 +243,33 @@ func test_last_behaviour_is_marked_when_nothing_is_running() -> void:
 	assert_true(last.get_node("%Accent").visible)
 	assert_false(previous.get_node("%Badges").text.contains("current"))
 	assert_false(previous.get_node("%Accent").visible)
+
+
+func test_timeline_labels_only_segments_wide_enough() -> void:
+	_view.set_snapshot(Fixtures.agent_snapshot())
+	_view.apply_events(Fixtures.agent_events())
+	var timeline = _view.get_node("%Timeline")
+	timeline.size = Vector2(3600, 192)
+
+	var texts := []
+	for label in timeline.get_segment_labels():
+		texts.append(label["text"])
+
+	assert_true(texts.has("Patrol"))
+	assert_eq(texts.count("Investigate"), 1)
+
+
+func test_behaviour_row_swatch_matches_timeline_colour() -> void:
+	_view.set_snapshot(Fixtures.agent_snapshot())
+	_view.apply_events(Fixtures.agent_events())
+	var colour = null
+	for segment in _view.get_node("%Timeline").get_segments():
+		if segment["behaviour"] == Fixtures.AGENT_PATROL:
+			colour = segment["color"]
+	assert_not_null(colour, "Patrol has a timeline segment")
+	assert_eq(colour, TimelineScript.colour_for(Fixtures.AGENT_PATROL))
+	var patrol = _find_row(_view.get_node("%BehaviourList"), Fixtures.AGENT_PATROL)
+	assert_eq(patrol.get_node("%Swatch").color, colour)
 
 
 func test_flip_flop_choices_warn_about_oscillation() -> void:

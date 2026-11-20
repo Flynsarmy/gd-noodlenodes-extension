@@ -155,6 +155,7 @@ func _sync_behaviours(snapshot: Dictionary) -> void:
 		row.set_current(_is_current_behaviour(id))
 		row.set_last(_is_last_behaviour(id))
 		row.set_selected(id == _selected_id)
+		row.set_swatch_colour(TimelineScript.colour_for(id))
 		_sync_details(id)
 		_refresh_expansion(row, id)
 		if top_ranks.has(id):
