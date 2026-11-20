@@ -184,9 +184,16 @@ func _event_texts() -> Array[String]:
 func test_shows_one_label_per_owner_with_its_active_path() -> void:
 	assert_eq(_labels().size(), 2)
 	assert_eq(_label_texts(), [
-		"Alerted/Run › Investigate › SneakToCover › MoveToCover",
-		"MoveToCover",
+		"NpcA · Alerted/Run › Investigate › SneakToCover › MoveToCover",
+		"NpcB · MoveToCover",
 	])
+
+
+func test_labels_prefix_the_actor_name_in_a_dim_colour() -> void:
+	var label: RichTextLabel = _labels()[0]
+
+	assert_true(label.get_parsed_text().begins_with("NpcA · Alerted/Run"))
+	assert_true(label.text.begins_with("[color=#%s]NpcA[/color] · " % _overlay.ENTITY_NAME_COLOR.to_html(false)))
 
 
 func test_labels_track_moving_owners_every_frame() -> void:
@@ -213,7 +220,7 @@ func test_labels_group_and_track_the_actor_not_the_scene_owner() -> void:
 	_overlay.refresh()
 
 	assert_eq(_labels().size(), 2, "one label per actor, not per scene owner")
-	assert_eq(_label_texts()[0], "Alerted/Run › Investigate › SneakToCover › MoveToCover")
+	assert_eq(_label_texts()[0], "NpcA · Alerted/Run › Investigate › SneakToCover › MoveToCover")
 
 	var label: Control = _labels()[0]
 	_owner_a.position = Vector2(400.0, 300.0)
@@ -238,7 +245,7 @@ func test_labels_fall_back_to_last_decisions_when_nothing_is_running() -> void:
 	_debugger.snapshots[Fixtures.COVER_BT] = bt
 	_overlay.refresh()
 
-	assert_eq(_label_texts()[0], "Alerted/Run › Patrol ✓ › SneakToCover › MoveToCover ✓")
+	assert_eq(_label_texts()[0], "NpcA · Alerted/Run › Patrol ✓ › SneakToCover › MoveToCover ✓")
 
 	_overlay.select_entity(_owner_a.get_instance_id())
 	assert_eq(_overlay.get_node("%Rows").get_child(1).get_node("%State").text, "Patrol ✓")
@@ -350,6 +357,21 @@ func test_agent_events_without_a_behaviour_or_action_are_worded() -> void:
 	_overlay.select_entity(_owner_a.get_instance_id())
 
 	assert_eq(_event_texts(), ["no behaviour", "no action"])
+
+
+func test_agent_completion_events_name_the_previous_behaviour() -> void:
+	var now := Fixtures.NOW_USEC
+	var events: Array = []
+	for i in 2:
+		events.append({"seq": 60 + i * 2, "t_usec": now - 30_000 + i * 20_000, "kind": "agent_choice",
+			"behaviour": Fixtures.AGENT_PATROL, "group": 0, "action": Fixtures.AGENT_PATROL_ACTION,
+			"top": [{"behaviour": Fixtures.AGENT_PATROL, "group": 0, "score": 1.0}]})
+		events.append({"seq": 61 + i * 2, "t_usec": now - 20_000 + i * 20_000, "kind": "agent_choice",
+			"behaviour": 0, "group": 0, "action": 0, "top": []})
+	_debugger.events = {Fixtures.AGENT: events}
+	_overlay.select_entity(_owner_a.get_instance_id())
+
+	assert_eq(_event_texts(), ["chose Patrol 1.00 ×2", "Patrol completed ×2"])
 
 
 func test_repeated_event_lines_collapse_with_a_count() -> void:
@@ -483,7 +505,7 @@ func test_overlay_keeps_working_while_the_tree_is_paused() -> void:
 	await get_tree().create_timer(0.15).timeout
 
 	assert_true(_overlay.can_process())
-	assert_eq(_label_texts()[0], "Investigate › SneakToCover › MoveToCover")
+	assert_eq(_label_texts()[0], "NpcA · Investigate › SneakToCover › MoveToCover")
 	assert_true(step_button.can_process())
 	assert_true(_overlay._nqs_drawer.can_process())
 	step_button.pressed.emit()

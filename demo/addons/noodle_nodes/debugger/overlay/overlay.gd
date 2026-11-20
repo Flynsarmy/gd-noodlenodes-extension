@@ -21,6 +21,7 @@ const TYPE_COLORS := {
 	Protocol.TYPE_ST: Color(1.0, 0.72, 0.35),
 	Protocol.TYPE_HTN: Color(0.85, 0.65, 1.0),
 }
+const ENTITY_NAME_COLOR := Color(0.6, 0.66, 0.78)
 
 @onready var _labels_root: Control = %Labels
 @onready var _panel: PanelContainer = %Panel
@@ -54,6 +55,7 @@ var _event_log: Array[Dictionary] = []
 var _event_roots: Array[int] = []
 var _last_seq := {}
 var _state_event_names := {}
+var _last_choice_behaviours := {}
 var _snapshots := {}
 var _nqs_drawer: Node = null
 var _stack_order: Array[int] = []
@@ -226,7 +228,10 @@ func _set_label_text(entity_id: int) -> void:
 			continue
 		var color: Color = TYPE_COLORS.get(String(snapshot.get("type", "")), StatusPalette.PENDING)
 		segments.append("[color=#%s]%s[/color]" % [color.to_html(false), text])
-	label.text = SEGMENT_SEPARATOR.join(segments)
+	var path := SEGMENT_SEPARATOR.join(segments)
+	if not path.is_empty():
+		path = "[color=#%s]%s[/color] · %s" % [ENTITY_NAME_COLOR.to_html(false), _entity_name(entity_id), path]
+	label.text = path
 	label.modulate = Color.WHITE if _selected_entity in [0, entity_id] else Color(1.0, 1.0, 1.0, 0.65)
 
 
@@ -632,6 +637,7 @@ func _collect_events() -> void:
 		_event_log.clear()
 		_last_seq.clear()
 		_state_event_names.clear()
+		_last_choice_behaviours.clear()
 	if chain.is_empty() or debugger == null:
 		return
 
@@ -717,8 +723,13 @@ func _event_before(a: Dictionary, b: Dictionary) -> bool:
 
 
 func _remember_state_event(root_id: int, event: Dictionary) -> void:
-	if String(event.get("kind", "")) == "st_event":
-		_state_event_names[root_id] = String(event.get("name", ""))
+	match String(event.get("kind", "")):
+		"st_event":
+			_state_event_names[root_id] = String(event.get("name", ""))
+		"agent_choice":
+			var behaviour := int(event.get("behaviour", 0))
+			if behaviour != 0:
+				_last_choice_behaviours[root_id] = behaviour
 
 
 func _event_text(root_id: int, snapshot: Dictionary, event: Dictionary) -> String:
@@ -789,7 +800,8 @@ func _event_text(root_id: int, snapshot: Dictionary, event: Dictionary) -> Strin
 		"agent_choice":
 			var behaviour := int(event.get("behaviour", 0))
 			if behaviour == 0:
-				return "no behaviour"
+				var previous := _node_name(snapshot, int(_last_choice_behaviours.get(root_id, 0)))
+				return "%s completed" % previous if not previous.is_empty() else "no behaviour"
 			var top: Array = event.get("top", [])
 			var score := float(top[0].get("score", 0.0)) if not top.is_empty() else 0.0
 			return "chose %s %.2f" % [_node_name(snapshot, behaviour), score]
