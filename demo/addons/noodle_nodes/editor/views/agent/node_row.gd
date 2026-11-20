@@ -10,7 +10,7 @@ signal expanded_changed(node_id: int, expanded: bool)
 const ACCENT_SELECTED := Color(0.35, 0.75, 1.0)
 const ACCENT_CURRENT := Color(1.0, 0.8, 0.2)
 
-const ScaledUI := preload("res://addons/noodle_nodes/editor/views/agent/scaled_ui.gd")
+const EditorScale := preload("res://addons/noodle_nodes/editor/editor_scale.gd")
 
 var node_id: int = 0
 var is_portal: bool = false
@@ -25,7 +25,7 @@ var _expanded: bool = false
 
 
 func _ready() -> void:
-	ScaledUI.apply(self)
+	EditorScale.apply_to_scene(self)
 	if _expand:
 		_expand.toggled.connect(_on_expand_toggled)
 	_refresh_accent()
