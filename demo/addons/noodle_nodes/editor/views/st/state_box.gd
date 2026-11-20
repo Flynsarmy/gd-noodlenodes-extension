@@ -5,6 +5,8 @@ extends PanelContainer
 
 const EditorScale = preload("res://addons/noodle_nodes/editor/editor_scale.gd")
 
+signal portal_pressed(root_id: int)
+
 var node_id := 0
 var hosted_root := 0
 
@@ -12,7 +14,7 @@ var _active_bar: ColorRect
 var _name_label: Label
 var _initial_badge: Label
 var _final_badge: Label
-var _portal_badge: Label
+var _portal_badge: Button
 var _transitions: VBoxContainer
 var _regions: HBoxContainer
 var _children: VBoxContainer
@@ -20,10 +22,12 @@ var _selection: PanelContainer
 var _base_style: StyleBoxFlat
 var _active_color := Color.WHITE
 var _is_active := false
+var _hosted_label := ""
 
 
 func setup(node: Dictionary, active_color: Color, is_active: bool, is_final: bool) -> void:
 	_bind()
+	_portal_badge.pressed.connect(_on_portal_pressed)
 	update(node, active_color, is_active, is_final)
 
 
@@ -42,7 +46,7 @@ func update(node: Dictionary, active_color: Color, is_active: bool, is_final: bo
 	_is_active = is_active
 	_active_bar.color = active_color
 	_portal_badge.visible = hosted_root != 0
-	_portal_badge.tooltip_text = "Double-click to inspect root %d" % hosted_root
+	_refresh_portal_label()
 	_final_badge.visible = is_final
 	if is_active:
 		_name_label.add_theme_color_override("font_color", active_color)
@@ -75,6 +79,21 @@ func _bind() -> void:
 
 func set_initial(is_initial: bool) -> void:
 	_initial_badge.visible = is_initial
+
+
+func set_hosted_label(label: String) -> void:
+	_hosted_label = label
+	_refresh_portal_label()
+
+
+func _refresh_portal_label() -> void:
+	var label := _hosted_label if _hosted_label != "" else "hosted root"
+	_portal_badge.text = "› " + label
+	_portal_badge.tooltip_text = "Inspect " + label
+
+
+func _on_portal_pressed() -> void:
+	portal_pressed.emit(hosted_root)
 
 
 func set_selected(is_selected: bool) -> void:

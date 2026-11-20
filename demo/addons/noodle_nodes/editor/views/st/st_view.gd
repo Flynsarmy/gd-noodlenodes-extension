@@ -45,6 +45,7 @@ var _boxes_by_id := {}
 var _rows_by_id := {}
 var _history_by_id := {}
 var _selected_id := 0
+var _root_labels := {}
 var _guard_results := {}
 var _pending := {}
 var _filters := {}
@@ -103,6 +104,13 @@ func apply_events(events: Array) -> void:
 func select_node(node_id: int) -> void:
 	_clear_log_selection()
 	_apply_selection(node_id)
+
+
+func set_root_labels(labels: Dictionary) -> void:
+	_root_labels = labels
+	for box in _boxes_by_id.values():
+		if is_instance_valid(box):
+			box.set_hosted_label(_root_label(box.hosted_root))
 
 
 func clear() -> void:
@@ -191,6 +199,7 @@ func _update_state(node: Dictionary, parent_node: Dictionary) -> void:
 	if box == null:
 		return
 	box.update(node, _active_color(node), _is_active(node), bool(node.get("final", false)))
+	box.set_hosted_label(_root_label(box.hosted_root))
 	box.set_initial(int(parent_node.get("initial", 0)) == id)
 	for child in _children.get(id, []):
 		var child_id := int(child.get("id", 0))
@@ -222,9 +231,11 @@ func _build_state(node: Dictionary, parent_node: Dictionary, attach: Callable) -
 	var box = StateBoxScene.instantiate()
 	var id := int(node.get("id", 0))
 	box.setup(node, _active_color(node), _is_active(node), bool(node.get("final", false)))
+	box.set_hosted_label(_root_label(box.hosted_root))
 	box.set_initial(int(parent_node.get("initial", 0)) == id)
 	box.set_meta(&"state_id", id)
 	box.gui_input.connect(_on_state_gui_input.bind(box))
+	box.portal_pressed.connect(_on_portal_pressed)
 	_boxes_by_id[id] = box
 	attach.call(box)
 
@@ -305,6 +316,11 @@ func _on_state_gui_input(event: InputEvent, box) -> void:
 	node_selected.emit(box.node_id)
 	_clear_log_selection()
 	_apply_selection(box.node_id)
+
+
+func _on_portal_pressed(root_id: int) -> void:
+	if root_id != 0:
+		drill_into.emit(root_id)
 
 
 func _on_transition_row_pressed(row) -> void:
@@ -612,3 +628,7 @@ func _name_of(id: Variant) -> String:
 	if key == 0:
 		return "—"
 	return String(_names.get(key, "#%d" % key))
+
+
+func _root_label(root_id: int) -> String:
+	return String(_root_labels.get(root_id, ""))
