@@ -194,7 +194,7 @@ func test_portal_double_click_drills_into_hosted_root() -> void:
 	_view.set_snapshot(snapshot)
 
 	var box := _state_box(Fixtures.ST_ALERTED)
-	assert_true((box.get_node("%PortalBadge") as Label).visible)
+	assert_true((box.get_node("%PortalBadge") as Button).visible)
 	watch_signals(_view)
 	var event := InputEventMouseButton.new()
 	event.button_index = MOUSE_BUTTON_LEFT
@@ -202,6 +202,39 @@ func test_portal_double_click_drills_into_hosted_root() -> void:
 	event.double_click = true
 	box.gui_input.emit(event)
 	assert_signal_emitted_with_parameters(_view, "drill_into", [7777])
+
+
+func test_portal_badge_names_the_hosted_root_and_drills_on_click() -> void:
+	_view.set_root_labels({Fixtures.AGENT: "NNAgent (Agent)"})
+	_view.set_snapshot(Fixtures.st_snapshot())
+
+	var badge := _state_box(Fixtures.ST_ROOT).get_node("%PortalBadge") as Button
+	assert_eq(badge.text, "› NNAgent (Agent)")
+	watch_signals(_view)
+	badge.pressed.emit()
+	assert_signal_emitted_with_parameters(_view, "drill_into", [Fixtures.AGENT])
+
+	_view.set_root_labels({})
+	assert_eq(badge.text, "› hosted root")
+
+
+func test_transitions_hide_zero_or_empty_delay() -> void:
+	var snapshot := Fixtures.st_snapshot()
+	for node in snapshot["nodes"]:
+		if int(node["id"]) == Fixtures.ST_RUN_STOP:
+			node["delay"] = "0.0"
+	_view.set_snapshot(snapshot)
+
+	var zero := _transition_row(Fixtures.ST_RUN_STOP)
+	assert_false((zero.get_node("%Detail") as Label).text.contains("delay"))
+	assert_false(zero.tooltip_text.contains("Delay"))
+
+	var empty := _transition_row(Fixtures.ST_WALK_STOP)
+	assert_false((empty.get_node("%Detail") as Label).text.contains("delay"))
+
+	_view.set_snapshot(Fixtures.st_snapshot())
+	var delayed := _transition_row(Fixtures.ST_RUN_STOP)
+	assert_string_contains((delayed.get_node("%Detail") as Label).text, "delay 1.5")
 
 
 func test_clicking_a_state_selects_it_and_select_node_stays_silent() -> void:

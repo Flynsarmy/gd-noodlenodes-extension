@@ -33,7 +33,8 @@ func setup(node: Dictionary, names: Dictionary) -> void:
 	node_id = int(node.get("id", 0))
 	var event := String(node.get("event", ""))
 	var target := int(node.get("to", 0))
-	var delay := String(node.get("delay", ""))
+	var delay := String(node.get("delay", "")).strip_edges()
+	var has_delay := delay != "" and not (delay.is_valid_float() and is_zero_approx(delay.to_float()))
 	var guard := String(node.get("guard", ""))
 	var triggers := PackedStringArray(node.get("triggers", []))
 
@@ -41,7 +42,7 @@ func setup(node: Dictionary, names: Dictionary) -> void:
 	_target_label.text = "→ " + _name_of(names, target)
 
 	var parts := PackedStringArray()
-	if delay != "":
+	if has_delay:
 		parts.append("delay " + delay)
 	if guard != "":
 		parts.append(guard)
@@ -54,7 +55,7 @@ func setup(node: Dictionary, names: Dictionary) -> void:
 		"Event: %s" % ("automatic" if event == "" else event),
 		"Target: %s" % _name_of(names, target),
 	])
-	if delay != "":
+	if has_delay:
 		lines.append("Delay: " + delay)
 	if guard != "":
 		lines.append("Guard: " + guard)

@@ -152,6 +152,7 @@ func _on_root_added(info: Dictionary) -> void:
 	if root_id == 0:
 		return
 	_root_infos[root_id] = info
+	_refresh_root_labels()
 	_root_list.set_roots(_root_infos.values(), _current_root_id)
 	if _current_root_id == 0:
 		var first := _first_top_level_root()
@@ -172,6 +173,7 @@ func _on_root_removed(root_id: int) -> void:
 	if chain_index != -1:
 		_follow_chain.resize(chain_index)
 	_root_infos.erase(root_id)
+	_refresh_root_labels()
 	_latest_snapshots.erase(root_id)
 	_events_by_root.erase(root_id)
 	_event_seqs_by_root.erase(root_id)
@@ -457,6 +459,18 @@ func _ensure_view(type: String) -> void:
 		_view.connect("drill_into", _on_view_drill_into)
 	if _view.has_signal("node_selected"):
 		_view.connect("node_selected", _on_view_node_selected)
+	_refresh_root_labels()
+
+
+func _refresh_root_labels() -> void:
+	if _view == null or not _view.has_method("set_root_labels"):
+		return
+	var labels := {}
+	for root_id in _root_infos:
+		var info: Dictionary = _root_infos[root_id]
+		var type := String(info.get("type", ""))
+		labels[root_id] = "%s (%s)" % [String(info.get("name", "")), String(Protocol.TYPE_LABELS.get(type, type))]
+	_view.call("set_root_labels", labels)
 
 
 func _on_view_drill_into(root_id: int) -> void:
