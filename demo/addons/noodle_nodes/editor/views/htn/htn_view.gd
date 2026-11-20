@@ -48,10 +48,7 @@ const MAX_BLACKBOARD_CHANGES := 512
 @onready var _detail_scroll: ScrollContainer = %DetailScroll
 @onready var _detail: VBoxContainer = %NodeDetail
 @onready var _detail_hint: Label = %DetailHint
-@onready var _search_label: Label = %SearchLabel
-@onready var _dependencies_label: Label = %DependenciesLabel
-@onready var _triggers_label: Label = %TriggersLabel
-@onready var _repair_label: Label = %RepairLabel
+@onready var _summary_label: Label = %SummaryLabel
 
 var _snapshot: Dictionary = {}
 ## Last event sequence included in the newest snapshot. Events at or below it
@@ -407,10 +404,34 @@ func _add_plan_row(parent: VBoxContainer, step: Dictionary) -> Node:
 # Header -----------------------------------------------------------------------
 
 func _render_header() -> void:
-	_search_label.text = _search_text()
-	_dependencies_label.text = _dependencies_text()
-	_triggers_label.text = _triggers_text()
-	_repair_label.text = _repair_text()
+	_summary_label.text = _summary_text()
+	_summary_label.tooltip_text = _summary_tooltip()
+
+
+## One line, because the debugger can be only a few rows tall. The full summary
+## with every dependency key and repair reason lives in the tooltip.
+func _summary_text() -> String:
+	var parts: Array[String] = []
+	if not _last_search.is_empty():
+		parts.append(_status_text(_last_search.get("status", "")))
+		parts.append("%d exp" % int(_last_search.get("expansions", 0)))
+		parts.append("cost %s" % str(_last_search.get("cost", 0.0)))
+		parts.append("optimal" if bool(_last_search.get("optimal", false)) else "best effort")
+	var searching := not parts.is_empty()
+	if not PackedStringArray(_dependencies).is_empty():
+		parts.append("deps %s" % ("complete" if _dependencies_complete else "incomplete"))
+	if not PackedStringArray(_triggers).is_empty():
+		parts.append("triggers: %s" % ", ".join(PackedStringArray(_triggers)))
+	if not _last_repair.is_empty():
+		parts.append("repair %s" % ("ok" if bool(_last_repair.get("succeeded", false)) else "failed"))
+	if parts.is_empty():
+		return "Search: —"
+	var text := " · ".join(parts)
+	return "Search: " + text if searching else text
+
+
+func _summary_tooltip() -> String:
+	return _search_text() + "\n" + _dependencies_text() + "\n" + _triggers_text() + "\n" + _repair_text()
 
 
 func _search_text() -> String:
