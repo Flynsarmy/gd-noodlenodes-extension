@@ -48,6 +48,7 @@ func _send_hello(session_id: int) -> void:
 	var session := get_session(session_id)
 	if session != null:
 		session.send_message(Protocol.HELLO, [])
+		panel.send_pause_scope()
 
 
 func _on_session_stopped(session_id: int) -> void:

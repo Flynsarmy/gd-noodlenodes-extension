@@ -54,6 +54,10 @@ func _send_events(root_id: int, events: Array) -> void:
 	_panel.handle_message(Protocol.EVENTS, [root_id, events])
 
 
+func _send_delta(root_id: int, delta: Dictionary) -> void:
+	_panel.handle_message(Protocol.SNAPSHOT_DELTA, [root_id, delta])
+
+
 func _messages_named(name: String) -> Array:
 	return _sent.filter(func(entry: Dictionary) -> bool: return entry.message == name)
 
@@ -593,6 +597,74 @@ func test_generic_view_drills_into_portal_rows() -> void:
 
 	tree.item_activated.emit(portal)
 	assert_signal_emitted_with_parameters(view, "drill_into", [Fixtures.HTN])
+
+
+func test_snapshot_delta_updates_the_cached_snapshot_and_view() -> void:
+	_add_roots()
+	var spy := SpyView.new()
+	_panel.get_node("%ViewHost").add_child(spy)
+	_panel._view = spy
+	_send_snapshot(Fixtures.ST_ROOT)
+	assert_eq(spy.snapshots.size(), 1)
+
+	_send_delta(Fixtures.ST_ROOT, { "set": { "frame": 601 } })
+	assert_eq(spy.snapshots.size(), 2)
+	assert_eq(int(spy.snapshots[1]["frame"]), 601)
+
+	_send_delta(Fixtures.ST_ROOT, { "set": { "time_usec": Fixtures.NOW_USEC + 100 } })
+	assert_eq(spy.snapshots.size(), 3)
+	assert_eq(int(spy.snapshots[2]["frame"]), 601, "each delta builds on the cached snapshot")
+
+	_send_delta(Fixtures.ST_ROOT, { "nodes_changed": [{
+		"id": Fixtures.ST_RUN, "parent": Fixtures.ST_ALERTED, "name": "RunChanged", "class": "NNSTNode", "enabled": true,
+	}] })
+	var renamed := false
+	for node in spy.snapshots[3]["nodes"]:
+		if int(node["id"]) == Fixtures.ST_RUN:
+			renamed = str(node["name"]) == "RunChanged"
+	assert_true(renamed, "nodes_changed replaces the node in the rebuilt snapshot")
+
+
+func test_snapshot_delta_without_a_base_is_ignored() -> void:
+	_add_roots()
+	var spy := SpyView.new()
+	_panel.get_node("%ViewHost").add_child(spy)
+	_panel._view = spy
+
+	_send_delta(Fixtures.ST_ROOT, { "set": { "frame": 999 } })
+	assert_eq(spy.snapshots.size(), 0)
+
+	_send_snapshot(Fixtures.ST_ROOT)
+	assert_eq(spy.snapshots.size(), 1)
+	assert_eq(int(spy.snapshots[0]["frame"]), Fixtures.FRAME)
+
+
+func test_pause_scope_messages_and_selection() -> void:
+	var pause: Button = _panel.get_node("%PauseButton")
+	var option: OptionButton = _panel.get_node("%PauseScopeOption")
+	assert_eq(option.selected, Protocol.PAUSE_SCOPE_AI)
+
+	_panel.handle_message(Protocol.PAUSED, [true, Protocol.PAUSE_SCOPE_GAME])
+	assert_true(pause.button_pressed)
+	assert_eq(pause.text, "Resume")
+	assert_eq(option.selected, Protocol.PAUSE_SCOPE_GAME)
+	assert_eq(_messages_named(Protocol.PAUSE_SCOPE).size(), 0, "incoming state is not echoed")
+
+	_panel.handle_message(Protocol.PAUSED, [true])
+	assert_eq(option.selected, Protocol.PAUSE_SCOPE_AI, "a one-element paused message means AI")
+
+	option.select(Protocol.PAUSE_SCOPE_GAME)
+	option.item_selected.emit(Protocol.PAUSE_SCOPE_GAME)
+	assert_eq(_messages_named(Protocol.PAUSE_SCOPE)[-1].data, [Protocol.PAUSE_SCOPE_GAME])
+	var sent := _messages_named(Protocol.PAUSE_SCOPE).size()
+	option.item_selected.emit(Protocol.PAUSE_SCOPE_GAME)
+	assert_eq(_messages_named(Protocol.PAUSE_SCOPE).size(), sent, "choosing the same scope sends nothing")
+
+	_panel.reset()
+	assert_eq(option.selected, Protocol.PAUSE_SCOPE_GAME, "the chosen scope survives a session reset")
+	_sent.clear()
+	_panel.send_pause_scope()
+	assert_eq(_messages_named(Protocol.PAUSE_SCOPE)[-1].data, [Protocol.PAUSE_SCOPE_GAME])
 
 
 func test_toolbar_sends_pause_step_and_toggles_layout_and_float() -> void:
