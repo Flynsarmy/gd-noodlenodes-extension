@@ -4,6 +4,9 @@ extends VBoxContainer
 signal root_activated(root_id: int)
 
 const Protocol := preload("res://addons/noodle_nodes/debugger/protocol.gd")
+const EditorScale := preload("res://addons/noodle_nodes/editor/editor_scale.gd")
+
+const TYPE_COLUMN_WIDTH := 56
 
 @onready var _tree: Tree = %Tree
 @onready var _filter: LineEdit = %Filter
@@ -19,6 +22,10 @@ var _root_items: Dictionary = {}
 
 
 func _ready() -> void:
+	EditorScale.apply_to_scene(self)
+	_tree.set_column_expand(0, true)
+	_tree.set_column_expand(1, false)
+	_tree.set_column_custom_minimum_width(1, int(EditorScale.px(TYPE_COLUMN_WIDTH)))
 	_filter.text_changed.connect(_on_filter_changed)
 	_tree.item_selected.connect(_on_item_selected)
 	_copy_button.pressed.connect(_on_copy_path_pressed)

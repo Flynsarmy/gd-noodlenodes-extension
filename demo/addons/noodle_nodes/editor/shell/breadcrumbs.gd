@@ -4,8 +4,13 @@ extends HBoxContainer
 signal crumb_activated(root_id: int)
 
 const CrumbScene := preload("res://addons/noodle_nodes/editor/shell/breadcrumb_button.tscn")
+const EditorScale := preload("res://addons/noodle_nodes/editor/editor_scale.gd")
 
 const HOST_MODULATE := Color(1, 1, 1, 0.75)
+
+
+func _ready() -> void:
+	EditorScale.apply_to_scene(self)
 
 
 func set_chain(chain: Array) -> void:

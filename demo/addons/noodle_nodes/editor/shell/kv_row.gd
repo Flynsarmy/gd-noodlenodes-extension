@@ -1,6 +1,8 @@
 @tool
 extends HBoxContainer
 
+const EditorScale := preload("res://addons/noodle_nodes/editor/editor_scale.gd")
+
 const FLASH_COLOR := Color(1.0, 0.85, 0.35)
 const FLASH_SEC := 0.5
 
@@ -8,6 +10,10 @@ const FLASH_SEC := 0.5
 @onready var _value: Label = %Value
 
 var _tween: Tween
+
+
+func _ready() -> void:
+	EditorScale.apply_to_scene(self)
 
 
 func set_values(key: String, value: Variant) -> void:

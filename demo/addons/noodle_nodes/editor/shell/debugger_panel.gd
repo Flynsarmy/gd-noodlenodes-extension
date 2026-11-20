@@ -2,6 +2,7 @@
 extends Control
 
 const Protocol := preload("res://addons/noodle_nodes/debugger/protocol.gd")
+const EditorScale := preload("res://addons/noodle_nodes/editor/editor_scale.gd")
 const GenericViewScene := preload("res://addons/noodle_nodes/editor/views/generic/generic_view.tscn")
 
 const VIEW_SCENES := {
@@ -25,6 +26,8 @@ const NODE_EVENT_FIELDS := ["node", "state", "transition", "behaviour", "action"
 const SETTINGS_PREFIX := "noodle_nodes/debugger/"
 const EVENT_BUFFER_MAX := 200
 const RECENT_EVENTS_MAX := 100
+const FLOAT_WIDTH := 1000
+const FLOAT_HEIGHT := 700
 
 signal send_message(message: String, data: Array)
 
@@ -66,6 +69,7 @@ var _detached := false
 
 
 func _ready() -> void:
+	EditorScale.apply_to_scene(self)
 	_root_list.root_activated.connect(_navigate_to)
 	_breadcrumbs.crumb_activated.connect(_navigate_to)
 	_pause_button.toggled.connect(_on_pause_toggled)
@@ -76,6 +80,7 @@ func _ready() -> void:
 	_float_window.close_requested.connect(_on_float_window_close_requested)
 	_main_split.dragged.connect(func(offset: int) -> void: _save_setting("split_main", offset))
 	_content_split.dragged.connect(func(offset: int) -> void: _save_setting("split_inspector", offset))
+	_float_window.size = _float_size()
 	_load_settings()
 	_update_pause_ui()
 
@@ -599,7 +604,7 @@ func _set_detached(detached: bool) -> void:
 		_float_window.add_child(_content)
 		_content.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 		if DisplayServer.get_name() != "headless":
-			_float_window.popup_centered(Vector2i(1000, 700))
+			_float_window.popup_centered(_float_size())
 	else:
 		if _content.get_parent() == _float_window:
 			_float_window.remove_child(_content)
@@ -619,8 +624,10 @@ func _load_settings() -> void:
 		vertical = str(_read_setting(settings, "layout", "horizontal")) == "vertical"
 		follow = bool(_read_setting(settings, "follow_active_path", false))
 		detached = bool(_read_setting(settings, "detached", false))
-		_main_split.split_offset = int(_read_setting(settings, "split_main", 250))
-		_content_split.split_offset = int(_read_setting(settings, "split_inspector", 380))
+		if settings.has_setting(_setting_key("split_main")):
+			_main_split.split_offset = int(settings.get_setting(_setting_key("split_main")))
+		if settings.has_setting(_setting_key("split_inspector")):
+			_content_split.split_offset = int(settings.get_setting(_setting_key("split_inspector")))
 	_main_split.vertical = vertical
 	_layout_button.set_pressed_no_signal(vertical)
 	_layout_button.text = "Vertical" if vertical else "Horizontal"
@@ -628,6 +635,10 @@ func _load_settings() -> void:
 	_follow_button.set_pressed_no_signal(follow)
 	if detached:
 		_set_detached(true)
+
+
+func _float_size() -> Vector2i:
+	return Vector2i(int(EditorScale.px(FLOAT_WIDTH)), int(EditorScale.px(FLOAT_HEIGHT)))
 
 
 func _settings() -> EditorSettings:
