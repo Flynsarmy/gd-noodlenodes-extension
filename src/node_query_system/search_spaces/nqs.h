@@ -30,6 +30,11 @@ private:
 	PackedFloat64Array _current_query_result_scores;
 	TypedArray<Node> _query_results;
 	PackedFloat64Array _query_result_scores;
+#ifdef DEBUG_ENABLED
+	bool _record_debug_scores;
+	TypedArray<Node> _debug_scored_nodes;
+	PackedFloat64Array _debug_scored_scores;
+#endif
 	uint64_t _total_query_runtime_usec;
 	uint64_t _current_query_runtime_usec;
 	uint64_t _current_call_runtime_usec;
@@ -104,6 +109,13 @@ public:
 
 	TypedArray<Node> get_query_results() const;
 	PackedFloat64Array get_query_result_scores() const;
+
+#ifdef DEBUG_ENABLED
+	void set_record_debug_scores(bool record_debug_scores);
+	bool get_record_debug_scores() const;
+	TypedArray<Node> get_debug_scored_nodes() const;
+	PackedFloat64Array get_debug_scored_scores() const;
+#endif
 
 	void set_top_n_to_find(int top_n_to_find);
 	int get_top_n_to_find() const;
