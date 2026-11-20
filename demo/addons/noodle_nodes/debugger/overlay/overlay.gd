@@ -28,6 +28,7 @@ const TYPE_COLORS := {
 @onready var _events: VBoxContainer = %Events
 @onready var _pause_button: Button = %PauseButton
 @onready var _step_button: Button = %StepButton
+@onready var _scope_selector: OptionButton = %ScopeSelector
 @onready var _timer: Timer = %RefreshTimer
 
 ## Untyped so tests can inject a fake standing in for the engine singleton.
@@ -64,6 +65,7 @@ func _ready() -> void:
 	visibility_changed.connect(_on_visibility_changed)
 	_pause_button.toggled.connect(_on_pause_toggled)
 	_step_button.pressed.connect(_on_step_pressed)
+	_scope_selector.item_selected.connect(_on_scope_selected)
 	if visible:
 		_attach()
 
@@ -127,6 +129,9 @@ func _attach() -> void:
 		debugger.connect("root_added", _on_root_added)
 		debugger.connect("root_removed", _on_root_removed)
 		debugger.connect("paused_changed", _on_paused_changed)
+	if debugger.has_signal("pause_scope_changed") \
+			and not debugger.is_connected("pause_scope_changed", _on_pause_scope_changed):
+		debugger.connect("pause_scope_changed", _on_pause_scope_changed)
 	_timer.start()
 	refresh()
 
@@ -139,6 +144,9 @@ func _detach() -> void:
 		debugger.disconnect("root_added", _on_root_added)
 		debugger.disconnect("root_removed", _on_root_removed)
 		debugger.disconnect("paused_changed", _on_paused_changed)
+	if debugger != null and debugger.has_signal("pause_scope_changed") \
+			and debugger.is_connected("pause_scope_changed", _on_pause_scope_changed):
+		debugger.disconnect("pause_scope_changed", _on_pause_scope_changed)
 	_release_watches()
 
 
@@ -388,6 +396,7 @@ func _sync_nqs() -> void:
 	if _nqs_drawer == null:
 		var scene := NqsDraw2DScene if is_2d else NqsDraw3DScene
 		_nqs_drawer = scene.instantiate()
+		_nqs_drawer.process_mode = Node.PROCESS_MODE_ALWAYS
 		entity_node.get_viewport().add_child(_nqs_drawer)
 	if _nqs_drawer.call("get_search_space_id") != search_space_id:
 		_nqs_drawer.call("set_search_space_id", search_space_id)
@@ -400,7 +409,8 @@ func _free_nqs_drawer() -> void:
 
 
 ## The deepest running BT query on the selected chain wins; a tree that is
-## between queries still shows the query it ran most recently.
+## between queries still shows the query it ran most recently. Agent query
+## sensors are the fallback when no behaviour tree reports a query.
 func _find_nqs_search_space_id() -> int:
 	var chain := _active_chain(_selected_entity)
 	for i in range(chain.size() - 1, -1, -1):
@@ -408,6 +418,13 @@ func _find_nqs_search_space_id() -> int:
 		if String(snapshot.get("type", "")) != Protocol.TYPE_BT:
 			continue
 		var search_space_id := _bt_search_space_id(snapshot)
+		if search_space_id != 0:
+			return search_space_id
+	for root_id in chain:
+		var snapshot := _snapshot(root_id)
+		if String(snapshot.get("type", "")) != Protocol.TYPE_AGENT:
+			continue
+		var search_space_id := _agent_search_space_id(snapshot)
 		if search_space_id != 0:
 			return search_space_id
 	return 0
@@ -442,6 +459,16 @@ func _bt_search_space_id(snapshot: Dictionary) -> int:
 func _search_space_badge(node: Dictionary) -> int:
 	var badges: Variant = node.get("badges", {})
 	return int(badges.get("nqs_search_space", 0)) if badges is Dictionary else 0
+
+
+func _agent_search_space_id(snapshot: Dictionary) -> int:
+	for node in snapshot.get("nodes", []):
+		if String(node.get("kind", "")) != "sensor":
+			continue
+		var search_space_id := int(node.get("nqs_search_space", 0))
+		if search_space_id != 0:
+			return search_space_id
+	return 0
 
 
 func _segment(snapshot: Dictionary) -> String:
@@ -501,6 +528,16 @@ func _sync_pause() -> void:
 	if debugger == null:
 		return
 	_apply_paused(debugger.call("is_paused") if debugger.has_method("is_paused") else false)
+	_sync_pause_scope()
+
+
+func _sync_pause_scope() -> void:
+	var supported := debugger != null \
+			and debugger.has_method("get_pause_scope") \
+			and debugger.has_method("set_pause_scope")
+	_scope_selector.disabled = not supported
+	if supported:
+		_scope_selector.select(int(debugger.call("get_pause_scope")))
 
 
 func _sync_processing() -> void:
@@ -772,3 +809,12 @@ func _on_root_removed(root_id: int) -> void:
 
 func _on_paused_changed(paused: bool) -> void:
 	_apply_paused(paused)
+
+
+func _on_scope_selected(index: int) -> void:
+	if debugger != null and debugger.has_method("set_pause_scope"):
+		debugger.call("set_pause_scope", index)
+
+
+func _on_pause_scope_changed(scope: int) -> void:
+	_scope_selector.select(scope)
