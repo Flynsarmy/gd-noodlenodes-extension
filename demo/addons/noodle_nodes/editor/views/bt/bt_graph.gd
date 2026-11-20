@@ -91,6 +91,7 @@ func set_nodes(nodes: Array, now_usec: int, running_node: int) -> void:
 	if structural or resized:
 		_place_items()
 	_fit_if_pending()
+	_follow_running_node()
 	queue_redraw()
 
 
@@ -154,6 +155,17 @@ func _auto_fit_now() -> void:
 
 func get_zoom() -> float:
 	return _zoom
+
+
+## Auto-fit keeps the running node on screen as the tree runs on, until the user
+## takes the view over.
+func _follow_running_node() -> void:
+	if not _auto_fit or _running_node == 0:
+		return
+	var item: Control = _items.get(_running_node)
+	if item == null or get_global_rect().encloses(item.get_global_rect()):
+		return
+	_auto_fit_now()
 
 
 func _notification(what: int) -> void:

@@ -310,17 +310,60 @@ func test_the_view_fits_the_default_panel_height() -> void:
 	assert_true(_node_visible(graph, DebuggerFixtures.COVER_MOVE), "the running node is framed inside the graph")
 
 
-func test_auto_fit_keeps_text_legible_and_frames_the_running_node() -> void:
+func test_auto_fit_keeps_the_running_leaf_legible_and_on_screen() -> void:
 	var graph := _graph()
 	graph.size = Vector2(1100, 130)
-	_view.set_snapshot(DebuggerFixtures.bt_snapshot())
+	var snapshot := DebuggerFixtures.patrol_bt_snapshot()
+	snapshot["running_node"] = DebuggerFixtures.PATROL_WALKER
+	_view.set_snapshot(snapshot)
 
 	assert_true(graph.get_zoom() >= 0.6, "auto-fit keeps node text legible, got zoom %s" % graph.get_zoom())
-	assert_true(_node_visible(graph, DebuggerFixtures.COVER_MOVE), "the running node is framed in a short panel")
+	assert_true(_node_visible(graph, DebuggerFixtures.PATROL_WALKER), "the deepest running node is framed, not just the root")
 
 	graph.fit()
 	assert_true(graph.get_zoom() < 0.6, "the manual Fit button may still frame the whole tree")
 	assert_true(_all_items_visible(graph), "the manual fit shows every node")
+
+
+func test_auto_fit_frames_the_whole_tree_when_the_panel_grows() -> void:
+	var graph := _graph()
+	graph.size = Vector2(1100, 130)
+	var snapshot := DebuggerFixtures.patrol_bt_snapshot()
+	snapshot["running_node"] = DebuggerFixtures.PATROL_WALKER
+	_view.set_snapshot(snapshot)
+
+	graph.size = Vector2(1100, 420)
+	assert_true(_all_items_visible(graph), "a taller graph frames the whole tree")
+	assert_true(graph.get_zoom() >= 0.6, "the whole-tree fit stays readable")
+
+
+func test_auto_fit_follows_a_new_running_node() -> void:
+	var graph := _graph()
+	graph.size = Vector2(1100, 130)
+	var before := DebuggerFixtures.bt_snapshot()
+	before["running_node"] = DebuggerFixtures.COVER_FIND
+	_view.set_snapshot(before)
+	assert_false(_node_visible(graph, DebuggerFixtures.COVER_MOVE), "the other leaf starts outside the framed path")
+
+	var after := DebuggerFixtures.bt_snapshot()
+	after["running_node"] = DebuggerFixtures.COVER_MOVE
+	_view.set_snapshot(after)
+	assert_true(_node_visible(graph, DebuggerFixtures.COVER_MOVE), "a new running node is brought into view")
+
+
+func test_a_running_change_does_not_move_a_view_the_user_panned() -> void:
+	var graph := _graph()
+	graph.size = Vector2(1100, 130)
+	var before := DebuggerFixtures.bt_snapshot()
+	before["running_node"] = DebuggerFixtures.COVER_FIND
+	_view.set_snapshot(before)
+	_pan(graph, Vector2(150, 60))
+	var panned := _item_positions(graph)
+
+	var after := DebuggerFixtures.bt_snapshot()
+	after["running_node"] = DebuggerFixtures.COVER_MOVE
+	_view.set_snapshot(after)
+	assert_eq(_item_positions(graph), panned, "the user's view is left alone")
 
 
 func _graph() -> BTGraph:
