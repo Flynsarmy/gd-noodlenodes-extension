@@ -238,7 +238,9 @@ theme_override_constants/separation = 8
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
+mouse_filter = 1
 clip_text = true
+text_overrun_behavior = 3
 text = "No attempt selected."
 
 [node name="FitButton" type="Button" parent="Margins/MainSplit/DetailTabs/Trace/Toolbar"]
