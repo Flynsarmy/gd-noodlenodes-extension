@@ -7,14 +7,19 @@ extends "res://addons/noodle_nodes/editor/views/agent/node_row.gd"
 @onready var _age: Label = %Age
 
 var _age_text := ""
+var _name_text := ""
 
 
 func _ready() -> void:
 	super()
+	_name.remove_theme_stylebox_override("normal")
+	_age.remove_theme_stylebox_override("normal")
 	resized.connect(_queue_fit)
+	theme_changed.connect(_queue_fit)
 
 
 func configure(display_name: String, value: Variant, age_usec: int) -> void:
+	_name_text = display_name
 	_name.text = display_name
 	_name.tooltip_text = display_name
 	_value.text = format_value(value)
@@ -52,10 +57,17 @@ func _fit() -> void:
 	if row == null:
 		return
 	var gap := float(row.get_theme_constant("separation"))
-	var name_width := font.get_string_size(_name.text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x
-	var age_width := font.get_string_size(_age_text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x
+	var name_width := font.get_string_size(_name_text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x
+	var name_padding := _label_padding(_name)
+	var age_width := _label_text_width(_age, font, font_size, _age_text)
+	_age.custom_minimum_size.x = age_width if _age.visible else 0.0
 	if _age.visible:
-		if _name.size.x < name_width - 0.5:
+		if _name.size.x - name_padding < name_width - 0.5:
 			_age.visible = false
-	elif _name.size.x >= name_width + age_width + gap - 0.5:
+			_age.custom_minimum_size.x = 0.0
+			_queue_fit()
+	elif _name.size.x - name_padding >= name_width + age_width + gap - 0.5:
 		_age.visible = true
+		_age.custom_minimum_size.x = age_width
+		_queue_fit()
+	_name.text = _elide_text(font, font_size, _name_text, _name.size.x - name_padding)

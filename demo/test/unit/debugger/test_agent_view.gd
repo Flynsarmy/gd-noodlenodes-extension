@@ -27,6 +27,19 @@ func _row_names() -> Array:
 	return names
 
 
+func _editor_like_theme() -> Theme:
+	var theme := Theme.new()
+	theme.default_font_size = 28
+	var normal := StyleBoxFlat.new()
+	normal.bg_color = Color(0, 0, 0, 0)
+	normal.content_margin_left = 16
+	normal.content_margin_right = 16
+	normal.content_margin_top = 4
+	normal.content_margin_bottom = 4
+	theme.set_stylebox("normal", "Label", normal)
+	return theme
+
+
 func _fits_chars(label, count: int) -> bool:
 	if label.text.length() < count:
 		return false
@@ -34,8 +47,13 @@ func _fits_chars(label, count: int) -> bool:
 	if font == null:
 		return false
 	var font_size = label.get_theme_font_size("font_size")
+	var style = label.get_theme_stylebox("normal")
+	var padding: float = style.get_minimum_size().x if style != null else 0.0
+	var content: float = label.size.x - padding
+	if font.get_string_size(label.text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x > content + 0.5:
+		return false
 	var prefix: String = label.text.substr(0, count)
-	return label.size.x >= font.get_string_size(prefix, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x
+	return content >= font.get_string_size(prefix, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x
 
 
 func _find_row(root: Node, node_id: int):
@@ -336,6 +354,7 @@ func test_double_clicking_a_portal_action_emits_drill_into() -> void:
 
 func test_view_fits_godots_default_bottom_panel_height() -> void:
 	var frame := Control.new()
+	frame.theme = _editor_like_theme()
 	frame.size = Vector2(1100, 170)
 	add_child_autofree(frame)
 	var view = AgentViewScene.instantiate()
@@ -395,11 +414,7 @@ func test_timeline_band_is_capped_in_a_tall_panel() -> void:
 
 
 func test_behaviour_name_survives_a_650_px_wide_view() -> void:
-	# Simulates the editor's larger scaled font inside a 1x pane width.
-	var theme := Theme.new()
-	theme.default_font_size = 32
 	var frame := Control.new()
-	frame.theme = theme
 	frame.size = Vector2(650, 170)
 	add_child_autofree(frame)
 	var view = AgentViewScene.instantiate()
@@ -407,6 +422,11 @@ func test_behaviour_name_survives_a_650_px_wide_view() -> void:
 	view.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	view.set_snapshot(Fixtures.agent_snapshot())
 	view.apply_events(Fixtures.agent_events())
+	await get_tree().process_frame
+	await get_tree().process_frame
+
+	# The editor theme arrives after the view is built; the fit must re-run.
+	frame.theme = _editor_like_theme()
 	await get_tree().process_frame
 	await get_tree().process_frame
 
