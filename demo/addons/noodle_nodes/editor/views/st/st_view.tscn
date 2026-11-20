@@ -1,0 +1,158 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://addons/noodle_nodes/editor/views/st/st_view.gd" id="1_view"]
+
+[node name="STView" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_view")
+
+[node name="Margin" type="MarginContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/margin_left = 4
+theme_override_constants/margin_top = 4
+theme_override_constants/margin_right = 4
+theme_override_constants/margin_bottom = 4
+
+[node name="Body" type="HBoxContainer" parent="Margin"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="BoxScroll" type="ScrollContainer" parent="Margin/Body"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="Boxes" type="VBoxContainer" parent="Margin/Body/BoxScroll"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 6
+
+[node name="Empty" type="Label" parent="Margin/Body/BoxScroll/Boxes"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.6, 0.63, 0.68, 1)
+text = "No state tree snapshot."
+horizontal_alignment = 1
+autowrap_mode = 2
+
+[node name="Log" type="VBoxContainer" parent="Margin/Body"]
+custom_minimum_size = Vector2(340, 0)
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="LogHeader" type="HBoxContainer" parent="Margin/Body/Log"]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="Title" type="Label" parent="Margin/Body/Log/LogHeader"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 13
+text = "History"
+
+[node name="LogCount" type="Label" parent="Margin/Body/Log/LogHeader"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.6, 0.63, 0.68, 1)
+theme_override_font_sizes/font_size = 11
+text = "0"
+horizontal_alignment = 2
+
+[node name="Copy" type="Button" parent="Margin/Body/Log/LogHeader"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Copy"
+
+[node name="Clear" type="Button" parent="Margin/Body/Log/LogHeader"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Clear"
+
+[node name="Filters" type="HFlowContainer" parent="Margin/Body/Log"]
+layout_mode = 2
+theme_override_constants/h_separation = 8
+theme_override_constants/v_separation = 0
+
+[node name="FilterEvents" type="CheckBox" parent="Margin/Body/Log/Filters"]
+unique_name_in_owner = true
+layout_mode = 2
+button_pressed = true
+text = "Events"
+
+[node name="FilterTransitions" type="CheckBox" parent="Margin/Body/Log/Filters"]
+unique_name_in_owner = true
+layout_mode = 2
+button_pressed = true
+text = "Transitions"
+
+[node name="FilterGuards" type="CheckBox" parent="Margin/Body/Log/Filters"]
+unique_name_in_owner = true
+layout_mode = 2
+button_pressed = true
+text = "Guards"
+
+[node name="FilterPending" type="CheckBox" parent="Margin/Body/Log/Filters"]
+unique_name_in_owner = true
+layout_mode = 2
+button_pressed = true
+text = "Pending"
+
+[node name="FilterCancelled" type="CheckBox" parent="Margin/Body/Log/Filters"]
+unique_name_in_owner = true
+layout_mode = 2
+button_pressed = true
+text = "Cancelled"
+
+[node name="FilterStates" type="CheckBox" parent="Margin/Body/Log/Filters"]
+unique_name_in_owner = true
+layout_mode = 2
+button_pressed = true
+text = "Enter/Exit"
+
+[node name="SearchRow" type="HBoxContainer" parent="Margin/Body/Log"]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="Search" type="LineEdit" parent="Margin/Body/Log/SearchRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+placeholder_text = "Search history..."
+clear_button_enabled = true
+
+[node name="MaxLabel" type="Label" parent="Margin/Body/Log/SearchRow"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.6, 0.63, 0.68, 1)
+theme_override_font_sizes/font_size = 11
+text = "Max"
+
+[node name="MaxLines" type="SpinBox" parent="Margin/Body/Log/SearchRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(80, 0)
+layout_mode = 2
+min_value = 1.0
+max_value = 5000.0
+step = 1.0
+value = 500.0
+allow_greater = true
+
+[node name="LogScroll" type="ScrollContainer" parent="Margin/Body/Log"]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="LogEntries" type="VBoxContainer" parent="Margin/Body/Log/LogScroll"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 1

@@ -1,0 +1,43 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://addons/noodle_nodes/editor/views/st/log_entry.gd" id="1_entry"]
+
+[node name="LogEntry" type="Button"]
+custom_minimum_size = Vector2(0, 20)
+size_flags_horizontal = 3
+mouse_default_cursor_shape = 2
+toggle_mode = true
+flat = true
+script = ExtResource("1_entry")
+
+[node name="Row" type="MarginContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 4.0
+offset_right = -2.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="Content" type="HBoxContainer" parent="Row"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/separation = 4
+
+[node name="Kind" type="Label" parent="Row/Content"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(58, 0)
+layout_mode = 2
+mouse_filter = 2
+theme_override_font_sizes/font_size = 9
+text = "EVENT"
+
+[node name="Message" type="Label" parent="Row/Content"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+mouse_filter = 2
+theme_override_font_sizes/font_size = 11
+clip_text = true
