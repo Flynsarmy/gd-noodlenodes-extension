@@ -290,6 +290,25 @@ func test_follow_active_path_subscribes_and_drills_to_the_deepest_root() -> void
 	assert_eq(_message_ids(Protocol.UNSUBSCRIBE), [Fixtures.AGENT, Fixtures.HTN, Fixtures.COVER_BT])
 
 
+func test_follow_from_an_inactive_root_restarts_at_the_top_level_ancestor() -> void:
+	_add_roots()
+	_send_snapshot(Fixtures.ST_ROOT)
+	_send_snapshot(Fixtures.AGENT)
+	_select_root(Fixtures.PATROL_BT)
+	_send_snapshot(Fixtures.PATROL_BT)
+
+	var follow: Button = _panel.get_node("%FollowButton")
+	follow.button_pressed = true
+
+	assert_ne(_panel._current_root_id, Fixtures.PATROL_BT, "following leaves an inactive branch")
+	_send_snapshot(Fixtures.HTN)
+	_send_snapshot(Fixtures.COVER_BT)
+
+	assert_eq(_panel._current_root_id, Fixtures.COVER_BT)
+	assert_eq(_crumb_labels()[-1], "NNBTRoot (BT)")
+	assert_true(Fixtures.PATROL_BT in _message_ids(Protocol.UNSUBSCRIBE), "the inactive branch is dropped")
+
+
 func test_follow_active_path_switches_when_the_active_root_changes() -> void:
 	_add_roots()
 	var follow: Button = _panel.get_node("%FollowButton")

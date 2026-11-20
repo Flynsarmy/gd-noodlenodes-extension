@@ -568,10 +568,10 @@ func _on_follow_toggled(pressed: bool) -> void:
 	_follow = pressed
 	_follow_chain.clear()
 	if _follow and _current_root_id != 0:
-		_follow_chain = [_current_root_id]
+		_follow_chain = _ancestry(_current_root_id)
 	_apply_subscriptions()
 	if _follow:
-		_advance_follow(_current_root_id)
+		_advance_follow(_follow_chain.front() if not _follow_chain.is_empty() else _current_root_id)
 	_save_setting("follow_active_path", _follow)
 
 
