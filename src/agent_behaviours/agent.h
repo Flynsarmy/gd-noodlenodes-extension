@@ -1,5 +1,6 @@
 #pragma once
 
+#include "../debugger/blackboard_watch.h"
 #include "../debugger/debug_root.h"
 #include "../host.h"
 #include "../root_context.h"
@@ -55,6 +56,7 @@ private:
 	NNHostedRoot _hosted_root;
 #ifdef DEBUG_ENABLED
 	NNDebugRoot _debug_root;
+	NNBlackboardDebugWatch _debug_blackboard_watch;
 #endif
 
 #ifdef DEBUG_ENABLED
@@ -114,6 +116,11 @@ private:
 	NNBehaviour *_get_candidate(const ObjectID &behaviour_group_id, const ObjectID &behaviour_id) const;
 	void _emit_node_signal(const char *signal_name, const ObjectID &node_id);
 
+#ifdef DEBUG_ENABLED
+	void _debug_record_action_changed(const ObjectID &p_action_id);
+	void _debug_record_behaviour_changed(const ObjectID &p_behaviour_id, const ObjectID &p_group_id, const ObjectID &p_action_id);
+#endif
+
 protected:
 	static void _bind_methods();
 	void place_into_top_n_behaviour_list(const ObjectID &behaviour_group_id, const ObjectID &behaviour_id, float score);
@@ -141,6 +148,8 @@ public:
 	NNHostedRoot *get_hosted_root() override { return &_hosted_root; }
 #ifdef DEBUG_ENABLED
 	NNDebugRoot *get_debug_root() override { return &_debug_root; }
+	NNBlackboardDebugWatch *get_debug_blackboard_watch() override { return &_debug_blackboard_watch; }
+	Dictionary get_debug_snapshot() const override;
 #endif
 
 	void set_blackboard_resource(const Ref<NNBlackboard> &p_blackboard);
@@ -159,6 +168,9 @@ public:
 	// The debug overlay peeks these so a refresh never reconciles the agent.
 	NNBehaviour *peek_current_behaviour() const;
 	NNAction *peek_current_action() const;
+	NNBehaviourGroup *peek_current_behaviour_group() const;
+	// [{ "behaviour": id, "group": id, "score": float }] best first.
+	Array get_debug_top_scoring() const;
 #endif
 
 	void set_process_thread(int p_process_thread);

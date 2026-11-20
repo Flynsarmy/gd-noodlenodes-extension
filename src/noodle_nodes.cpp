@@ -5,6 +5,10 @@
 #include <godot_cpp/core/class_db.hpp>
 #include <godot_cpp/core/object.hpp>
 
+#ifdef DEBUG_ENABLED
+#include "debugger/blackboard_watch.h"
+#endif
+
 using namespace godot;
 
 // Method binds.
@@ -27,6 +31,10 @@ void NoodleNodes::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("has_blackboard", "key"), &NoodleNodes::has_blackboard);
 	ClassDB::bind_method(D_METHOD("erase_blackboard", "key"), &NoodleNodes::erase_blackboard);
 	ClassDB::bind_method(D_METHOD("get_actor"), &NoodleNodes::get_actor);
+
+#ifdef DEBUG_ENABLED
+	ClassDB::bind_method(D_METHOD("get_debug_snapshot"), &NoodleNodes::get_debug_snapshot);
+#endif
 }
 
 // Constructor and destructor.
@@ -131,3 +139,26 @@ Node *NoodleNodes::get_actor() const {
 	NoodleNodes *ancestor_root = get_ancestor_root();
 	return ancestor_root != nullptr ? ancestor_root->get_actor() : nullptr;
 }
+
+#ifdef DEBUG_ENABLED
+void NoodleNodes::_on_debug_blackboard_value_changed(const String &p_key, const Variant &p_value) {
+	NNBlackboardDebugWatch *watch = get_debug_blackboard_watch();
+	if (watch != nullptr) {
+		watch->on_value_changed(p_key, p_value);
+	}
+}
+
+void NoodleNodes::_on_debug_blackboard_value_erased(const String &p_key) {
+	NNBlackboardDebugWatch *watch = get_debug_blackboard_watch();
+	if (watch != nullptr) {
+		watch->on_value_erased(p_key);
+	}
+}
+
+void NoodleNodes::_on_debug_blackboard_cleared() {
+	NNBlackboardDebugWatch *watch = get_debug_blackboard_watch();
+	if (watch != nullptr) {
+		watch->on_cleared();
+	}
+}
+#endif

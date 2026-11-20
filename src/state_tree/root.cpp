@@ -11,6 +11,8 @@
 #include <godot_cpp/core/object.hpp>
 #ifdef DEBUG_ENABLED
 #include "../debugger/debug_root.h"
+#include "../debugger/snapshot_common.h"
+#include "../debugger/snapshot_st.h"
 #include <vector>
 #endif
 
@@ -89,7 +91,8 @@ void NNSTRoot::_bind_methods() {
 
 NNSTRoot::NNSTRoot() {
 #ifdef DEBUG_ENABLED
-	_debug_root.configure(this, "st");
+	_debug_blackboard_watch.configure(this);
+	_debug_root.configure(this, "st", [this](bool p_watched) { _debug_blackboard_watch.set_watched(p_watched); });
 #endif
 #ifdef DEBUG_ENABLED
 	_total_tick_usec = 0;
@@ -136,10 +139,22 @@ void NNSTRoot::set_total_tick_usec(uint64_t total_tick_usec) {
 uint64_t NNSTRoot::get_total_tick_usec() const {
 	return _total_tick_usec;
 }
+
+void NNSTRoot::_note_debug_expression_property(const String &p_name) {
+	for (const String &name : _debug_expression_property_names) {
+		if (name == p_name) {
+			return;
+		}
+	}
+	_debug_expression_property_names.push_back(p_name);
+}
 #endif
 
 void NNSTRoot::set_blackboard_resource(const Ref<NNBlackboard> &p_blackboard) {
 	_root_context.set_blackboard(p_blackboard);
+#ifdef DEBUG_ENABLED
+	_debug_blackboard_watch.sync();
+#endif
 }
 
 Ref<NNBlackboard> NNSTRoot::get_assigned_blackboard() const {
@@ -194,11 +209,17 @@ void NNSTRoot::_apply_initial_expression_properties() {
 		// Expression properties share the blackboard with expression guards so
 		// both use the exact same names inside Expression objects.
 		get_blackboard_resource()->set_value(String(key), _initial_expression_properties[key]);
+#ifdef DEBUG_ENABLED
+		_note_debug_expression_property(String(key));
+#endif
 	}
 }
 
 void NNSTRoot::set_expression_property(const StringName &p_name, const Variant &p_value) {
 	_apply_initial_expression_properties();
+#ifdef DEBUG_ENABLED
+	_note_debug_expression_property(String(p_name));
+#endif
 
 	get_blackboard_resource()->set_value(String(p_name), p_value);
 	_property_change_pending = true;
@@ -356,6 +377,14 @@ void NNSTRoot::_try_drain_event_queue() {
 		_is_dispatching_event = true;
 
 		// The chart receives the event before any of its states do.
+#ifdef DEBUG_ENABLED
+		if (NNDebugRoot *debug_root = nn_debug_watched_root(this)) {
+			Dictionary fields;
+			fields["name"] = event_name;
+			fields["state"] = (int64_t)get_instance_id();
+			debug_root->record("st_event", fields);
+		}
+#endif
 		emit_signal("event_received", event_name);
 
 		bool consumed = false;
@@ -515,7 +544,19 @@ bool NNSTRoot::_try_root_event_transitions(const String &name) {
 		const ObjectID guard_state_id = guard_state != nullptr ? ObjectID(guard_state->get_instance_id()) : ObjectID();
 		const uint64_t guard_state_epoch = guard_state != nullptr ? guard_state->get_activation_epoch() : 0;
 
+#ifdef DEBUG_ENABLED
+		NNDebugRoot *debug_root = nn_debug_watched_root(this);
+		Ref<NNSTGuard> debug_guard;
+		int64_t debug_transition_id = 0;
+		if (debug_root != nullptr) {
+			debug_guard = transition->get_guard();
+			debug_transition_id = nn_debug_id(transition);
+		}
+#endif
 		if (!transition->_can_transition(guard_state)) {
+#ifdef DEBUG_ENABLED
+			nn_debug_record_guard(debug_root, debug_transition_id, debug_guard, "event", false);
+#endif
 			// A replaced activation also abandons the remaining root
 			// transitions: the chart already handled the event itself.
 			if (!_is_active_child_activation_valid(guard_state_id, guard_state_epoch)) {
@@ -523,6 +564,9 @@ bool NNSTRoot::_try_root_event_transitions(const String &name) {
 			}
 			continue;
 		}
+#ifdef DEBUG_ENABLED
+		nn_debug_record_guard(debug_root, debug_transition_id, debug_guard, "event", true);
+#endif
 
 		// The guard may have transitioned the chart even though it returned
 		// true. Never apply the transition for a stale active child.

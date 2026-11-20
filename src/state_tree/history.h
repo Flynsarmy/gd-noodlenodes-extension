@@ -90,6 +90,11 @@ public:
 	NodePath get_remembered_state() const;
 	void clear_history();
 
+#ifdef DEBUG_ENABLED
+	// Every remembered state in pre-order, for the debugger's history node extra.
+	Array get_debug_remembered_ids() const;
+#endif
+
 	// Handling functions.
 
 	// Internal API. Snapshots the complete active configuration of `compound`,

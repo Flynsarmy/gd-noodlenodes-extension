@@ -177,5 +177,18 @@ bool NNSTTransition::take(bool immediately) {
 		return false;
 	}
 
+#ifdef DEBUG_ENABLED
+	set_debug_trigger("manual");
+#endif
 	return parent_state->_request_transition(this, immediately);
 }
+
+#ifdef DEBUG_ENABLED
+void NNSTTransition::set_debug_trigger(const String &p_trigger) {
+	_debug_trigger = p_trigger;
+}
+
+String NNSTTransition::get_debug_trigger() const {
+	return _debug_trigger;
+}
+#endif

@@ -18,6 +18,11 @@ private:
 	String _delay_in_seconds;
 	PackedStringArray _delay_read_keys;
 	mutable NNCachedExpression _delay_cache;
+#ifdef DEBUG_ENABLED
+	// The trigger that requested the pending or running transition, e.g.
+	// "event" or "state_enter". Reported by the st_transition event.
+	String _debug_trigger;
+#endif
 
 protected:
 	static void _bind_methods();
@@ -65,6 +70,11 @@ public:
 	// Triggers this transition from code. Requires the owning state to be
 	// active. With `immediately` the delay is skipped, otherwise it is honored.
 	bool take(bool immediately = true);
+
+#ifdef DEBUG_ENABLED
+	void set_debug_trigger(const String &p_trigger);
+	String get_debug_trigger() const;
+#endif
 };
 
 } //namespace godot

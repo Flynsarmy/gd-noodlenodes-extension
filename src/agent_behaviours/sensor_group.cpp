@@ -56,6 +56,9 @@ float NNSensorGroup::evaluate_sensor_value() {
 		}
 		// Sensors feed considerations, so every enabled child must refresh even once the result is final.
 		aggregation.add(sensor->evaluate_sensor_value());
+#ifdef DEBUG_ENABLED
+		sensor->set_last_evaluated_timestamp(godot::Time::get_singleton()->get_ticks_usec());
+#endif
 	}
 
 	float sensor_value = aggregation.result();

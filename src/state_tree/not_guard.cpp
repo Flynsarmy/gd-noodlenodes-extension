@@ -26,7 +26,17 @@ bool NNSTNotGuard::is_satisfied(NNSTTransition *p_transition, NNSTTickedNodes *p
 		return true;
 	}
 
-	return !_guard->is_satisfied(p_transition, p_state);
+	const bool satisfied = !_guard->is_satisfied(p_transition, p_state);
+#ifdef DEBUG_ENABLED
+	if (nn_guard_debug_active(p_state)) {
+		String child_detail = _guard->get_debug_detail();
+		if (child_detail.is_empty()) {
+			child_detail = _guard->get_debug_description();
+		}
+		set_debug_detail(vformat("NotGuard(%s) => %s", child_detail, satisfied ? "true" : "false"));
+	}
+#endif
+	return satisfied;
 }
 
 int NNSTNotGuard::get_supported_trigger_types() const {
@@ -35,3 +45,12 @@ int NNSTNotGuard::get_supported_trigger_types() const {
 	}
 	return _guard->get_supported_trigger_types();
 }
+
+#ifdef DEBUG_ENABLED
+String NNSTNotGuard::get_debug_description() const {
+	if (_guard.is_null()) {
+		return "NotGuard()";
+	}
+	return "NotGuard(" + _guard->get_debug_description() + ")";
+}
+#endif

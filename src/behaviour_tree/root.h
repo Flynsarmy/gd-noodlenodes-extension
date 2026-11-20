@@ -1,6 +1,7 @@
 #pragma once
 
 #include "../agent_behaviours/sensors.h"
+#include "../debugger/blackboard_watch.h"
 #include "../debugger/debug_root.h"
 #include "../host.h"
 #include "../root_context.h"
@@ -24,6 +25,8 @@ private:
 	NNHostedRoot _hosted_root;
 #ifdef DEBUG_ENABLED
 	NNDebugRoot _debug_root;
+	NNBlackboardDebugWatch _debug_blackboard_watch;
+	int64_t _debug_tick_count;
 #endif
 	// Monotonic tree time. It is never reset, so recorded cooldown start times
 	// stay in the past. Double so a long session keeps the precision of the
@@ -74,6 +77,9 @@ public:
 	NNHostedRoot *get_hosted_root() override { return &_hosted_root; }
 #ifdef DEBUG_ENABLED
 	NNDebugRoot *get_debug_root() override { return &_debug_root; }
+	NNBlackboardDebugWatch *get_debug_blackboard_watch() override { return &_debug_blackboard_watch; }
+	Dictionary get_debug_snapshot() const override;
+	int64_t get_debug_tick_count() const { return _debug_tick_count; }
 #endif
 
 	void set_blackboard_resource(const Ref<NNBlackboard> &p_blackboard);

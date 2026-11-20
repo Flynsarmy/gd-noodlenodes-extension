@@ -36,6 +36,12 @@
 				Returns the effective [NNBlackboard] resolved through the nearest ancestor root: the board explicitly assigned to a root, or the board that root inherits from the root above it, or the private board of the outermost root. Returns [code]null[/code] only when there is no root ancestor.
 			</description>
 		</method>
+		<method name="get_debug_snapshot" qualifiers="const">
+			<return type="Dictionary" />
+			<description>
+				Returns the debugger snapshot of this node when it is a root ([NNAgent], [NNBTRoot], [NNSTRoot] or [NNHTNRoot]), or an empty [Dictionary] for any other node. The schema is in [code]src/debugger/PROTOCOL.md[/code]: the common envelope, the flat pre-order [code]nodes[/code] list, hosted roots as portals on their host node, plus the type-specific state of the owning system. Only available in debug builds ([code]DEBUG_ENABLED[/code]); the method is not registered in release builds.
+			</description>
+		</method>
 		<method name="has_blackboard" qualifiers="const">
 			<return type="bool" />
 			<param index="0" name="key" type="String" />

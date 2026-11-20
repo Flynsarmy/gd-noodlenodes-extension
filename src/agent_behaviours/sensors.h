@@ -38,6 +38,7 @@ public:
 #ifdef DEBUG_ENABLED
 	inline uint64_t get_last_visited_timestamp() const { return _last_visited_timestamp; };
 	inline uint64_t get_last_evaluated_timestamp() const { return _last_evaluated_timestamp; };
+	inline void set_last_evaluated_timestamp(uint64_t new_timestamp) { _last_evaluated_timestamp = new_timestamp; };
 #endif
 
 	bool get_has_sensor_value_changed() const { return _has_sensor_value_changed; };

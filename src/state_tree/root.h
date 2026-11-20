@@ -1,5 +1,6 @@
 #pragma once
 
+#include "../debugger/blackboard_watch.h"
 #include "../debugger/debug_root.h"
 #include "../host.h"
 #include "../root_context.h"
@@ -73,6 +74,10 @@ private:
 	NNHostedRoot _hosted_root;
 #ifdef DEBUG_ENABLED
 	NNDebugRoot _debug_root;
+	NNBlackboardDebugWatch _debug_blackboard_watch;
+	// Names touched through set_expression_property(), so the snapshot can show
+	// their current values next to the configured initial properties.
+	std::vector<String> _debug_expression_property_names;
 #endif
 
 	// Leaves the chart inactive from the current active set, without running
@@ -85,6 +90,8 @@ private:
 
 #ifdef DEBUG_ENABLED
 	uint64_t _total_tick_usec;
+	Dictionary _debug_get_expression_properties() const;
+	void _note_debug_expression_property(const String &p_name);
 #endif
 	TypedArray<NNSensors> _child_sensors;
 	unsigned int _num_child_sensors;
@@ -170,6 +177,8 @@ public:
 	NNHostedRoot *get_hosted_root() override { return &_hosted_root; }
 #ifdef DEBUG_ENABLED
 	NNDebugRoot *get_debug_root() override { return &_debug_root; }
+	NNBlackboardDebugWatch *get_debug_blackboard_watch() override { return &_debug_blackboard_watch; }
+	Dictionary get_debug_snapshot() const override;
 #endif
 
 	void set_blackboard_resource(const Ref<NNBlackboard> &p_blackboard);

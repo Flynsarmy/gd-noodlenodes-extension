@@ -16,6 +16,9 @@ public:
 	virtual int get_supported_trigger_types() const override;
 	TypedArray<NNSTGuard> get_guards() const;
 	void set_guards(const TypedArray<NNSTGuard> &p_guards);
+#ifdef DEBUG_ENABLED
+	virtual String get_debug_description() const override;
+#endif
 };
 
 } //namespace godot

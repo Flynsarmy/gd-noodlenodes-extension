@@ -11,6 +11,7 @@
 
 #ifdef DEBUG_ENABLED
 #include "../debugger/debug_root.h"
+#include "../debugger/snapshot_common.h"
 #endif
 
 using namespace godot;
@@ -102,7 +103,8 @@ void NNAgent::_bind_methods() {
 
 NNAgent::NNAgent() {
 #ifdef DEBUG_ENABLED
-	_debug_root.configure(this, "agent");
+	_debug_blackboard_watch.configure(this);
+	_debug_root.configure(this, "agent", [this](bool p_watched) { _debug_blackboard_watch.set_watched(p_watched); });
 #endif
 	_rng.instantiate();
 
@@ -306,6 +308,9 @@ void NNAgent::_end_current_action(bool emit_action_changed) {
 	// Listeners may have selected a replacement action. Only report a null
 	// current action when nothing new was selected by the callback.
 	if (emit_action_changed && _current_action_id.is_null()) {
+#ifdef DEBUG_ENABLED
+		_debug_record_action_changed(ObjectID());
+#endif
 		emit_signal("action_changed", Variant());
 	}
 }
@@ -333,6 +338,9 @@ void NNAgent::_exit_current_behaviour(BehaviourExit exit) {
 	if (exit == BehaviourExit::DESELECTED) {
 		_emit_node_signal("behaviour_exited", behaviour_id);
 	} else {
+#ifdef DEBUG_ENABLED
+		_debug_record_behaviour_changed(ObjectID(), ObjectID(), ObjectID());
+#endif
 		emit_signal("behaviour_changed", Variant());
 	}
 }
@@ -397,6 +405,9 @@ void NNAgent::evaluate_options(float delta) {
 		NNSensors *sensor_node = _get_child_sensor(sensor_ids[i]);
 		if (sensor_node != nullptr && sensor_node->get_is_enabled()) {
 			sensor_node->evaluate_sensor_value();
+#ifdef DEBUG_ENABLED
+			sensor_node->set_last_evaluated_timestamp(godot::Time::get_singleton()->get_ticks_usec());
+#endif
 		}
 	} //endfor child sensors.
 
@@ -611,6 +622,9 @@ void NNAgent::evaluate_options(float delta) {
 	}
 
 	_emit_node_signal("behaviour_group_changed", new_behaviour_group_id);
+#ifdef DEBUG_ENABLED
+	_debug_record_behaviour_changed(new_behaviour_id, new_behaviour_group_id, _current_action_id);
+#endif
 	_emit_node_signal("behaviour_changed", new_behaviour_id);
 }
 
@@ -671,12 +685,18 @@ void NNAgent::update_current_behaviour() {
 		// Re-resolve: update_behaviour() may have run user callbacks that freed
 		// the action it returned.
 		Object *signal_action = new_action_id.is_null() ? nullptr : ObjectDB::get_instance(new_action_id);
+#ifdef DEBUG_ENABLED
+		_debug_record_action_changed(new_action_id);
+#endif
 		emit_signal("action_changed", signal_action != nullptr ? Variant(signal_action) : Variant());
 	} else if (_current_action_change_pending) {
 		// The action was adopted during behaviour selection. Report it here so
 		// listeners see it on the update step rather than mid-selection.
 		_current_action_change_pending = false;
 		Object *signal_action = new_action_id.is_null() ? nullptr : ObjectDB::get_instance(new_action_id);
+#ifdef DEBUG_ENABLED
+		_debug_record_action_changed(new_action_id);
+#endif
 		emit_signal("action_changed", signal_action != nullptr ? Variant(signal_action) : Variant());
 	}
 
@@ -714,6 +734,9 @@ void NNAgent::abort_current_behaviour() {
 	// A re-entrant listener may have selected a replacement action; only report
 	// a null current action when nothing new was selected.
 	if (_current_action_id.is_null()) {
+#ifdef DEBUG_ENABLED
+		_debug_record_action_changed(ObjectID());
+#endif
 		emit_signal("action_changed", Variant());
 	}
 }
@@ -743,6 +766,9 @@ bool NNAgent::_auto_tick_step_callback(double p_delta, double p_tick_delta, bool
 
 void NNAgent::set_blackboard_resource(const Ref<NNBlackboard> &p_blackboard) {
 	_root_context.set_blackboard(p_blackboard);
+#ifdef DEBUG_ENABLED
+	_debug_blackboard_watch.sync();
+#endif
 }
 
 Ref<NNBlackboard> NNAgent::get_assigned_blackboard() const {
@@ -805,6 +831,48 @@ NNAction *NNAgent::peek_current_action() const {
 	}
 	NNAction *action = _resolve_action(_current_action_id);
 	return _is_action_available(action, behaviour) ? action : nullptr;
+}
+
+NNBehaviourGroup *NNAgent::peek_current_behaviour_group() const {
+	NNBehaviourGroup *behaviour_group = _resolve_behaviour_group(_current_behaviour_group_id);
+	return behaviour_group != nullptr && behaviour_group->get_parent() == this ? behaviour_group : nullptr;
+}
+
+Array NNAgent::get_debug_top_scoring() const {
+	Array top_scoring;
+	for (int i = 0; i < _num_possible_behaviours && i < _num_behaviours_to_select; i++) {
+		Dictionary entry;
+		entry["behaviour"] = (int64_t)_top_scoring_behaviour_ids[i];
+		entry["group"] = (int64_t)_top_scoring_behaviour_group_ids[i];
+		entry["score"] = _top_scoring_behaviours_score[i];
+		top_scoring.push_back(entry);
+	}
+	return top_scoring;
+}
+
+void NNAgent::_debug_record_action_changed(const ObjectID &p_action_id) {
+	NNDebugRoot *debug_root = nn_debug_watched_root(this);
+	if (debug_root == nullptr) {
+		return;
+	}
+
+	Dictionary fields;
+	fields["action"] = (int64_t)p_action_id;
+	debug_root->record("agent_action", fields);
+}
+
+void NNAgent::_debug_record_behaviour_changed(const ObjectID &p_behaviour_id, const ObjectID &p_group_id, const ObjectID &p_action_id) {
+	NNDebugRoot *debug_root = nn_debug_watched_root(this);
+	if (debug_root == nullptr) {
+		return;
+	}
+
+	Dictionary fields;
+	fields["behaviour"] = (int64_t)p_behaviour_id;
+	fields["group"] = (int64_t)p_group_id;
+	fields["action"] = (int64_t)p_action_id;
+	fields["top"] = get_debug_top_scoring();
+	debug_root->record("agent_choice", fields);
 }
 #endif
 

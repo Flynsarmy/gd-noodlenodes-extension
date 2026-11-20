@@ -14,6 +14,8 @@
 
 #ifdef DEBUG_ENABLED
 #include "../debugger/debug_root.h"
+#include "../debugger/snapshot_common.h"
+#include "../debugger/snapshot_htn.h"
 #endif
 
 using namespace godot;
@@ -113,7 +115,8 @@ void NNHTNRoot::_bind_methods() {
 
 NNHTNRoot::NNHTNRoot() {
 #ifdef DEBUG_ENABLED
-	_debug_root.configure(this, "htn");
+	_debug_blackboard_watch.configure(this);
+	_debug_root.configure(this, "htn", [this](bool p_watched) { _debug_blackboard_watch.set_watched(p_watched); });
 #endif
 	_default_search_settings.instantiate();
 	_default_execution_settings.instantiate();
@@ -143,6 +146,9 @@ NNHTNRoot::NNHTNRoot() {
 void NNHTNRoot::set_blackboard_resource(const Ref<NNBlackboard> &p_blackboard) {
 	_root_context.set_blackboard(p_blackboard);
 	_reconnect_board();
+#ifdef DEBUG_ENABLED
+	_debug_blackboard_watch.sync();
+#endif
 }
 
 Ref<NNBlackboard> NNHTNRoot::get_assigned_blackboard() const {
@@ -286,6 +292,13 @@ void NNHTNRoot::tick(double p_delta) {
 	_pending_finish = Finish::NONE;
 	const ObjectID self_id = ObjectID(get_instance_id());
 	if (outcome != NNHTNRunner::NONE) {
+#ifdef DEBUG_ENABLED
+		if (NNDebugRoot *debug_root = nn_debug_watched_root(this)) {
+			Dictionary fields;
+			fields["succeeded"] = outcome == NNHTNRunner::COMPLETED;
+			debug_root->record("htn_plan_finished", fields);
+		}
+#endif
 		emit_signal("plan_finished", outcome == NNHTNRunner::COMPLETED);
 	}
 	if (finish != Finish::NONE && ObjectDB::get_instance(self_id) != nullptr) {
@@ -431,6 +444,15 @@ void NNHTNRoot::_plan(NNHTNCompoundTask *p_domain) {
 	_queued_trigger_keys.clear();
 	_no_plan_retry_remaining = NO_PLAN_RETRY_INTERVAL;
 
+#ifdef DEBUG_ENABLED
+	if (NNDebugRoot *debug_root = nn_debug_watched_root(this)) {
+		Dictionary fields;
+		fields["trigger_keys"] = _last_trigger_keys;
+		fields["urgent"] = urgent;
+		debug_root->record("htn_replan", fields);
+	}
+#endif
+
 	NNHTNRunner::Failure failure = _runner.take_failure();
 	if (failure.step.is_valid() && !urgent && _get_effective_execution_settings()->get_local_repair() && _try_local_repair(std::move(failure))) {
 		return;
@@ -483,6 +505,15 @@ bool NNHTNRoot::_try_local_repair(NNHTNRunner::Failure &&p_failure) {
 		_plan_switch.note_installed(outcome.search.utility);
 		_runner.set_plan(std::move(outcome.search.plan), std::move(outcome.completed));
 	}
+#ifdef DEBUG_ENABLED
+	if (NNDebugRoot *debug_root = nn_debug_watched_root(this)) {
+		Dictionary fields;
+		fields["succeeded"] = outcome.succeeded;
+		fields["attempts"] = outcome.attempts;
+		fields["reason"] = outcome.reason;
+		debug_root->record("htn_repair", fields);
+	}
+#endif
 	emit_signal("repair_finished", outcome.succeeded, outcome.attempts, outcome.reason);
 	if (outcome.searched) {
 		_announce_search(traced_plan, outcome.succeeded, true, outcome.succeeded);
@@ -511,6 +542,13 @@ void NNHTNRoot::_announce_search(const std::vector<Ref<NNHTNPlanStep>> &p_plan, 
 		emit_signal("search_finished", _last_search_status, _last_expansion_count, _last_plan_cost, _last_cost_optimal);
 	}
 	if (!attempt.is_empty()) {
+#ifdef DEBUG_ENABLED
+		if (NNDebugRoot *debug_root = nn_debug_watched_root(this)) {
+			Dictionary fields;
+			fields["attempt"] = attempt;
+			debug_root->record("htn_attempt", fields);
+		}
+#endif
 		emit_signal("trace_attempt_recorded", attempt.duplicate(true));
 	}
 }

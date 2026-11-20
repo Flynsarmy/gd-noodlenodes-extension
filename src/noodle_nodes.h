@@ -12,6 +12,7 @@ namespace godot {
 
 class NNRootHost;
 class NNHostedRoot;
+class NNBlackboardDebugWatch;
 
 class NoodleNodes : public Node {
 	GDCLASS(NoodleNodes, Node)
@@ -66,6 +67,14 @@ public:
 	virtual NNDebugRoot *get_debug_root() { return nullptr; }
 	// Schema in src/debugger/PROTOCOL.md. Empty for non-roots.
 	virtual Dictionary get_debug_snapshot() const { return Dictionary(); }
+	// Non-null for a root whose blackboard signals feed the debugger.
+	virtual NNBlackboardDebugWatch *get_debug_blackboard_watch() { return nullptr; }
+
+	// Blackboard signal relays. Connected by the root's debug watch, so the
+	// events reach the root's own NNDebugRoot without self-connecting.
+	void _on_debug_blackboard_value_changed(const String &p_key, const Variant &p_value);
+	void _on_debug_blackboard_value_erased(const String &p_key);
+	void _on_debug_blackboard_cleared();
 #endif
 	// Called when a root this node hosts reports it finished.
 	virtual void _on_hosted_root_finished(bool p_succeeded, Node *p_root);

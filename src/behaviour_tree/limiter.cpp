@@ -37,6 +37,12 @@ int NNBTLimiter::get_max_repeat_times() const {
 	return _max_repeat_times;
 }
 
+#ifdef DEBUG_ENABLED
+int NNBTLimiter::get_debug_current_repeat_times() const {
+	return _current_repeat_times;
+}
+#endif
+
 // Handling functions.
 
 void NNBTLimiter::reset() {

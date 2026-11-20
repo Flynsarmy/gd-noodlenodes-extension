@@ -123,6 +123,12 @@ public:
 	void set_hosted_failure_event(const String &p_event_name);
 	String get_hosted_failure_event() const;
 
+#ifdef DEBUG_ENABLED
+	ObjectID get_debug_pending_transition_id() const { return _pending_transition_id; }
+	float get_debug_pending_initial_delay() const { return _pending_initial_delay; }
+	float get_debug_pending_remaining_delay() const { return _pending_remaining_delay; }
+#endif
+
 	float get_score() const;
 
 	void set_evaluation_method(EvaluationMethod evaluation_method);

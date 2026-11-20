@@ -22,6 +22,11 @@ public:
 
 	// Getters and setters for attributes.
 
+#ifdef DEBUG_ENABLED
+	// The child picked for the current run, or 0. The snapshot's picker_choice badge.
+	int64_t get_debug_selected_child_id() const;
+#endif
+
 	// Handling functions.
 
 	virtual void update_child_vectors() override;

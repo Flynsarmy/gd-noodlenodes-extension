@@ -28,23 +28,49 @@ void NNSTAnyOfGuard::set_guards(const TypedArray<NNSTGuard> &p_guards) {
 
 bool NNSTAnyOfGuard::is_satisfied(NNSTTransition *p_transition, NNSTTickedNodes *p_state) {
 	int64_t size = guards.size();
+#ifdef DEBUG_ENABLED
+	const bool debug = nn_guard_debug_active(p_state);
+	String detail = "AnyOfGuard: [";
+	bool first_child = true;
+#endif
 
 	for (int i = 0; i < size; i++) {
 		Ref<NNSTGuard> guard = guards[i];
 		if (guard.is_null()) {
 			continue;
 		}
-		if (guard->is_satisfied(p_transition, p_state)) {
+		const bool satisfied = guard->is_satisfied(p_transition, p_state);
+#ifdef DEBUG_ENABLED
+		if (debug) {
+			if (!first_child) {
+				detail += "; ";
+			}
+			String child_detail = guard->get_debug_detail();
+			if (child_detail.is_empty()) {
+				child_detail = guard->get_debug_description() + " => " + (satisfied ? "true" : "false");
+			}
+			detail += child_detail;
+			first_child = false;
+		}
+#endif
+		if (satisfied) {
+#ifdef DEBUG_ENABLED
+			if (debug) {
+				set_debug_detail(detail + "] => true");
+			}
+#endif
 			return true;
 		}
 	}
 
 	// We have guards but they all failed
-	if (size > 0) {
-		return false;
+	const bool result = size == 0;
+#ifdef DEBUG_ENABLED
+	if (debug) {
+		set_debug_detail(detail + "] => " + (result ? "true" : "false"));
 	}
-
-	return true;
+#endif
+	return result;
 }
 
 int NNSTAnyOfGuard::get_supported_trigger_types() const {
@@ -58,3 +84,22 @@ int NNSTAnyOfGuard::get_supported_trigger_types() const {
 	}
 	return trigger_types;
 }
+
+#ifdef DEBUG_ENABLED
+String NNSTAnyOfGuard::get_debug_description() const {
+	String description = "AnyOfGuard(";
+	bool first_child = true;
+	for (int i = 0; i < guards.size(); i++) {
+		Ref<NNSTGuard> guard = guards[i];
+		if (guard.is_null()) {
+			continue;
+		}
+		if (!first_child) {
+			description += ", ";
+		}
+		description += guard->get_debug_description();
+		first_child = false;
+	}
+	return description + ")";
+}
+#endif

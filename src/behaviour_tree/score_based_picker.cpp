@@ -35,6 +35,12 @@ void NNBTScoreBasedPicker::update_child_vectors() {
 
 // Getters and Setters.
 
+#ifdef DEBUG_ENABLED
+int64_t NNBTScoreBasedPicker::get_debug_selected_child_id() const {
+	return _selected_child != nullptr ? (int64_t)_selected_child->get_instance_id() : 0;
+}
+#endif
+
 void NNBTScoreBasedPicker::_on_before_run(float delta) {
 	// Evaluate the scores and pick the child with the highest
 	// score to run.

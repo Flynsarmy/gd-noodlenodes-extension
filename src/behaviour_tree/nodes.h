@@ -19,6 +19,9 @@ public:
 #ifdef DEBUG_ENABLED
 	inline uint64_t get_last_visited_timestamp() const { return _last_visited_timestamp; };
 	inline uint64_t get_last_evaluated_timestamp() const { return _last_evaluated_timestamp; };
+	// True while the last run ended through interrupt() and the node has not
+	// been visited since.
+	inline bool get_debug_interrupted() const { return _debug_interrupted; }
 #endif
 
 	void set_evaluation_method(EvaluationMethod evaluation_method);
@@ -102,6 +105,7 @@ protected:
 #ifdef DEBUG_ENABLED
 	uint64_t _last_evaluated_timestamp;
 	uint64_t _last_visited_timestamp;
+	bool _debug_interrupted;
 #endif
 };
 

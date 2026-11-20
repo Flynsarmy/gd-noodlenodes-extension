@@ -120,6 +120,24 @@ void NNSTHistory::clear_history() {
 	_snapshot.clear();
 }
 
+#ifdef DEBUG_ENABLED
+static void _collect_remembered_ids(const std::vector<NNSTHistoryStateSnapshot> &entries, Array &ids) {
+	for (unsigned int i = 0; i < entries.size(); i++) {
+		NNSTTickedNodes *state = Object::cast_to<NNSTTickedNodes>(ObjectDB::get_instance(entries[i].state_id));
+		if (state != nullptr) {
+			ids.push_back((int64_t)state->get_instance_id());
+		}
+		_collect_remembered_ids(entries[i].children, ids);
+	}
+}
+
+Array NNSTHistory::get_debug_remembered_ids() const {
+	Array ids;
+	_collect_remembered_ids(_get_valid_snapshot(), ids);
+	return ids;
+}
+#endif
+
 // Handling functions.
 
 NNSTBranchNodes *NNSTHistory::_get_owning_compound() const {

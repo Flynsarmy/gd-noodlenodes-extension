@@ -7,6 +7,12 @@
 
 #include <godot_cpp/core/error_macros.hpp>
 
+#ifdef DEBUG_ENABLED
+#include "../debugger/debug_root.h"
+#include "../debugger/snapshot_common.h"
+#include "../debugger/snapshot_htn.h"
+#endif
+
 using namespace godot;
 
 static const char *const INVALIDATED = "invalidated";
@@ -38,6 +44,17 @@ void NNHTNRunner::set_plan(std::vector<Ref<NNHTNPlanStep>> &&p_steps, std::vecto
 	for (const Ref<NNHTNPlanStep> &step : _steps) {
 		steps.push_back(step);
 	}
+#ifdef DEBUG_ENABLED
+	if (NNDebugRoot *debug_root = nn_debug_watched_root(_owner)) {
+		Array occurrences;
+		for (const Ref<NNHTNPlanStep> &step : _steps) {
+			occurrences.push_back(step->get_occurrence_id());
+		}
+		Dictionary fields;
+		fields["occurrences"] = occurrences;
+		debug_root->record("htn_plan_set", fields);
+	}
+#endif
 	_owner->emit_signal("plan_set", steps);
 }
 
@@ -117,6 +134,9 @@ NNHTNRunner::Progress NNHTNRunner::_progress(const Ref<NNHTNPlanStep> &p_step, d
 	NNHTNTask *task = p_step->get_task();
 	if (p_step->get_state() == NNHTNPlanStep::PENDING) {
 		p_step->set_state(NNHTNPlanStep::RUNNING);
+#ifdef DEBUG_ENABLED
+		nn_debug_record_htn_step(_owner, p_step);
+#endif
 		task->emit_signal("started");
 		_owner->emit_signal("step_state_changed", p_step, NNHTNTask::RUNNING);
 		if (_abandon_requested) {
@@ -136,6 +156,9 @@ NNHTNRunner::Progress NNHTNRunner::_progress(const Ref<NNHTNPlanStep> &p_step, d
 		}
 		if (task->get_verification_mode() == NNHTNTask::VERIFY) {
 			p_step->set_state(NNHTNPlanStep::VERIFYING);
+#ifdef DEBUG_ENABLED
+			nn_debug_record_htn_step(_owner, p_step);
+#endif
 			_owner->emit_signal("verification_started", p_step);
 			if (_abandon_requested) {
 				return Progress::WAITING;
@@ -178,6 +201,9 @@ void NNHTNRunner::_succeed_front() {
 	if (NNHTNTask *task = step->get_task()) {
 		task->emit_signal("succeeded");
 	}
+#ifdef DEBUG_ENABLED
+	nn_debug_record_htn_step(_owner, step);
+#endif
 	_owner->emit_signal("step_state_changed", step, NNHTNTask::SUCCESS);
 }
 
@@ -277,6 +303,14 @@ void NNHTNRunner::_fail(const Ref<NNHTNPlanStep> &p_step, const String &p_reason
 	if (invalidated) {
 		_owner->emit_signal("plan_invalidated", p_step);
 	} else if (p_reason == VERIFICATION_FAILED || p_reason == VERIFICATION_TIMEOUT) {
+#ifdef DEBUG_ENABLED
+		if (NNDebugRoot *debug_root = nn_debug_watched_root(_owner)) {
+			Dictionary fields;
+			fields["occurrence_id"] = p_step->get_occurrence_id();
+			fields["reason"] = p_reason;
+			debug_root->record("htn_verification_failed", fields);
+		}
+#endif
 		_owner->emit_signal("verification_failed", p_step, p_reason);
 	} else if (p_reason == EFFECT_COMMIT_FAILED) {
 		_owner->emit_signal("effect_commit_failed", p_step);
@@ -284,6 +318,9 @@ void NNHTNRunner::_fail(const Ref<NNHTNPlanStep> &p_step, const String &p_reason
 	if (was_started && task != nullptr) {
 		task->emit_signal("failed");
 	}
+#ifdef DEBUG_ENABLED
+	nn_debug_record_htn_step(_owner, p_step);
+#endif
 	_owner->emit_signal("step_state_changed", p_step, NNHTNTask::FAILURE);
 }
 

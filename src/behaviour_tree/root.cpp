@@ -9,6 +9,7 @@
 
 #ifdef DEBUG_ENABLED
 #include "../debugger/debug_root.h"
+#include "../debugger/snapshot_common.h"
 #endif
 
 using namespace godot;
@@ -72,7 +73,9 @@ void NNBTRoot::_bind_methods() {
 
 NNBTRoot::NNBTRoot() {
 #ifdef DEBUG_ENABLED
-	_debug_root.configure(this, "bt");
+	_debug_blackboard_watch.configure(this);
+	_debug_root.configure(this, "bt", [this](bool p_watched) { _debug_blackboard_watch.set_watched(p_watched); });
+	_debug_tick_count = 0;
 #endif
 	_tick_scheduler.configure(this, [this](double p_delta, double p_tick_delta, bool p_due) -> bool {
 		return _auto_tick_step_callback(p_delta, p_tick_delta, p_due);
@@ -104,6 +107,9 @@ uint64_t NNBTRoot::get_total_tick_usec() const {
 
 void NNBTRoot::set_blackboard_resource(const Ref<NNBlackboard> &p_blackboard) {
 	_root_context.set_blackboard(p_blackboard);
+#ifdef DEBUG_ENABLED
+	_debug_blackboard_watch.sync();
+#endif
 }
 
 Ref<NNBlackboard> NNBTRoot::get_assigned_blackboard() const {
@@ -164,6 +170,25 @@ NNBTNodes::Status NNBTRoot::tick(float delta) {
 	// Track the active path once the tree has settled. This never changes the
 	// result the caller sees.
 	_update_running_action(result);
+
+#ifdef DEBUG_ENABLED
+	if (get_is_enabled() && !Engine::get_singleton()->is_editor_hint()) {
+		if (NNDebugRoot *debug_root = nn_debug_watched_root(this)) {
+			const char *result_name = "running";
+			if (result == Status::SUCCESS) {
+				result_name = "success";
+			} else if (result == Status::FAILURE) {
+				result_name = "failure";
+			} else if (result == Status::SKIP) {
+				result_name = "skip";
+			}
+			Dictionary fields;
+			fields["result"] = result_name;
+			fields["running_node"] = nn_debug_id(get_running_action());
+			debug_root->record("bt_tick", fields);
+		}
+	}
+#endif
 
 	if (can_finish && (result == Status::SUCCESS || result == Status::FAILURE)) {
 		// A handler may free this root, so nothing is touched after the emit.
@@ -292,6 +317,9 @@ NNBTNodes::Status NNBTRoot::_tick(float delta) {
 #endif
 
 	_elapsed_time += delta;
+#ifdef DEBUG_ENABLED
+	_debug_tick_count++;
+#endif
 
 	_report_extra_enabled_child_btnodes();
 

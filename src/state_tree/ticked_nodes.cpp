@@ -10,6 +10,12 @@
 #include <godot_cpp/classes/time.hpp>
 #include <godot_cpp/core/object.hpp>
 
+#ifdef DEBUG_ENABLED
+#include "../debugger/debug_root.h"
+#include "../debugger/snapshot_common.h"
+#include "../debugger/snapshot_st.h"
+#endif
+
 using namespace godot;
 
 /**
@@ -25,6 +31,16 @@ static bool _has_active_child_state(NNSTBranchNodes *branch, NNSTTickedNodes *ch
 
 	return false;
 }
+
+#ifdef DEBUG_ENABLED
+static void _record_state_event(NNSTTickedNodes *p_state, const char *p_kind) {
+	if (NNDebugRoot *debug_root = nn_debug_watched_root(p_state)) {
+		Dictionary fields;
+		fields["state"] = (int64_t)p_state->get_instance_id();
+		debug_root->record(p_kind, fields);
+	}
+}
+#endif
 
 // Opens a root scope for the lifetime of the guard and closes it on every exit
 // path, so a deferred change request from a callback is always drained against
@@ -307,6 +323,14 @@ bool NNSTTickedNodes::_dispatch_event(const String &name) {
 	const ActivationIdentity activation = _capture_activation_identity(tree_root);
 
 	// The state receives the event before it or its children consume it.
+#ifdef DEBUG_ENABLED
+	if (NNDebugRoot *debug_root = nn_debug_watched_root(this)) {
+		Dictionary fields;
+		fields["name"] = name;
+		fields["state"] = (int64_t)get_instance_id();
+		debug_root->record("st_event", fields);
+	}
+#endif
 	emit_signal("event_received", name);
 
 	// The callback already consumed/redirected this event. Do not evaluate
@@ -379,12 +403,27 @@ bool NNSTTickedNodes::_handle_event(const String &name, const ActivationIdentity
 		// the remaining transitions still get a chance. The guard itself is
 		// user code, though, and may have transitioned this state away: a
 		// stale activation stops the event here.
+#ifdef DEBUG_ENABLED
+		NNDebugRoot *debug_root = nn_debug_watched_root(this);
+		Ref<NNSTGuard> debug_guard;
+		int64_t debug_transition_id = 0;
+		if (debug_root != nullptr) {
+			debug_guard = transition->get_guard();
+			debug_transition_id = nn_debug_id(transition);
+		}
+#endif
 		if (!transition->_can_transition()) {
+#ifdef DEBUG_ENABLED
+			nn_debug_record_guard(debug_root, debug_transition_id, debug_guard, "event", false);
+#endif
 			if (!_is_dispatch_activation_valid(activation)) {
 				return true;
 			}
 			continue;
 		}
+#ifdef DEBUG_ENABLED
+		nn_debug_record_guard(debug_root, debug_transition_id, debug_guard, "event", true);
+#endif
 
 		// The guard may have transitioned this state even when it returned
 		// true. Never apply the transition on behalf of a stale activation.
@@ -400,6 +439,9 @@ bool NNSTTickedNodes::_handle_event(const String &name, const ActivationIdentity
 			continue;
 		}
 
+#ifdef DEBUG_ENABLED
+		transition->set_debug_trigger("event");
+#endif
 		if (_request_transition(transition, false)) {
 			return true;
 		}
@@ -435,12 +477,27 @@ bool NNSTTickedNodes::_process_transitions(int trigger_type) {
 				!transition->is_triggered_by(trigger_type)) {
 			continue;
 		}
+#ifdef DEBUG_ENABLED
+		NNDebugRoot *debug_root = nn_debug_watched_root(this);
+		Ref<NNSTGuard> debug_guard;
+		int64_t debug_transition_id = 0;
+		if (debug_root != nullptr) {
+			debug_guard = transition->get_guard();
+			debug_transition_id = nn_debug_id(transition);
+		}
+#endif
 		if (!transition->_can_transition()) {
+#ifdef DEBUG_ENABLED
+			nn_debug_record_guard(debug_root, debug_transition_id, debug_guard, nn_debug_trigger_name(trigger_type), false);
+#endif
 			if (!_is_dispatch_activation_valid(activation)) {
 				return true;
 			}
 			continue;
 		}
+#ifdef DEBUG_ENABLED
+		nn_debug_record_guard(debug_root, debug_transition_id, debug_guard, nn_debug_trigger_name(trigger_type), true);
+#endif
 		if (!_is_dispatch_activation_valid(activation)) {
 			return true;
 		}
@@ -448,6 +505,9 @@ bool NNSTTickedNodes::_process_transitions(int trigger_type) {
 		// Reuse the root's transition request machinery so automatic
 		// transitions share delay handling, activation-identity checks, the
 		// transition budget and the `taken` signal with event transitions.
+#ifdef DEBUG_ENABLED
+		transition->set_debug_trigger(nn_debug_trigger_name(trigger_type));
+#endif
 		if (_request_transition(transition, false)) {
 			return true;
 		}
@@ -628,6 +688,16 @@ void NNSTTickedNodes::_process_pending_transition(float delta) {
 	_pending_remaining_delay -= delta;
 	const float remaining_delay = _pending_remaining_delay > 0.0f ? _pending_remaining_delay : 0.0f;
 	const ObjectID pending_id = _pending_transition_id;
+#ifdef DEBUG_ENABLED
+	if (NNDebugRoot *debug_root = nn_debug_watched_root(this)) {
+		Dictionary fields;
+		fields["transition"] = (int64_t)pending_id;
+		fields["state"] = (int64_t)get_instance_id();
+		fields["initial_delay"] = _pending_initial_delay;
+		fields["remaining_delay"] = remaining_delay;
+		debug_root->record("st_pending", fields);
+	}
+#endif
 	emit_signal("transition_pending", _pending_initial_delay, remaining_delay);
 
 	if (_pending_remaining_delay > 0.0f) {
@@ -814,6 +884,16 @@ bool NNSTTickedNodes::_transition_to_state(NNSTTickedNodes *to_state, NNSTTransi
 		// handler may free or reparent anything.
 		const ObjectID transition_id = ObjectID(transition_to_take->get_instance_id());
 		const ObjectID target_id = ObjectID(to_state->get_instance_id());
+#ifdef DEBUG_ENABLED
+		if (NNDebugRoot *debug_root = nn_debug_watched_root(this)) {
+			Dictionary fields;
+			fields["transition"] = (int64_t)transition_id;
+			fields["from"] = (int64_t)get_instance_id();
+			fields["to"] = (int64_t)target_id;
+			fields["trigger"] = transition_to_take->get_debug_trigger();
+			debug_root->record("st_transition", fields);
+		}
+#endif
 		transition_to_take->emit_signal("taken");
 
 		transition_to_take = Object::cast_to<NNSTTransition>(ObjectDB::get_instance(transition_id));
@@ -987,6 +1067,16 @@ void NNSTTickedNodes::_transition_in() {
 void NNSTTickedNodes::_transition_out() {
 	// Leaving a state always cancels its pending transition, even if this is
 	// the reentrant no-op call from a nested exit.
+#ifdef DEBUG_ENABLED
+	if (!_pending_transition_id.is_null()) {
+		if (NNDebugRoot *debug_root = nn_debug_watched_root(this)) {
+			Dictionary fields;
+			fields["transition"] = (int64_t)_pending_transition_id;
+			fields["state"] = (int64_t)get_instance_id();
+			debug_root->record("st_pending_cancelled", fields);
+		}
+	}
+#endif
 	_clear_pending_transition();
 
 	if (_internal_status == ST_INTERNAL_STATUS_INACTIVE || _is_exiting) {
@@ -1050,12 +1140,18 @@ void NNSTTickedNodes::on_enter_state() {
 	NNSTRoot *root = _resolve_tree_root();
 	if (root == nullptr || Engine::get_singleton()->is_editor_hint()) {
 		call("on_enter_state");
+#ifdef DEBUG_ENABLED
+		_record_state_event(this, "st_enter");
+#endif
 		emit_signal("state_entered");
 		return;
 	}
 
 	ChangeScopeGuard scope(root);
 	call("on_enter_state");
+#ifdef DEBUG_ENABLED
+	_record_state_event(this, "st_enter");
+#endif
 	emit_signal("state_entered");
 
 	if (_is_final) {
@@ -1074,6 +1170,9 @@ void NNSTTickedNodes::on_enter_state() {
 
 void NNSTTickedNodes::on_exit_state() {
 	call("on_exit_state");
+#ifdef DEBUG_ENABLED
+	_record_state_event(this, "st_exit");
+#endif
 	emit_signal("state_exited");
 }
 

@@ -1,5 +1,7 @@
 #include "nodes.h"
 #include "../agent_behaviours/considerations.h"
+#include "../debugger/debug_root.h"
+#include "../debugger/snapshot_common.h"
 #include "../score_aggregation.h"
 #include <godot_cpp/classes/engine.hpp>
 #include <godot_cpp/classes/time.hpp>
@@ -50,6 +52,7 @@ NNBTNodes::NNBTNodes() {
 #ifdef DEBUG_ENABLED
 	_last_visited_timestamp = 0;
 	_last_evaluated_timestamp = 0;
+	_debug_interrupted = false;
 #endif
 }
 
@@ -138,6 +141,7 @@ float NNBTNodes::evaluate() {
 NNBTNodes::Status NNBTNodes::tick(float delta) {
 #ifdef DEBUG_ENABLED
 	_last_visited_timestamp = godot::Time::get_singleton()->get_ticks_usec();
+	_debug_interrupted = false;
 #endif
 	// Disabled nodes never start a run. A reference may have stamped an owner
 	// onto this node just before calling tick(), so clear it here to keep the
@@ -150,6 +154,13 @@ NNBTNodes::Status NNBTNodes::tick(float delta) {
 	if (!_is_running) {
 		_is_running = true;
 		_run_delta = delta;
+#ifdef DEBUG_ENABLED
+		if (NNDebugRoot *debug_root = nn_debug_watched_root(this)) {
+			Dictionary fields;
+			fields["node"] = (int64_t)get_instance_id();
+			debug_root->record("bt_enter", fields);
+		}
+#endif
 		_on_before_run(delta);
 		if (!_is_running) {
 			// The before_run hook interrupted the run it had just started.
@@ -165,6 +176,14 @@ NNBTNodes::Status NNBTNodes::tick(float delta) {
 		_is_running = false;
 		_run_owner = ObjectID();
 		_run_delta = 0.0f;
+#ifdef DEBUG_ENABLED
+		if (NNDebugRoot *debug_root = nn_debug_watched_root(this)) {
+			Dictionary fields;
+			fields["node"] = (int64_t)get_instance_id();
+			fields["result"] = result == Status::SUCCESS ? "success" : "failure";
+			debug_root->record("bt_exit", fields);
+		}
+#endif
 		_interrupt_active_children();
 		_on_after_run(run_delta);
 	}
@@ -186,6 +205,15 @@ void NNBTNodes::interrupt() {
 	_is_running = false;
 	_run_owner = ObjectID();
 	_run_delta = 0.0f;
+#ifdef DEBUG_ENABLED
+	_debug_interrupted = true;
+	if (NNDebugRoot *debug_root = nn_debug_watched_root(this)) {
+		Dictionary fields;
+		fields["node"] = (int64_t)get_instance_id();
+		fields["result"] = "interrupted";
+		debug_root->record("bt_exit", fields);
+	}
+#endif
 	_interrupt_active_children();
 	_on_interrupt(run_delta);
 }

@@ -18,6 +18,9 @@ public:
 
 	virtual bool is_satisfied(NNSTTransition *p_transition, NNSTTickedNodes *p_state) override;
 	virtual int get_supported_trigger_types() const override;
+#ifdef DEBUG_ENABLED
+	virtual String get_debug_description() const override;
+#endif
 };
 
 } //namespace godot

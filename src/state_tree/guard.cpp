@@ -2,7 +2,23 @@
 
 #include <godot_cpp/classes/script.hpp>
 
+#ifdef DEBUG_ENABLED
+#include "../debugger/debug_root.h"
+#endif
+
 using namespace godot;
+
+#ifdef DEBUG_ENABLED
+namespace godot {
+bool nn_guard_debug_active(const NNSTTickedNodes *p_state) {
+	if (p_state == nullptr) {
+		return false;
+	}
+	NNSTRoot *root = p_state->get_root();
+	return root != nullptr && root->get_debug_root()->is_watched();
+}
+} //namespace godot
+#endif
 
 // Method binds.
 
@@ -37,3 +53,17 @@ int NNSTGuard::get_supported_trigger_types() const {
 	print_error("Guard.get_supported_trigger_types() is not implemented. Did you forget to override it?");
 	return NNSTRoot::TriggerType::NONE;
 }
+
+#ifdef DEBUG_ENABLED
+String NNSTGuard::get_debug_description() const {
+	return String(get_class());
+}
+
+String NNSTGuard::get_debug_detail() const {
+	return _debug_last_detail;
+}
+
+void NNSTGuard::set_debug_detail(const String &p_detail) {
+	_debug_last_detail = p_detail;
+}
+#endif

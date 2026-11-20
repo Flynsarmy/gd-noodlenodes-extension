@@ -1,6 +1,7 @@
 #pragma once
 
 #include "../blackboard.h"
+#include "../debugger/blackboard_watch.h"
 #include "../debugger/debug_root.h"
 #include "../host.h"
 #include "../noodle_nodes.h"
@@ -62,6 +63,7 @@ private:
 	NNHostedRoot _hosted_root;
 #ifdef DEBUG_ENABLED
 	NNDebugRoot _debug_root;
+	NNBlackboardDebugWatch _debug_blackboard_watch;
 #endif
 	NNHTNSearch _search;
 	NNHTNRunner _runner;
@@ -143,6 +145,8 @@ public:
 	NNHostedRoot *get_hosted_root() override { return &_hosted_root; }
 #ifdef DEBUG_ENABLED
 	NNDebugRoot *get_debug_root() override { return &_debug_root; }
+	NNBlackboardDebugWatch *get_debug_blackboard_watch() override { return &_debug_blackboard_watch; }
+	Dictionary get_debug_snapshot() const override;
 #endif
 
 	void set_blackboard_resource(const Ref<NNBlackboard> &p_blackboard);
