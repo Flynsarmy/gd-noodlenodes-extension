@@ -52,12 +52,11 @@ script = ExtResource("1_view")
 [node name="MainSplit" type="HSplitContainer" parent="."]
 unique_name_in_owner = true
 layout_mode = 2
-split_offset = 420
 
 [node name="Sidebar" type="VBoxContainer" parent="MainSplit"]
 unique_name_in_owner = true
 clip_contents = true
-custom_minimum_size = Vector2(400, 0)
+custom_minimum_size = Vector2(340, 0)
 layout_mode = 2
 theme_override_constants/separation = 4
 
@@ -367,6 +366,7 @@ columns = 4
 column_titles_visible = true
 hide_root = true
 
+[connection signal="dragged" from="MainSplit" to="." method="_on_split_dragged"]
 [connection signal="pressed" from="MainSplit/DetailTabs/Trace/Toolbar/FitButton" to="Margins/MainSplit/DetailTabs/Trace/TraceSplit/GraphFrame/GraphClip" method="fit_to_view"]
 [connection signal="node_selected" from="MainSplit/DetailTabs/Trace/TraceSplit/GraphFrame/GraphClip" to="." method="_on_trace_node_selected"]
 [connection signal="node_deselected" from="MainSplit/DetailTabs/Trace/TraceSplit/GraphFrame/GraphClip" to="." method="_on_trace_node_deselected"]

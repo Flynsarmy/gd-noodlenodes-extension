@@ -299,6 +299,25 @@ func test_the_view_fits_a_default_height_bottom_panel() -> void:
 	assert_gte(graph_frame.size.y, 100.0, "The trace graph must still get usable height")
 
 
+func test_the_main_pane_keeps_most_of_the_width_and_plan_task_names() -> void:
+	view.anchor_right = 0.0
+	view.anchor_bottom = 0.0
+	view.size = Vector2(1100, 170)
+	view.set_snapshot(Fixtures.htn_snapshot())
+	view.apply_events(Fixtures.htn_events())
+	await _settle_layout()
+
+	var main: Control = view.get_node("%DetailTabs")
+	assert_gte(main.size.x, view.size.x * 0.6, "The main pane must keep at least 60% of the width")
+
+	var title: Label = _plan_rows()[0].get_node("%Title")
+	assert_eq(title.text, "SneakToCover")
+	var font: Font = title.get_theme_font("font")
+	var font_size := title.get_theme_font_size("font_size")
+	var needed := font.get_string_size(title.text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x
+	assert_lte(needed, title.size.x, "The task name must render in full")
+
+
 func test_the_trace_panel_is_hidden_until_a_decision_is_selected() -> void:
 	view.anchor_right = 0.0
 	view.anchor_bottom = 0.0
@@ -317,13 +336,15 @@ func test_the_trace_panel_is_hidden_until_a_decision_is_selected() -> void:
 	assert_gt(graph_frame.size.x, split.size.x * 0.95, "The graph must span the trace width")
 	assert_eq(_records_outside_visible_rect(graph), [], "Fitting must keep every decision inside the graph")
 
+	var width_before: float = graph.size.x
 	graph.select_event(_record_for_path(graph, "Investigate/SearchForClue").id)
 	assert_true(panel.visible, "Selecting a decision shows the detail panel")
 
 	await _settle_layout()
+	assert_lt(graph.size.x, width_before, "The graph gives width back to the detail panel")
 	assert_eq(
 		_records_outside_visible_rect(graph), [],
-		"The graph refits when the panel takes space back"
+		"The graph refits into the smaller pane"
 	)
 
 	graph.clear_selection()
@@ -349,8 +370,12 @@ func _records_outside_visible_rect(graph) -> Array:
 
 
 func test_pane_sizes_follow_the_editor_scale() -> void:
-	# The scene no longer carries fixed pane sizes; they are applied on ready so
-	# they can follow the editor's display scale.
+	# The scene carries 1x sizes and a sidebar share; apply_to_scene and the
+	# splitter turn them into the editor's display scale.
+	view.anchor_right = 0.0
+	view.anchor_bottom = 0.0
+	view.size = Vector2(1100, 170)
+	await _settle_layout()
 	assert_gt(view.get_node("%Sidebar").custom_minimum_size.x, 0.0)
 	assert_gt(view.get_node("%MainSplit").split_offset, 0)
 	assert_gt(view.get_node("%DetailScroll").custom_minimum_size.x, 0.0)
