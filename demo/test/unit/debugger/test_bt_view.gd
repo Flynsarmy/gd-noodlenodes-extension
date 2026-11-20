@@ -129,7 +129,7 @@ func test_graph_node_shows_class_icon_and_decorator_badges() -> void:
 	var item: Control = _graph().get_item(DebuggerFixtures.COVER_FIND)
 	assert_eq(item.get_node("%ClassLabel").text, "NNBTRunNQSQuery")
 	assert_not_null(item.get_node("%Icon").texture, "the class icon is loaded")
-	assert_true(item.get_node("%BadgeLabel").text.contains("2013"), "the NQS search space id is shown")
+	assert_true(item.get_node("%BadgeLabel").text.contains(str(DebuggerFixtures.ID_BASE + 2013)), "the NQS search space id is shown")
 
 	var cooldown: Control = _graph().get_item(DebuggerFixtures.COVER_COOLDOWN)
 	assert_true(cooldown.get_node("%BadgeLabel").text.contains("cool"), "the cooldown remaining is shown")

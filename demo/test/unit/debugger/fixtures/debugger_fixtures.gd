@@ -6,55 +6,59 @@
 const NOW_USEC := 10_000_000
 const FRAME := 600
 
-const NPC := 1000
-const BOARD := 9000
+## Real instance ids exceed 32 bits, so the fixtures do too. The low 24 bits (the
+## ObjectDB slot) stay small, so looking up a fixture id behaves like a stale real id.
+const ID_BASE := 1 << 40
 
-const ST_ROOT := 2000
-const ST_IDLE := 2001
-const ST_START_WALKING := 2002
-const ST_START_RUNNING := 2003
-const ST_WALK := 2004
-const ST_WALK_STOP := 2005
-const ST_RUN := 2006
-const ST_RUN_STOP := 2007
-const ST_ALERTED := 2008
-const ST_ALERT_HISTORY := 2009
-const ST_SEARCH_SPACES := 2010
+const NPC := ID_BASE + 1000
+const BOARD := ID_BASE + 9000
 
-const AGENT := 3000
-const AGENT_ALERT_SENSOR := 3001
-const AGENT_COVER_SENSOR := 3002
-const AGENT_COVER_SEARCH_SPACE := 2014
-const AGENT_PATROL := 3010
-const AGENT_CALM := 3011
-const AGENT_PATROL_ACTION := 3012
-const AGENT_INVESTIGATE := 3020
-const AGENT_CURIOUS := 3021
-const AGENT_INVESTIGATE_ACTION := 3022
+const ST_ROOT := ID_BASE + 2000
+const ST_IDLE := ID_BASE + 2001
+const ST_START_WALKING := ID_BASE + 2002
+const ST_START_RUNNING := ID_BASE + 2003
+const ST_WALK := ID_BASE + 2004
+const ST_WALK_STOP := ID_BASE + 2005
+const ST_RUN := ID_BASE + 2006
+const ST_RUN_STOP := ID_BASE + 2007
+const ST_ALERTED := ID_BASE + 2008
+const ST_ALERT_HISTORY := ID_BASE + 2009
+const ST_SEARCH_SPACES := ID_BASE + 2010
 
-const PATROL_BT := 4000
-const PATROL_SEQUENCE := 4001
-const PATROL_FIND_POINT := 4002
-const PATROL_HAS_POINT := 4003
-const PATROL_START_WALK := 4004
-const PATROL_WAIT := 4005
-const PATROL_WALKER := 4006
+const AGENT := ID_BASE + 3000
+const AGENT_ALERT_SENSOR := ID_BASE + 3001
+const AGENT_COVER_SENSOR := ID_BASE + 3002
+const AGENT_COVER_SEARCH_SPACE := ID_BASE + 2014
+const AGENT_PATROL := ID_BASE + 3010
+const AGENT_CALM := ID_BASE + 3011
+const AGENT_PATROL_ACTION := ID_BASE + 3012
+const AGENT_INVESTIGATE := ID_BASE + 3020
+const AGENT_CURIOUS := ID_BASE + 3021
+const AGENT_INVESTIGATE_ACTION := ID_BASE + 3022
 
-const HTN := 5000
-const HTN_INVESTIGATE := 5001
-const HTN_OBSERVE_FROM_COVER := 5002
-const HTN_SNEAK_TO_COVER := 5003
-const HTN_PEEK := 5004
-const HTN_SEARCH_CLUE := 5005
-const HTN_GO_TO_CLUE := 5006
-const HTN_INSPECT := 5007
+const PATROL_BT := ID_BASE + 4000
+const PATROL_SEQUENCE := ID_BASE + 4001
+const PATROL_FIND_POINT := ID_BASE + 4002
+const PATROL_HAS_POINT := ID_BASE + 4003
+const PATROL_START_WALK := ID_BASE + 4004
+const PATROL_WAIT := ID_BASE + 4005
+const PATROL_WALKER := ID_BASE + 4006
 
-const COVER_BT := 6000
-const COVER_SEQUENCE := 6001
-const COVER_FIND := 6002
-const COVER_HAS := 6003
-const COVER_COOLDOWN := 6004
-const COVER_MOVE := 6005
+const HTN := ID_BASE + 5000
+const HTN_INVESTIGATE := ID_BASE + 5001
+const HTN_OBSERVE_FROM_COVER := ID_BASE + 5002
+const HTN_SNEAK_TO_COVER := ID_BASE + 5003
+const HTN_PEEK := ID_BASE + 5004
+const HTN_SEARCH_CLUE := ID_BASE + 5005
+const HTN_GO_TO_CLUE := ID_BASE + 5006
+const HTN_INSPECT := ID_BASE + 5007
+
+const COVER_BT := ID_BASE + 6000
+const COVER_SEQUENCE := ID_BASE + 6001
+const COVER_FIND := ID_BASE + 6002
+const COVER_HAS := ID_BASE + 6003
+const COVER_COOLDOWN := ID_BASE + 6004
+const COVER_MOVE := ID_BASE + 6005
 
 const OCC_SNEAK := 11
 const OCC_PEEK := 12
@@ -343,7 +347,7 @@ static func bt_snapshot() -> Dictionary:
 	snapshot["nodes"] = [
 		_bt_node(COVER_BT, 0, "NNBTRoot", "NNBTRoot", "running", 16000),
 		_bt_node(COVER_SEQUENCE, COVER_BT, "NNBTSequence", "NNBTSequence", "running", 16000),
-		_bt_node(COVER_FIND, COVER_SEQUENCE, "FindCover", "NNBTRunNQSQuery", "success", 480_000, { "badges": { "nqs_search_space": 2013 } }),
+		_bt_node(COVER_FIND, COVER_SEQUENCE, "FindCover", "NNBTRunNQSQuery", "success", 480_000, { "badges": { "nqs_search_space": ID_BASE + 2013 } }),
 		_bt_node(COVER_HAS, COVER_SEQUENCE, "HasCover", "NNBTBlackboardHas", "success", 16000),
 		_bt_node(COVER_COOLDOWN, COVER_SEQUENCE, "Cooldown", "NNBTCooldown", "running", 16000, { "badges": { "cooldown_remaining": 0.0 } }),
 		_bt_node(COVER_MOVE, COVER_COOLDOWN, "MoveToCover", "NNBTActionLeaf", "running", 16000),
