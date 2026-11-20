@@ -1,6 +1,7 @@
 #pragma once
 
 #include "../agent_behaviours/sensors.h"
+#include "../debugger/debug_root.h"
 #include "../host.h"
 #include "../root_context.h"
 #include "../tick_scheduler.h"
@@ -21,6 +22,9 @@ private:
 
 	NNTickScheduler _tick_scheduler;
 	NNHostedRoot _hosted_root;
+#ifdef DEBUG_ENABLED
+	NNDebugRoot _debug_root;
+#endif
 	// Monotonic tree time. It is never reset, so recorded cooldown start times
 	// stay in the past. Double so a long session keeps the precision of the
 	// per-frame deltas.
@@ -68,6 +72,9 @@ public:
 	bool is_root() const override { return true; }
 
 	NNHostedRoot *get_hosted_root() override { return &_hosted_root; }
+#ifdef DEBUG_ENABLED
+	NNDebugRoot *get_debug_root() override { return &_debug_root; }
+#endif
 
 	void set_blackboard_resource(const Ref<NNBlackboard> &p_blackboard);
 	Ref<NNBlackboard> get_assigned_blackboard() const;

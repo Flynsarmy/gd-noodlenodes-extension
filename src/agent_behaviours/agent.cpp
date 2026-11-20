@@ -10,7 +10,7 @@
 #include <vector>
 
 #ifdef DEBUG_ENABLED
-#include "../debugger/debugger_overlay.h"
+#include "../debugger/debug_root.h"
 #endif
 
 using namespace godot;
@@ -101,6 +101,9 @@ void NNAgent::_bind_methods() {
 // Constructor and destructor.
 
 NNAgent::NNAgent() {
+#ifdef DEBUG_ENABLED
+	_debug_root.configure(this, "agent");
+#endif
 	_rng.instantiate();
 
 	_current_behaviour_group_id = ObjectID();
@@ -882,17 +885,10 @@ void NNAgent::_notification(int p_what) {
 	}
 
 #ifdef DEBUG_ENABLED
-	if (p_what == NOTIFICATION_ENTER_TREE || p_what == NOTIFICATION_EXIT_TREE) {
-		if (!Engine::get_singleton()->is_editor_hint()) {
-			NNDebuggerOverlay *debugger_overlay = NNDebuggerOverlay::get_singleton();
-			if (debugger_overlay != nullptr) {
-				if (p_what == NOTIFICATION_ENTER_TREE) {
-					debugger_overlay->register_ai_agent(get_instance_id());
-				} else {
-					debugger_overlay->deregister_ai_agent(get_instance_id());
-				}
-			}
-		}
+	if (p_what == NOTIFICATION_ENTER_TREE) {
+		_debug_root.on_tree_entered();
+	} else if (p_what == NOTIFICATION_EXIT_TREE) {
+		_debug_root.on_tree_exiting();
 	}
 #endif
 

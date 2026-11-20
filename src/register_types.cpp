@@ -160,13 +160,6 @@
 // Main header for NN.
 #include "noodle_nodes.h"
 
-// EDITOR PLUGIN CLASSES.
-#ifdef DEBUG_ENABLED
-
-#include "debugger/debugger_overlay.h"
-
-#endif
-
 // Standard headers.
 #include <gdextension_interface.h>
 #include <godot_cpp/core/class_db.hpp>
@@ -178,10 +171,6 @@ using namespace godot;
 // Singletons
 static NNNodeQuerySystem *gpNodeQuerySystem;
 static NNPerformanceMonitorSingleton *gpAIPerformanceMonitor;
-#ifdef DEBUG_ENABLED
-static NNDebuggerOverlay *gpAIDebuggerOverlay;
-
-#endif
 
 void register_scene_classes() {
 	GDREGISTER_VIRTUAL_CLASS(NoodleNodes);
@@ -334,13 +323,6 @@ void register_scene_classes() {
 	GDREGISTER_CLASS(NNPerformanceMonitorSingleton);
 	gpAIPerformanceMonitor = memnew(NNPerformanceMonitorSingleton);
 	Engine::get_singleton()->register_singleton("AIPerformanceMonitor", gpAIPerformanceMonitor);
-
-#ifdef DEBUG_ENABLED
-
-	GDREGISTER_CLASS(NNDebuggerOverlay);
-	gpAIDebuggerOverlay = memnew(NNDebuggerOverlay);
-	Engine::get_singleton()->register_singleton("AIDebuggerOverlay", gpAIDebuggerOverlay);
-#endif
 }
 
 void initialize_noodle_nodes_module(ModuleInitializationLevel p_level) {
@@ -365,11 +347,6 @@ void uninitialize_noodle_nodes_module(ModuleInitializationLevel p_level) {
 
 	Engine::get_singleton()->unregister_singleton("AIPerformanceMonitor");
 	memdelete(gpAIPerformanceMonitor);
-
-#ifdef DEBUG_ENABLED
-	Engine::get_singleton()->unregister_singleton("AIDebuggerOverlay");
-	memdelete(gpAIDebuggerOverlay);
-#endif
 }
 
 extern "C" {

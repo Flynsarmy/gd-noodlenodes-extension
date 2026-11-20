@@ -8,7 +8,7 @@
 #include <godot_cpp/core/object.hpp>
 
 #ifdef DEBUG_ENABLED
-#include "../debugger/debugger_overlay.h"
+#include "../debugger/debug_root.h"
 #endif
 
 using namespace godot;
@@ -71,6 +71,9 @@ void NNBTRoot::_bind_methods() {
 // Constructor and destructor.
 
 NNBTRoot::NNBTRoot() {
+#ifdef DEBUG_ENABLED
+	_debug_root.configure(this, "bt");
+#endif
 	_tick_scheduler.configure(this, [this](double p_delta, double p_tick_delta, bool p_due) -> bool {
 		return _auto_tick_step_callback(p_delta, p_tick_delta, p_due);
 	});
@@ -383,17 +386,10 @@ void NNBTRoot::_reconcile_active_child() {
 
 void NNBTRoot::_notification(int p_what) {
 #ifdef DEBUG_ENABLED
-	if (p_what == NOTIFICATION_ENTER_TREE || p_what == NOTIFICATION_EXIT_TREE) {
-		if (!Engine::get_singleton()->is_editor_hint()) {
-			NNDebuggerOverlay *debugger_overlay = NNDebuggerOverlay::get_singleton();
-			if (debugger_overlay != nullptr) {
-				if (p_what == NOTIFICATION_ENTER_TREE) {
-					debugger_overlay->register_behaviour_tree(get_instance_id());
-				} else {
-					debugger_overlay->deregister_behaviour_tree(get_instance_id());
-				}
-			}
-		}
+	if (p_what == NOTIFICATION_ENTER_TREE) {
+		_debug_root.on_tree_entered();
+	} else if (p_what == NOTIFICATION_EXIT_TREE) {
+		_debug_root.on_tree_exiting();
 	}
 #endif
 

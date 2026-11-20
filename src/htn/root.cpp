@@ -13,7 +13,7 @@
 #include <godot_cpp/core/error_macros.hpp>
 
 #ifdef DEBUG_ENABLED
-#include "../debugger/debugger_overlay.h"
+#include "../debugger/debug_root.h"
 #endif
 
 using namespace godot;
@@ -112,6 +112,9 @@ void NNHTNRoot::_bind_methods() {
 }
 
 NNHTNRoot::NNHTNRoot() {
+#ifdef DEBUG_ENABLED
+	_debug_root.configure(this, "htn");
+#endif
 	_default_search_settings.instantiate();
 	_default_execution_settings.instantiate();
 	_tick_scheduler.configure(this, [this](double p_delta, double p_tick_delta, bool p_due) -> bool {
@@ -734,14 +737,10 @@ int NNHTNRoot::get_debug_node_state(const NNHTNNodes *p_node) const {
 
 void NNHTNRoot::_notification(int p_what) {
 #ifdef DEBUG_ENABLED
-	if ((p_what == NOTIFICATION_ENTER_TREE || p_what == NOTIFICATION_EXIT_TREE) && !Engine::get_singleton()->is_editor_hint()) {
-		if (NNDebuggerOverlay *debugger_overlay = NNDebuggerOverlay::get_singleton()) {
-			if (p_what == NOTIFICATION_ENTER_TREE) {
-				debugger_overlay->register_htn_root(get_instance_id());
-			} else {
-				debugger_overlay->deregister_htn_root(get_instance_id());
-			}
-		}
+	if (p_what == NOTIFICATION_ENTER_TREE) {
+		_debug_root.on_tree_entered();
+	} else if (p_what == NOTIFICATION_EXIT_TREE) {
+		_debug_root.on_tree_exiting();
 	}
 #endif
 

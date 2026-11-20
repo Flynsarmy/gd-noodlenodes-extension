@@ -1,6 +1,7 @@
 #pragma once
 
 #include "blackboard.h"
+#include "debugger/debug_root.h"
 #include <godot_cpp/classes/node.hpp>
 #include <godot_cpp/classes/ref.hpp>
 #include <godot_cpp/core/object_id.hpp>
@@ -60,6 +61,12 @@ public:
 	virtual NNRootHost *get_root_host() { return nullptr; }
 	// Non-null for a root that can be driven by an ancestor host.
 	virtual NNHostedRoot *get_hosted_root() { return nullptr; }
+#ifdef DEBUG_ENABLED
+	// Non-null for a root the debugger can register and watch.
+	virtual NNDebugRoot *get_debug_root() { return nullptr; }
+	// Schema in src/debugger/PROTOCOL.md. Empty for non-roots.
+	virtual Dictionary get_debug_snapshot() const { return Dictionary(); }
+#endif
 	// Called when a root this node hosts reports it finished.
 	virtual void _on_hosted_root_finished(bool p_succeeded, Node *p_root);
 

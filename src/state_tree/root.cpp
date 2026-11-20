@@ -10,7 +10,7 @@
 #include <godot_cpp/core/class_db.hpp>
 #include <godot_cpp/core/object.hpp>
 #ifdef DEBUG_ENABLED
-#include "../debugger/debugger_overlay.h"
+#include "../debugger/debug_root.h"
 #include <vector>
 #endif
 
@@ -88,6 +88,9 @@ void NNSTRoot::_bind_methods() {
 // Constructor and destructor.
 
 NNSTRoot::NNSTRoot() {
+#ifdef DEBUG_ENABLED
+	_debug_root.configure(this, "st");
+#endif
 #ifdef DEBUG_ENABLED
 	_total_tick_usec = 0;
 #endif
@@ -865,17 +868,10 @@ void NNSTRoot::_reset_chart() {
 
 void NNSTRoot::_notification(int p_what) {
 #ifdef DEBUG_ENABLED
-	if (p_what == NOTIFICATION_ENTER_TREE || p_what == NOTIFICATION_EXIT_TREE) {
-		if (!Engine::get_singleton()->is_editor_hint()) {
-			NNDebuggerOverlay *debugger_overlay = NNDebuggerOverlay::get_singleton();
-			if (debugger_overlay != nullptr) {
-				if (p_what == NOTIFICATION_ENTER_TREE) {
-					debugger_overlay->register_state_tree(get_instance_id());
-				} else {
-					debugger_overlay->deregister_state_tree(get_instance_id());
-				}
-			}
-		}
+	if (p_what == NOTIFICATION_ENTER_TREE) {
+		_debug_root.on_tree_entered();
+	} else if (p_what == NOTIFICATION_EXIT_TREE) {
+		_debug_root.on_tree_exiting();
 	}
 #endif
 
