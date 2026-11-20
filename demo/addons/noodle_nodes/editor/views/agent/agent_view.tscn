@@ -4,6 +4,7 @@
 [ext_resource type="PackedScene" path="res://addons/noodle_nodes/editor/views/agent/timeline.tscn" id="2_timeline"]
 
 [node name="AgentView" type="Control"]
+clip_contents = true
 layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
@@ -24,77 +25,88 @@ theme_override_constants/margin_top = 6
 theme_override_constants/margin_right = 8
 theme_override_constants/margin_bottom = 6
 
-[node name="Layout" type="VBoxContainer" parent="Margin"]
-layout_mode = 2
-theme_override_constants/separation = 6
-
-[node name="Content" type="HSplitContainer" parent="Margin/Layout"]
+[node name="Panes" type="HBoxContainer" parent="Margin"]
 layout_mode = 2
 size_flags_vertical = 3
-split_offset = 250
+theme_override_constants/separation = 8
 
-[node name="Behaviours" type="VBoxContainer" parent="Margin/Layout/Content"]
-custom_minimum_size = Vector2(200, 0)
+[node name="Behaviours" type="VBoxContainer" parent="Margin/Panes"]
+custom_minimum_size = Vector2(240, 0)
+clip_contents = true
 layout_mode = 2
 size_flags_horizontal = 3
-theme_override_constants/separation = 4
+theme_override_constants/separation = 2
 
-[node name="Title" type="Label" parent="Margin/Layout/Content/Behaviours"]
+[node name="Title" type="Label" parent="Margin/Panes/Behaviours"]
 layout_mode = 2
 theme_type_variation = &"HeaderSmall"
 theme_override_colors/font_color = Color(0.62, 0.66, 0.74, 1)
 text = "BEHAVIOURS"
 
-[node name="Scroll" type="ScrollContainer" parent="Margin/Layout/Content/Behaviours"]
+[node name="Scroll" type="ScrollContainer" parent="Margin/Panes/Behaviours"]
+clip_contents = true
 layout_mode = 2
 size_flags_vertical = 3
 horizontal_scroll_mode = 0
 
-[node name="BehaviourList" type="VBoxContainer" parent="Margin/Layout/Content/Behaviours/Scroll"]
+[node name="BehaviourList" type="VBoxContainer" parent="Margin/Panes/Behaviours/Scroll"]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_constants/separation = 3
 
-[node name="Sensors" type="VBoxContainer" parent="Margin/Layout/Content"]
+[node name="Sensors" type="VBoxContainer" parent="Margin/Panes"]
+custom_minimum_size = Vector2(170, 0)
+clip_contents = true
 layout_mode = 2
-theme_override_constants/separation = 4
+theme_override_constants/separation = 2
 
-[node name="Title" type="Label" parent="Margin/Layout/Content/Sensors"]
+[node name="Title" type="Label" parent="Margin/Panes/Sensors"]
 layout_mode = 2
 theme_type_variation = &"HeaderSmall"
 theme_override_colors/font_color = Color(0.62, 0.66, 0.74, 1)
 text = "SENSORS"
 
-[node name="Scroll" type="ScrollContainer" parent="Margin/Layout/Content/Sensors"]
+[node name="Scroll" type="ScrollContainer" parent="Margin/Panes/Sensors"]
+clip_contents = true
 layout_mode = 2
 size_flags_vertical = 3
 horizontal_scroll_mode = 0
 
-[node name="SensorList" type="VBoxContainer" parent="Margin/Layout/Content/Sensors/Scroll"]
+[node name="SensorList" type="VBoxContainer" parent="Margin/Panes/Sensors/Scroll"]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_constants/separation = 2
 
-[node name="TimelineHeader" type="HBoxContainer" parent="Margin/Layout"]
+[node name="TimelinePane" type="VBoxContainer" parent="Margin/Panes"]
+custom_minimum_size = Vector2(260, 0)
+clip_contents = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 2
+
+[node name="Header" type="HBoxContainer" parent="Margin/Panes/TimelinePane"]
 layout_mode = 2
 theme_override_constants/separation = 6
 
-[node name="Title" type="Label" parent="Margin/Layout/TimelineHeader"]
+[node name="Title" type="Label" parent="Margin/Panes/TimelinePane/Header"]
 layout_mode = 2
 theme_type_variation = &"HeaderSmall"
 theme_override_colors/font_color = Color(0.62, 0.66, 0.74, 1)
-text = "CHOSEN BEHAVIOUR · LAST 30 S"
+text = "TIMELINE"
 
-[node name="OscillationWarning" type="Label" parent="Margin/Layout/TimelineHeader"]
+[node name="OscillationWarning" type="Label" parent="Margin/Panes/TimelinePane/Header"]
 unique_name_in_owner = true
 visible = false
+clip_text = true
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_colors/font_color = Color(1, 0.55, 0.3, 1)
 horizontal_alignment = 2
 
-[node name="Timeline" parent="Margin/Layout" instance=ExtResource("2_timeline")]
+[node name="Timeline" parent="Margin/Panes/TimelinePane" instance=ExtResource("2_timeline")]
 unique_name_in_owner = true
 layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3

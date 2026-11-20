@@ -16,7 +16,8 @@ const TICK_LABEL := Color(0.7, 0.73, 0.78, 1.0)
 const SEGMENT_LABEL := Color(0.06, 0.07, 0.09, 0.9)
 const TOP := 6.0
 const BOTTOM := 8.0
-const MIN_HEIGHT := 96.0
+const MIN_HEIGHT := 48.0
+const MIN_WIDTH := 240.0
 const TICK_WIDTH := 1.0
 const MIN_SEGMENT_WIDTH := 1.0
 const SEGMENT_LABEL_PADDING := 6.0
@@ -30,7 +31,7 @@ var _fallback: int = 0
 
 
 func _ready() -> void:
-	custom_minimum_size = Vector2(0.0, EditorScale.px(MIN_HEIGHT))
+	custom_minimum_size = Vector2(EditorScale.px(MIN_WIDTH), EditorScale.px(MIN_HEIGHT))
 
 
 func set_data(changes: Array, now_usec: int, names: Dictionary, fallback_behaviour: int) -> void:

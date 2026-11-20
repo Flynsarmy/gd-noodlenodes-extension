@@ -321,3 +321,33 @@ func test_double_clicking_a_portal_action_emits_drill_into() -> void:
 	row.handle_input(_mouse_event(true))
 
 	assert_signal_emitted_with_parameters(_view, "drill_into", [Fixtures.PATROL_BT])
+
+
+func test_view_fits_godots_default_bottom_panel_height() -> void:
+	var frame := Control.new()
+	frame.size = Vector2(1100, 170)
+	add_child_autofree(frame)
+	var view = AgentViewScene.instantiate()
+	frame.add_child(view)
+	view.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	view.set_snapshot(Fixtures.agent_snapshot())
+	view.apply_events(Fixtures.agent_events())
+	await get_tree().process_frame
+
+	assert_true(view.clip_contents, "the view clips its own content")
+	assert_true(view.get_combined_minimum_size().y <= 150.0)
+	var panes = view.get_node("Margin/Panes")
+	assert_true(panes.get_combined_minimum_size().y <= 150.0, "the panes fit the default panel height")
+	assert_true(panes.get_global_rect().end.y <= view.get_global_rect().end.y)
+	assert_almost_eq(view.size.y, 170.0, 0.5)
+
+	var row = _find_row(view.get_node("%BehaviourList"), Fixtures.AGENT_INVESTIGATE)
+	var timeline = view.get_node("%Timeline")
+	assert_not_null(row, "a behaviour row exists")
+	assert_true(row.is_visible_in_tree())
+	assert_true(row.get_global_rect().size.y > 0.0)
+	assert_true(row.get_global_rect().end.y <= view.get_global_rect().end.y)
+
+	assert_true(timeline.is_visible_in_tree())
+	assert_true(timeline.get_global_rect().size.y >= 48.0)
+	assert_true(timeline.get_global_rect().end.y <= view.get_global_rect().end.y)
