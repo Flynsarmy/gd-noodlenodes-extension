@@ -3,6 +3,8 @@
 [ext_resource type="Script" path="res://addons/noodle_nodes/editor/views/htn/plan_step_row.gd" id="1_row"]
 
 [node name="PlanStepRow" type="PanelContainer"]
+offset_right = 400.0
+offset_bottom = 60.0
 mouse_filter = 2
 script = ExtResource("1_row")
 
@@ -13,6 +15,7 @@ theme_override_constants/separation = 6
 
 [node name="StateStrip" type="ColorRect" parent="Body"]
 unique_name_in_owner = true
+custom_minimum_size = Vector2(4, 0)
 layout_mode = 2
 size_flags_vertical = 3
 mouse_filter = 2

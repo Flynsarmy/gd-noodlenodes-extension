@@ -4,7 +4,6 @@ extends PanelContainer
 
 const EditorScale = preload("res://addons/noodle_nodes/editor/editor_scale.gd")
 const StatusPalette = preload("res://addons/noodle_nodes/debugger/status_palette.gd")
-const STRIP_WIDTH := 4.0
 
 @onready var _strip: ColorRect = %StateStrip
 @onready var _current_dot: Label = %CurrentDot
@@ -18,7 +17,7 @@ const STRIP_WIDTH := 4.0
 
 
 func _ready() -> void:
-	_strip.custom_minimum_size.x = EditorScale.px(STRIP_WIDTH)
+	EditorScale.apply_to_scene(self)
 
 
 func configure(step: Dictionary, is_current: bool) -> void:

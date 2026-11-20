@@ -17,6 +17,10 @@ const SELECTED_BORDER_WIDTH := 2.0
 var attempt_id := 0
 
 
+func _ready() -> void:
+	EditorScale.apply_to_scene(self)
+
+
 func configure(attempt_id_value: int, result: String, result_color: Color, flags: String, meta: String, is_selected: bool) -> void:
 	attempt_id = attempt_id_value
 	_id.text = "#%d" % attempt_id

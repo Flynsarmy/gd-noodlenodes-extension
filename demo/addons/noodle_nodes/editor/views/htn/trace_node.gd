@@ -5,7 +5,6 @@ extends PanelContainer
 
 const EditorScale = preload("res://addons/noodle_nodes/editor/editor_scale.gd")
 const TITLE_INK := Color(0.93, 0.95, 0.97)
-const ACCENT_WIDTH := 4.0
 const BORDER_WIDTH := 1.0
 const SELECTED_BORDER_WIDTH := 2.0
 
@@ -16,7 +15,7 @@ const SELECTED_BORDER_WIDTH := 2.0
 
 
 func _ready() -> void:
-	_accent.custom_minimum_size.x = EditorScale.px(ACCENT_WIDTH)
+	EditorScale.apply_to_scene(self)
 
 
 func configure(record: Dictionary, accent: Color, collapsed: bool, selected: bool) -> void:

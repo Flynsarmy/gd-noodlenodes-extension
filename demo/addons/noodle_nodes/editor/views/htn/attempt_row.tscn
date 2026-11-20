@@ -19,6 +19,8 @@ corner_radius_bottom_right = 3
 corner_radius_bottom_left = 3
 
 [node name="AttemptRow" type="PanelContainer"]
+offset_right = 380.0
+offset_bottom = 40.0
 theme_override_styles/panel = SubResource("StyleBoxFlat_row")
 script = ExtResource("1_row")
 

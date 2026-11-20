@@ -59,9 +59,11 @@ theme_override_constants/margin_bottom = 4
 [node name="MainSplit" type="HSplitContainer" parent="Margins"]
 unique_name_in_owner = true
 layout_mode = 2
+split_offset = 420
 
 [node name="Sidebar" type="VBoxContainer" parent="Margins/MainSplit"]
 unique_name_in_owner = true
+custom_minimum_size = Vector2(400, 0)
 layout_mode = 2
 theme_override_constants/separation = 4
 
@@ -281,6 +283,7 @@ theme_override_colors/font_color = Color(0.6, 0.65, 0.7, 1)
 
 [node name="DetailScroll" type="ScrollContainer" parent="Margins/MainSplit/DetailTabs/Trace/TraceSplit"]
 unique_name_in_owner = true
+custom_minimum_size = Vector2(260, 0)
 layout_mode = 2
 horizontal_scroll_mode = 0
 

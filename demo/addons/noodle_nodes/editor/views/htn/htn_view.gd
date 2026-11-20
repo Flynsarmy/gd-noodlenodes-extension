@@ -27,10 +27,6 @@ const TIMELINE_KINDS := ["htn_step", "htn_verification_failed", "htn_repair", "h
 const IDENTIFIER_PATTERN := "[A-Za-z_][A-Za-z_0-9]*"
 const EXPRESSION_KEYWORDS := ["true", "false", "null", "not", "and", "or", "in", "if", "else"]
 
-const SIDEBAR_WIDTH := 400.0
-const SPLIT_OFFSET := 420.0
-const DETAIL_WIDTH := 260.0
-
 ## Timelines and attempts are bounded so a long session cannot grow the view
 ## without limit. The newest entries are always kept.
 const MAX_TIMELINE_ENTRIES := 512
@@ -94,9 +90,7 @@ var _diff_signature := ""
 
 
 func _ready() -> void:
-	%Sidebar.custom_minimum_size.x = EditorScale.px(SIDEBAR_WIDTH)
-	%MainSplit.split_offset = int(EditorScale.px(SPLIT_OFFSET))
-	%DetailScroll.custom_minimum_size.x = EditorScale.px(DETAIL_WIDTH)
+	EditorScale.apply_to_scene(self)
 	_set_column_titles(_domain_tree, ["Node", "Step"])
 	_set_column_titles(_timeline_tree, ["Time", "Event", "Detail"])
 	_set_column_titles(_diff_tree, ["Key", "Change", "Attempt state", "Current"])

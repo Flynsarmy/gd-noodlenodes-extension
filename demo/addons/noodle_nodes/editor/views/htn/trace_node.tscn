@@ -15,6 +15,9 @@ corner_radius_bottom_right = 4
 corner_radius_bottom_left = 4
 
 [node name="TraceNode" type="PanelContainer"]
+custom_minimum_size = Vector2(224, 58)
+offset_right = 224.0
+offset_bottom = 58.0
 mouse_filter = 2
 theme_override_styles/panel = SubResource("StyleBoxFlat_panel")
 script = ExtResource("1_node")
@@ -26,6 +29,7 @@ theme_override_constants/separation = 0
 
 [node name="Accent" type="ColorRect" parent="Body"]
 unique_name_in_owner = true
+custom_minimum_size = Vector2(4, 0)
 layout_mode = 2
 size_flags_vertical = 3
 mouse_filter = 2
