@@ -7,6 +7,8 @@ const StatusPalette = preload("res://addons/noodle_nodes/debugger/status_palette
 const EntityLabelScene: PackedScene = preload("res://addons/noodle_nodes/debugger/overlay/entity_label.tscn")
 const RootRowScene: PackedScene = preload("res://addons/noodle_nodes/debugger/overlay/root_row.tscn")
 const EventRowScene: PackedScene = preload("res://addons/noodle_nodes/debugger/overlay/event_row.tscn")
+const NqsDraw2DScene: PackedScene = preload("res://addons/noodle_nodes/debugger/nqs/nqs_debug_draw_2d.tscn")
+const NqsDraw3DScene: PackedScene = preload("res://addons/noodle_nodes/debugger/nqs/nqs_debug_draw_3d.tscn")
 
 const SEGMENT_SEPARATOR := " › "
 const MAX_RECENT_EVENTS := 8
@@ -17,11 +19,7 @@ const TYPE_COLORS := {
 	Protocol.TYPE_HTN: Color(0.85, 0.65, 1.0),
 }
 
-## Optional NQS debug draw scene, mounted into %NqsHost when set.
-@export var nqs_scene: PackedScene
-
 @onready var _labels_root: Control = %Labels
-@onready var _nqs_host: Control = %NqsHost
 @onready var _panel: PanelContainer = %Panel
 @onready var _title_label: Label = %Title
 @onready var _rows: VBoxContainer = %Rows
@@ -44,7 +42,7 @@ var debugger = Protocol.get_debugger():
 var _root_infos := {}
 var _entity_labels := {}
 var _watched := {}
-var _selected_owner := 0
+var _selected_entity := 0
 var _rows_nodes: Array[Node] = []
 var _event_rows: Array[Node] = []
 var _event_log: Array[Dictionary] = []
@@ -52,6 +50,7 @@ var _event_roots: Array[int] = []
 var _last_seq := {}
 var _state_event_names := {}
 var _snapshots := {}
+var _nqs_drawer: Node = null
 
 
 func _ready() -> void:
@@ -62,8 +61,6 @@ func _ready() -> void:
 	visibility_changed.connect(_on_visibility_changed)
 	_pause_button.toggled.connect(_on_pause_toggled)
 	_step_button.pressed.connect(_on_step_pressed)
-	if nqs_scene != null:
-		_nqs_host.add_child(nqs_scene.instantiate())
 	if visible:
 		_attach()
 
@@ -99,23 +96,24 @@ func refresh() -> void:
 	_sync_watches()
 	_collect_events()
 	_update_panel()
+	_sync_nqs()
 	_sync_pause()
 	_sync_processing()
 
 
 ## Cycles the selection through the labelled entities. Also bound to Tab.
 func cycle_selection() -> void:
-	var owners := _entity_labels.keys()
-	if owners.is_empty():
+	var entities := _entity_labels.keys()
+	if entities.is_empty():
 		return
-	var index := owners.find(_selected_owner)
-	select_owner(int(owners[(index + 1) % owners.size()]))
+	var index := entities.find(_selected_entity)
+	select_entity(int(entities[(index + 1) % entities.size()]))
 
 
-func select_owner(owner_id: int) -> void:
-	if _selected_owner == owner_id:
+func select_entity(entity_id: int) -> void:
+	if _selected_entity == entity_id:
 		return
-	_selected_owner = owner_id
+	_selected_entity = entity_id
 	refresh()
 
 
@@ -133,6 +131,7 @@ func _attach() -> void:
 func _detach() -> void:
 	_timer.stop()
 	set_process(false)
+	_free_nqs_drawer()
 	if debugger != null and debugger.is_connected("root_added", _on_root_added):
 		debugger.disconnect("root_added", _on_root_added)
 		debugger.disconnect("root_removed", _on_root_removed)
@@ -149,17 +148,24 @@ func _collect_roots() -> void:
 			_root_infos[root_id] = info
 
 
-func _owners() -> Array[int]:
-	var owners: Array[int] = []
+func _entities() -> Array[int]:
+	var entities: Array[int] = []
 	for root_id in _root_infos:
-		var owner_id := int(_root_infos[root_id].get("owner_id", 0))
-		if owner_id != 0 and not owners.has(owner_id) and _spatial_owner(owner_id) != null:
-			owners.append(owner_id)
-	return owners
+		var entity_id := _entity_id(_root_infos[root_id])
+		if entity_id != 0 and not entities.has(entity_id) and _spatial_entity(entity_id) != null:
+			entities.append(entity_id)
+	return entities
 
 
-func _spatial_owner(owner_id: int) -> Node:
-	var object := instance_from_id(owner_id)
+## A root acts for its actor; roots without one fall back to their scene owner.
+func _entity_id(root_info: Dictionary) -> int:
+	var actor_id := int(root_info.get("actor_id", 0))
+	return actor_id if actor_id != 0 else int(root_info.get("owner_id", 0))
+
+
+## The node an entity is drawn against, if it is somewhere in the 2D or 3D world.
+func _spatial_entity(entity_id: int) -> Node:
+	var object := instance_from_id(entity_id)
 	if not (object is Node2D or object is Node3D):
 		return null
 	var node := object as Node
@@ -167,37 +173,37 @@ func _spatial_owner(owner_id: int) -> Node:
 
 
 func _sync_labels() -> void:
-	var owners := _owners()
-	for owner_id in owners:
-		if not _entity_labels.has(owner_id):
-			_create_label(owner_id)
-	for owner_id in _entity_labels.keys():
-		if not owners.has(owner_id):
-			_remove_label(owner_id)
-	for owner_id in owners:
-		_set_label_text(owner_id)
+	var entities := _entities()
+	for entity_id in entities:
+		if not _entity_labels.has(entity_id):
+			_create_label(entity_id)
+	for entity_id in _entity_labels.keys():
+		if not entities.has(entity_id):
+			_remove_label(entity_id)
+	for entity_id in entities:
+		_set_label_text(entity_id)
 
 
-func _create_label(owner_id: int) -> void:
+func _create_label(entity_id: int) -> void:
 	var label := EntityLabelScene.instantiate()
-	label.owner_id = owner_id
-	label.pressed.connect(select_owner)
+	label.entity_id = entity_id
+	label.pressed.connect(select_entity)
 	_labels_root.add_child(label)
-	_entity_labels[owner_id] = label
+	_entity_labels[entity_id] = label
 
 
-func _remove_label(owner_id: int) -> void:
-	var label: Node = _entity_labels.get(owner_id)
-	_entity_labels.erase(owner_id)
+func _remove_label(entity_id: int) -> void:
+	var label: Node = _entity_labels.get(entity_id)
+	_entity_labels.erase(entity_id)
 	if is_instance_valid(label):
 		_labels_root.remove_child(label)
 		label.free()
 
 
-func _set_label_text(owner_id: int) -> void:
-	var label: RichTextLabel = _entity_labels[owner_id]
+func _set_label_text(entity_id: int) -> void:
+	var label: RichTextLabel = _entity_labels[entity_id]
 	var segments := PackedStringArray()
-	for root_id in _active_chain(owner_id):
+	for root_id in _active_chain(entity_id):
 		var snapshot := _snapshot(root_id)
 		var text := _segment(snapshot)
 		if text.is_empty():
@@ -205,26 +211,26 @@ func _set_label_text(owner_id: int) -> void:
 		var color: Color = TYPE_COLORS.get(String(snapshot.get("type", "")), StatusPalette.PENDING)
 		segments.append("[color=#%s]%s[/color]" % [color.to_html(false), text])
 	label.text = SEGMENT_SEPARATOR.join(segments)
-	label.modulate = Color.WHITE if _selected_owner in [0, owner_id] else Color(1.0, 1.0, 1.0, 0.65)
+	label.modulate = Color.WHITE if _selected_entity in [0, entity_id] else Color(1.0, 1.0, 1.0, 0.65)
 
 
 func _update_label_positions() -> void:
 	if not is_inside_tree():
 		return
-	for owner_id in _entity_labels:
-		var label: Control = _entity_labels[owner_id]
-		var owner_node := _spatial_owner(owner_id)
-		if owner_node == null:
+	for entity_id in _entity_labels:
+		var label: Control = _entity_labels[entity_id]
+		var entity_node := _spatial_entity(entity_id)
+		if entity_node == null:
 			continue
 		var on_screen := false
 		var screen_position := Vector2.ZERO
-		if owner_node is Node2D:
-			screen_position = (owner_node as Node2D).get_global_transform_with_canvas().origin
+		if entity_node is Node2D:
+			screen_position = (entity_node as Node2D).get_global_transform_with_canvas().origin
 			on_screen = true
 		else:
 			var camera := get_viewport().get_camera_3d()
 			if camera != null:
-				var world_position: Vector3 = (owner_node as Node3D).global_position
+				var world_position: Vector3 = (entity_node as Node3D).global_position
 				on_screen = not camera.is_position_behind(world_position)
 				screen_position = camera.unproject_position(world_position)
 		label.visible = on_screen and not label.text.is_empty()
@@ -235,8 +241,8 @@ func _update_label_positions() -> void:
 
 func _sync_watches() -> void:
 	var desired := {}
-	if _selected_owner != 0:
-		for root_id in _active_chain(_selected_owner):
+	if _selected_entity != 0:
+		for root_id in _active_chain(_selected_entity):
 			desired[root_id] = true
 	for root_id in _watched:
 		if not desired.has(root_id):
@@ -256,15 +262,15 @@ func _release_watches() -> void:
 
 func _update_panel() -> void:
 	var chain: Array[int] = []
-	if _selected_owner != 0:
-		chain = _active_chain(_selected_owner)
+	if _selected_entity != 0:
+		chain = _active_chain(_selected_entity)
 	if chain.is_empty():
-		_selected_owner = 0
+		_selected_entity = 0
 		_panel.visible = false
 		_clear_event_rows()
 		return
 	_panel.visible = true
-	_title_label.text = _owner_name(_selected_owner)
+	_title_label.text = _entity_name(_selected_entity)
 	_sync_rows(chain)
 	_sync_event_rows()
 
@@ -319,9 +325,9 @@ func _status(snapshot: Dictionary) -> Dictionary:
 
 
 ## The active path through the entity's roots: each root followed through active_hosted_root.
-func _active_chain(owner_id: int) -> Array[int]:
+func _active_chain(entity_id: int) -> Array[int]:
 	var chain: Array[int] = []
-	for top_root_id in _top_level_roots(owner_id):
+	for top_root_id in _top_level_roots(entity_id):
 		var root_id := top_root_id
 		while root_id != 0 and not chain.has(root_id):
 			var snapshot := _snapshot(root_id)
@@ -332,17 +338,88 @@ func _active_chain(owner_id: int) -> Array[int]:
 	return chain
 
 
-func _top_level_roots(owner_id: int) -> Array[int]:
+func _top_level_roots(entity_id: int) -> Array[int]:
 	var roots: Array[int] = []
 	for root_id in _root_infos:
 		var info: Dictionary = _root_infos[root_id]
-		if int(info.get("owner_id", 0)) == owner_id and int(info.get("host_root_id", 0)) == 0:
+		if _entity_id(info) == entity_id and int(info.get("host_root_id", 0)) == 0:
 			roots.append(root_id)
 	if roots.is_empty():
 		for root_id in _root_infos:
-			if int(_root_infos[root_id].get("owner_id", 0)) == owner_id:
+			if _entity_id(_root_infos[root_id]) == entity_id:
 				roots.append(root_id)
 	return roots
+
+
+## Draws the NQS query behind the selected entity's active path. The drawers
+## paint in world space, so they live in the entity's viewport instead of the
+## overlay's CanvasLayer.
+func _sync_nqs() -> void:
+	var entity_node := _spatial_entity(_selected_entity) if _selected_entity != 0 else null
+	var search_space_id := _find_nqs_search_space_id() if entity_node != null else 0
+	if entity_node == null or search_space_id == 0:
+		_free_nqs_drawer()
+		return
+	var is_2d := entity_node is Node2D
+	if _nqs_drawer != null and (_nqs_drawer is Node2D) != is_2d:
+		_free_nqs_drawer()
+	if _nqs_drawer == null:
+		var scene := NqsDraw2DScene if is_2d else NqsDraw3DScene
+		_nqs_drawer = scene.instantiate()
+		entity_node.get_viewport().add_child(_nqs_drawer)
+	if _nqs_drawer.call("get_search_space_id") != search_space_id:
+		_nqs_drawer.call("set_search_space_id", search_space_id)
+
+
+func _free_nqs_drawer() -> void:
+	if is_instance_valid(_nqs_drawer):
+		_nqs_drawer.queue_free()
+	_nqs_drawer = null
+
+
+## The deepest running BT query on the selected chain wins; a tree that is
+## between queries still shows the query it ran most recently.
+func _find_nqs_search_space_id() -> int:
+	var chain := _active_chain(_selected_entity)
+	for i in range(chain.size() - 1, -1, -1):
+		var snapshot := _snapshot(chain[i])
+		if String(snapshot.get("type", "")) != Protocol.TYPE_BT:
+			continue
+		var search_space_id := _bt_search_space_id(snapshot)
+		if search_space_id != 0:
+			return search_space_id
+	return 0
+
+
+func _bt_search_space_id(snapshot: Dictionary) -> int:
+	var by_id := {}
+	for entry in snapshot.get("nodes", []):
+		var entry_id := int(entry.get("id", 0))
+		if entry_id != 0:
+			by_id[entry_id] = entry
+	var node: Dictionary = by_id.get(int(snapshot.get("running_node", 0)), {})
+	while not node.is_empty():
+		var badge := _search_space_badge(node)
+		if badge != 0:
+			return badge
+		node = by_id.get(int(node.get("parent", 0)), {})
+
+	var best_time := -1
+	var best_id := 0
+	for entry in by_id.values():
+		var badge := _search_space_badge(entry)
+		if badge == 0:
+			continue
+		var visited := int(entry.get("last_visited_usec", 0))
+		if visited > best_time:
+			best_time = visited
+			best_id = badge
+	return best_id
+
+
+func _search_space_badge(node: Dictionary) -> int:
+	var badges: Variant = node.get("badges", {})
+	return int(badges.get("nqs_search_space", 0)) if badges is Dictionary else 0
 
 
 func _segment(snapshot: Dictionary) -> String:
@@ -376,14 +453,16 @@ func _node_name(snapshot: Dictionary, node_id: int) -> String:
 	return ""
 
 
-func _owner_name(owner_id: int) -> String:
+func _entity_name(entity_id: int) -> String:
 	for root_id in _root_infos:
 		var info: Dictionary = _root_infos[root_id]
-		if int(info.get("owner_id", 0)) != owner_id:
+		if _entity_id(info) != entity_id:
 			continue
-		var owner_name := String(info.get("owner_name", ""))
-		return owner_name if not owner_name.is_empty() else "Owner %d" % owner_id
-	return "Owner %d" % owner_id
+		var name := String(info.get("actor_name", ""))
+		if name.is_empty():
+			name = String(info.get("owner_name", ""))
+		return name if not name.is_empty() else "Entity %d" % entity_id
+	return "Entity %d" % entity_id
 
 
 func _snapshot(root_id: int) -> Dictionary:
@@ -408,8 +487,8 @@ func _sync_processing() -> void:
 
 func _collect_events() -> void:
 	var chain: Array[int] = []
-	if _selected_owner != 0:
-		chain = _active_chain(_selected_owner)
+	if _selected_entity != 0:
+		chain = _active_chain(_selected_entity)
 	if chain != _event_roots:
 		_event_roots = chain
 		_event_log.clear()

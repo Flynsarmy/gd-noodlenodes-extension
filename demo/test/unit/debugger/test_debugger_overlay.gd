@@ -4,12 +4,14 @@ const Fixtures = preload("res://test/unit/debugger/fixtures/debugger_fixtures.gd
 const OverlayScene: PackedScene = preload("res://addons/noodle_nodes/debugger/overlay/noodle_nodes_overlay.tscn")
 
 const SECOND_ROOT := 7100
+const THIRD_ROOT := 7200
 
 var _debugger: FakeDebugger
 var _overlay: Control
 var _layer: CanvasLayer
 var _owner_a: Node2D
 var _owner_b: Node2D
+var _search_space: NNNQSSearchSpaces
 
 
 class FakeDebugger extends RefCounted:
@@ -79,9 +81,14 @@ func before_each() -> void:
 	_owner_b = Node2D.new()
 	_owner_b.name = "NpcB"
 	add_child_autofree(_owner_b)
+	_search_space = NNNQSSearchSpaces.new()
+	add_child_autofree(_search_space)
 
 	for info in Fixtures.root_infos():
-		_debugger.add_root(_remap_owner(info, _owner_a), Fixtures.snapshot_for(int(info["id"])))
+		var snapshot := Fixtures.snapshot_for(int(info["id"]))
+		if int(info["id"]) == Fixtures.COVER_BT:
+			snapshot = _with_search_space(snapshot, Fixtures.COVER_FIND, _search_space.get_instance_id())
+		_debugger.add_root(_remap_owner(info, _owner_a), snapshot)
 
 	for root_id in [Fixtures.ST_ROOT, Fixtures.AGENT, Fixtures.HTN, Fixtures.COVER_BT]:
 		_debugger.events[root_id] = Fixtures.events_for(root_id)
@@ -90,7 +97,7 @@ func before_each() -> void:
 	second_info["id"] = SECOND_ROOT
 	second_info["host_root_id"] = 0
 	second_info["host_node_id"] = 0
-	var second_snapshot := Fixtures.bt_snapshot()
+	var second_snapshot := _with_search_space(Fixtures.bt_snapshot(), Fixtures.COVER_FIND, _search_space.get_instance_id())
 	second_snapshot["id"] = SECOND_ROOT
 	second_snapshot["active_hosted_root"] = 0
 	_debugger.add_root(second_info, second_snapshot)
@@ -100,10 +107,20 @@ func before_each() -> void:
 	_layer.add_child(_overlay)
 
 
-func _remap_owner(info: Dictionary, entity: Node2D) -> Dictionary:
+func _remap_owner(info: Dictionary, entity: Node) -> Dictionary:
 	var copy := info.duplicate(true)
 	copy["owner_id"] = entity.get_instance_id()
 	copy["owner_name"] = entity.name
+	copy["actor_id"] = entity.get_instance_id()
+	copy["actor_name"] = entity.name
+	return copy
+
+
+func _with_search_space(snapshot: Dictionary, node_id: int, search_space_id: int) -> Dictionary:
+	var copy := snapshot.duplicate(true)
+	for node: Dictionary in copy["nodes"]:
+		if int(node["id"]) == node_id:
+			node["badges"]["nqs_search_space"] = search_space_id
 	return copy
 
 
@@ -146,8 +163,28 @@ func test_labels_track_moving_owners_every_frame() -> void:
 	assert_ne(label.position, before)
 
 
+func test_labels_group_and_track_the_actor_not_the_scene_owner() -> void:
+	var scene_root := Node.new()
+	scene_root.name = "Showcase"
+	add_child_autofree(scene_root)
+	for info: Dictionary in _debugger.roots:
+		if int(info["owner_id"]) == _owner_a.get_instance_id():
+			info["owner_id"] = scene_root.get_instance_id()
+			info["owner_name"] = "Showcase"
+	_overlay.refresh()
+
+	assert_eq(_labels().size(), 2, "one label per actor, not per scene owner")
+	assert_eq(_label_texts()[0], "Alerted/Run › Investigate › SneakToCover › MoveToCover")
+
+	var label: Control = _labels()[0]
+	_owner_a.position = Vector2(400.0, 300.0)
+	_overlay._process(0.0)
+
+	assert_almost_eq(label.position.x + label.size.x * 0.5, 400.0, 0.5)
+
+
 func test_selecting_an_entity_watches_its_chain_and_switching_unwatches_it() -> void:
-	_overlay.select_owner(_owner_a.get_instance_id())
+	_overlay.select_entity(_owner_a.get_instance_id())
 
 	for root_id in [Fixtures.ST_ROOT, Fixtures.AGENT, Fixtures.HTN, Fixtures.COVER_BT]:
 		assert_true(_debugger.is_watched(root_id), "root %d should be watched" % root_id)
@@ -155,7 +192,7 @@ func test_selecting_an_entity_watches_its_chain_and_switching_unwatches_it() -> 
 	assert_true(_overlay.get_node("%Panel").visible)
 	assert_eq(_overlay.get_node("%Rows").get_child_count(), 4)
 
-	_overlay.select_owner(_owner_b.get_instance_id())
+	_overlay.select_entity(_owner_b.get_instance_id())
 
 	for root_id in [Fixtures.ST_ROOT, Fixtures.AGENT, Fixtures.HTN, Fixtures.COVER_BT]:
 		assert_false(_debugger.is_watched(root_id), "root %d should be unwatched" % root_id)
@@ -163,7 +200,7 @@ func test_selecting_an_entity_watches_its_chain_and_switching_unwatches_it() -> 
 
 
 func test_recent_events_show_the_latest_across_the_watched_chain() -> void:
-	_overlay.select_owner(_owner_a.get_instance_id())
+	_overlay.select_entity(_owner_a.get_instance_id())
 
 	var rows: Array[Node] = _overlay.get_node("%Events").get_children()
 	assert_eq(rows.size(), 8)
@@ -176,14 +213,14 @@ func test_recent_events_show_the_latest_across_the_watched_chain() -> void:
 
 func test_recent_events_are_worded_per_system() -> void:
 	_debugger.events = {Fixtures.ST_ROOT: Fixtures.st_events()}
-	_overlay.select_owner(_owner_a.get_instance_id())
+	_overlay.select_entity(_owner_a.get_instance_id())
 	var texts := _event_texts()
 	assert_has(texts, "Idle → Run (event run)")
 	assert_has(texts, "entered Run")
 
 	_debugger.events = {Fixtures.AGENT: Fixtures.agent_events()}
-	_overlay.select_owner(_owner_b.get_instance_id())
-	_overlay.select_owner(_owner_a.get_instance_id())
+	_overlay.select_entity(_owner_b.get_instance_id())
+	_overlay.select_entity(_owner_a.get_instance_id())
 
 	assert_has(_event_texts(), "chose Investigate 0.64")
 
@@ -200,7 +237,7 @@ func test_clicking_a_label_selects_its_entity() -> void:
 
 
 func test_root_removal_and_freed_owners_drop_their_labels() -> void:
-	_overlay.select_owner(_owner_b.get_instance_id())
+	_overlay.select_entity(_owner_b.get_instance_id())
 
 	_debugger.remove_root(SECOND_ROOT)
 
@@ -229,7 +266,7 @@ func test_does_nothing_when_no_debugger_exists() -> void:
 
 
 func test_pause_and_step_buttons_drive_the_debugger() -> void:
-	_overlay.select_owner(_owner_a.get_instance_id())
+	_overlay.select_entity(_owner_a.get_instance_id())
 	var pause_button: Button = _overlay.get_node("%PauseButton")
 	var step_button: Button = _overlay.get_node("%StepButton")
 	assert_true(step_button.disabled)
@@ -245,17 +282,81 @@ func test_pause_and_step_buttons_drive_the_debugger() -> void:
 
 
 func test_hiding_or_freeing_the_overlay_unwatches_everything() -> void:
-	_overlay.select_owner(_owner_a.get_instance_id())
+	_overlay.select_entity(_owner_a.get_instance_id())
 	assert_gt(_debugger.watched.size(), 0)
+	assert_not_null(_overlay._nqs_drawer)
 
 	_overlay.visible = false
 	assert_eq(_debugger.watched.size(), 0)
 	assert_false(_overlay.is_processing())
+	assert_null(_overlay._nqs_drawer)
 
 	_overlay.visible = true
 	assert_gt(_debugger.watched.size(), 0)
 	assert_true(_overlay.is_processing())
+	assert_not_null(_overlay._nqs_drawer)
 
 	_overlay.free()
 	_overlay = null
 	assert_eq(_debugger.watched.size(), 0)
+
+
+func test_selecting_an_entity_draws_the_search_space_of_its_running_query() -> void:
+	_overlay.select_entity(_owner_a.get_instance_id())
+
+	var drawer: Node = _overlay._nqs_drawer
+	assert_not_null(drawer)
+	assert_true(drawer is Node2D)
+	assert_eq(drawer.get_search_space_id(), _search_space.get_instance_id())
+	assert_eq(drawer.get_viewport(), _owner_a.get_viewport())
+	assert_false(_layer.is_ancestor_of(drawer))
+
+
+func test_nqs_draw_prefers_the_running_path_and_retargets_the_same_drawer() -> void:
+	var running_space := NNNQSSearchSpaces.new()
+	add_child_autofree(running_space)
+	var other_space := NNNQSSearchSpaces.new()
+	add_child_autofree(other_space)
+	_debugger.snapshots[Fixtures.COVER_BT] = _with_search_space(Fixtures.bt_snapshot(), Fixtures.COVER_SEQUENCE, running_space.get_instance_id())
+	_overlay.select_entity(_owner_a.get_instance_id())
+
+	var drawer: Node = _overlay._nqs_drawer
+	assert_not_null(drawer)
+	assert_eq(drawer.get_search_space_id(), running_space.get_instance_id())
+
+	_debugger.snapshots[Fixtures.COVER_BT] = _with_search_space(Fixtures.bt_snapshot(), Fixtures.COVER_FIND, other_space.get_instance_id())
+	_overlay.refresh()
+
+	assert_same(_overlay._nqs_drawer, drawer)
+	assert_eq(drawer.get_search_space_id(), other_space.get_instance_id())
+
+
+func test_nqs_draw_matches_the_owner_type() -> void:
+	var owner_3d := Node3D.new()
+	owner_3d.name = "Npc3D"
+	add_child_autofree(owner_3d)
+	var info := _remap_owner(Fixtures.root_infos()[4], owner_3d)
+	info["id"] = THIRD_ROOT
+	info["host_root_id"] = 0
+	info["host_node_id"] = 0
+	var snapshot := _with_search_space(Fixtures.bt_snapshot(), Fixtures.COVER_FIND, _search_space.get_instance_id())
+	snapshot["id"] = THIRD_ROOT
+	snapshot["active_hosted_root"] = 0
+	_debugger.add_root(info, snapshot)
+
+	_overlay.select_entity(owner_3d.get_instance_id())
+
+	var drawer: Node = _overlay._nqs_drawer
+	assert_not_null(drawer)
+	assert_true(drawer is Node3D)
+	assert_eq(drawer.get_search_space_id(), _search_space.get_instance_id())
+
+
+func test_deselecting_an_entity_frees_its_nqs_draw() -> void:
+	_overlay.select_entity(_owner_a.get_instance_id())
+	assert_not_null(_overlay._nqs_drawer)
+
+	_overlay.select_entity(0)
+
+	assert_null(_overlay._nqs_drawer)
+	assert_false(_overlay.get_node("%Panel").visible)

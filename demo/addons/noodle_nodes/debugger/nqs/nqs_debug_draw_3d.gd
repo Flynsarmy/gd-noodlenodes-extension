@@ -79,6 +79,10 @@ func set_search_space_id(id: int) -> void:
 	_source.set_search_space_id(id)
 
 
+func get_search_space_id() -> int:
+	return _source.get_search_space_id()
+
+
 func _on_source_changed() -> void:
 	_refresh()
 

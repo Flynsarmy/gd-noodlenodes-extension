@@ -67,6 +67,9 @@ Bound API (document in `doc_classes/NNDebugger.xml`):
   "owner_id": int,           # scene owner (0 if none). The entity, e.g. the NPC.
   "owner_name": String,
   "owner_path": String,
+  "actor_id": int,           # node the root acts for, from get_actor() (0 if none): the NPC for demo_08
+  "actor_name": String,
+  "actor_path": String,
   "host_root_id": int,       # root whose subtree hosts this root, 0 for a top-level root
   "host_node_id": int,       # the host node (NNAction, NNHTNTask, NNSTNode, NNBTRunHostedRoot...), 0 if none
   "host_node_name": String,

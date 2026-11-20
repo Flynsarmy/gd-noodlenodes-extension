@@ -64,6 +64,7 @@ static func _root_info(id: int, type: String, cls: String, root_name: String, pa
 	return {
 		"id": id, "type": type, "class": cls, "name": root_name, "path": path,
 		"owner_id": NPC, "owner_name": "Npc", "owner_path": "/root/IntegratedNpcShowcase/Npc",
+		"actor_id": NPC, "actor_name": "Npc", "actor_path": "/root/IntegratedNpcShowcase/Npc",
 		"host_root_id": host_root, "host_node_id": host_node,
 		"host_node_name": host_name, "host_node_class": host_class,
 	}
@@ -271,7 +272,7 @@ static func htn_attempt() -> Dictionary:
 static func htn_snapshot() -> Dictionary:
 	var snapshot := _envelope(HTN, "htn", "NNHTNRoot", "NNHTNRoot", COVER_BT, 27)
 	var done := _step(OCC_EARLIER_GO_TO_CLUE, HTN_GO_TO_CLUE, "GoToClue", "Investigate/SearchForClue/GoToClue", "failed", { "clue": "CluePoint1" })
-	done["failure_reason"] = "verification_failed: clue_found stayed false"
+	done["failure_reason"] = "verification_failed"
 	snapshot["plan"] = [
 		_step(OCC_SNEAK, HTN_SNEAK_TO_COVER, "SneakToCover", "Investigate/ObserveFromCover/SneakToCover", "running"),
 		_step(OCC_PEEK, HTN_PEEK, "Peek", "Investigate/ObserveFromCover/Peek", "pending"),
@@ -307,8 +308,8 @@ static func htn_events() -> Array:
 	var t := NOW_USEC - 2_000_000
 	return [
 		{ "seq": 20, "t_usec": t, "frame": FRAME - 120, "kind": "htn_step", "occurrence_id": OCC_EARLIER_GO_TO_CLUE, "state": "verifying", "failure_reason": "" },
-		{ "seq": 21, "t_usec": t + 400_000, "frame": FRAME - 96, "kind": "htn_verification_failed", "occurrence_id": OCC_EARLIER_GO_TO_CLUE, "reason": "clue_found stayed false" },
-		{ "seq": 22, "t_usec": t + 400_000, "frame": FRAME - 96, "kind": "htn_step", "occurrence_id": OCC_EARLIER_GO_TO_CLUE, "state": "failed", "failure_reason": "verification_failed: clue_found stayed false" },
+		{ "seq": 21, "t_usec": t + 400_000, "frame": FRAME - 96, "kind": "htn_verification_failed", "occurrence_id": OCC_EARLIER_GO_TO_CLUE, "reason": "verification_failed" },
+		{ "seq": 22, "t_usec": t + 400_000, "frame": FRAME - 96, "kind": "htn_step", "occurrence_id": OCC_EARLIER_GO_TO_CLUE, "state": "failed", "failure_reason": "verification_failed" },
 		{ "seq": 23, "t_usec": t + 400_000, "frame": FRAME - 96, "kind": "htn_repair", "succeeded": false, "attempts": 1, "reason": "no_alternative_method" },
 		{ "seq": 24, "t_usec": t + 400_000, "frame": FRAME - 96, "kind": "htn_replan", "trigger_keys": PackedStringArray(["clue_found"]), "urgent": false },
 		{ "seq": 25, "t_usec": t + 420_000, "frame": FRAME - 95, "kind": "htn_attempt", "attempt": htn_attempt() },

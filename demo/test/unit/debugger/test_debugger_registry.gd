@@ -90,6 +90,9 @@ func test_root_info_reports_type_host_and_owner() -> void:
 	assert_eq(info["owner_id"], npc.get_instance_id())
 	assert_eq(info["owner_name"], "Npc")
 	assert_eq(info["owner_path"], String(npc.get_path()))
+	assert_eq(info["actor_id"], npc.get_instance_id(), "the agent's default actor is its parent")
+	assert_eq(info["actor_name"], "Npc")
+	assert_eq(info["actor_path"], String(npc.get_path()))
 	assert_eq(info["host_node_id"], action.get_instance_id(), "the hosting action is the host node")
 	assert_eq(info["host_node_name"], "Investigate")
 	assert_eq(info["host_node_class"], "NNAction")
@@ -98,6 +101,34 @@ func test_root_info_reports_type_host_and_owner() -> void:
 	var agent_info: Dictionary = debugger.get_root_info(agent.get_instance_id())
 	assert_eq(agent_info["host_node_id"], 0, "a top-level root has no host")
 	assert_eq(agent_info["host_root_id"], 0)
+
+
+func test_root_info_reports_the_actor_distinct_from_the_owner() -> void:
+	var scene := Node.new()
+	scene.name = "Showcase"
+	var npc := Node2D.new()
+	npc.name = "Npc"
+	var agent := NNAgent.new()
+	agent.name = "Agent"
+	agent.process_thread = NNAgent.MANUAL
+	agent.actor = npc
+	scene.add_child(npc)
+	npc.add_child(agent)
+	add_child_autofree(scene)
+
+	var info: Dictionary = debugger.get_root_info(agent.get_instance_id())
+	assert_eq(info["owner_id"], 0, "a root with no scene owner still reports its actor")
+	assert_eq(info["actor_id"], npc.get_instance_id())
+	assert_eq(info["actor_name"], "Npc")
+	assert_eq(info["actor_path"], String(npc.get_path()))
+
+	var detached := Node.new()
+	detached.name = "Detached"
+	agent.actor = detached
+	info = debugger.get_root_info(agent.get_instance_id())
+	assert_eq(info["actor_id"], detached.get_instance_id())
+	assert_eq(info["actor_path"], "", "a detached actor has no path to report")
+	detached.free()
 
 
 func test_root_nested_under_another_root_uses_it_as_navigation_parent() -> void:

@@ -43,7 +43,7 @@
 		<method name="get_roots" qualifiers="const">
 			<return type="Array[Dictionary]" />
 			<description>
-				Returns one information dictionary for every live registered root, in registration order. Each dictionary holds [code]id[/code], [code]type[/code] ([code]"agent"[/code], [code]"bt"[/code], [code]"st"[/code] or [code]"htn"[/code]), [code]class[/code], [code]name[/code], [code]path[/code], [code]owner_id[/code], [code]owner_name[/code], [code]owner_path[/code], [code]host_root_id[/code], [code]host_node_id[/code], [code]host_node_name[/code] and [code]host_node_class[/code]. The host fields are [code]0[/code] and empty strings for a top-level root.
+				Returns one information dictionary for every live registered root, in registration order. Each dictionary holds [code]id[/code], [code]type[/code] ([code]"agent"[/code], [code]"bt"[/code], [code]"st"[/code] or [code]"htn"[/code]), [code]class[/code], [code]name[/code], [code]path[/code], [code]owner_id[/code], [code]owner_name[/code], [code]owner_path[/code], [code]actor_id[/code], [code]actor_name[/code], [code]actor_path[/code], [code]host_root_id[/code], [code]host_node_id[/code], [code]host_node_name[/code] and [code]host_node_class[/code]. The owner is the scene owner; the actor is the node the root acts for, which is the one worth drawing the root against. Both come back as [code]0[/code] and empty strings when there is none, and the host fields are [code]0[/code] and empty strings for a top-level root.
 			</description>
 		</method>
 		<method name="get_snapshot" qualifiers="const">

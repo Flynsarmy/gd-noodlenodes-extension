@@ -119,6 +119,12 @@ Dictionary NNDebugger::_build_root_info(NoodleNodes *p_root) const {
 	info["owner_name"] = owner != nullptr ? String(owner->get_name()) : String();
 	info["owner_path"] = owner != nullptr ? String(owner->get_path()) : String();
 
+	Node *actor = p_root->get_actor();
+	info["actor_id"] = actor != nullptr ? (int64_t)actor->get_instance_id() : (int64_t)0;
+	info["actor_name"] = actor != nullptr ? String(actor->get_name()) : String();
+	// An assigned actor can be detached; get_path() warns outside the tree.
+	info["actor_path"] = actor != nullptr && actor->is_inside_tree() ? String(actor->get_path()) : String();
+
 	// A host node drives this root; a root nested inside another root's subtree
 	// has no host, so the ancestor root is the navigation parent instead.
 	NoodleNodes *host_node = nn_find_host_ancestor(p_root);
