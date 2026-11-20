@@ -44,3 +44,11 @@ func configure(step: Dictionary, is_current: bool) -> void:
 	var reason := str(step.get("failure_reason", ""))
 	_failure.text = reason
 	_failure.visible = not reason.is_empty()
+
+	var tooltip: Array[String] = [str(step.get("task", "")), path]
+	if not args.is_empty():
+		tooltip.append("args: %s" % str(args))
+	tooltip.append("%s · #%d · cost %s" % [state, int(step.get("occurrence_id", 0)), str(step.get("cost", 0.0))])
+	if not reason.is_empty():
+		tooltip.append(reason)
+	tooltip_text = "\n".join(PackedStringArray(tooltip))

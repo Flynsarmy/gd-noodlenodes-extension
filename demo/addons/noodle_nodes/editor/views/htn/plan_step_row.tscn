@@ -5,7 +5,7 @@
 [node name="PlanStepRow" type="PanelContainer"]
 offset_right = 400.0
 offset_bottom = 60.0
-mouse_filter = 2
+mouse_filter = 1
 script = ExtResource("1_row")
 
 [node name="Body" type="HBoxContainer" parent="."]
@@ -35,44 +35,46 @@ size_flags_horizontal = 3
 mouse_filter = 2
 theme_override_constants/separation = 1
 
-[node name="Head" type="HBoxContainer" parent="Body/Content"]
+[node name="Title" type="Label" parent="Body/Content"]
+unique_name_in_owner = true
+layout_mode = 2
+mouse_filter = 2
+clip_text = true
+text_overrun_behavior = 3
+text = "Task"
+
+[node name="Meta" type="HBoxContainer" parent="Body/Content"]
 layout_mode = 2
 mouse_filter = 2
 theme_override_constants/separation = 8
 
-[node name="Title" type="Label" parent="Body/Content/Head"]
-unique_name_in_owner = true
-layout_mode = 2
-size_flags_horizontal = 3
-mouse_filter = 2
-clip_text = true
-text = "Task"
-
-[node name="State" type="Label" parent="Body/Content/Head"]
+[node name="State" type="Label" parent="Body/Content/Meta"]
 unique_name_in_owner = true
 layout_mode = 2
 mouse_filter = 2
 text = "pending"
 
-[node name="Occurrence" type="Label" parent="Body/Content/Head"]
+[node name="Occurrence" type="Label" parent="Body/Content/Meta"]
 unique_name_in_owner = true
 layout_mode = 2
 mouse_filter = 2
 theme_override_colors/font_color = Color(0.63, 0.68, 0.74, 1)
 text = "#0"
 
-[node name="Cost" type="Label" parent="Body/Content/Head"]
+[node name="Cost" type="Label" parent="Body/Content/Meta"]
 unique_name_in_owner = true
 layout_mode = 2
 mouse_filter = 2
 theme_override_colors/font_color = Color(0.63, 0.68, 0.74, 1)
 text = "cost 0.0"
 
-[node name="Path" type="Label" parent="Body/Content"]
+[node name="Path" type="Label" parent="Body/Content/Meta"]
 unique_name_in_owner = true
 layout_mode = 2
+size_flags_horizontal = 3
 mouse_filter = 2
 clip_text = true
+text_overrun_behavior = 3
 text = "Path"
 theme_override_colors/font_color = Color(0.63, 0.68, 0.74, 1)
 
@@ -81,6 +83,7 @@ unique_name_in_owner = true
 layout_mode = 2
 mouse_filter = 2
 clip_text = true
+text_overrun_behavior = 3
 text = "{}"
 theme_override_colors/font_color = Color(0.6, 0.72, 0.82, 1)
 
@@ -90,5 +93,6 @@ visible = false
 layout_mode = 2
 mouse_filter = 2
 clip_text = true
+text_overrun_behavior = 3
 text = ""
 theme_override_colors/font_color = Color(0.95, 0.35, 0.35, 1)

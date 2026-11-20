@@ -26,6 +26,10 @@ const TIMELINE_KINDS := ["htn_step", "htn_verification_failed", "htn_repair", "h
 const IDENTIFIER_PATTERN := "[A-Za-z_][A-Za-z_0-9]*"
 const EXPRESSION_KEYWORDS := ["true", "false", "null", "not", "and", "or", "in", "if", "else"]
 
+## The sidebar starts at this share of the width so the plan and trace keep
+## room; dragging the divider hands control to the user.
+const SIDEBAR_RATIO := 0.35
+
 ## Timelines and attempts are bounded so a long session cannot grow the view
 ## without limit. The newest entries are always kept.
 const MAX_TIMELINE_ENTRIES := 512
@@ -33,6 +37,7 @@ const MAX_ATTEMPTS := 50
 const MAX_BLACKBOARD_CHANGES := 512
 
 @onready var _tags: TabContainer = %DetailTabs
+@onready var _main_split: HSplitContainer = %MainSplit
 @onready var _plan_rows: VBoxContainer = %PlanRows
 @onready var _completed_rows: VBoxContainer = %CompletedRows
 @onready var _plan_empty: Label = %PlanEmpty
@@ -84,11 +89,13 @@ var _domain_items: Dictionary = {}
 var _attempts_structure := ""
 var _attempt_row_nodes: Array = []
 var _diff_signature := ""
+var _split_dragged := false
 
 
 func _ready() -> void:
 	EditorScale.apply_to_scene(self)
 	_detail_scroll.visible = false
+	call_deferred("_apply_sidebar_ratio")
 	_set_column_titles(_domain_tree, ["Node", "Step"])
 	_set_column_titles(_timeline_tree, ["Time", "Event", "Detail"])
 	_set_column_titles(_diff_tree, ["Key", "Change", "Attempt state", "Current"])
@@ -98,6 +105,30 @@ func _ready() -> void:
 	_timeline_tree.set_column_clip_content(2, false)
 	_diff_tree.set_column_expand(3, true)
 	_identifier_regex = RegEx.create_from_string(IDENTIFIER_PATTERN)
+
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_RESIZED and not _split_dragged:
+		call_deferred("_apply_sidebar_ratio")
+
+
+## The sidebar starts at a fixed share of the width so the plan and graph always
+## have room; dragging the divider hands control to the user.
+func _apply_sidebar_ratio() -> void:
+	if _split_dragged or _main_split == null:
+		return
+	var width := _main_split.size.x
+	if width <= 1.0:
+		width = size.x
+	if width <= 1.0:
+		return
+	var offset := int(width * SIDEBAR_RATIO)
+	if _main_split.split_offset != offset:
+		_main_split.split_offset = offset
+
+
+func _on_split_dragged(_offset: int) -> void:
+	_split_dragged = true
 
 
 func set_snapshot(snapshot: Dictionary) -> void:

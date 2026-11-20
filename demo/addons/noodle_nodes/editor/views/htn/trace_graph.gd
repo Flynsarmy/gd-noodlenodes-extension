@@ -21,8 +21,9 @@ const PADDING := 16.0
 const MIN_ZOOM := 0.35
 const MAX_ZOOM := 1.8
 ## Automatic fitting does not shrink below this scale; larger traces are panned
-## instead of being squeezed into an illegible overview.
-const FIT_MIN_ZOOM := 0.75
+## instead of being squeezed into an illegible overview. The debugger is often
+## only a few rows tall, so this stays low enough for a whole plan to fit.
+const FIT_MIN_ZOOM := 0.65
 const WHEEL_ZOOM_STEP := 1.12
 const PAN_SPEED := 24.0
 const EDGE_WIDTH := 1.5
