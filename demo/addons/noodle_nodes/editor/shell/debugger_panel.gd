@@ -12,9 +12,10 @@ const VIEW_SCENES := {
 }
 const HOST_CLASS_LABELS := {
 	"NNAction": "Agent action",
+	"NNBTRunHostedRoot": "BT hosted root",
 	"NNHTNTask": "HTN task",
-	"NNBTNode": "BT node",
 	"NNSTNode": "ST state",
+	"NNSTParallel": "ST parallel",
 	"NNSTRoot": "ST",
 	"NNBTRoot": "BT",
 	"NNHTNRoot": "HTN",
@@ -46,6 +47,7 @@ var _root_infos: Dictionary = {}
 var _latest_snapshots: Dictionary = {}
 var _events_by_root: Dictionary = {}
 var _event_seqs_by_root: Dictionary = {}
+var _htn_history_by_root: Dictionary = {}
 var _current_nodes: Dictionary = {}
 var _current_root_id := 0
 var _selected_node_id := 0
@@ -58,6 +60,7 @@ var _follow_chain: Array[int] = []
 var _following := false
 var _view: Control
 var _view_type := ""
+var _replay_root_id := 0
 var _paused := false
 var _detached := false
 
@@ -109,6 +112,7 @@ func reset() -> void:
 	_latest_snapshots.clear()
 	_events_by_root.clear()
 	_event_seqs_by_root.clear()
+	_htn_history_by_root.clear()
 	_current_nodes.clear()
 	_properties.clear()
 	_subscribed.clear()
@@ -119,6 +123,7 @@ func reset() -> void:
 	_blackboard = null
 	_paused = false
 	_following = false
+	_replay_root_id = 0
 	if _view != null:
 		_view.call("clear")
 	_root_list.set_roots([], 0)
@@ -155,6 +160,7 @@ func _on_root_removed(root_id: int) -> void:
 	_latest_snapshots.erase(root_id)
 	_events_by_root.erase(root_id)
 	_event_seqs_by_root.erase(root_id)
+	_htn_history_by_root.erase(root_id)
 	_subscribed.erase(root_id)
 	if was_current:
 		_current_root_id = 0
@@ -162,6 +168,7 @@ func _on_root_removed(root_id: int) -> void:
 		_properties.clear()
 		_current_nodes.clear()
 		_blackboard = null
+		_replay_root_id = 0
 		if _view != null:
 			_view.call("clear")
 		_inspector.clear()
@@ -215,6 +222,8 @@ func _on_events(root_id: int, events: Array) -> void:
 			seqs.erase(dropped_seq)
 	if root_id != _current_root_id:
 		return
+	if _view != null:
+		_view.call("apply_events", events)
 	for event in events:
 		if event is Dictionary and str(event.get("kind", "")).begins_with("bb_") and not _is_stale_blackboard_event(event):
 			_apply_blackboard_event(event)
@@ -229,11 +238,20 @@ func _is_stale_blackboard_event(event: Dictionary) -> bool:
 
 
 func _on_htn_history(root_id: int, attempts: Array) -> void:
-	if root_id != _current_root_id or _view == null:
+	if not _root_infos.has(root_id):
+		return
+	_htn_history_by_root[root_id] = attempts
+	if root_id == _current_root_id:
+		_apply_htn_history(root_id)
+
+
+func _apply_htn_history(root_id: int) -> void:
+	if _view == null:
 		return
 	var info: Dictionary = _root_infos.get(root_id, {})
 	if str(info.get("type", "")) != Protocol.TYPE_HTN:
 		return
+	var attempts: Array = _htn_history_by_root.get(root_id, [])
 	var synthesized: Array = []
 	for attempt in attempts:
 		if attempt is Dictionary:
@@ -277,6 +295,18 @@ func _apply_snapshot(snapshot: Dictionary) -> void:
 		_inspector.set_selected_node(0, {})
 		_emit(Protocol.INSPECT, [_current_root_id, 0])
 	_inspector.set_events(_filtered_events(), _node_names())
+	if _replay_root_id == _current_root_id:
+		_replay_root_id = 0
+		_replay_view(_current_root_id)
+
+
+func _replay_view(root_id: int) -> void:
+	if _view == null:
+		return
+	var events: Array = _events_by_root.get(root_id, [])
+	if not events.is_empty():
+		_view.call("apply_events", events)
+	_apply_htn_history(root_id)
 
 
 func _apply_blackboard_event(event: Dictionary) -> void:
@@ -321,6 +351,7 @@ func _show_root(root_id: int, keep_chain: bool) -> void:
 	_ensure_view(str(_root_infos[root_id].get("type", "")))
 	_view.call("clear")
 	_inspector.clear()
+	_replay_root_id = root_id
 	if _latest_snapshots.has(root_id):
 		_apply_snapshot(_latest_snapshots[root_id])
 	if _follow and not keep_chain:
@@ -353,9 +384,8 @@ func _advance_follow(changed_root: int) -> void:
 			continue
 		_follow_chain.resize(index + 1)
 		_follow_chain.append(next)
-		_latest_snapshots.erase(next)
 		id = next
-		snapshot = {}
+		snapshot = _latest_snapshots.get(id, {})
 	var deepest := _follow_chain.back() if not _follow_chain.is_empty() else 0
 	if deepest != 0 and deepest != _current_root_id:
 		_show_root(deepest, true)

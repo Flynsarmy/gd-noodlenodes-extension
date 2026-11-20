@@ -9,6 +9,25 @@ var _panel
 var _sent: Array = []
 
 
+class SpyView:
+	extends Control
+
+	var snapshots: Array = []
+	var events: Array = []
+
+	func set_snapshot(snapshot: Dictionary) -> void:
+		snapshots.append(snapshot)
+
+	func apply_events(batch: Array) -> void:
+		events.append_array(batch)
+
+	func clear() -> void:
+		pass
+
+	func select_node(_node_id: int) -> void:
+		pass
+
+
 func before_each() -> void:
 	_panel = PanelScene.instantiate()
 	add_child_autofree(_panel)
@@ -458,6 +477,65 @@ func test_recent_events_are_deduped_by_seq_and_bounded() -> void:
 	_send_events(Fixtures.COVER_BT, many)
 	assert_eq(rows.get_child_count(), 100, "the recent event list is bounded")
 	assert_eq(int(rows.get_child(0).get_node("%Frame").text.trim_prefix("f")), Fixtures.FRAME + 199)
+
+
+func test_follow_uses_cached_snapshots_for_the_whole_chain() -> void:
+	_add_roots()
+	_send_snapshot(Fixtures.ST_ROOT)
+	_send_snapshot(Fixtures.AGENT)
+	_send_snapshot(Fixtures.HTN)
+	_send_snapshot(Fixtures.COVER_BT)
+
+	var follow: Button = _panel.get_node("%FollowButton")
+	follow.button_pressed = true
+
+	assert_eq(_crumb_labels()[-1], "NNBTRoot (BT)")
+	assert_eq(_message_ids(Protocol.SUBSCRIBE), [
+		Fixtures.ST_ROOT, Fixtures.AGENT, Fixtures.HTN, Fixtures.COVER_BT,
+	])
+	assert_eq(_message_ids(Protocol.UNSUBSCRIBE), [])
+
+
+func test_bt_view_receives_events_and_replays_them_when_shown_again() -> void:
+	_add_roots()
+	_select_root(Fixtures.COVER_BT)
+	_send_snapshot(Fixtures.COVER_BT)
+
+	var view := _view()
+	assert_true(view.has_node("%Scrubber"), "the behaviour tree view should be loaded")
+	var scrubber: HSlider = view.get_node("%Scrubber")
+	assert_eq(scrubber.max_value, 0.0)
+
+	_send_events(Fixtures.COVER_BT, Fixtures.bt_events())
+	assert_eq(scrubber.max_value, 1.0, "the BT view records the live bt_tick")
+
+	_select_root(Fixtures.ST_ROOT)
+	_select_root(Fixtures.COVER_BT)
+	var replayed := _view()
+	assert_true(replayed.has_node("%Scrubber"))
+	assert_eq(replayed.get_node("%Scrubber").max_value, 1.0, "buffered events replay when the root is shown again")
+
+
+func test_htn_history_for_an_unshown_root_replays_when_shown() -> void:
+	var ids := [Fixtures.ST_ROOT, Fixtures.AGENT, Fixtures.HTN]
+	var infos := Fixtures.root_infos().filter(func(info: Dictionary) -> bool: return info.id in ids)
+	_add_roots(infos)
+	_panel.handle_message(Protocol.HTN_HISTORY, [Fixtures.HTN, [Fixtures.htn_attempt()]])
+
+	_select_root(Fixtures.HTN)
+	var spy := SpyView.new()
+	_panel.get_node("%ViewHost").add_child(spy)
+	_panel._view = spy
+	_send_snapshot(Fixtures.HTN)
+
+	assert_eq(spy.events.size(), 1, "stored history is replayed after the first snapshot")
+	assert_eq(spy.events[0]["kind"], "htn_attempt")
+	assert_eq(int(spy.events[0]["attempt"]["id"]), Fixtures.htn_attempt()["id"])
+
+	var second := Fixtures.htn_attempt()
+	second["id"] = 4
+	_panel.handle_message(Protocol.HTN_HISTORY, [Fixtures.HTN, [second]])
+	assert_eq(spy.events.size(), 2, "history for the shown root is applied live")
 
 
 func test_inspector_shows_only_the_selected_nodes_events() -> void:

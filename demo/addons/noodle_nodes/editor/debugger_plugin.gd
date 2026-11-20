@@ -61,14 +61,3 @@ func _on_panel_message(message: String, data: Array, session_id: int) -> void:
 	if session == null or not session.is_active():
 		return
 	session.send_message(message, data)
-
-
-func _exit_tree() -> void:
-	for session_id: int in _panels:
-		var panel: Control = _panels[session_id]
-		var session := get_session(session_id)
-		if session != null and is_instance_valid(panel):
-			session.remove_session_tab(panel)
-		if is_instance_valid(panel):
-			panel.queue_free()
-	_panels.clear()
