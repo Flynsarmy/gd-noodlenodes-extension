@@ -8,6 +8,7 @@ const PREFIX := "noodle_nodes"
 const ROOT_ADDED := PREFIX + ":root_added"
 const ROOT_REMOVED := PREFIX + ":root_removed"
 const SNAPSHOT := PREFIX + ":snapshot"
+const SNAPSHOT_DELTA := PREFIX + ":snapshot_delta"
 const EVENTS := PREFIX + ":events"
 const HTN_HISTORY := PREFIX + ":htn_history"
 const NODE_PROPERTIES := PREFIX + ":node_properties"
@@ -18,7 +19,12 @@ const SUBSCRIBE := PREFIX + ":subscribe"
 const UNSUBSCRIBE := PREFIX + ":unsubscribe"
 const INSPECT := PREFIX + ":inspect"
 const PAUSE := PREFIX + ":pause"
+const PAUSE_SCOPE := PREFIX + ":pause_scope"
 const STEP := PREFIX + ":step"
+
+## Values of NNDebugger.PauseScope.
+const PAUSE_SCOPE_AI := 0
+const PAUSE_SCOPE_GAME := 1
 
 const TYPE_AGENT := "agent"
 const TYPE_BT := "bt"
@@ -44,3 +50,25 @@ static func get_debugger() -> Object:
 	if not Engine.has_singleton(SINGLETON):
 		return null
 	return Engine.get_singleton(SINGLETON)
+
+
+## Rebuilds the current snapshot from the previous one and a delta made by
+## NNDebugger.diff_snapshots(). Neither argument is modified.
+static func apply_snapshot_delta(previous: Dictionary, delta: Dictionary) -> Dictionary:
+	var snapshot := previous.duplicate()
+	var changed: Dictionary = delta.get("set", {})
+	for key in changed:
+		snapshot[key] = changed[key]
+	if delta.has("nodes"):
+		snapshot["nodes"] = delta["nodes"]
+		return snapshot
+	var replaced: Dictionary = {}
+	for node in delta.get("nodes_changed", []):
+		replaced[int(node["id"])] = node
+	if replaced.is_empty():
+		return snapshot
+	var nodes: Array = []
+	for node in previous.get("nodes", []):
+		nodes.append(replaced.get(int(node["id"]), node))
+	snapshot["nodes"] = nodes
+	return snapshot
