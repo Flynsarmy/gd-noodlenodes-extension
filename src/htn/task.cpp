@@ -18,7 +18,7 @@ void NNHTNTask::_bind_methods() {
 
 	ClassDB::bind_method(D_METHOD("set_effects", "effects"), &NNHTNTask::set_effects);
 	ClassDB::bind_method(D_METHOD("get_effects"), &NNHTNTask::get_effects);
-	ADD_PROPERTY(PropertyInfo(Variant::DICTIONARY, "effects", PROPERTY_HINT_DICTIONARY_TYPE, vformat("%s;%s", Variant::get_type_name(Variant::STRING), "Variant")), "set_effects", "get_effects");
+	ADD_PROPERTY(PropertyInfo(Variant::DICTIONARY, "effects", PROPERTY_HINT_DICTIONARY_TYPE, vformat("%s;%s", Variant::get_type_name(Variant::STRING), Variant::get_type_name(Variant::NIL))), "set_effects", "get_effects");
 
 	ClassDB::bind_method(D_METHOD("set_estimated_cost", "estimated_cost"), &NNHTNTask::set_estimated_cost);
 	ClassDB::bind_method(D_METHOD("get_estimated_cost"), &NNHTNTask::get_estimated_cost);

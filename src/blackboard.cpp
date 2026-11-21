@@ -66,15 +66,13 @@ Variant _sanitize_for_debug(const Variant &p_value, int p_depth = 0) {
 void NNBlackboard::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("set_values", "values"), &NNBlackboard::set_values);
 	ClassDB::bind_method(D_METHOD("get_values"), &NNBlackboard::get_values);
-	// The blackboard is a Dictionary<String, Variant>. Typed dictionary hints
-	// use the format "key_type;value_type", where "Variant" accepts any value
-	// type.
+	// "Nil", not "Variant": the inspector treats an unknown type name as a Resource class.
 	ADD_PROPERTY(
 			PropertyInfo(
 					Variant::DICTIONARY,
 					"values",
 					PROPERTY_HINT_DICTIONARY_TYPE,
-					vformat("%s;%s", Variant::get_type_name(Variant::STRING), "Variant")),
+					vformat("%s;%s", Variant::get_type_name(Variant::STRING), Variant::get_type_name(Variant::NIL))),
 			"set_values",
 			"get_values");
 

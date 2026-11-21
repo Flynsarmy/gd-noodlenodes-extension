@@ -312,3 +312,24 @@ func test_schema_mutated_after_attach_only_affects_later_writes() -> void:
 	board.schema = schema
 	assert_eq(board.get_value("mana", 0), 50, "reassigning the schema installs the new default")
 	assert_eq(board.get_value("hp", ""), "full")
+
+
+func test_any_value_dictionaries_let_the_inspector_pick_any_value_type() -> void:
+	var builtin_type_names := {}
+	for type in TYPE_MAX:
+		builtin_type_names[type_string(type)] = true
+
+	var properties := [
+		[NNBlackboard.new(), "values"],
+		[NNHTNTask.new(), "effects"],
+		[NNHTNParallelTask.new(), "effects"],
+		[NNSTRoot.new(), "initial_expression_properties"],
+	]
+	for entry in properties:
+		for property in entry[0].get_property_list():
+			if property.name == entry[1]:
+				var value_type: String = property.hint_string.get_slice(";", 1)
+				assert_true(builtin_type_names.has(value_type), "%s.%s values would be edited as a '%s' Resource" % [entry[0].get_class(), entry[1], value_type])
+	for entry in properties:
+		if entry[0] is Node:
+			entry[0].free()

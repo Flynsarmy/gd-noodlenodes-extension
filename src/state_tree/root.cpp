@@ -52,7 +52,7 @@ void NNSTRoot::_bind_methods() {
 					Variant::DICTIONARY,
 					"initial_expression_properties",
 					PROPERTY_HINT_DICTIONARY_TYPE,
-					vformat("%s;%s", Variant::get_type_name(Variant::STRING), "Variant")),
+					vformat("%s;%s", Variant::get_type_name(Variant::STRING), Variant::get_type_name(Variant::NIL))),
 			"set_initial_expression_properties",
 			"get_initial_expression_properties");
 

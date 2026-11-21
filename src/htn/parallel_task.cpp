@@ -16,7 +16,7 @@ void NNHTNParallelTask::_bind_methods() {
 
 	ClassDB::bind_method(D_METHOD("set_effects", "effects"), &NNHTNParallelTask::set_effects);
 	ClassDB::bind_method(D_METHOD("get_effects"), &NNHTNParallelTask::get_effects);
-	ADD_PROPERTY(PropertyInfo(Variant::DICTIONARY, "effects", PROPERTY_HINT_DICTIONARY_TYPE, vformat("%s;%s", Variant::get_type_name(Variant::STRING), "Variant")), "set_effects", "get_effects");
+	ADD_PROPERTY(PropertyInfo(Variant::DICTIONARY, "effects", PROPERTY_HINT_DICTIONARY_TYPE, vformat("%s;%s", Variant::get_type_name(Variant::STRING), Variant::get_type_name(Variant::NIL))), "set_effects", "get_effects");
 
 	ClassDB::bind_method(D_METHOD("set_unsafe_policy", "unsafe_policy"), &NNHTNParallelTask::set_unsafe_policy);
 	ClassDB::bind_method(D_METHOD("get_unsafe_policy"), &NNHTNParallelTask::get_unsafe_policy);
