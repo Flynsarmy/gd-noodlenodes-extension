@@ -10,22 +10,22 @@
 	</tutorials>
 	<members>
 		<member name="angle_degrees" type="float" setter="set_angle_degrees" getter="get_angle_degrees" default="0.0">
-			The angle between [member from_vector] and [member to_vector] in degrees. Updated when the sensor is evaluated.
+			The unsigned angle between [member from_vector] and [member to_vector] in degrees ([code]0[/code] to [code]180[/code]). Updated when the sensor is evaluated.
 		</member>
 		<member name="angle_radian" type="float" setter="set_angle_radian" getter="get_angle_radian" default="0.0">
-			The angle between [member from_vector] and [member to_vector] in radians. The sensor value is this angle divided by [member max_angle_radian]. Updated when the sensor is evaluated.
+			The unsigned angle between [member from_vector] and [member to_vector] in radians ([code]0[/code] to [code]PI[/code]). [member NNSensors.sensor_value] is this angle clamped to [member max_angle_radian] and divided by [member max_angle_radian]. Updated when the sensor is evaluated.
 		</member>
 		<member name="from_vector" type="Vector3" setter="set_from_vector" getter="get_from_vector" default="Vector3(0, 0, 0)">
-			Input value for the sensor. Base value for the angle calculation, for example the direction of an AI entity.
+			Reference direction vector for the unsigned angle calculation ([code]from_vector.angle_to(to_vector)[/code]), for example the facing direction of an AI entity.
 		</member>
 		<member name="max_angle_degrees" type="float" setter="set_max_angle_degrees" getter="get_max_angle_degrees" default="180.0">
-			The maximum value for the angle between from and to in degrees, this corresponds to [code]1.0[/code] for the sensor_value. Angles above it also score [code]1.0[/code]. Must be greater than [code]0[/code]. Updates the other angle unit automatically.
+			The maximum unsigned angle between [member from_vector] and [member to_vector] in degrees, corresponding to [code]1.0[/code] for [member NNSensors.sensor_value]. Angles above it also score [code]1.0[/code]. Must be greater than [code]0[/code]; invalid assignments report an error and leave the value unchanged. Automatically updates [member max_angle_radian].
 		</member>
 		<member name="max_angle_radian" type="float" setter="set_max_angle_radian" getter="get_max_angle_radian" default="3.1415927">
-			The maximum value for the angle between from and to in radians, this corresponds to [code]1.0[/code] for the sensor_value. Angles above it also score [code]1.0[/code]. Must be greater than [code]0[/code]. Updates the other angle unit automatically.
+			The maximum unsigned angle between [member from_vector] and [member to_vector] in radians, corresponding to [code]1.0[/code] for [member NNSensors.sensor_value]. Angles above it also score [code]1.0[/code]. Must be greater than [code]0[/code]; invalid assignments report an error and leave the value unchanged. Automatically updates [member max_angle_degrees].
 		</member>
 		<member name="to_vector" type="Vector3" setter="set_to_vector" getter="get_to_vector" default="Vector3(0, 0, 0)">
-			Input value for the sensor. The other vector to compare from-vector to, for example direction to closest enemy entity.
+			Target direction vector compared against [member from_vector] via [method Vector3.angle_to], for example the direction toward the closest enemy entity.
 		</member>
 	</members>
 </class>

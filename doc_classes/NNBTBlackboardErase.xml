@@ -12,7 +12,7 @@
 	</tutorials>
 	<members>
 		<member name="key" type="String" setter="set_key" getter="get_key" default="&quot;&quot;">
-			The blackboard key to erase. Must be non-empty.
+			The blackboard key to erase. Must be non-empty; an empty key reports an error once and returns [constant NNBTNodes.FAILURE].
 		</member>
 	</members>
 </class>

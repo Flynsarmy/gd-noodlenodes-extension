@@ -12,14 +12,14 @@
 	</tutorials>
 	<members>
 		<member name="key" type="String" setter="set_key" getter="get_key" default="&quot;&quot;">
-			The blackboard key to read. Must be non-empty.
+			The blackboard key to read. Must be non-empty; an empty key reports an error once and returns [constant NNBTNodes.FAILURE]. A missing or [code]null[/code] stored value also returns [constant NNBTNodes.FAILURE].
 		</member>
 		<member name="operator" type="int" setter="set_operator" getter="get_operator" enum="Operator" default="0">
-			The comparison to perform between the stored value and [member value].
+			The comparison to perform between the stored value and [member value] (left-hand side is the stored value).
 			Values outside the [enum Operator] range are rejected with a single engine error that names [code]set_operator[/code], the received value and the valid range; the previous operator is kept.
 		</member>
 		<member name="value" type="Variant" setter="set_value" getter="get_value" default="null">
-			The value to compare the stored blackboard value against.
+			The right-hand value to compare the stored blackboard value against using Godot's [Variant] comparison rules. Incompatible types return [constant NNBTNodes.FAILURE].
 		</member>
 	</members>
 	<constants>

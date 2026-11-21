@@ -21,7 +21,7 @@
 	</methods>
 	<members>
 		<member name="expected_tick_result" type="int" setter="set_expected_tick_result" getter="get_expected_tick_result" enum="NNBTNodes.Status" default="1">
-			The result that the child node should return to end the loop. Can be either [code]-1[/code]=[code]FAILURE[/code], [code]0[/code]=[code]RUNNING[/code] or [code]1[/code]=[code]SUCCESS[/code]. When it is returned the node completes with [code]SUCCESS[/code].
+			The status the child must return to end the loop ([constant NNBTNodes.FAILURE], [constant NNBTNodes.RUNNING], or [constant NNBTNodes.SUCCESS]). When returned, this node completes with [constant NNBTNodes.SUCCESS].
 		</member>
 		<member name="max_repeat_times" type="int" setter="set_max_repeat_times" getter="get_max_repeat_times" default="-1">
 			The maximum number of times the child node can be ticked in a run. Exhausting the budget without getting [member expected_tick_result] completes the run with [code]FAILURE[/code]. Set to [code]0[/code] to fail immediately without ticking the child, or to a negative value (such as [code]-1[/code]) to repeat without a budget.

@@ -21,10 +21,10 @@
 	</methods>
 	<members>
 		<member name="cooldown_return_value" type="int" setter="set_cooldown_return_value" getter="get_cooldown_return_value" enum="NNBTNodes.Status" default="-1">
-			The result that is returned during cooldown. Can be either [code]-1[/code]=Failure, [code]0[/code]=Running or [code]1[/code]=Success.
+			The status returned while cooling down ([constant NNBTNodes.FAILURE], [constant NNBTNodes.RUNNING], or [constant NNBTNodes.SUCCESS]).
 		</member>
 		<member name="cooldown_seconds" type="float" setter="set_cooldown_seconds" getter="get_cooldown_seconds" default="0.0">
-			The cooldown period in seconds of tree time, started when the child returns [code]SUCCESS[/code] or [code]FAILURE[/code]. A value of [code]0.0[/code] or less disables the cooldown.
+			Cooldown duration in seconds of tree time ([method NNBTRoot.get_elapsed_time]), started when the child returns any status other than [constant NNBTNodes.RUNNING]. A value of [code]0.0[/code] or less disables the cooldown. Requires an [NNBTRoot] ancestor.
 		</member>
 	</members>
 </class>

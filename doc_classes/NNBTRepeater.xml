@@ -24,7 +24,7 @@
 	</methods>
 	<members>
 		<member name="repeat_times" type="int" setter="set_repeat_times" getter="get_repeat_times" default="-1">
-			The number of times this node repeats its child node. [code]-1[/code] repeats indefinitely, [code]0[/code] succeeds immediately without ticking the child.
+			Number of completed ([constant NNBTNodes.SUCCESS]) child runs before this node succeeds. A child returning [constant NNBTNodes.FAILURE] ends the repeater immediately with failure. A negative value (such as [code]-1[/code]) repeats indefinitely; [code]0[/code] succeeds immediately without ticking the child.
 		</member>
 	</members>
 </class>

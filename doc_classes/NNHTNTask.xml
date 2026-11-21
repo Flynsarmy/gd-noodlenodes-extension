@@ -96,10 +96,10 @@
 			The effect keys written on success in [constant ALLOWLIST] mode. Shown in the inspector only in that mode; the value is kept in the others.
 		</member>
 		<member name="runtime_effect_commit_mode" type="int" setter="set_runtime_effect_commit_mode" getter="get_runtime_effect_commit_mode" enum="NNHTNTask.RuntimeEffectCommitMode" default="0">
-			Which captured effects are written to the board on success. Captured per occurrence when it is planned.
+			Which captured effects are written to the board on success: [constant ALL] writes every captured effect, [constant NONE] writes none (sensors update the board instead), and [constant ALLOWLIST] writes only keys listed in [member runtime_commit_effect_keys]. Captured per occurrence when it is planned.
 		</member>
 		<member name="verification_mode" type="int" setter="set_verification_mode" getter="get_verification_mode" enum="NNHTNTask.VerificationMode" default="0">
-			Whether a successful [method on_execute] is trusted or verified. See [b]Verification[/b] above.
+			Whether a successful [method on_execute] is trusted or verified: [constant TRUST_SUCCESS] commits effects immediately, while [constant VERIFY] waits for [method on_verify] (or [member postconditions]) within [member verification_timeout] before committing. See [b]Verification[/b] in the class description.
 		</member>
 		<member name="verification_timeout" type="float" setter="set_verification_timeout" getter="get_verification_timeout" default="0.0">
 			The most tick delta, in seconds, an occurrence may spend verifying. Verification fails with [code]"verification_timeout"[/code] once [member NNHTNPlanStep.verification_elapsed] reaches it while [method on_verify] still returns [constant RUNNING]; a [constant SUCCESS] at the threshold is accepted. [code]0.0[/code] allows one immediate check. Must be finite and non-negative. Shown in the inspector only in [constant VERIFY] mode; the value is kept in the other mode.

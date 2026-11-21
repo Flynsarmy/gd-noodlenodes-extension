@@ -10,13 +10,13 @@
 	</tutorials>
 	<members>
 		<member name="range_max_value" type="int" setter="set_range_max_value" getter="get_range_max_value" default="100">
-			The maximum value for the range.
+			Upper bound of the input range, mapping to [code]1.0[/code] for [member NNSensors.sensor_value]. Equal or reversed bounds evaluate to [code]0.0[/code].
 		</member>
 		<member name="range_min_value" type="int" setter="set_range_min_value" getter="get_range_min_value" default="0">
-			The minimum value for the range.
+			Lower bound of the input range, mapping to [code]0.0[/code] for [member NNSensors.sensor_value].
 		</member>
 		<member name="range_value" type="int" setter="set_range_value" getter="get_range_value" default="0">
-			Input value for the sensor. Assignments outside [member range_min_value] and [member range_max_value] are immediately clamped to those bounds.
+			Raw input value for the sensor, normalised between [member range_min_value] and [member range_max_value] into [code]0..1[/code] on evaluation. Assignments outside those bounds are immediately clamped.
 		</member>
 	</members>
 </class>

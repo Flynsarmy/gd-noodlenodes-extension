@@ -14,7 +14,7 @@
 	</tutorials>
 	<members>
 		<member name="activation_score" type="float" setter="set_activation_score" getter="get_activation_score" default="0.0">
-			The score must be greater or equal to the activation score for the behaviour group to allow for evaluation of the behaviour nodes that are its children.
+			Minimum [member NNBehaviours.score] required for this group's enabled child behaviours to be evaluated. When the group scores below this threshold, none of its child behaviours are evaluated.
 		</member>
 	</members>
 	<signals>

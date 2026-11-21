@@ -50,7 +50,7 @@
 	</methods>
 	<members>
 		<member name="child_state_selection_rule" type="int" setter="set_child_state_selection_rule" getter="get_child_state_selection_rule" default="0">
-			Defines how the child state is chosen. Can be one of the following: [code]OnEnterConditionMethod:0[/code] or [code]UtilityScoring:1[/code]. With [code]OnEnterConditionMethod[/code], each enabled child's [method NNSTTickedNodes.on_enter_condition] method is called in order and the first one that returns [code]true[/code] is selected. With [code]UtilityScoring[/code], each enabled child is scored from its child [NNConsiderations] nodes (aggregated using [member NNSTTickedNodes.evaluation_method]) and the highest-scoring state is chosen.
+			How a child state is chosen: [code]OnEnterConditionMethod[/code] ([code]0[/code]) or [code]UtilityScoring[/code] ([code]1[/code]). With [code]OnEnterConditionMethod[/code], each enabled child's [method NNSTTickedNodes.on_enter_condition] is called in order and the first one returning [code]true[/code] is selected. With [code]UtilityScoring[/code], each enabled child is scored from its child [NNConsiderations] nodes (aggregated using [member NNSTTickedNodes.evaluation_method]) and the highest-scoring state is chosen.
 			[b]Note:[/b] This setting has no effect on [NNSTParallel], which always evaluates all enabled child states in order with [method NNSTTickedNodes.on_enter_condition].
 		</member>
 	</members>

@@ -13,7 +13,7 @@
 			How the child considerations and consideration groups are aggregated into the group's score. The default is [constant NoodleNodes.EVALUATION_MULTIPLY].
 		</member>
 		<member name="invert_score" type="bool" setter="set_invert_score" getter="get_invert_score" default="false">
-			This inverts the group score by calculating: [code]score = 1.0 - score[/code]. It is applied after all the child nodes have been evaluated.
+			If [code]true[/code], inverts the aggregated [member NNConsiderations.score] as [code]1.0 - score[/code] after all enabled child considerations have been evaluated.
 		</member>
 	</members>
 </class>

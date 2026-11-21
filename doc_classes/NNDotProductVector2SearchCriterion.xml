@@ -11,13 +11,13 @@
 	</tutorials>
 	<members>
 		<member name="dot_product_vector" type="Vector2" setter="set_dot_product_direction_vector" getter="get_dot_product_direction_vector" default="Vector2(1, 0)">
-			The direction each node's facing direction, the [code](1, 0)[/code] vector rotated by its global rotation, is compared to. Should be normalised.
+			Direction compared against each candidate's facing direction ([code]Vector2(1, 0)[/code] rotated by its global rotation). Should be normalised.
 		</member>
 		<member name="filtering_rule" type="int" setter="set_filtering_rule" getter="get_filtering_rule" default="1">
-			How the dot product is compared to [member filtering_value]. Nodes for which the comparison is true are filtered out.
+			How the dot product is compared to [member filtering_value] when [member NNNQSSearchCriteria.use_for_filtering] is [code]true[/code]: [code]LessThan:0[/code], [code]LessOrEqual:1[/code], [code]Equal:2[/code], [code]MoreOrEqual:3[/code], or [code]MoreThan:4[/code]. Nodes for which the comparison is [code]true[/code] are filtered out (for example, with [code]LessThan[/code], any node whose dot product is less than [member filtering_value] is filtered out).
 		</member>
 		<member name="filtering_value" type="float" setter="set_filtering_value" getter="get_filtering_value" default="0.0">
-			The value the dot product is compared to with [member filtering_rule] when the criterion is used for filtering.
+			Dot product threshold (typically in [code]-1.0..1.0[/code]) compared using [member filtering_rule] when [member NNNQSSearchCriteria.use_for_filtering] is [code]true[/code].
 		</member>
 	</members>
 </class>

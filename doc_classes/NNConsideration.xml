@@ -29,7 +29,7 @@
 	</methods>
 	<members>
 		<member name="activation_curve" type="Curve" setter="set_activation_curve" getter="get_activation_curve">
-			A godot curve property that defines how the [member activation_input_value] will be translated to a score.
+			Optional [Curve] that maps [member activation_input_value] to [member NNConsiderations.score]. When [code]null[/code], [member activation_input_value] is used directly as the score.
 		</member>
 		<member name="activation_input_value" type="float" setter="set_activation_input_value" getter="get_activation_input_value" default="0.0001">
 			The input value passed to [member activation_curve] (or used directly as the score when no curve is set). Typically in the [code]0..1[/code] range, though values outside that range are not clamped. When [member input_sensor] is assigned, evaluation overwrites this property with the sensor's [member NNSensors.sensor_value].

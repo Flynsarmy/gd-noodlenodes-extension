@@ -72,16 +72,16 @@
 	</methods>
 	<members>
 		<member name="high_priority_query_per_frame_execute_query_time_budget_usec" type="int" setter="set_high_priority_query_per_frame_execute_query_time_budget_usec" getter="get_high_priority_query_per_frame_execute_query_time_budget_usec" default="20">
-			This is how much time the [method run_queries] method uses to make progress for each high priority query at a time. If you have 5 high priority queries posted, for example, and this is set to 20 microseconds, [method run_queries] loops through the 5 queries and uses approximately 20 microseconds for each query during each loop iteration until the time budget for high priority queries runs out. Must be at least 1. Default value: 20 usec (microseconds).
+			Per-slice time budget in microseconds that [method run_queries] grants to each high-priority query per round-robin turn until the high-priority frame budget runs out. Must be at least [code]1[/code]; smaller values report an error and leave the value unchanged.
 		</member>
 		<member name="regular_query_per_frame_execute_query_time_budget_usec" type="int" setter="set_regular_query_per_frame_execute_query_time_budget_usec" getter="get_regular_query_per_frame_execute_query_time_budget_usec" default="10">
-			This is the time used by [method run_queries] method for each regular query it has time to update per update iteration. Must be at least 1. Default value: 10 usec (microseconds).
+			Per-slice time budget in microseconds that [method run_queries] grants to each regular-priority query per round-robin turn until the remaining frame budget runs out. Must be at least [code]1[/code]; smaller values report an error and leave the value unchanged.
 		</member>
 		<member name="run_queries_time_budget_per_frame_usec" type="int" setter="set_run_queries_time_budget_per_frame" getter="get_run_queries_time_budget_per_frame" default="1000">
-			This is the time the [method run_queries] method is allowed to run per call, in usec (microseconds). When the time runs out, unfinished queries resume from where they left off on the next call to [method run_queries].
+			Total time budget in microseconds allowed per [method run_queries] call. When the budget runs out, unfinished queries resume from where they left off on the next [method run_queries] call.
 		</member>
 		<member name="time_allocation_pct_to_high_priority_queries" type="float" setter="set_time_allocation_pct_to_high_priority_queries" getter="get_time_allocation_pct_to_high_priority_queries" default="0.8">
-			Value between 0..1, determines how much of [member run_queries_time_budget_per_frame_usec] is used for high-priority queries. The time left over is used for the regular priority queries. If the high-priority queries use up the whole frame budget, the regular priority queries are skipped for that frame and resume on a later frame.
+			Fraction in the [code]0..1[/code] range of [member run_queries_time_budget_per_frame_usec] reserved for high-priority queries. Any remaining time in the frame budget is used for regular-priority queries; if high-priority queries consume the entire frame budget, regular-priority queries wait until a later frame.
 		</member>
 	</members>
 </class>

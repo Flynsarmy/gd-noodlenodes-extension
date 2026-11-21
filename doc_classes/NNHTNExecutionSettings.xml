@@ -19,7 +19,7 @@
 	</methods>
 	<members>
 		<member name="interruption_policy" type="int" setter="set_interruption_policy" getter="get_interruption_policy" enum="NNHTNExecutionSettings.InterruptionPolicy" default="0">
-			What a newly found plan does to a step that has started and is still available.
+			What a newly found plan does to a step that has started and is still available: [constant IMMEDIATE] replaces the running plan at once (cancelling the step unless [member NNHTNTask.resumable] keeps it), while [constant FINISH_CURRENT_STEP] lets the started step finish before installing or replanning.
 		</member>
 		<member name="local_repair" type="bool" setter="set_local_repair" getter="get_local_repair" default="false">
 			After a step fails or is invalidated, first try to re-decompose only the method around it, keeping the completed steps and the rest of the plan, before searching from the domain. See [b]Local repair[/b] in [NNHTNRoot].

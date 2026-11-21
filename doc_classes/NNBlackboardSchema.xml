@@ -46,10 +46,10 @@
 	</methods>
 	<members>
 		<member name="allow_unknown_keys" type="bool" setter="set_allow_unknown_keys" getter="get_allow_unknown_keys" default="true">
-			When [code]true[/code], keys not declared in [member keys] accept any value. When [code]false[/code], writing a non-null value to an undeclared key is rejected.
+			When [code]true[/code], keys not declared in [member keys] accept any value. When [code]false[/code], writing a non-[code]null[/code] value to an undeclared key is rejected.
 		</member>
 		<member name="keys" type="NNBlackboardKey[]" setter="set_keys" getter="get_keys" default="[]">
-			The declared keys.
+			Declared [NNBlackboardKey] entries that define allowed types and optional defaults for their keys.
 		</member>
 	</members>
 </class>

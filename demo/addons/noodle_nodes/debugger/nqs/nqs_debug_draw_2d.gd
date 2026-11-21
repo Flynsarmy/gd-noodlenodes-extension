@@ -12,6 +12,8 @@ const OUTLINE_COLOUR := Color(0.05, 0.05, 0.08, 0.9)
 const SCORE_FONT_SIZE := 14
 const SCORE_OFFSET := Vector2(10.0, -8.0)
 
+## The [NNNQSSearchSpaces] node whose query results are drawn. Set to
+## [code]null[/code] to stop watching and clear the display.
 @export var search_space: NNNQSSearchSpaces:
 	set(value):
 		search_space = value
@@ -21,6 +23,7 @@ const SCORE_OFFSET := Vector2(10.0, -8.0)
 		_has_drawn = false
 		_source.set_search_space_id(id)
 
+## If [code]true[/code], draws each candidate's numeric score next to its marker.
 @export var show_scores := true:
 	set(value):
 		if show_scores == value:

@@ -21,10 +21,10 @@
 			Determines whether the behaviour can be interrupted. When [code]false[/code], the owning [NNAgent] skips [method NNAgent.evaluate_options] until this behaviour finishes its actions, fails an action, or is stopped with [method NNAgent.abort_current_behaviour].
 		</member>
 		<member name="cooldown_seconds" type="float" setter="set_cooldown_seconds" getter="get_cooldown_seconds" default="0.0">
-			If &gt; 0.0, after the behaviour is chosen it scores 0.0 during the [member NNAgent.evaluate_options] calls until the cooldown has elapsed. The cooldown counts down as the owning [NNAgent] ticks: on each processed frame, or on each [method NNAgent.tick] call in [constant NNAgent.MANUAL] mode.
+			Cooldown duration in seconds after this behaviour is chosen, during which it scores [code]0.0[/code] in [method NNAgent.evaluate_options]. Counts down on each eligible step of the owning [NNAgent] (including host ticks when hosted, and each [method NNAgent.tick] call in [constant NNAgent.MANUAL] mode). A value of [code]0.0[/code] or less disables the time cooldown.
 		</member>
 		<member name="cooldown_turns" type="int" setter="set_cooldown_turns" getter="get_cooldown_turns" default="0">
-			If &gt; 0, after the behaviour is chosen it returns a score of [code]0.0[/code] for the next [code]cooldown_turns[/code] times this behaviour is evaluated during [method NNAgent.evaluate_options]. Each evaluation decrements the remaining turn counter by one once any [member cooldown_seconds] cooldown has elapsed. Evaluations skipped because a non-interruptible behaviour is running or because an owning [NNBehaviourGroup] did not activate do not decrement the counter.
+			Number of evaluations after this behaviour is chosen during which it returns a score of [code]0.0[/code] in [method NNAgent.evaluate_options]. Each evaluation decrements the remaining turn counter by one once any [member cooldown_seconds] cooldown has elapsed. Evaluations skipped because a non-interruptible behaviour is running or because an owning [NNBehaviourGroup] did not activate do not decrement the counter. A value of [code]0[/code] or less disables the turn cooldown.
 		</member>
 		<member name="current_action_index" type="int" setter="set_current_action_index" getter="get_current_action_index" default="0">
 			The child index of the currently active [NNAction] or [NNActionGroup]. It is [code]0[/code] when the behaviour is idle or after it ends, and [code]-1[/code] during [signal behaviour_entered] before the first action starts.

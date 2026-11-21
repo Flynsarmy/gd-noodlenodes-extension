@@ -10,7 +10,7 @@
 	</tutorials>
 	<members>
 		<member name="parent_node" type="Node" setter="set_parent_node" getter="get_parent_node">
-			The parent node to use in the search.
+			The node whose direct children form the search space. When [code]null[/code] or freed, the search space is empty.
 		</member>
 	</members>
 </class>

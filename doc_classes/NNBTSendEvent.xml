@@ -16,7 +16,7 @@
 			The event name to send. An empty name returns [constant NNBTNodes.FAILURE] without sending anything.
 		</member>
 		<member name="target" type="NodePath" setter="set_target" getter="get_target" default="NodePath(&quot;&quot;)">
-			The chart to send the event to, as a path relative to this leaf. When empty, the nearest [NNSTRoot] ancestor is used.
+			Path to the [NNSTRoot] that receives [member event_name], relative to this leaf unless it starts with a [code]/[/code]. When empty, targets the nearest [NNSTRoot] ancestor. Returns [constant NNBTNodes.FAILURE] if no [NNSTRoot] resolves.
 		</member>
 	</members>
 </class>

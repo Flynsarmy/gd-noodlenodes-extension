@@ -22,7 +22,7 @@
 			Effects of the whole group, predicted after every branch's effects and written only when the whole group succeeds. They are captured when the group is planned and must satisfy the board's [member NNBlackboard.schema]. A key a branch also writes is a conflict.
 		</member>
 		<member name="unsafe_policy" type="int" setter="set_unsafe_policy" getter="get_unsafe_policy" enum="NNHTNParallelTask.UnsafePolicy" default="0">
-			What planning does when a branch is unavailable in the shared predicted state or the branches conflict.
+			What planning does when a branch is unavailable in the shared predicted state or the branches conflict: [constant REJECT] rejects the group so the search backtracks, while [constant SERIALIZE] falls back to planning the branches sequentially in scene order with a warning.
 		</member>
 	</members>
 	<constants>

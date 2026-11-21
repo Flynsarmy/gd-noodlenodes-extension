@@ -52,40 +52,40 @@
 	</methods>
 	<members>
 		<member name="average_call_runtime_usec" type="int" getter="get_average_call_runtime_usec" default="0">
-			Read-only. Used for debugging and tuning, the average time a single call to [method execute_query] method takes.
+			Average duration in microseconds of a single [method execute_query] call for the latest completed query. Read-only runtime state: never saved with the scene.
 		</member>
 		<member name="completed_signal_time_usec" type="int" getter="get_completed_signal_time_usec" default="0">
-			Read-only. The time it takes to handle the [signal query_completed] signal (i.e. your result handling code).
+			Duration in microseconds spent handling the [signal query_completed] signal (your result-handling listeners). Read-only runtime state: never saved with the scene.
 		</member>
 		<member name="current_call_runtime_usec" type="int" getter="get_current_call_runtime_usec" default="0">
-			Read-only. The time the latest call to [method execute_query] method took.
+			Duration in microseconds of the latest [method execute_query] call. Read-only runtime state: never saved with the scene.
 		</member>
 		<member name="is_query_still_running" type="bool" getter="get_is_query_still_running" default="false">
-			Read-only. Whether the query is still in progress. This is set to [code]true[/code] when the query is posted with [method NNNodeQuerySystem.post_query] and to [code]false[/code] when it completes or is stopped with [method NNNodeQuerySystem.stop_query].
+			Whether a query is currently in progress. Set to [code]true[/code] when posted with [method NNNodeQuerySystem.post_query] and to [code]false[/code] when it completes or is stopped with [method NNNodeQuerySystem.stop_query]. Read-only runtime state: never saved with the scene.
 		</member>
 		<member name="is_run_in_debug_mode" type="bool" setter="set_is_run_in_debug_mode" getter="get_is_run_in_debug_mode" default="false">
 			If [code]true[/code], after each criterion evaluates a candidate node, the search space calls [method Object.set] on that node to write [code]is_filtered[/code] ([bool], whether the criterion filtered it out) and [code]score[/code] ([float], the node's accumulated score so far). This does not create new properties; the candidate node (or its script) must already define those properties for the values to be stored.
 		</member>
 		<member name="query_result_scores" type="PackedFloat64Array" getter="get_query_result_scores" default="PackedFloat64Array()">
-			Read-only. The resulting array of node scores.
+			Scores of the nodes in [member query_results], index for index, sorted highest first. Read-only runtime state: never saved with the scene.
 		</member>
 		<member name="query_results" type="Node[]" getter="get_query_results" default="[]">
-			Read-only. The resulting array of nodes, sorted in descending order based on the score.
+			Surviving candidate nodes from the latest completed query, sorted in descending order by score, up to [member top_n_to_find] entries. Read-only runtime state: never saved with the scene.
 		</member>
 		<member name="search_space_fetch_time_usec" type="int" getter="get_search_space_fetch_time_usec" default="0">
-			Read-only. The time it takes to fetch all the nodes that will be filtered and scored in the query.
+			Duration in microseconds spent fetching the candidate nodes before filtering and scoring. Read-only runtime state: never saved with the scene.
 		</member>
 		<member name="top_n_to_find" type="int" setter="set_top_n_to_find" getter="get_top_n_to_find" default="1">
-			The maximum number of nodes to return. Must be at least [code]1[/code]; smaller values are rejected with an error.
+			Maximum number of highest-scoring nodes returned in [member query_results]. Must be at least [code]1[/code]; smaller values are rejected with an error.
 		</member>
 		<member name="total_query_call_count" type="int" getter="get_total_query_call_count" default="0">
-			Read-only. The number of times the [method execute_query] method was called to finish the query.
+			Number of [method execute_query] calls taken to finish the latest query. Read-only runtime state: never saved with the scene.
 		</member>
 		<member name="total_query_node_visits" type="int" getter="get_total_query_node_visits" default="0">
-			Read-only. The total number of node visits done when running the query.
+			Total number of candidate node evaluations performed across all criteria for the latest query. Read-only runtime state: never saved with the scene.
 		</member>
 		<member name="total_query_runtime_usec" type="int" getter="get_total_query_runtime_usec" default="0">
-			Read-only. The total time spent in [method execute_query] calls to complete the query. Queries that run out of budget over several frames sum the runtime of every call, not the wall-clock time between them.
+			Total time in microseconds spent inside [method execute_query] calls to complete the latest query. Multi-frame queries sum the runtime of each call, not the wall-clock time between them. Read-only runtime state: never saved with the scene.
 		</member>
 	</members>
 	<signals>

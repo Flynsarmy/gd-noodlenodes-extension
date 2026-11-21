@@ -19,7 +19,7 @@
 			The blackboard key name. Must be non-empty and unique within its schema.
 		</member>
 		<member name="value_type" type="int" setter="set_value_type" getter="get_value_type" enum="Variant.Type" default="0">
-			The required [Variant] type of non-null values. Types are matched exactly, so [constant TYPE_INT] does not accept a [float]. [constant TYPE_NIL] (shown as [code]Any[/code] in the inspector) accepts every type.
+			The required [Variant] type of non-[code]null[/code] values. Types are matched exactly, so [constant TYPE_INT] does not accept a [float]. [constant TYPE_NIL] (shown as [code]Any[/code] in the inspector) accepts every type.
 		</member>
 	</members>
 </class>

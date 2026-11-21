@@ -38,7 +38,7 @@
 			An optional dot-separated path read from each entry, which must then be a [Dictionary]. The value at that path is bound instead of the whole entry, while [member position_field] and [member order_field] can still read other fields of the entry. Uses the same syntax as [member NNHTNArgumentReference.field_path].
 		</member>
 		<member name="order" type="int" setter="set_order" getter="get_order" enum="NNHTNBinding.Order" default="0">
-			How the values are ordered before they are tried.
+			How the values are ordered before they are tried: [constant SOURCE] keeps array order, [constant NEAREST] sorts closest first from [member origin_key] using [member position_field], and [constant NUMERIC_FIELD] sorts ascending by [member order_field]. Use [member descending] to reverse.
 		</member>
 		<member name="order_field" type="String" setter="set_order_field" getter="get_order_field" default="&quot;&quot;">
 			For [constant NUMERIC_FIELD], the dot-separated path of the [int] or [float] sort key, read from the entry and, when the entry has no such field, from the bound value. Ignored by the other orders.

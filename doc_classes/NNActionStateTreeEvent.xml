@@ -11,7 +11,7 @@
 	</tutorials>
 	<members>
 		<member name="event_name" type="String" setter="set_event_name" getter="get_event_name" default="&quot;&quot;">
-			The name of the event sent to the state tree. Empty sends nothing.
+			The name of the event sent to the state tree when this action starts. Empty sends nothing; the action still finishes immediately.
 		</member>
 		<member name="state_tree_path" type="NodePath" setter="set_state_tree_path" getter="get_state_tree_path" default="NodePath(&quot;&quot;)">
 			The path to the [NNSTRoot] that receives [member event_name]. The path is relative to this action unless it starts with a [code]/[/code]. Empty targets the nearest ancestor [NNSTRoot]; an explicit path that does not resolve to an [NNSTRoot] reports an error.

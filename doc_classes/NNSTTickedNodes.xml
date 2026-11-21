@@ -82,8 +82,7 @@
 			Marks this state as a final state of the chart. Entering it reports the chart as finished by emitting [signal NNSTRoot.finished] with [code]succeeded[/code] set to [code]true[/code]. This applies to every state type. A final state keeps ticking like any other state: it does not stop the chart or exit itself, so the chart keeps running until a host deactivates it or it is transitioned out.
 		</member>
 		<member name="score" type="float" setter="" getter="get_score" default="0.0">
-			A value (usually between 0 and 1) that affects the likelihood of this node being entered when the parent's [member NNSTBranchNodes.child_state_selection_rule] property is set to [code]UtilityScoring[/code]. The highest scored child of the parent node will be selected.
-			[b]Note:[/b] This value isn't set manually. It's calculated by adding [NNConsiderations] children that will be evaluated at time of scoring. Read-only runtime state that is never saved with the scene.
+			Aggregated utility score from this state's enabled [NNConsiderations] children, used when the parent's [member NNSTBranchNodes.child_state_selection_rule] is set to [code]UtilityScoring[/code] (the highest-scoring child is selected). Read-only runtime state: written by evaluation and never saved with the scene.
 		</member>
 	</members>
 	<signals>

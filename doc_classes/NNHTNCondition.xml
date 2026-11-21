@@ -39,7 +39,7 @@
 	</methods>
 	<members>
 		<member name="expression" type="String" setter="set_expression" getter="get_expression" default="&quot;&quot;">
-			The Boolean expression to evaluate.
+			Godot [Expression] returning a [bool], evaluated with world state keys as variables and [code]args[/code] as the occurrence arguments [Dictionary] (for example [code]health &lt; args.get("limit", 25)[/code]). Absent keys read as [code]null[/code]. Empty, unparseable, or non-[bool] expressions report an error and evaluate to [code]false[/code].
 		</member>
 	</members>
 </class>

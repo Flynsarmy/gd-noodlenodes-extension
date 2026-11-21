@@ -14,16 +14,16 @@
 	</tutorials>
 	<members>
 		<member name="default_value" type="float" setter="set_default_value" getter="get_default_value" default="0.0">
-			The value scored when [member key] is missing, holds [code]null[/code], holds a type other than [bool], [int] or [float], or no blackboard is available.
+			Fallback raw input value used before normalising against [member range_min_value] and [member range_max_value] when [member key] is missing, holds [code]null[/code], holds a type other than [bool], [int] or [float], or no blackboard is available.
 		</member>
 		<member name="key" type="String" setter="set_key" getter="get_key" default="&quot;&quot;">
-			The blackboard key to read. An empty key scores [member default_value].
+			The blackboard key to read. An empty key falls back to [member default_value].
 		</member>
 		<member name="range_max_value" type="float" setter="set_range_max_value" getter="get_range_max_value" default="1.0">
-			The maximum value for the range. Values above the maximum score 1, and equal, reversed or non-finite bounds score 0. The default 0..1 range scores a [bool] key as 0 or 1 directly.
+			Upper bound of the input range, mapping to [code]1.0[/code] for [member NNSensors.sensor_value]. Values above this clamp to [code]1.0[/code], and equal, reversed, or non-finite bounds evaluate to [code]0.0[/code]. The default [code]0..1[/code] range scores a [bool] key as [code]0.0[/code] or [code]1.0[/code] directly.
 		</member>
 		<member name="range_min_value" type="float" setter="set_range_min_value" getter="get_range_min_value" default="0.0">
-			The minimum value for the range. Values below the minimum score 0.
+			Lower bound of the input range, mapping to [code]0.0[/code] for [member NNSensors.sensor_value]. Values below this clamp to [code]0.0[/code].
 		</member>
 	</members>
 </class>

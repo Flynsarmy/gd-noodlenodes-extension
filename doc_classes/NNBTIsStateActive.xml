@@ -12,7 +12,7 @@
 	</tutorials>
 	<members>
 		<member name="state" type="NodePath" setter="set_state" getter="get_state" default="NodePath(&quot;&quot;)">
-			The state to check, as a path relative to this leaf.
+			Path to the [NNSTTickedNodes] state to check, relative to this leaf unless it starts with a [code]/[/code]. Empty or unresolved paths return [constant NNBTNodes.FAILURE].
 		</member>
 	</members>
 </class>

@@ -61,7 +61,7 @@
 			Optional condition that must be satisfied for the transition to be taken. With no guard, the transition is taken whenever it is triggered.
 		</member>
 		<member name="to" type="NodePath" setter="set_to" getter="get_to" default="NodePath(&quot;&quot;)">
-			[NodePath] to target node. The target can also be an [NNSTHistory] child of the state this transition belongs to, for example [code]../History[/code]. In that case the state the history remembers (or its default state) is entered instead.
+			Path to the target [NNSTTickedNodes] state, relative to this transition unless it starts with a [code]/[/code]. Can also target an [NNSTHistory] child of a compound state (for example [code]../../Combat/History[/code]), in which case the state the history remembers (or its [member NNSTHistory.default_state]) is entered instead.
 		</member>
 	</members>
 	<signals>

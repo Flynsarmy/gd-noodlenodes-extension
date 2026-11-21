@@ -10,7 +10,7 @@
 	</tutorials>
 	<members>
 		<member name="boolean_value" type="bool" setter="set_boolean_value" getter="get_boolean_value" default="false">
-			Input value for the sensor.
+			Boolean input for the sensor. Evaluates [member NNSensors.sensor_value] to [code]1.0[/code] when [code]true[/code] and [code]0.0[/code] when [code]false[/code].
 		</member>
 	</members>
 </class>

@@ -21,6 +21,8 @@ var _has_drawn := false
 var _redraw_requests := 0
 var _ready_for_draw := false
 
+## The [NNNQSSearchSpaces] node whose query results are drawn. Set to
+## [code]null[/code] to stop watching and clear the display.
 @export var search_space: NNNQSSearchSpaces:
 	set(value):
 		search_space = value
@@ -30,6 +32,7 @@ var _ready_for_draw := false
 		_has_drawn = false
 		_source.set_search_space_id(id)
 
+## If [code]true[/code], draws each candidate's numeric score above its marker.
 @export var show_scores := true:
 	set(value):
 		if show_scores == value:

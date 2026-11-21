@@ -16,25 +16,25 @@
 			Optionally calculated non-squared distance. Updated during evaluation when either [member is_distance_calculated] or [member is_direction_vector_calculated] is [code]true[/code].
 		</member>
 		<member name="distance_squared" type="float" setter="set_distance_squared" getter="get_distance_squared" default="0.0">
-			Squared distance.
+			Squared distance between [member from_vector] and [member to_vector]. Updated on every evaluation.
 		</member>
 		<member name="from_to_vector" type="Vector2" setter="set_from_to_vector" getter="get_from_to_vector" default="Vector2(0, 0)">
-			Vector obtained by calculating [code]from_vector - to_vector[/code].
+			Displacement vector calculated as [code]from_vector - to_vector[/code]. Updated on every evaluation.
 		</member>
 		<member name="from_vector" type="Vector2" setter="set_from_vector" getter="get_from_vector" default="Vector2(0, 0)">
-			The start point of the distance vector.
+			The start point of the distance calculation.
 		</member>
 		<member name="is_direction_vector_calculated" type="bool" setter="set_is_direction_vector_calculated" getter="get_is_direction_vector_calculated" default="false">
-			If [code]true[/code], calculates [member direction_vector] (and [member distance]).
+			If [code]true[/code], calculates [member direction_vector] (and [member distance]) on evaluation.
 		</member>
 		<member name="is_distance_calculated" type="bool" setter="set_is_distance_calculated" getter="get_is_distance_calculated" default="false">
-			If [code]true[/code], the non-squared distance is calculated.
+			If [code]true[/code], calculates the non-squared [member distance] on evaluation.
 		</member>
 		<member name="max_distance" type="float" setter="set_max_distance" getter="get_max_distance" default="100.0">
-			The distance that maps to a sensor value of [code]1.0[/code]. The sensor value is the squared distance divided by the squared [member max_distance].
+			The distance that maps to a [member NNSensors.sensor_value] of [code]1.0[/code]. The sensor value is [member distance_squared] divided by squared [member max_distance] (not clamped, so distances beyond this score above [code]1.0[/code]). Must be non-zero.
 		</member>
 		<member name="to_vector" type="Vector2" setter="set_to_vector" getter="get_to_vector" default="Vector2(0, 0)">
-			The end point of the distance vector.
+			The end point of the distance calculation.
 		</member>
 	</members>
 </class>

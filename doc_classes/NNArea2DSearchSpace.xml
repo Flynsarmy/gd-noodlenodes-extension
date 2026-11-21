@@ -10,10 +10,10 @@
 	</tutorials>
 	<members>
 		<member name="area2d" type="Area2D" setter="set_area2d" getter="get_area2d">
-			[Area2D] node to use.
+			The [Area2D] whose overlapping areas form the search space. Tracked via its [signal Area2D.area_entered] and [signal Area2D.area_exited] signals once ready (physics bodies are not included).
 		</member>
 		<member name="intersecting_areas" type="Area2D[]" setter="set_intersecting_areas" getter="get_intersecting_areas" default="[]">
-			The areas intersecting or within the set area. Useful when debugging the search space.
+			[Area2D] nodes currently overlapping [member area2d], updated automatically from its signals. Useful for debugging the search space.
 		</member>
 	</members>
 </class>

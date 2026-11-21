@@ -12,7 +12,7 @@
 	</tutorials>
 	<members>
 		<member name="max_repeat_times" type="int" setter="set_max_repeat_times" getter="get_max_repeat_times" default="3">
-			The maximum times the limiter node can be ticked in total. The budget is node-lifetime state: an explicit reset or disabling the node refills it.
+			Maximum number of child ticks allowed before this node returns [constant NNBTNodes.FAILURE] (including ticks where the child returns [constant NNBTNodes.RUNNING]). The budget persists across runs; setting this property, calling [method NNBTNodes.reset], or disabling the node refills it.
 		</member>
 	</members>
 </class>

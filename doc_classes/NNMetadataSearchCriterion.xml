@@ -11,10 +11,10 @@
 	</tutorials>
 	<members>
 		<member name="metadata_name" type="StringName" setter="set_metadata_name" getter="get_metadata_name" default="&amp;&quot;&quot;">
-			The name of the metadata field to find.
+			Name of the metadata key each candidate must have. Nodes lacking this key or with a value unequal to [member metadata_value] are filtered out.
 		</member>
 		<member name="metadata_value" type="Variant" setter="set_metadata_value" getter="get_metadata_value" default="null">
-			The value of the named metadata field.
+			Expected value of the [member metadata_name] metadata entry, matched with exact [Variant] equality. Exposed as a [String] in the inspector; any [Variant] type can be assigned from code.
 		</member>
 	</members>
 </class>

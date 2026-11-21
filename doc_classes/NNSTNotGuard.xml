@@ -21,7 +21,7 @@
 	</methods>
 	<members>
 		<member name="guard" type="NNSTGuard" setter="set_guard" getter="get_guard">
-			The guard to be negated. This guard will be evaluated, and the result will be inverted.
+			The guard whose result is inverted. When [code]null[/code], this guard evaluates to [code]true[/code].
 		</member>
 	</members>
 </class>

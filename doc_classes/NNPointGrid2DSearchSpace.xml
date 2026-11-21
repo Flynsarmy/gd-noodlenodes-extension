@@ -27,7 +27,7 @@
 			Offset added to the local position of every point in the grid. With [member use_navigation_mesh_positions], the offset point is the one snapped to the navigation map.
 		</member>
 		<member name="point_grid" type="Node2D[]" setter="set_point_grid" getter="get_point_grid" default="[]">
-			The grid of points as [Node2D] nodes.
+			The generated [Node2D] point nodes parented under [member point_grid_parent_node]. Populated when the search space initializes.
 		</member>
 		<member name="point_grid_base_spacing_vector" type="Vector2" setter="set_point_grid_base_spacing_vector" getter="get_point_grid_base_spacing_vector" default="Vector2(20, 10)">
 			The step size along the X and Y axes between consecutive base points. Both components must be finite and greater than [code]0[/code]; invalid values are ignored and keep the previous spacing.

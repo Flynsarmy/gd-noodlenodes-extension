@@ -32,7 +32,7 @@
 			The argument name or world state key to read. Must not be empty.
 		</member>
 		<member name="source" type="int" setter="set_source" getter="get_source" enum="NNHTNArgumentReference.Source" default="0">
-			Where [member key] is read from.
+			Where [member key] is read from: [constant ARGUMENT] reads the call's arguments (inherited, [member NNHTNSubtaskCall.args], and earlier bindings), while [constant WORLD_STATE] reads the predicted world state and registers [member key] as a replanning trigger.
 		</member>
 	</members>
 	<constants>

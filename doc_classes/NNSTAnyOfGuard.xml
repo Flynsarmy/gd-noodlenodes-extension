@@ -22,7 +22,7 @@
 	</methods>
 	<members>
 		<member name="guards" type="NNSTGuard[]" setter="set_guards" getter="get_guards" default="[]">
-			An array of guards to be evaluated. If any of the guards in this array are satisfied, this guard will return [code]true[/code].
+			Guards of which at least one must be satisfied for this guard to return [code]true[/code] (evaluated in order, short-circuiting on the first match). [code]null[/code] entries are skipped; an empty array returns [code]true[/code], while a non-empty array with only [code]null[/code] or unsatisfied entries returns [code]false[/code].
 		</member>
 	</members>
 </class>

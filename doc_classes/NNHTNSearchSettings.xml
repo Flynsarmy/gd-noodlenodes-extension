@@ -39,7 +39,7 @@
 			The most decision events recorded for one search attempt. Must be at least 1. Later events are dropped and the attempt is marked [code]truncated[/code]; a truncated trace is not a complete account of the search.
 		</member>
 		<member name="policy" type="int" setter="set_policy" getter="get_policy" enum="NNHTNSearchSettings.Policy" default="0">
-			How alternatives are ordered and which plan wins.
+			How alternatives are ordered and which plan wins: [constant ORDERED] tries methods in scene order and takes the first plan, [constant RANKED] tries methods by descending [member NNHTNMethod.priority] and takes the first plan, and [constant LOWEST_COST] searches for the plan with the lowest total [member NNHTNTask.estimated_cost].
 		</member>
 	</members>
 	<constants>

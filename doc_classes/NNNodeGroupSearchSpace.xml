@@ -10,7 +10,7 @@
 	</tutorials>
 	<members>
 		<member name="group_name" type="StringName" setter="set_group_name" getter="get_group_name" default="&amp;&quot;&quot;">
-			The group name to use in the search.
+			The [SceneTree] group whose member nodes form the search space.
 		</member>
 	</members>
 </class>
