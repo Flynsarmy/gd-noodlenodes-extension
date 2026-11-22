@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="NNBTSpatialActionLeaf" inherits="NNBTActionLeaf" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
+	<brief_description>
+		Base class for behaviour tree leaves that act on a target in 2D or 3D space.
+	</brief_description>
+	<description>
+		Holds the target configuration shared by [NNBTMoveTo2D], [NNBTMoveTo3D], [NNBTLookAt2D] and [NNBTLookAt3D]. Each 2D or 3D subclass adds a [code]target_position[/code] property of its own vector type.
+		The target is read again on every tick, so a moving node or a changing blackboard value is followed. A target that is gone at runtime, such as a freed [member target_node], a freed node stored under [member target_key] or a missing blackboard value, makes the leaf return [constant NNBTNodes.FAILURE] without an error. A misconfigured target, such as [constant TARGET_NODE] with no [member target_node], [constant TARGET_BLACKBOARD] with an empty [member target_key], or a node or value of the wrong type, reports an error once per node instance and returns [constant NNBTNodes.FAILURE].
+		This class cannot be instantiated.
+	</description>
+	<tutorials>
+	</tutorials>
+	<members>
+		<member name="target_key" type="String" setter="set_target_key" getter="get_target_key" default="&quot;&quot;">
+			The blackboard key read when [member target_source] is [constant TARGET_BLACKBOARD]. The value may be a [Node2D] or [Vector2] for a 2D leaf, or a [Node3D] or [Vector3] for a 3D leaf.
+		</member>
+		<member name="target_node" type="Node" setter="set_target_node" getter="get_target_node">
+			The node whose global position is the target when [member target_source] is [constant TARGET_NODE]. Must be a [Node2D] for a 2D leaf or a [Node3D] for a 3D leaf.
+		</member>
+		<member name="target_source" type="int" setter="set_target_source" getter="get_target_source" enum="NNBTSpatialActionLeaf.TargetSource" default="0">
+			Where the target comes from. The inspector shows only the property the chosen source uses.
+		</member>
+	</members>
+	<constants>
+		<constant name="TARGET_POSITION" value="0" enum="TargetSource">
+			The target is the subclass's [code]target_position[/code], in global coordinates.
+		</constant>
+		<constant name="TARGET_NODE" value="1" enum="TargetSource">
+			The target is the global position of [member target_node].
+		</constant>
+		<constant name="TARGET_BLACKBOARD" value="2" enum="TargetSource">
+			The target is the node or vector stored under [member target_key] in the effective blackboard.
+		</constant>
+	</constants>
+</class>

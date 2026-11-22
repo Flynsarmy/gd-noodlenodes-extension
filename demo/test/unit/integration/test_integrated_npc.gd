@@ -20,6 +20,8 @@ var _agent: NNAgent
 var _idle: NNSTNode
 var _walk: NNSTNode
 var _run: NNSTNode
+var _walk_move: NNBTMoveTo2D
+var _run_move: NNBTMoveTo2D
 
 
 func before_each() -> void:
@@ -34,11 +36,13 @@ func before_each() -> void:
 	_idle = _movement.get_node("Idle") as NNSTNode
 	_walk = _movement.get_node("Walk") as NNSTNode
 	_run = _movement.get_node("Run") as NNSTNode
+	_walk_move = _walk.get_node("NNBTRoot/NNBTMoveTo2D") as NNBTMoveTo2D
+	_run_move = _run.get_node("NNBTRoot/NNBTMoveTo2D") as NNBTMoveTo2D
 
 	_threat.set_physics_process(false)
 	_agent.num_behaviours_to_select = 1
-	_walk.set("speed", 250.0)
-	_run.set("speed", 400.0)
+	_walk_move.speed = 250.0
+	_run_move.speed = 400.0
 	_place_threat(PATROL_DISTANCE)
 
 

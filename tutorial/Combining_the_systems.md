@@ -23,10 +23,10 @@ Each of the five systems answers a different question, and none of them answers 
  * **Agent Behaviours** answer *what should the NPC do now?* An `NNAgent` scores its `NNBehaviour` nodes with considerations and picks one. This is the only place where the goal is chosen.
  * **Behaviour Trees** answer *how is that goal carried out?* An `NNBTRoot` runs the chosen goal's steps: find a point, check it, ask for movement, wait.
  * **HTN planning** answers *which sequence of steps reaches that goal, given what the NPC knows?* An `NNHTNRoot` decomposes a task into a plan, runs it step by step and plans again when a fact it depends on changes.
- * **State Trees** answer *what is the NPC doing continuously?* An `NNSTRoot` keeps a state such as Idle, Walk or Run active, and that state owns movement and animation across goal changes.
+ * **State Trees** answer *what is the NPC doing continuously?* An `NNSTRoot` keeps a state such as Idle, Walk or Run active, and that state owns its hosted movement tree and the animation across goal changes.
  * **The Node Query System** answers *where in the world is the best point?* Search spaces and criteria return a ranked node, such as the nearest patrol point or the best cover.
 
-The demo divides the work the same way. Utility decides which goal matters, and the goal decides the steps: Patrol and Flee each run one behaviour tree, while Investigate asks a planner to choose between two ways of investigating and replans when the threat gets too close. Each step of that plan is itself a small behaviour tree. The chart owns movement and animation, and NQS supplies the world positions that the goals and their scoring use. If any of the systems is new to you, start with its getting started page: [Agent Behaviours](Getting_started_with_Agent_Behaviours.md), [Behaviour Trees](Getting_started_with_Behaviour_Trees.md), [State Trees](Getting_started_with_State_Trees.md), [HTN planning](Getting_started_with_HTN.md) or the [Node Query System](Getting_started_with_the_Node_Query_System.md).
+The demo divides the work the same way. Utility decides which goal matters, and the goal decides the steps: Patrol and Flee each run one behaviour tree, while Investigate asks a planner to choose between two ways of investigating and replans when the threat gets too close. Each step of that plan is itself a small behaviour tree. The chart owns the animation and hosts the movement trees, and NQS supplies the world positions that the goals and their scoring use. If any of the systems is new to you, start with its getting started page: [Agent Behaviours](Getting_started_with_Agent_Behaviours.md), [Behaviour Trees](Getting_started_with_Behaviour_Trees.md), [State Trees](Getting_started_with_State_Trees.md), [HTN planning](Getting_started_with_HTN.md) or the [Node Query System](Getting_started_with_the_Node_Query_System.md).
 
 
 
@@ -34,13 +34,16 @@ The demo divides the work the same way. Utility decides which goal matters, and 
 
 ```
 IntegratedNpcShowcase (Node2D)
+├── Navigation (NavigationRegion2D)      play area polygon
 ├── Threat (Sprite2D)                    threat.gd
 ├── PatrolPoints (group patrol_point)    4 points
 ├── CluePoints (group clue_point)        3 points
 ├── CoverPoints (group cover_point)      4 points
 └── Npc (AnimatedSprite2D)               integrated_npc.gd
+    ├── NavigationAgent2D
     └── Movement (NNSTRoot)
         ├── Idle / Walk / Run (NNSTNode)
+        │   └── Walk and Run host NNBTRoot › NNBTMoveTo2D
         ├── SearchSpaces
         │   ├── PatrolSpace (NNNodeGroupSearchSpace, patrol_point)
         │   ├── ClueSpace (NNNodeGroupSearchSpace, clue_point)
@@ -76,9 +79,9 @@ IntegratedNpcShowcase (Node2D)
             └── Flee (same shape as Patrol, then HideInCover)
 ```
 
-The scene-level nodes have no AI logic. `threat.gd` moves the threat sprite towards the NPC and then lets it retreat. The point nodes are plain markers in the `patrol_point`, `clue_point` and `cover_point` groups, and each search space finds one group by name and scores it with an `NNDistanceToNode2DSearchCriterion`. The patrol and clue spaces also filter out points closer than 60 pixels, so the NPC leaves the point it just reached instead of choosing it again. The NPC script, `integrated_npc.gd`, writes the `threat_alert` blackboard value from the distance to the threat; a closer threat produces a higher value. It also writes `threat_wary`, which becomes `true` when `threat_alert` reaches its `wary_alert` export (0.5) and stays `true` until the alert drops to `calm_alert` (0.4).
+The scene-level nodes have no AI logic. `Navigation` is one rectangular `NavigationPolygon` covering the window, which is enough for a demo that only walks around a flat, empty play area. `threat.gd` moves the threat sprite towards the NPC and then lets it retreat. The point nodes are plain markers in the `patrol_point`, `clue_point` and `cover_point` groups, and each search space finds one group by name and scores it with an `NNDistanceToNode2DSearchCriterion`. The patrol and clue spaces also filter out points closer than 60 pixels, so the NPC leaves the point it just reached instead of choosing it again. The NPC script, `integrated_npc.gd`, writes the `threat_alert` blackboard value from the distance to the threat; a closer threat produces a higher value. It also writes `threat_wary`, which becomes `true` when `threat_alert` reaches its `wary_alert` export (0.5) and stays `true` until the alert drops to `calm_alert` (0.4).
 
-`Movement` is the outermost root of the whole AI. Its Idle, Walk and Run states own movement and animation, and its `SearchSpaces` children hold the three `NNNodeGroupSearchSpace` nodes. The `NNAgent` decides which goal is active, and each goal's action hosts the goal's root. The Patrol and Flee trees have the same shape and differ in the search space they query, the movement they ask for, and what happens on arrival. Investigate's action hosts an HTN planner instead, whose tasks host trees of the same shape.
+`Movement` is the outermost root of the whole AI. Its Idle, Walk and Run states own the animation, and Walk and Run each host a small tree with an `NNBTMoveTo2D` that walks or runs the NPC to `move_target` along the navmesh. Its `SearchSpaces` children hold the three `NNNodeGroupSearchSpace` nodes. The `NNAgent` decides which goal is active, and each goal's action hosts the goal's root. The Patrol and Flee trees have the same shape and differ in the search space they query, the movement they ask for, and what happens on arrival. Investigate's action hosts an HTN planner instead, whose tasks host trees of the same shape.
 
 
 
@@ -111,7 +114,7 @@ NNBTRoot
  * `NNBTRunNQSQuery` posts a query on its `nqs_search_space` and returns `RUNNING` until it completes, or `FAILURE` if the search space is missing or the query is cancelled. On completion it writes the best node to `best_result_key`, which the demo sets to `move_target`.
  * `NNBTBlackboardHas` checks `move_target`. A completed query with no results erases the key, so this leaf fails and the goal ends instead of walking to a stale point.
  * `NNBTSendEvent` asks the movement chart for `walk` or `run`, depending on the goal.
- * `NNBTUntilFail(NNBTIsStateActive)` keeps the tree running while the movement state it watches is active: Patrol and the Investigate tasks watch Walk, and Flee watches Run. When the tree sends its event outside a chart callback, `send_event` drains synchronously, so the next tree tick already sees the new state. When arrival takes the chart out of that state, the condition fails and `NNBTUntilFail` turns that into success.
+ * `NNBTUntilFail(NNBTIsStateActive)` keeps the tree running while the movement state it watches is active: Patrol and the Investigate tasks watch Walk, and Flee watches Run. When the tree sends its event outside a chart callback, `send_event` drains synchronously, so the next tree tick already sees the new state. When the state's movement tree arrives, the state sends `stop` into the chart, which takes the chart out of that state; the condition then fails and `NNBTUntilFail` turns that into success.
 
 Flee's sequence has one more child after `NNBTUntilFail`: `HideInCover`, an `NNBTFixedResult` with no child that always returns *running*. Patrol and Investigate are done once they arrive, but reaching cover does not make a threat go away. If Flee's tree succeeded on arrival, the agent would end Flee, find it still the best goal and pick it again. The NPC would already be standing in cover, so the new tree would succeed at once, and the goal would flicker between Flee and nothing for as long as the threat stayed close. With `HideInCover` the tree keeps running, so the NPC stays in cover until the agent's scores pick another goal.
 
@@ -133,7 +136,7 @@ Any of the four roots, `NNAgent`, `NNBTRoot`, `NNSTRoot` and `NNHTNRoot`, can si
 
 The hosted root ticks with the host's delta, and its own **Process Thread** and **Tick Rate** are ignored. When the host stops, the root is reset: a tree is interrupted, a chart exits its states, an agent aborts its behaviour and a planner abandons its plan. What each root reports differs: a behaviour tree reports when a run ends, a state tree when it enters a final state, an HTN root when its plan completes, fails or cannot be found, and an agent never reports by itself.
 
-The demo uses two levels of hosting. The actions host one root each, and each Investigate task hosts a tree. The chart sits above the agent rather than under a host, so it runs the whole time and every root below it reaches it through the ancestor chain.
+The demo uses three levels of hosting. The Walk and Run states host their movement trees, the actions host one root each, and each Investigate task hosts a tree. The chart sits above the agent rather than under a host, so it runs the whole time and every root below it reaches it through the ancestor chain.
 
 
 
@@ -157,7 +160,7 @@ The root plans for its only compound child, `Investigate`. Methods are tried in 
 
 ### World state on the shared blackboard
 
-The planner has no blackboard of its own, so its world state is the board `Movement` owns. The `threat_wary` condition reads the value `integrated_npc.gd` writes, and the hosted trees write `move_target` to the same board the chart's Walk state reads. Nothing is copied into or out of the planner. See [World state and conditions](Getting_started_with_HTN.md#4-world-state-and-conditions) for how conditions read the board.
+The planner has no blackboard of its own, so its world state is the board `Movement` owns. The `threat_wary` condition reads the value `integrated_npc.gd` writes, and the hosted trees write `move_target` to the same board that the Walk and Run movement trees read. Nothing is copied into or out of the planner. See [World state and conditions](Getting_started_with_HTN.md#4-world-state-and-conditions) for how conditions read the board.
 
 The condition reads `threat_wary` rather than `threat_alert` on purpose. A condition makes its key a replanning dependency, and `threat_alert` changes on every physics frame while the threat moves, so a condition on it would make the planner search again on every frame. `threat_wary` only changes when the alert crosses a threshold, which is exactly when the choice of method can change. The two thresholds matter too. Walking to cover usually takes the NPC away from the threat and walking to a clue can take it closer, so with a single threshold each plan would carry the NPC back across it and the planner would swap methods on every frame. The gap between `wary_alert` and `calm_alert` makes each plan travel a fair distance before the other one takes over. The utility agent is the opposite case: its curves need the continuous value, so `AlertSensor` reads `threat_alert`.
 
@@ -187,7 +190,7 @@ Every behaviour in the demo sets `on_selected_event` to `stop` and leaves `on_se
 
 Inside the trees, `NNBTSendEvent` does the same with `event_name` and `target`. The demo sets the name and leaves `target` empty, so the event also goes to the nearest ancestor chart. The chart handles it with `NNSTTransition` nodes: a transition with **Event Name** `walk` leads from Idle to Walk, one with `run` leads from Idle to Run, and one under each of Walk and Run with `stop` leads back to Idle. The event name is just a string; the transitions decide which state the chart moves to.
 
-Arrival travels the other way. The Walk and Run states transition back to Idle when the NPC reaches `move_target`. The goal tree does not need a signal for that: its `NNBTIsStateActive` condition starts failing, `NNBTUntilFail` converts that to success, and Patrol's action finishes while Flee moves on to `HideInCover`. Under Investigate the same success ends the plan step instead, and the planner moves on to the next one. The chart and the tree never call each other. They share a blackboard for data and events for control.
+Arrival travels the other way. Walk and Run each host a tree with an `NNBTMoveTo2D`, and both states set **Hosted Success Event** and **Hosted Failure Event** to `stop`. When the leaf arrives, or loses its target or path, it finishes the hosted run, the state sends `stop`, and the `Stop` transition already under the state returns the chart to Idle. The goal tree does not need a signal for that: its `NNBTIsStateActive` condition starts failing, `NNBTUntilFail` converts that to success, and Patrol's action finishes while Flee moves on to `HideInCover`. Under Investigate the same success ends the plan step instead, and the planner moves on to the next one. The chart and the tree never call each other. They share a blackboard for data and events for control.
 
 
 ### Sending events without paths

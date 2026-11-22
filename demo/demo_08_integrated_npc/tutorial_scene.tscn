@@ -1,4 +1,4 @@
-[gd_scene load_steps=20 format=3]
+[gd_scene load_steps=21 format=3]
 
 [ext_resource type="Script" path="res://demo_08_integrated_npc/tutorial_scene.gd" id="1_scene"]
 [ext_resource type="Script" path="res://demo_08_integrated_npc/integrated_npc.gd" id="2_npc"]
@@ -69,6 +69,10 @@ point_count = 2
 [sub_resource type="NNHTNCondition" id="NNHTNCondition_wary"]
 expression = "threat_wary"
 
+[sub_resource type="NavigationPolygon" id="NavigationPolygon_play_area"]
+vertices = PackedVector2Array(0, 0, 0, 648, 1152, 648, 1152, 0)
+polygons = [PackedInt32Array(0, 1, 2, 3)]
+
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_status"]
 bg_color = Color(0.04, 0.05, 0.08, 0.88)
 corner_radius_top_left = 6
@@ -82,6 +86,9 @@ content_margin_bottom = 6.0
 
 [node name="IntegratedNpcShowcase" type="Node2D"]
 script = ExtResource("1_scene")
+
+[node name="Navigation" type="NavigationRegion2D" parent="."]
+navigation_polygon = SubResource("NavigationPolygon_play_area")
 
 [node name="Backdrop" type="CanvasLayer" parent="."]
 layer = -1
@@ -212,6 +219,8 @@ animation = &"idle"
 script = ExtResource("2_npc")
 threat = NodePath("../Threat")
 
+[node name="NavigationAgent2D" type="NavigationAgent2D" parent="Npc"]
+
 [node name="Movement" type="NNSTRoot" parent="Npc"]
 
 [node name="Idle" type="NNSTNode" parent="Npc/Movement"]
@@ -227,19 +236,41 @@ to = NodePath("../../Run")
 
 [node name="Walk" type="NNSTNode" parent="Npc/Movement"]
 script = ExtResource("5_moving")
-speed = 140.0
+hosted_success_event = "stop"
+hosted_failure_event = "stop"
 
 [node name="Stop" type="NNSTTransition" parent="Npc/Movement/Walk"]
 event_name = "stop"
 to = NodePath("../../Idle")
 
+[node name="NNBTRoot" type="NNBTRoot" parent="Npc/Movement/Walk"]
+
+[node name="NNBTMoveTo2D" type="NNBTMoveTo2D" parent="Npc/Movement/Walk/NNBTRoot"]
+target_source = 2
+target_key = "move_target"
+speed = 140.0
+arrival_distance = 8.0
+velocity_key = "move_velocity"
+apply_movement = true
+
 [node name="Run" type="NNSTNode" parent="Npc/Movement"]
 script = ExtResource("5_moving")
-speed = 260.0
+hosted_success_event = "stop"
+hosted_failure_event = "stop"
 
 [node name="Stop" type="NNSTTransition" parent="Npc/Movement/Run"]
 event_name = "stop"
 to = NodePath("../../Idle")
+
+[node name="NNBTRoot" type="NNBTRoot" parent="Npc/Movement/Run"]
+
+[node name="NNBTMoveTo2D" type="NNBTMoveTo2D" parent="Npc/Movement/Run/NNBTRoot"]
+target_source = 2
+target_key = "move_target"
+speed = 260.0
+arrival_distance = 8.0
+velocity_key = "move_velocity"
+apply_movement = true
 
 [node name="SearchSpaces" type="Node2D" parent="Npc/Movement"]
 

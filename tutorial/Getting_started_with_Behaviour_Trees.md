@@ -20,7 +20,8 @@ For this tutorial, we'll start with an empty Godot 4.7 project.
  7. [Adding the on_tick() methods](Getting_started_with_Behaviour_Trees.md#7-adding-the-on_tick-methods)
  8. [Running the main scene](Getting_started_with_Behaviour_Trees.md#8-running-the-main-scene)
  9. [Driving state trees from behaviour trees](Getting_started_with_Behaviour_Trees.md#9-driving-state-trees-from-behaviour-trees)
- 10. [Next steps](Getting_started_with_Behaviour_Trees.md#10-next-steps)
+ 10. [Moving and turning with navigation](Getting_started_with_Behaviour_Trees.md#10-moving-and-turning-with-navigation)
+ 11. [Next steps](Getting_started_with_Behaviour_Trees.md#11-next-steps)
 
 
 
@@ -377,12 +378,12 @@ What this code does:
  * The row `@onready var sensor_distance:NNDistanceVector2Sensor = $NNBTRoot/NNDistanceVector2Sensor` gets a reference to the Vector2 based distance sensor of the AI entity. This sensor is used to check the distance and to get the direction vector towards the target.
  * The row `var movement_speed:float = 0.0` defines a variable that we will use to control the movement speed of the AI entity.
  * In the `_physics_process(delta)` method we first set the distance sensor **from-position** as the global position of the AI entity, and the **to-position** as the location of the mouse cursor from the parent node. The sensor will use these two positions to calculate the distance from the AI entity to the mouse cursor, and also the direction vector that we will use later for movement.
- * The behaviour tree root ticks itself once per physics frame by default, so the script never calls `tick()` itself. Section [10. Next steps](Getting_started_with_Behaviour_Trees.md#10-next-steps) shows how to lower that rate with `tick_rate`, and how to drive the root from your own code by setting `process_thread` to `Manual`. The tree keeps its data in the root node's blackboard, and the task nodes reach the AI entity with `get_actor()`, which resolves the parent of the behaviour tree root node. In this scene that parent is the **ai_entity** node, so the `on_tick()` methods can use all the properties of the AI entity. A root nested below another Noodle Nodes root inherits that root's blackboard and actor instead of using its own, so a tree added under a state tree or an agent shares their context.
+ * The behaviour tree root ticks itself once per physics frame by default, so the script never calls `tick()` itself. Section [11. Next steps](Getting_started_with_Behaviour_Trees.md#11-next-steps) shows how to lower that rate with `tick_rate`, and how to drive the root from your own code by setting `process_thread` to `Manual`. The tree keeps its data in the root node's blackboard, and the task nodes reach the AI entity with `get_actor()`, which resolves the parent of the behaviour tree root node. In this scene that parent is the **ai_entity** node, so the `on_tick()` methods can use all the properties of the AI entity. A root nested below another Noodle Nodes root inherits that root's blackboard and actor instead of using its own, so a tree added under a state tree or an agent shares their context.
  * After the tree has been ticked, the row `self.global_position += sensor_distance.direction_vector * movement_speed * delta` moves the AI entity based on the direction vector calculated by the distance sensor. Delta time is used to scale the movement amount. The `movement_speed` is set by the behaviour tree task nodes.
  * The final rows of the method make sure the character sprite is facing the direction it is moving to by flipping the sprite horizontally when needed.
 
 > [!NOTE]
-> A behaviour tree root added to a scene ticks itself once per physics frame by default. This isn't what you usually want to do in a real game. See section [10. Next steps](Getting_started_with_Behaviour_Trees.md#10-next-steps) for more information.
+> A behaviour tree root added to a scene ticks itself once per physics frame by default. This isn't what you usually want to do in a real game. See section [11. Next steps](Getting_started_with_Behaviour_Trees.md#11-next-steps) for more information.
 
 
 2. In the **ai_entity** scene, in the **Scene-tab**, attach a script to the **Is too far from the cursor** node. Replace the code with the following code (see explanation for it below):
@@ -509,7 +510,41 @@ Behaviour trees hosted by states, and state trees hosted by behaviour-tree leave
 The same leaves work when an agent action hosts the tree. The tree can send `walk` or `run` to the chart that contains the agent, wait on `NNBTIsStateActive` until the movement state ends, and finish back into the action that hosts it. [Combining the systems](Combining_the_systems.md) builds that arrangement.
 
 
-## 10. Next steps
+## 10. Moving and turning with navigation
+
+Four task nodes move or turn a node towards a target so you do not have to write that movement in `on_tick()`:
+
+ * `NNBTMoveTo2D` and `NNBTMoveTo3D` follow a `NavigationAgent2D` or `NavigationAgent3D` path to the target.
+ * `NNBTLookAt2D` and `NNBTLookAt3D` turn a node until its forward axis points at the target.
+
+The 2D leaves work with `Node2D`, `Vector2` and `NavigationAgent2D`, and the 3D leaves with their 3D counterparts; otherwise they behave the same. The moved body is the agent's parent, so the agent goes under the node that should move. The scene needs a navigation region that covers the walkable area: the integrated NPC demo (`demo/demo_08_integrated_npc`) uses one rectangular `NavigationRegion2D` for the whole play area and a `NavigationAgent2D` under the NPC. The move leaf takes the agent from its **Navigation Agent** property, or from the actor's first direct agent child when the property is empty.
+
+All four leaves read their target again on every tick, so a node that moves is followed. **Target Source** picks where the target comes from:
+
+ * **Target Position** is the leaf's own `target_position`, in global coordinates.
+ * **Target Node** is the global position of `target_node`.
+ * **Target Blackboard** is the value of `target_key` on the blackboard, which may hold either a node or a vector.
+
+The move leaves return *running* while the body is on its way, *success* once the body's distance to the target is within **Arrival Distance**, and *failure* when the target is unreachable, when the target is gone, or when the leaf or its agent is set up wrong. The look-at leaves return *running* while they turn and *success* once the remaining angle is within **Angle Tolerance**, turning by at most **Turn Rate** radians per second. They fail on the same lost or misconfigured target.
+
+The move leaves do not own the body's physics by default. They publish the velocity they want with the agent's `set_velocity()`, and when **Velocity Key** is set they also write that vector to the blackboard so your own script can move the body. If the agent has **Avoidance Enabled**, the safe velocity arrives on its `velocity_computed` signal instead. Use this mode when something else controls the body, such as a `CharacterBody3D` that applies gravity. Turn on **Apply Movement** to let the leaf move the body: a `CharacterBody2D` or `CharacterBody3D` gets its `velocity` set and `move_and_slide()` called, and any other `Node2D` or `Node3D` is translated by the velocity times the tick delta. The leaf moves the body by the delta of the tick it receives, so enable it only on a tree that ticks every physics frame.
+
+An NPC that walks to the point an NQS query found and then turns to face a threat:
+
+```
+NNBTRoot
+└── NNBTSequence
+    ├── NNBTRunNQSQuery                  best_result_key = move_target
+    ├── NNBTMoveTo2D                     target_source = Blackboard, target_key = move_target
+    └── NNBTLookAt2D                     target_source = Node, target_node = threat
+```
+
+The query writes its best result to `move_target`, and the move leaf reads the same key with **Target Source** set to *Blackboard*. The sequence moves on to the look-at leaf once the NPC has arrived, and the branch succeeds when the NPC faces the threat. To turn while walking instead, put both leaves under an `NNBTParallel`; the parallel stops ticking a child once it has finished, so the turn still happens once rather than tracking the threat for the whole walk.
+
+These leaves are behaviour tree nodes only. The other systems reach them by hosting a tree: an `NNAction`, a state tree state, an `NNHTNTask` and an `NNBTRunHostedRoot` leaf can each host a root that contains them, so the same movement logic serves all of them without being duplicated. The demo's Walk and Run states host a tree with a single `NNBTMoveTo2D` each, with **Apply Movement** on because the `Npc` is a plain `AnimatedSprite2D`, and both set **Hosted Success Event** and **Hosted Failure Event** to `stop` so the chart returns to Idle when the NPC arrives or its path fails. See [Which system hosts which](Combining_the_systems.md#which-system-hosts-which) for the host rules.
+
+
+## 11. Next steps
 
 This concludes the tutorial, but there are things you can try to learn more. For instance:
 

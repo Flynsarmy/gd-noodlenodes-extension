@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="NNBTLookAt3D" inherits="NNBTSpatialActionLeaf" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
+	<brief_description>
+		Turns a node in 3D space to face the target.
+	</brief_description>
+	<description>
+		Rotates [member rotated_node], or the root's actor when none is set, until its forward axis points at the target. The target is resolved from [member target_source] on every tick, in global coordinates, and the node turns the shortest way round.
+		The rotation changes by at most [member turn_rate] radians per second, so a turn spans several ticks and the leaf returns [code]RUNNING[/code] until the remaining angle is within [member angle_tolerance] and then [code]SUCCESS[/code]. Returns [code]SUCCESS[/code] without rotating when the target is at the node's position, or when the target is directly above or below it.
+		Returns [code]FAILURE[/code] in the editor, when the resolved target was freed or is missing, and when the node to rotate is missing or is not a [Node3D]. Configuration errors are reported once per node instance.
+	</description>
+	<tutorials>
+	</tutorials>
+	<members>
+		<member name="angle_tolerance" type="float" setter="set_angle_tolerance" getter="get_angle_tolerance" default="0.0872665">
+			The remaining angle in radians at or below which the node is considered facing the target. A smaller tolerance makes the leaf rotate for longer.
+		</member>
+		<member name="rotated_node" type="Node3D" setter="set_rotated_node" getter="get_rotated_node">
+			The node to rotate. When unset, the root's actor is rotated and must be a [Node3D]. Set this to turn a visual child instead of the actor itself.
+		</member>
+		<member name="target_position" type="Vector3" setter="set_target_position" getter="get_target_position" default="Vector3(0, 0, 0)">
+			The target position in global coordinates, used when [member target_source] is [constant NNBTSpatialActionLeaf.TARGET_POSITION].
+		</member>
+		<member name="turn_rate" type="float" setter="set_turn_rate" getter="get_turn_rate" default="6.28319">
+			The maximum turn speed in radians per second. [code]0[/code] turns instantly.
+		</member>
+		<member name="use_model_front" type="bool" setter="set_use_model_front" getter="get_use_model_front" default="false">
+			When [code]true[/code], the +Z axis is the front of the node, as in [method Node3D.look_at]. When [code]false[/code], the forward axis is -Z. Applies to both [member yaw_only] modes.
+		</member>
+		<member name="yaw_only" type="bool" setter="set_yaw_only" getter="get_yaw_only" default="true">
+			When [code]true[/code], the node turns about the global Y axis only, comparing headings on the XZ plane and ignoring the target's height and the node's existing pitch and roll. When [code]false[/code], the node turns fully to point its forward axis at the target with global Y as up.
+		</member>
+	</members>
+</class>

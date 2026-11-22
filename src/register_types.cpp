@@ -91,11 +91,16 @@
 // Tasks
 #include "behaviour_tree/is_state_active.h"
 #include "behaviour_tree/leaf.h"
+#include "behaviour_tree/look_at_2d.h"
+#include "behaviour_tree/look_at_3d.h"
+#include "behaviour_tree/move_to_2d.h"
+#include "behaviour_tree/move_to_3d.h"
 #include "behaviour_tree/node_reference.h"
 #include "behaviour_tree/pass_by.h"
 #include "behaviour_tree/run_hosted_root.h"
 #include "behaviour_tree/run_nqs_query.h"
 #include "behaviour_tree/send_event.h"
+#include "behaviour_tree/spatial_action_leaf.h"
 
 // STATE TREE
 
@@ -248,6 +253,11 @@ void register_scene_classes() {
 	GDREGISTER_CLASS(NNBTIsStateActive);
 	GDREGISTER_CLASS(NNBTSendEvent);
 	GDREGISTER_CLASS(NNBTRunHostedRoot);
+	GDREGISTER_VIRTUAL_CLASS(NNBTSpatialActionLeaf);
+	GDREGISTER_CLASS(NNBTLookAt2D);
+	GDREGISTER_CLASS(NNBTLookAt3D);
+	GDREGISTER_CLASS(NNBTMoveTo2D);
+	GDREGISTER_CLASS(NNBTMoveTo3D);
 
 	GDREGISTER_VIRTUAL_CLASS(NNBTDecoratorNodes);
 	GDREGISTER_CLASS(NNBTRepeater);
