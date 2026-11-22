@@ -209,7 +209,6 @@ public:
 	GDVIRTUAL0(on_enter_state);
 	GDVIRTUAL0(on_exit_state);
 	GDVIRTUAL1(on_tick, double);
-	GDVIRTUAL1(transition_to, NodePath);
 
 	// Godot virtuals.
 

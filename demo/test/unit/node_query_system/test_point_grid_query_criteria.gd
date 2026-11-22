@@ -106,7 +106,7 @@ func test_3d_point_grid_applies_scoring_criterion() -> void:
 
 
 # Criteria must be cached exactly once and the grid must be generated exactly
-# once: one apply_criterion call per grid point.
+# once: one on_apply_criterion call per grid point.
 func test_2d_point_grid_applies_criteria_exactly_once() -> void:
 	var nqs: NNNodeQuerySystem = NqsHelpers.make_nqs(self, 1000000, 100000)
 	var parent: Node2D = add_child_autofree(Node2D.new())

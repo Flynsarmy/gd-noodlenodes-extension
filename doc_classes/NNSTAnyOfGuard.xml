@@ -4,22 +4,12 @@
 		Returns [code]true[/code] if any of the [member guards] are satisfied.
 	</brief_description>
 	<description>
-		This guard returns [code]true[/code] if any of the [member guards] are satisfied. This is useful for creating guards that can be satisfied by multiple conditions. For example, if you have a guard that checks if a variable is equal to [code]1[/code] or [code]2[/code], you can use this guard to check if either condition is satisfied.
+		This guard returns [code]true[/code] if any of the [member guards] are satisfied, and [code]false[/code] if [member guards] is non-empty and no entry is satisfied. This is useful for creating guards that can be satisfied by multiple conditions. For example, if you have a guard that checks if a variable is equal to [code]1[/code] or [code]2[/code], you can use this guard to check if either condition is satisfied.
 		An empty [member guards] array returns [code]true[/code]. Any [code]null[/code] entries in [member guards] are skipped; if [member guards] is non-empty and every entry is either [code]null[/code] or unsatisfied, this guard returns [code]false[/code].
 		It reports the bitwise OR of the trigger types of all non-null entries in [member guards] from [method NNSTGuard.get_supported_trigger_types].
 	</description>
 	<tutorials>
 	</tutorials>
-	<methods>
-		<method name="is_satisfied">
-			<return type="bool" />
-			<param index="0" name="p_transition" type="NNSTTransition" />
-			<param index="1" name="p_state" type="NNSTTickedNodes" />
-			<description>
-				Returns [code]true[/code] if [member guards] is empty or any non-null entry in [member guards] is satisfied, and [code]false[/code] if [member guards] is non-empty and no entry is satisfied (skipping [code]null[/code] entries).
-			</description>
-		</method>
-	</methods>
 	<members>
 		<member name="guards" type="NNSTGuard[]" setter="set_guards" getter="get_guards" default="[]">
 			Guards of which at least one must be satisfied for this guard to return [code]true[/code] (evaluated in order, short-circuiting on the first match). [code]null[/code] entries are skipped; an empty array returns [code]true[/code], while a non-empty array with only [code]null[/code] or unsatisfied entries returns [code]false[/code].

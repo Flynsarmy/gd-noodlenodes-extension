@@ -5,24 +5,39 @@
 	</brief_description>
 	<description>
 		Guards decide whether a transition may be taken. Repeated evaluation of automatic transitions is driven by the trigger types a guard reports through [method get_supported_trigger_types].
+		Write a custom guard by deriving from this class in a script and implementing [method on_is_satisfied], plus [method on_get_supported_trigger_types] to say which changes make the result stale. The built-in guards evaluate themselves natively instead of using those hooks.
 	</description>
 	<tutorials>
 	</tutorials>
 	<methods>
+		<method name="get_supported_trigger_types" qualifiers="const">
+			<return type="int" />
+			<description>
+				Returns a bit mask of [enum NNSTRoot.TriggerType] values describing which changes can affect this guard's result. Automatic transitions use this to decide when they need to be re-evaluated.
+				The base implementation asks the guard script for [method on_get_supported_trigger_types]; when that hook is missing it reports an error and returns [constant NNSTRoot.NONE], so the guard's transitions are only checked on [constant NNSTRoot.STATE_ENTER] unless the transition's guard composition reports additional trigger types.
+			</description>
+		</method>
 		<method name="is_satisfied">
 			<return type="bool" />
 			<param index="0" name="p_transition" type="NNSTTransition" />
 			<param index="1" name="p_state" type="NNSTTickedNodes" />
 			<description>
 				Returns [code]true[/code] if the guard is satisfied, [code]false[/code] otherwise.
-				Guards are used to determine if a transition can be taken or not. If the guard is satisfied, the transition can be taken.
+				Guards are used to determine if a transition can be taken or not. If the guard is satisfied, the transition can be taken. The built-in guards evaluate themselves natively; for a custom guard the result comes from [method on_is_satisfied]. When that hook is missing an error is reported and [code]false[/code] is returned.
 			</description>
 		</method>
-		<method name="get_supported_trigger_types" qualifiers="const">
+		<method name="on_get_supported_trigger_types" qualifiers="virtual const">
 			<return type="int" />
 			<description>
-				Returns a bit mask of [enum NNSTRoot.TriggerType] values describing which changes can affect this guard's result. Automatic transitions use this to decide when they need to be re-evaluated.
-				The base implementation reports [constant NNSTRoot.NONE] and prints an error. Override this method in a GDScript guard to report the trigger types it depends on; without an override the guard's transitions are only checked on [constant NNSTRoot.STATE_ENTER] unless the transition's guard composition reports additional trigger types.
+				Implement this hook in a guard script to return the bit mask of [enum NNSTRoot.TriggerType] values that can change its result, as described in [method get_supported_trigger_types]. Built-in guards report their trigger types natively and never call this hook.
+			</description>
+		</method>
+		<method name="on_is_satisfied" qualifiers="virtual">
+			<return type="bool" />
+			<param index="0" name="transition" type="NNSTTransition" />
+			<param index="1" name="state" type="NNSTTickedNodes" />
+			<description>
+				Implement this hook in a guard script to decide whether the guard is satisfied, returning [code]true[/code] when the transition may be taken. [param transition] is the transition being evaluated and [param state] the state it belongs to. Built-in guards evaluate themselves natively and never call this hook.
 			</description>
 		</method>
 	</methods>

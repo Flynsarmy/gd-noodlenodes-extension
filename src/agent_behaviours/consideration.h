@@ -4,6 +4,7 @@
 #include "sensors.h"
 #include <godot_cpp/classes/curve.hpp>
 #include <godot_cpp/classes/node.hpp>
+#include <godot_cpp/core/gdvirtual.gen.inc>
 
 namespace godot {
 
@@ -14,10 +15,11 @@ private:
 protected:
 	static void _bind_methods();
 
+	GDVIRTUAL0R(double, on_evaluate);
+
 	ObjectID _input_sensor_id;
 	Ref<Curve> _activation_curve;
 	float _activation_input_value;
-	bool _has_activation_input_changed;
 
 	virtual void _evaluate_consideration();
 

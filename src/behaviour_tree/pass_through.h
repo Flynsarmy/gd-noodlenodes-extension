@@ -2,6 +2,7 @@
 
 #include "decorator_nodes.h"
 #include <godot_cpp/classes/node.hpp>
+#include <godot_cpp/core/gdvirtual.gen.inc>
 #include <godot_cpp/core/method_ptrcall.hpp>
 
 namespace godot {
@@ -11,6 +12,8 @@ class NNBTPassThrough : public NNBTDecoratorNodes {
 
 protected:
 	static void _bind_methods();
+
+	GDVIRTUAL1(on_tick, double);
 
 public:
 	NNBTPassThrough();

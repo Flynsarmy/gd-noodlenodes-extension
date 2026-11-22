@@ -9,16 +9,6 @@
 	</description>
 	<tutorials>
 	</tutorials>
-	<methods>
-		<method name="is_satisfied">
-			<return type="bool" />
-			<param index="0" name="p_transition" type="NNSTTransition" />
-			<param index="1" name="p_state" type="NNSTTickedNodes" />
-			<description>
-				Evaluates the [member guard] and returns the opposite of its result. If the [member guard] is satisfied, this method returns [code]false[/code], and vice versa.
-			</description>
-		</method>
-	</methods>
 	<members>
 		<member name="guard" type="NNSTGuard" setter="set_guard" getter="get_guard">
 			The guard whose result is inverted. When [code]null[/code], this guard evaluates to [code]true[/code].

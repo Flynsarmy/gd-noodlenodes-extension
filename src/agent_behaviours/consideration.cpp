@@ -23,13 +23,14 @@ void NNConsideration::_bind_methods() {
 	ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "activation_input_value", PROPERTY_HINT_RANGE, "0.0,1.0,or_less,or_greater"), "set_activation_input_value", "get_activation_input_value");
 
 	ClassDB::bind_method(D_METHOD("sample_activation_curve", "input_value"), &NNConsideration::sample_activation_curve);
+
+	GDVIRTUAL_BIND(on_evaluate);
 }
 
 // Constructor and destructor.
 
 NNConsideration::NNConsideration() {
 	_activation_input_value = 0.0001f;
-	_has_activation_input_changed = true;
 }
 
 NNConsideration::~NNConsideration() {
@@ -38,9 +39,7 @@ NNConsideration::~NNConsideration() {
 // Getters and Setters.
 
 void NNConsideration::set_input_sensor(NNSensors *input_sensor) {
-	ObjectID input_sensor_id = input_sensor != nullptr ? ObjectID(input_sensor->get_instance_id()) : ObjectID();
-	_has_activation_input_changed = _has_activation_input_changed || (_input_sensor_id != input_sensor_id);
-	_input_sensor_id = input_sensor_id;
+	_input_sensor_id = input_sensor != nullptr ? ObjectID(input_sensor->get_instance_id()) : ObjectID();
 }
 
 NNSensors *NNConsideration::get_input_sensor() const {
@@ -48,7 +47,6 @@ NNSensors *NNConsideration::get_input_sensor() const {
 }
 
 void NNConsideration::set_activation_curve(Ref<Curve> activation_curve) {
-	_has_activation_input_changed = _has_activation_input_changed || (_activation_curve != activation_curve);
 	_activation_curve = activation_curve;
 }
 
@@ -57,7 +55,6 @@ Ref<Curve> NNConsideration::get_activation_curve() const {
 }
 
 void NNConsideration::set_activation_input_value(float activation_input_value) {
-	_has_activation_input_changed = _has_activation_input_changed || (_activation_input_value != activation_input_value);
 	_activation_input_value = activation_input_value;
 }
 
@@ -75,21 +72,16 @@ float NNConsideration::evaluate() {
 		return 0.0f;
 
 	NNSensors *input_sensor = get_input_sensor();
-	if (input_sensor != nullptr) {
-		// If there's no change to the sensor input value, just return the
-		// earlier result.
-		float input_value = input_sensor->get_sensor_value();
-		if (input_value != _activation_input_value || _score == 0.0f) {
-			_activation_input_value = input_value;
-			_has_activation_input_changed = true;
-		}
-	}
+	if (input_sensor != nullptr)
+		_activation_input_value = input_sensor->get_sensor_value();
 
-	if (!_has_activation_input_changed) {
-		return _score;
+	if (GDVIRTUAL_IS_OVERRIDDEN(on_evaluate)) {
+		double score = 0.0;
+		GDVIRTUAL_CALL(on_evaluate, score);
+		_score = static_cast<float>(score);
+	} else {
+		_evaluate_consideration();
 	}
-	_evaluate_consideration();
-	_has_activation_input_changed = false;
 	return _score;
 }
 
@@ -101,13 +93,6 @@ float NNConsideration::sample_activation_curve(float input_value) const {
 }
 
 void NNConsideration::_evaluate_consideration() {
-	// If the consideration has been extended with a custom evaluation method,
-	// that is used instead of sampling the curve.
-	if (has_method("eval")) {
-		call("eval");
-		return;
-	}
-
 	if (_activation_curve.is_valid()) {
 		_score = _activation_curve->sample(_activation_input_value);
 	} else {

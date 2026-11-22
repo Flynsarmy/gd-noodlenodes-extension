@@ -1,12 +1,21 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <class name="NNCustomSearchCriterion" inherits="NNNQSSearchCriteria" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
 	<brief_description>
-		Calls a script-defined [code]apply_criterion(node)[/code] method to filter and score candidate nodes.
+		Filters and scores candidate nodes with [method on_apply_criterion].
 	</brief_description>
 	<description>
-		With the custom search criterion, you attach a script that defines [code]apply_criterion(node: Node)[/code]. For each candidate node in the search space, [member NNNQSSearchCriteria.is_filtered] is reset to [code]false[/code] and [member NNNQSSearchCriteria.score] is reset to [code]1.0[/code] before [code]apply_criterion(node)[/code] is called with the candidate [Node].
-		Inside [code]apply_criterion(node)[/code], set [member NNNQSSearchCriteria.is_filtered] to [code]true[/code] to filter the node out, and set [member NNNQSSearchCriteria.score] to the desired score. If no [code]apply_criterion[/code] method is defined on the script, nodes are left unfiltered with a score of [code]1.0[/code].
+		With the custom search criterion, you override [method on_apply_criterion]. For each candidate node in the search space, [member NNNQSSearchCriteria.is_filtered] is reset to [code]false[/code] and [member NNNQSSearchCriteria.score] is reset to [code]1.0[/code] before [method on_apply_criterion] is called with the candidate [Node].
+		Inside [method on_apply_criterion], set [member NNNQSSearchCriteria.is_filtered] to [code]true[/code] to filter the node out, and set [member NNNQSSearchCriteria.score] to the desired score. If the script does not override [method on_apply_criterion], nodes are left unfiltered with a score of [code]1.0[/code].
 	</description>
 	<tutorials>
 	</tutorials>
+	<methods>
+		<method name="on_apply_criterion" qualifiers="virtual">
+			<return type="void" />
+			<param index="0" name="node" type="Node" />
+			<description>
+				Decides whether the candidate [param node] is filtered out and how it scores. Set [member NNNQSSearchCriteria.is_filtered] to [code]true[/code] to filter the node out, and set [member NNNQSSearchCriteria.score] to the desired score. May be omitted by scripts.
+			</description>
+		</method>
+	</methods>
 </class>

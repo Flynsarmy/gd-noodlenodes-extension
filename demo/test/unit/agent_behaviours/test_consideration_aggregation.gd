@@ -8,14 +8,21 @@ const MEAN := NoodleNodes.EVALUATION_MEAN
 
 
 class FullScoreConsideration extends NNConsideration:
-	func eval() -> void:
-		score = 1.0
+	func on_evaluate() -> float:
+		return 1.0
 
 
 class VetoConsideration extends NNConsideration:
-	func eval() -> float:
+	func on_evaluate() -> float:
 		has_vetoed = true
 		return 1.0
+
+
+class ScriptScoreConsideration extends NNConsideration:
+	var score_value := 0.0
+
+	func on_evaluate() -> float:
+		return score_value
 
 
 func test_behaviour_aggregation_skips_disabled_considerations() -> void:
@@ -62,7 +69,7 @@ func test_vetoing_consideration_zeroes_the_score_and_stops_evaluation() -> void:
 	assert_eq(agent.get_current_behaviour_node(), fallback, "a vetoed behaviour must not be selected")
 
 
-func test_script_attached_after_entering_the_tree_runs_eval() -> void:
+func test_script_attached_after_entering_the_tree_runs_custom_evaluation() -> void:
 	var consideration := NNConsideration.new()
 	var scripted := NNBehaviour.new()
 	scripted.add_child(consideration)
@@ -72,4 +79,19 @@ func test_script_attached_after_entering_the_tree_runs_eval() -> void:
 
 	agent.evaluate_options(1.0)
 
-	assert_eq(agent.get_current_behaviour_node(), scripted, "eval from a late-attached script must run")
+	assert_eq(agent.get_current_behaviour_node(), scripted, "custom evaluation from a late-attached script must run")
+
+
+func test_scripted_score_is_recomputed_without_a_property_change() -> void:
+	var consideration := ScriptScoreConsideration.new()
+	consideration.score_value = 0.2
+	var behaviour := NNBehaviour.new()
+	behaviour.add_child(consideration)
+	var agent := Fixtures.add_manual_agent(self, [behaviour])
+
+	agent.evaluate_options(1.0)
+	assert_almost_eq(consideration.score, 0.2, 0.0001)
+
+	consideration.score_value = 0.7
+	agent.evaluate_options(1.0)
+	assert_almost_eq(consideration.score, 0.7, 0.0001, "a scripted score must not be reused from an earlier evaluation")

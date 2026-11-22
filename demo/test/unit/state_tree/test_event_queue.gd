@@ -9,16 +9,14 @@ const Fixtures = preload("res://test/support/fixtures.gd")
 const STHelpers = preload("res://test/unit/state_tree/support/st_helpers.gd")
 
 
-# Transitions `state` away from itself inside the guard callback. The native
-# base class explicitly dispatches this GDScript override, so the guard truly
-# runs user code in the middle of event handling.
+# Transitions `state` away from itself inside the guard hook, so the guard
+# truly runs user code in the middle of event handling.
 class StateTransitioningGuard extends NNSTGuard:
 	var ran: bool = false
 	var state: NNSTTickedNodes
 	var target: NNSTTickedNodes
 
-	@warning_ignore("native_method_override")
-	func is_satisfied(_transition, _state) -> bool:
+	func on_is_satisfied(_transition, _state) -> bool:
 		ran = true
 		state.transition_to(state.get_path_to(target))
 		return true

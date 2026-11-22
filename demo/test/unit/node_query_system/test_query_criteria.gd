@@ -10,9 +10,15 @@ const EPSILON := 0.0001
 class FreeEarlierCandidateOnLast extends NNCustomSearchCriterion:
 	var candidates: Array[Node] = []
 
-	func apply_criterion(node) -> void:
+	func on_apply_criterion(node) -> void:
 		if node == candidates.back():
 			candidates.front().free()
+
+
+class FilterAndScoreCriterion extends NNCustomSearchCriterion:
+	func on_apply_criterion(node) -> void:
+		is_filtered = node.name.begins_with("out")
+		score = 0.5
 
 
 func _add_candidate(container: Node2D, candidate_name: String, position: Vector2) -> Node2D:
@@ -106,6 +112,35 @@ func test_metadata_criterion_filters_on_both_the_metadata_name_and_value() -> vo
 
 	assert_eq(_result_names(query), ["red"], "A node must match both the metadata name and its value.")
 	assert_almost_eq(query.get_query_result_scores()[0], 1.0, EPSILON, "A metadata match scores 1.0.")
+
+
+func test_custom_criterion_filters_and_scores_through_on_apply_criterion() -> void:
+	var container: Node2D = add_child_autofree(Node2D.new())
+	_add_candidate(container, "keep", Vector2.ZERO)
+	_add_candidate(container, "out", Vector2.ZERO)
+
+	var query: NNNodeChildrenSearchSpace = NqsHelpers.make_query(
+			self, container, FilterAndScoreCriterion.new(), 2)
+	NqsHelpers.run_to_completion(self, NqsHelpers.make_nqs(self), query)
+
+	assert_eq(_result_names(query), ["keep"], "is_filtered set by on_apply_criterion must drop the node")
+	assert_almost_eq(query.get_query_result_scores()[0], 0.5, EPSILON, "score set by on_apply_criterion must be used")
+
+
+func test_custom_criterion_without_on_apply_criterion_leaves_nodes_unfiltered() -> void:
+	var container: Node2D = add_child_autofree(Node2D.new())
+	_add_candidate(container, "a", Vector2.ZERO)
+	_add_candidate(container, "b", Vector2.ZERO)
+
+	var query: NNNodeChildrenSearchSpace = NqsHelpers.make_query(
+			self, container, NNCustomSearchCriterion.new(), 2)
+	NqsHelpers.run_to_completion(self, NqsHelpers.make_nqs(self), query)
+
+	var names: Array = _result_names(query)
+	names.sort()
+	assert_eq(names, ["a", "b"], "a custom criterion without a script must not filter")
+	assert_almost_eq(query.get_query_result_scores()[0], 1.0, EPSILON)
+	assert_almost_eq(query.get_query_result_scores()[1], 1.0, EPSILON)
 
 
 func test_distance_criterion_rejects_invalid_min_distance() -> void:

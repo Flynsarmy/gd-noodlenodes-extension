@@ -56,7 +56,7 @@
 			<return type="void" />
 			<param index="0" name="is_entered" type="bool" />
 			<description>
-				If no [method on_enter_condition] method exists, this value will be used to determine if the state may be entered.
+				If [method on_enter_condition] is not overridden on this node, this value will be used to determine if the state may be entered.
 			</description>
 		</method>
 		<method name="transition_to">

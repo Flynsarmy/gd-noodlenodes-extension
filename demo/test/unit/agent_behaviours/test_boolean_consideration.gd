@@ -19,7 +19,7 @@ func _make_boolean_behaviour(input_value: float) -> Dictionary:
 	}
 
 
-func test_true_score_change_invalidates_cached_score() -> void:
+func test_true_score_change_updates_the_score() -> void:
 	var fixture := _make_boolean_behaviour(1.0)
 	var agent: NNAgent = fixture["agent"]
 	var consideration: NNBooleanConsideration = fixture["consideration"]
@@ -32,7 +32,7 @@ func test_true_score_change_invalidates_cached_score() -> void:
 	assert_almost_eq(consideration.score, 0.2, 0.0001)
 
 
-func test_false_score_change_from_zero_invalidates_cached_score() -> void:
+func test_false_score_change_from_zero_updates_the_score() -> void:
 	var fixture := _make_boolean_behaviour(0.0)
 	var agent: NNAgent = fixture["agent"]
 	var consideration: NNBooleanConsideration = fixture["consideration"]

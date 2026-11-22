@@ -48,9 +48,8 @@ class EventActionObservingState extends NNSTNode:
 class CountingConsideration extends NNConsideration:
 	var eval_count: int = 0
 
-	func eval() -> float:
+	func on_evaluate() -> float:
 		eval_count += 1
-		score = 1.0
 		return 1.0
 
 
@@ -657,9 +656,7 @@ func test_hosted_agent_keeps_its_thinking_cadence() -> void:
 	action.frame_tick.connect(func(_delta: float) -> void: ticks.append(_delta))
 
 	var eval_counts: Array = []
-	for index in range(7):
-		# Considerations cache their score until their input changes.
-		consideration.activation_input_value = float(index + 2)
+	for _index in range(7):
 		chart.tick(0.1)
 		eval_counts.append(consideration.eval_count)
 

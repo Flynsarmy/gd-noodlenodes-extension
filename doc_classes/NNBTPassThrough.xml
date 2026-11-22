@@ -1,12 +1,21 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <class name="NNBTPassThrough" inherits="NNBTDecoratorNodes" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
 	<brief_description>
-		Calls the optional user-defined tick-method and then calls the tick-method of its child node, returning what ever the child node tick result is.
+		Calls an optional [method on_tick] and then ticks its child node, returning what ever the child node tick result is.
 	</brief_description>
 	<description>
-		The passthrough node calls the optional user-defined tick-method and then calls the tick-method of its child node, returning what ever the child node tick result is. If no child node has been enabled, it returns this node's most recent tick result instead, which is the result the node's own tick handling stored after the previous tick; on the first tick that is the constructor default [code]SUCCESS[/code]. A value returned by the user-defined tick-method is not stored.
-		The user-defined method is [code]on_tick(delta)[/code] and receives only the [param delta] of the tick. You can use this node to do preparations for a behaviour tree branch, for instance calculate some angles or distances that all the nodes within a branch will be using and put them into the blackboard.
+		The passthrough node calls the optional [method on_tick] and then ticks its child node, returning what ever the child node tick result is. If no child node has been enabled, it returns this node's most recent tick result instead, which is the result the node's own tick handling stored after the previous tick; on the first tick that is the constructor default [code]SUCCESS[/code].
+		[method on_tick] receives only the [param delta] of the tick. You can use this node to do preparations for a behaviour tree branch, for instance calculate some angles or distances that all the nodes within a branch will be using and put them into the blackboard.
 	</description>
 	<tutorials>
 	</tutorials>
+	<methods>
+		<method name="on_tick" qualifiers="virtual">
+			<return type="void" />
+			<param index="0" name="delta" type="float" />
+			<description>
+				Optional hook called each tick, before the child node is ticked. May be omitted by scripts.
+			</description>
+		</method>
+	</methods>
 </class>

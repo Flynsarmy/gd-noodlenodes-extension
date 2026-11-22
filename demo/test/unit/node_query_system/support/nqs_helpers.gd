@@ -10,7 +10,7 @@ const MAX_RUN_QUERIES_CALLS := 100
 class CountingCriterion extends NNCustomSearchCriterion:
 	var apply_count := 0
 
-	func apply_criterion(_node) -> void:
+	func on_apply_criterion(_node) -> void:
 		apply_count += 1
 
 

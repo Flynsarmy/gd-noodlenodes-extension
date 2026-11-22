@@ -32,7 +32,6 @@ NNBooleanConsideration::~NNBooleanConsideration() {
 // Getters and Setters.
 
 void NNBooleanConsideration::set_true_score_value(float true_score_value) {
-	_has_activation_input_changed = _has_activation_input_changed || (_true_score_value != true_score_value);
 	_true_score_value = true_score_value;
 }
 
@@ -41,7 +40,6 @@ float NNBooleanConsideration::get_true_score_value() const {
 }
 
 void NNBooleanConsideration::set_false_score_value(float false_score_value) {
-	_has_activation_input_changed = _has_activation_input_changed || (_false_score_value != false_score_value);
 	_false_score_value = false_score_value;
 }
 

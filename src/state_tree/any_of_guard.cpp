@@ -13,8 +13,6 @@ void NNSTAnyOfGuard::_bind_methods() {
 					vformat("%s/%s:%s", Variant::OBJECT, PROPERTY_HINT_RESOURCE_TYPE, "NNSTGuard")),
 			"set_guards",
 			"get_guards");
-
-	ClassDB::bind_method(D_METHOD("is_satisfied", "p_transition", "p_state"), &NNSTAnyOfGuard::is_satisfied);
 }
 
 TypedArray<NNSTGuard> NNSTAnyOfGuard::get_guards() const {

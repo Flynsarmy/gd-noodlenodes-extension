@@ -4,21 +4,11 @@
 		Checks if a given state is active.
 	</brief_description>
 	<description>
-		This guard is used to check if the given [member state] is active.
+		This guard is used to check if the given [member state] is active. It returns [code]true[/code] if [member state] is empty or the resolved state is active, and [code]false[/code] if the state is inactive or the path does not resolve to an [NNSTTickedNodes] node (which also prints an error).
 		It reports [constant NNSTRoot.STATE_CHANGE] from [method NNSTGuard.get_supported_trigger_types], because its result can change when another state becomes active or inactive.
 	</description>
 	<tutorials>
 	</tutorials>
-	<methods>
-		<method name="is_satisfied">
-			<return type="bool" />
-			<param index="0" name="p_transition" type="NNSTTransition" />
-			<param index="1" name="p_state" type="NNSTTickedNodes" />
-			<description>
-				Checks if the [NNSTTickedNodes] at [member state] (resolved relative to [param p_transition]) is active. Returns [code]true[/code] if [member state] is empty or the resolved state is active, and [code]false[/code] if the state is inactive or the path does not resolve to an [NNSTTickedNodes] node (which also prints an error).
-			</description>
-		</method>
-	</methods>
 	<members>
 		<member name="state" type="NodePath" setter="set_state" getter="get_state" default="NodePath(&quot;&quot;)">
 			The [NodePath] to the [NNSTTickedNodes] state to check, resolved relative to the [NNSTTransition] node evaluating this guard. If empty, the guard is satisfied and returns [code]true[/code]. If the path does not resolve to an [NNSTTickedNodes] node, an error is printed and the guard returns [code]false[/code].

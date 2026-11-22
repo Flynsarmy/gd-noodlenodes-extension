@@ -2,7 +2,6 @@
 
 #include "../expression_util.h"
 #include "branch_nodes.h"
-#include "guard.h"
 
 namespace godot {
 

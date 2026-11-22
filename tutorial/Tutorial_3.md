@@ -64,7 +64,7 @@ You can add any number of criteria as the children of a search space node. The t
 
 
 ## Adding the code
-The last two things to do is to add the code to run the search space query and the `apply_criterion()` method for the Custom Search Criterion. We'll first add the code for the custom search criterion. Note that you **don't need to add this code for any of the other search criterion node types**, it is specific to the custom search criterion.
+The last two things to do is to add the code to run the search space query and the `on_apply_criterion()` method for the Custom Search Criterion. We'll first add the code for the custom search criterion. Note that you **don't need to add this code for any of the other search criterion node types**, it is specific to the custom search criterion.
 
 Choose the NNCustomSearchCriterion node and attach a script to it by using the Attach Script button or via the right-click menu.
 |Adding the script|
@@ -77,7 +77,7 @@ Then add the following code, which filters out the node if it is visible and set
 extends NNCustomSearchCriterion
 
 
-func apply_criterion(node:Node) -> void:
+func on_apply_criterion(node: Node) -> void:
 	is_filtered = node.visible
 	score = 0.5
 

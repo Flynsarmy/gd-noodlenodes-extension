@@ -23,10 +23,7 @@ NNBTPassBy::~NNBTPassBy() {
 // Handling methods.
 
 NNBTNodes::Status NNBTPassBy::_tick(float delta) {
-	// Checked every tick: the script may be attached after the node entered the
-	// tree, and a root ticked outside the tree never sends a notification.
-	if (has_method("on_tick")) {
-		call("on_tick", delta);
-	}
+	Variant ignored_result;
+	_call_on_tick(delta, ignored_result);
 	return Status::SUCCESS;
 }

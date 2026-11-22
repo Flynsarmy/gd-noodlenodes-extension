@@ -70,9 +70,7 @@ func test_default_tick_rate_thinks_on_the_first_step_then_every_sixth() -> void:
 	add_child_autofree(agent)
 
 	var eval_counts: Array = []
-	for index in range(7):
-		# Considerations cache their score until their input changes; only a thinking step re-evaluates them.
-		consideration.activation_input_value = float(index)
+	for _index in range(7):
 		agent.auto_tick_step(NNAgent.PHYSICS, 0.1)
 		eval_counts.append(consideration.evaluation_count)
 

@@ -97,32 +97,26 @@ int NNSTBranchNodes::get_internal_status() const {
 // Overriding the engine input virtuals makes Godot enable input processing on
 // every instance, so it is limited to the active state's script. A script that
 // overrides an engine virtual directly is kept working while the state is
-// active.
+// active; the engine dispatches those itself, so they are detected by name.
 void NNSTBranchNodes::_update_input_processing() {
 	const bool is_active = _internal_status == ST_INTERNAL_STATUS_ACTIVE;
-	set_process_input(is_active && (has_method("on_input") || has_method("_input")));
-	set_process_unhandled_input(is_active && (has_method("on_unhandled_input") || has_method("_unhandled_input")));
-	set_process_unhandled_key_input(is_active && (has_method("on_unhandled_key_input") || has_method("_unhandled_key_input")));
+	set_process_input(is_active && (GDVIRTUAL_IS_OVERRIDDEN(on_input) || has_method("_input")));
+	set_process_unhandled_input(is_active && (GDVIRTUAL_IS_OVERRIDDEN(on_unhandled_input) || has_method("_unhandled_input")));
+	set_process_unhandled_key_input(is_active && (GDVIRTUAL_IS_OVERRIDDEN(on_unhandled_key_input) || has_method("_unhandled_key_input")));
 }
 
 // Handling methods.
 
 void NNSTBranchNodes::on_input(const Ref<InputEvent> &event) {
-	if (has_method("on_input")) {
-		call("on_input", event);
-	}
+	GDVIRTUAL_CALL(on_input, event);
 }
 
 void NNSTBranchNodes::on_unhandled_input(const Ref<InputEvent> &event) {
-	if (has_method("on_unhandled_input")) {
-		call("on_unhandled_input", event);
-	}
+	GDVIRTUAL_CALL(on_unhandled_input, event);
 }
 
 void NNSTBranchNodes::on_unhandled_key_input(const Ref<InputEvent> &event) {
-	if (has_method("on_unhandled_key_input")) {
-		call("on_unhandled_key_input", event);
-	}
+	GDVIRTUAL_CALL(on_unhandled_key_input, event);
 }
 
 NNSTTickedNodes *NNSTBranchNodes::_resolve_state(ObjectID state_id) const {

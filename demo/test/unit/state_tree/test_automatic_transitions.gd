@@ -20,12 +20,10 @@ class Counter extends RefCounted:
 # Reports PROPERTY_CHANGE from a script, so the transition is only re-evaluated
 # when an expression property changes.
 class ScriptedPropertyGuard extends NNSTGuard:
-	@warning_ignore('native_method_override')
-	func get_supported_trigger_types() -> int:
+	func on_get_supported_trigger_types() -> int:
 		return NNSTRoot.TriggerType.PROPERTY_CHANGE
 
-	@warning_ignore('native_method_override')
-	func is_satisfied(_transition: NNSTTransition, p_state: NNSTTickedNodes) -> bool:
+	func on_is_satisfied(_transition: NNSTTransition, p_state: NNSTTickedNodes) -> bool:
 		return p_state.get_root().get_expression_property("flag", false)
 
 

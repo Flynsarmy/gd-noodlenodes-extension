@@ -5,7 +5,7 @@
 	</brief_description>
 	<description>
 		Reads a numeric property named [member property_name] from [member node_with_property] on every evaluation and divides its float value by [member property_max_value] to produce [member NNConsiderations.score].
-		Scores [code]0.0[/code] when disabled, in the editor, when [member node_with_property] is not set, or while [member NNConsiderations.has_vetoed] is [code]true[/code]. Unlike [NNConsideration], it does not use a sensor input or cache scores between evaluations.
+		Scores [code]0.0[/code] when disabled, in the editor, when [member node_with_property] is not set, or while [member NNConsiderations.has_vetoed] is [code]true[/code]. Unlike [NNConsideration], it does not read a sensor input or [member NNConsideration.activation_input_value].
 	</description>
 	<tutorials>
 	</tutorials>

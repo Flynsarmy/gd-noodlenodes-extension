@@ -6,9 +6,8 @@ class CountingConsideration extends NNConsideration:
 	var evaluation_count := 0
 	var score_value := 1.0
 
-	func eval() -> float:
+	func on_evaluate() -> float:
 		evaluation_count += 1
-		score = score_value
 		return score_value
 
 

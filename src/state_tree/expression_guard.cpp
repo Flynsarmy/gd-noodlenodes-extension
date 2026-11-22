@@ -8,8 +8,6 @@ void NNSTExpressionGuard::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_expression"), &NNSTExpressionGuard::get_expression);
 	ClassDB::bind_method(D_METHOD("set_expression", "expression"), &NNSTExpressionGuard::set_expression);
 	ADD_PROPERTY(PropertyInfo(Variant::STRING, "expression", PROPERTY_HINT_MULTILINE_TEXT), "set_expression", "get_expression");
-
-	ClassDB::bind_method(D_METHOD("is_satisfied", "p_transition", "p_state"), &NNSTExpressionGuard::is_satisfied);
 }
 
 String NNSTExpressionGuard::get_expression() const {

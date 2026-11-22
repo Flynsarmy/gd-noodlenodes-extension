@@ -13,8 +13,6 @@ void NNSTNotGuard::_bind_methods() {
 					"NNSTGuard"),
 			"set_guard",
 			"get_guard");
-
-	ClassDB::bind_method(D_METHOD("is_satisfied", "p_transition", "p_state"), &NNSTNotGuard::is_satisfied);
 }
 
 void NNSTNotGuard::set_guard(const Ref<NNSTGuard> &p_guard) {

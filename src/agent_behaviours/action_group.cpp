@@ -35,6 +35,8 @@ void NNActionGroup::_bind_methods() {
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "if_else_boolean_value", PROPERTY_HINT_NONE), "set_if_else_boolean_value", "get_if_else_boolean_value");
 
 	ADD_SIGNAL(MethodInfo("action_failed", PropertyInfo(Variant::OBJECT, "action_node"), PropertyInfo(Variant::OBJECT, "action_group_node")));
+
+	GDVIRTUAL_BIND(on_select_child);
 }
 
 // Constructor and destructor.
@@ -99,9 +101,7 @@ bool NNActionGroup::start_action() {
 		} break;
 		case NNActionGroupExecutionRule::CustomRule: {
 			_current_action_index = -1;
-			if (has_method("eval")) {
-				call("eval");
-			}
+			GDVIRTUAL_CALL(on_select_child, _current_action_index);
 		} break;
 		default: {
 			_current_action_index = 0;
@@ -199,10 +199,8 @@ Node *NNActionGroup::step_actions() {
 			// another branch; this group simply produces no action.
 		} break;
 		case NNActionGroupExecutionRule::CustomRule: {
-			// Re-evaluate, the eval-function should return either a valid
-			// action index or one that doesn't work.
-			if (has_method("eval")) {
-				call("eval");
+			if (GDVIRTUAL_IS_OVERRIDDEN(on_select_child)) {
+				GDVIRTUAL_CALL(on_select_child, _current_action_index);
 				if (_current_action_index > -1) {
 					if (NNAction *action_node = godot::Object::cast_to<NNAction>(get_child(_current_action_index))) {
 						if (action_node->get_is_enabled()) {

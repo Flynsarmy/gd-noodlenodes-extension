@@ -5,7 +5,7 @@
 	</brief_description>
 	<description>
 		This is the workhorse of the State Tree. It acts as all the other levels of the state tree other than the tree root. If a [NNSTNode] has no child nodes, it is considered a leaf node. If it has child nodes, it is considered like a selector in a behaviour tree: it will evaluate its child nodes to find a leaf node to activate.
-		To make use of the [NNSTNode], define the following methods for all the nodes:
+		To make use of the [NNSTNode], override the following virtual methods in each state's script:
 		[gdscript]
 		extends NNSTNode
 

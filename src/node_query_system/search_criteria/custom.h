@@ -1,6 +1,7 @@
 #pragma once
 
 #include "nqs.h"
+#include <godot_cpp/core/gdvirtual.gen.inc>
 
 namespace godot {
 
@@ -10,6 +11,8 @@ class NNCustomSearchCriterion : public NNNQSSearchCriteria {
 private:
 protected:
 	static void _bind_methods();
+
+	GDVIRTUAL1(on_apply_criterion, Node *);
 
 public:
 	NNCustomSearchCriterion();

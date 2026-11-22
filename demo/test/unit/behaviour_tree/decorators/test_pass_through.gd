@@ -17,14 +17,17 @@ func test_childless_returns_most_recent_tick_result() -> void:
 
 	_root.free()
 
-func test_on_tick_return_value_is_not_stored() -> void:
+func test_on_tick_runs_and_the_child_result_is_still_returned() -> void:
 	var _root: NNBTRoot = NNBTRoot.new()
-	var _child: NNBTPassThrough = load("res://test/unit/behaviour_tree/decorators/scripts/fixed_result_pass_through.gd").new()
+	var _child: NNBTPassThrough = load("res://test/unit/behaviour_tree/decorators/scripts/counting_pass_through.gd").new()
+	var _grandchild: NNBTFixedResult = NNBTFixedResult.new()
+	_grandchild.fixed_result = NNBTNodes.RUNNING
+	_child.add_child(_grandchild)
 	_root.add_child(_child)
 
-	_child.fixed_result = NNBTNodes.RUNNING
-	assert_eq(_root.tick(0.1), NNBTNodes.SUCCESS, "the on_tick return value must not be stored")
-	assert_eq(_child.tick_result, NNBTNodes.SUCCESS)
+	assert_eq(_root.tick(0.1), NNBTNodes.RUNNING, "the child result wins over the hook")
+	assert_eq(_child.get("tick_count"), 1, "on_tick must run each tick")
+	assert_eq(_child.tick_result, NNBTNodes.RUNNING)
 
 	assert_engine_error_count(0)
 

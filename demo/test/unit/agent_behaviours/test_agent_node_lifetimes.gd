@@ -9,13 +9,12 @@ class FreeingConsideration extends NNConsideration:
 	var score_value := 1.0
 	var has_freed := false
 
-	func eval() -> float:
+	func on_evaluate() -> float:
 		if not has_freed and target != null and is_instance_valid(target):
 			has_freed = true
 			var target_to_free: Node = target
 			target = null
 			target_to_free.free()
-		score = score_value
 		return score_value
 
 

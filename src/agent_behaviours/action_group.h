@@ -3,6 +3,7 @@
 #include "actions.h"
 #include <godot_cpp/classes/node.hpp>
 #include <godot_cpp/classes/random_number_generator.hpp>
+#include <godot_cpp/core/gdvirtual.gen.inc>
 
 namespace godot {
 
@@ -20,6 +21,8 @@ private:
 
 protected:
 	static void _bind_methods();
+
+	GDVIRTUAL0R(int, on_select_child);
 
 public:
 	NNActionGroup();

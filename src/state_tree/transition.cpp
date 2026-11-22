@@ -1,6 +1,7 @@
 #include "transition.h"
 #include "../blackboard.h"
 #include "../expression_util.h"
+#include "guard.h"
 #include "root.h"
 #include "ticked_nodes.h"
 

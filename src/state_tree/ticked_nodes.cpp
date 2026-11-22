@@ -1123,8 +1123,9 @@ void NNSTTickedNodes::_transition_out() {
 };
 
 bool NNSTTickedNodes::on_enter_condition() {
-	if (has_method("on_enter_condition")) {
-		return call("on_enter_condition");
+	bool result = false;
+	if (GDVIRTUAL_CALL(on_enter_condition, result)) {
+		return result;
 	}
 	emit_signal("state_check_enter_condition");
 	return _is_on_entered_condition_true;
@@ -1142,7 +1143,7 @@ void NNSTTickedNodes::on_enter_state() {
 	// pipeline while the state's entry is still in progress.
 	NNSTRoot *root = _resolve_tree_root();
 	if (root == nullptr || Engine::get_singleton()->is_editor_hint()) {
-		call("on_enter_state");
+		GDVIRTUAL_CALL(on_enter_state);
 #ifdef DEBUG_ENABLED
 		_record_state_event(this, "st_enter");
 #endif
@@ -1151,7 +1152,7 @@ void NNSTTickedNodes::on_enter_state() {
 	}
 
 	ChangeScopeGuard scope(root);
-	call("on_enter_state");
+	GDVIRTUAL_CALL(on_enter_state);
 #ifdef DEBUG_ENABLED
 	_record_state_event(this, "st_enter");
 #endif
@@ -1172,7 +1173,7 @@ void NNSTTickedNodes::on_enter_state() {
 }
 
 void NNSTTickedNodes::on_exit_state() {
-	call("on_exit_state");
+	GDVIRTUAL_CALL(on_exit_state);
 #ifdef DEBUG_ENABLED
 	_record_state_event(this, "st_exit");
 #endif
@@ -1191,7 +1192,7 @@ void NNSTTickedNodes::on_tick(float delta) {
 		_transition_in();
 	}
 
-	call("on_tick", delta);
+	GDVIRTUAL_CALL(on_tick, delta);
 	emit_signal("state_ticked", delta);
 
 	// Delayed transitions are processed after the user tick and before the

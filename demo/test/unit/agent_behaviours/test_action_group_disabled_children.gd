@@ -12,8 +12,8 @@ const RULE_CUSTOM_RULE := 3
 class IndexChoosingRule extends NNActionGroup:
 	var target_index := 0
 
-	func eval() -> void:
-		current_action_index = target_index
+	func on_select_child() -> int:
+		return target_index
 
 
 func _make_disabled_action() -> NNAction:
@@ -193,7 +193,7 @@ func test_if_else_disabled_false_branch_does_not_fall_back() -> void:
 	assert_eq(enabled_entries[0], 0, "IfElse must not arbitrarily run the other branch")
 
 
-func test_custom_rule_does_not_run_disabled_eval_choice() -> void:
+func test_custom_rule_does_not_run_a_disabled_selection() -> void:
 	var behaviour := Fixtures.behaviour(1.0)
 	var rule := IndexChoosingRule.new()
 	rule.set_action_execution_rule(RULE_CUSTOM_RULE)
@@ -210,12 +210,12 @@ func test_custom_rule_does_not_run_disabled_eval_choice() -> void:
 
 	AgentHelpers.select(agent)
 
-	assert_null(agent.get_current_action_node(), "eval chose a disabled child, so nothing may run")
-	assert_eq(disabled_entries[0], 0, "the disabled eval choice must never be entered")
-	assert_eq(enabled_entries[0], 0, "CustomRule must not override the eval choice")
+	assert_null(agent.get_current_action_node(), "the custom rule chose a disabled child, so nothing may run")
+	assert_eq(disabled_entries[0], 0, "the disabled selection must never be entered")
+	assert_eq(enabled_entries[0], 0, "CustomRule must not override the selected child")
 
 
-func test_custom_rule_runs_enabled_eval_choice_once() -> void:
+func test_custom_rule_runs_an_enabled_selection_once() -> void:
 	var behaviour := Fixtures.behaviour(1.0)
 	var rule := IndexChoosingRule.new()
 	rule.set_action_execution_rule(RULE_CUSTOM_RULE)
@@ -232,9 +232,9 @@ func test_custom_rule_runs_enabled_eval_choice_once() -> void:
 
 	AgentHelpers.select(agent)
 
-	assert_eq(agent.get_current_action_node(), enabled_action, "the enabled eval choice must be selected")
+	assert_eq(agent.get_current_action_node(), enabled_action, "the enabled selection must be run")
 	assert_eq(disabled_entries[0], 0, "the disabled sibling must never be entered")
-	assert_eq(enabled_entries[0], 1, "the enabled eval choice must be entered exactly once")
+	assert_eq(enabled_entries[0], 1, "the enabled selection must be entered exactly once")
 
 	agent.update_current_behaviour()
 	assert_eq(enabled_entries[0], 1, "further updates must not re-enter the running action")
