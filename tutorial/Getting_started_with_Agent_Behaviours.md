@@ -384,7 +384,7 @@ Next we will add the **Considerations** that will be used to choose which behavi
 ![Set the curve](images/getting_started_ab_8.png)<br>
 
 
-10. The curve should get added and you should see the **curve editor** in the Inspector. If not, click on the curve you created. Add two points to the curve, one at Y=0 and slightly to the left of 0.5 on the X-axis, and another at Y=1 slightly to the right of the X-axis. The reason we create the curve like this is connected to the **sensor**. If you remember, we set the **Max Distance** property to 200. The X-axis value 0.5 will therefore be 0.5 * 200 = 100. If the sensor value is greater or equal to 100, then the **Do I need to go closer?* consideration will get a score of 1, and 0 otherwise.
+10. The curve should get added and you should see the **curve editor** in the Inspector. If not, click on the curve you created. Add two points to the curve, one at Y=0 and slightly to the left of 0.5 on the X-axis, and another at Y=1 slightly to the right of the X-axis. The reason we create the curve like this is connected to the **sensor**. If you remember, we set the **Max Distance** property to 200. The sensor scales the *squared* distance by the squared max distance, so the X-axis value 0.5 corresponds to a distance of about 141 pixels (`sqrt(0.5) * 200`). If the entity is at least that far from the cursor, the **Do I need to go closer?** consideration will get a score of 1, and 0 otherwise.
 
 ![Set the sensor](images/getting_started_ab_9.png)<br>
 
@@ -430,8 +430,8 @@ func _physics_process(delta):
 	# Flip the sprite horizontally based on the direction vector horizontal (x)
 	# value.
 	flip_h = (sensor_distance.direction_vector.x < 0)
-	# If the movement speed is negative, the entity is moving away so
-	# we should flip the sprite again.
+	# A negative movement speed means the entity is moving towards the target,
+	# so the sprite faces the opposite way.
 	if movement_speed < 0.0:
 		flip_h = !flip_h
 
