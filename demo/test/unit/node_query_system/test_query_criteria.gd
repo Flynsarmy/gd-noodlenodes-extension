@@ -7,6 +7,14 @@ const NqsHelpers = preload("res://test/unit/node_query_system/support/nqs_helper
 const EPSILON := 0.0001
 
 
+class FreeEarlierCandidateOnLast extends NNCustomSearchCriterion:
+	var candidates: Array[Node] = []
+
+	func apply_criterion(node) -> void:
+		if node == candidates.back():
+			candidates.front().free()
+
+
 func _add_candidate(container: Node2D, candidate_name: String, position: Vector2) -> Node2D:
 	var candidate: Node2D = Node2D.new()
 	candidate.name = candidate_name
@@ -116,3 +124,55 @@ func test_top_n_to_find_below_one_is_rejected() -> void:
 
 	assert_engine_error("NNNQSSearchSpaces::set_top_n_to_find(): top_n_to_find must be at least 1.")
 	assert_eq(query.top_n_to_find, 3)
+
+
+func test_freed_distance_to_node_is_treated_as_unset() -> void:
+	var container: Node = add_child_autofree(Node.new())
+	var candidate: Node3D = Node3D.new()
+	candidate.name = "far"
+	candidate.position = Vector3(100.0, 0.0, 0.0)
+	container.add_child(candidate)
+
+	var target: Node3D = Node3D.new()
+	var criterion: NNDistanceToNode3DSearchCriterion = NNDistanceToNode3DSearchCriterion.new()
+	criterion.distance_to = target
+	criterion.max_distance = 1.0
+	criterion.use_for_filtering = true
+	criterion.use_for_scoring = true
+	target.free()
+
+	assert_null(criterion.get_distance_to(), "The property must read as null once the node is freed.")
+
+	var query: NNNodeChildrenSearchSpace = NqsHelpers.make_query(self, container, criterion, 1)
+	NqsHelpers.run_to_completion(self, NqsHelpers.make_nqs(self), query)
+
+	assert_eq(_result_names(query), ["far"], "An unset target must leave the candidate unfiltered.")
+	assert_almost_eq(query.get_query_result_scores()[0], 1.0, EPSILON, "An unset target must leave the candidate score untouched.")
+
+
+func test_freed_parent_node_empties_the_children_search_space() -> void:
+	var parent: Node = NqsHelpers.make_container(self, 2)
+	var criterion := NqsHelpers.CountingCriterion.new()
+	var query: NNNodeChildrenSearchSpace = NqsHelpers.make_query(self, parent, criterion, 2)
+	parent.free()
+
+	assert_null(query.get_parent_node(), "The property must read as null once the node is freed.")
+	NqsHelpers.run_to_completion(self, NqsHelpers.make_nqs(self), query)
+	assert_eq(query.get_query_results(), [], "A freed parent must yield no results.")
+	assert_eq(criterion.apply_count, 0, "No candidates must reach the criteria.")
+
+
+# An earlier candidate can be freed by a criterion after it has already been
+# added to the surviving list.
+func test_candidate_freed_during_the_query_is_left_out_of_results() -> void:
+	var container: Node = NqsHelpers.make_container(self, 3)
+	var criterion := FreeEarlierCandidateOnLast.new()
+	criterion.candidates = container.get_children()
+	var query: NNNodeChildrenSearchSpace = NqsHelpers.make_query(self, container, criterion, 3)
+
+	NqsHelpers.run_to_completion(self, NqsHelpers.make_nqs(self), query)
+
+	assert_eq(query.get_query_results().size(), 2, "The freed candidate must not appear in the results.")
+	for result in query.get_query_results():
+		assert_true(is_instance_valid(result), "Every result must be a live node.")
+	assert_eq(query.get_query_result_scores().size(), 2, "Scores must stay aligned with the results.")

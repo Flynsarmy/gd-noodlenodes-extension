@@ -7,6 +7,7 @@
 		The [code]NodeQuerySystem[/code] singleton schedules and time-budgets NQS queries across frames. It is the recommended way of executing queries; search spaces can also be executed directly with [method NNNQSSearchSpaces.execute_query] if needed.
 		To execute a query through the singleton, post a search space with [method post_query] as either high priority or regular priority. High-priority queries are processed first using the fraction of [member run_queries_time_budget_per_frame_usec] configured by [member time_allocation_pct_to_high_priority_queries], and any remaining time in the frame budget is used for regular-priority queries.
 		Because [NNNodeQuerySystem] inherits [Object] and does not hook into the scene tree automatically, your game must call [code]NodeQuerySystem.run_queries()[/code] once per frame (for example, from [method Node._physics_process] or [method Node._process]) to advance posted queries.
+		A posted search space that exits the scene tree or is freed stops its own query on the scheduler it was posted to.
 	</description>
 	<tutorials>
 	</tutorials>
@@ -14,7 +15,7 @@
 		<method name="clear_queries">
 			<return type="void" />
 			<description>
-				Stops and unregisters every posted query in both the high-priority and regular-priority lists. The search spaces are left intact and can be posted again afterwards. Individual search spaces automatically stop their own query on the [code]NodeQuerySystem[/code] singleton when exiting the scene tree, so this method is mainly useful when you want to cancel all active queries at once (for example, when resetting or changing scenes).
+				Stops and unregisters every posted query in both the high-priority and regular-priority lists. The search spaces are left intact and can be posted again afterwards. Individual search spaces stop their own query when they exit the scene tree or are freed, so this method is mainly useful when you want to cancel all active queries at once (for example, when resetting or changing scenes).
 			</description>
 		</method>
 		<method name="get_num_active_high_priority_queries" qualifiers="const">

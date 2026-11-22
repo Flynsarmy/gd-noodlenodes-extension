@@ -29,23 +29,22 @@ void NNConsideration::_bind_methods() {
 
 NNConsideration::NNConsideration() {
 	_activation_input_value = 0.0001f;
-	_input_sensor = nullptr;
 	_has_activation_input_changed = true;
 }
 
 NNConsideration::~NNConsideration() {
-	_input_sensor = nullptr;
 }
 
 // Getters and Setters.
 
 void NNConsideration::set_input_sensor(NNSensors *input_sensor) {
-	_has_activation_input_changed = _has_activation_input_changed || (_input_sensor != input_sensor);
-	_input_sensor = input_sensor;
+	ObjectID input_sensor_id = input_sensor != nullptr ? ObjectID(input_sensor->get_instance_id()) : ObjectID();
+	_has_activation_input_changed = _has_activation_input_changed || (_input_sensor_id != input_sensor_id);
+	_input_sensor_id = input_sensor_id;
 }
 
 NNSensors *NNConsideration::get_input_sensor() const {
-	return _input_sensor;
+	return Object::cast_to<NNSensors>(ObjectDB::get_instance(_input_sensor_id));
 }
 
 void NNConsideration::set_activation_curve(Ref<Curve> activation_curve) {
@@ -75,10 +74,11 @@ float NNConsideration::evaluate() {
 	if (get_has_vetoed())
 		return 0.0f;
 
-	if (_input_sensor != nullptr) {
+	NNSensors *input_sensor = get_input_sensor();
+	if (input_sensor != nullptr) {
 		// If there's no change to the sensor input value, just return the
 		// earlier result.
-		float input_value = _input_sensor->get_sensor_value();
+		float input_value = input_sensor->get_sensor_value();
 		if (input_value != _activation_input_value || _score == 0.0f) {
 			_activation_input_value = input_value;
 			_has_activation_input_changed = true;

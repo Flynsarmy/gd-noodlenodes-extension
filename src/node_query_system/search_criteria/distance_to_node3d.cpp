@@ -1,15 +1,8 @@
 #include "distance_to_node3d.h"
 #include <godot_cpp/classes/node3d.hpp>
+#include <godot_cpp/core/object.hpp>
 
 using namespace godot;
-
-NNDistanceToNode3DSearchCriterion::NNDistanceToNode3DSearchCriterion() {
-	_distance_to = nullptr;
-}
-
-NNDistanceToNode3DSearchCriterion::~NNDistanceToNode3DSearchCriterion() {
-	_distance_to = nullptr;
-}
 
 void NNDistanceToNode3DSearchCriterion::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("set_distance_to", "distance_to"), &NNDistanceToNode3DSearchCriterion::set_distance_to);
@@ -31,11 +24,11 @@ void NNDistanceToNode3DSearchCriterion::_initialize_criterion() {
 // Getters and setters.
 
 void NNDistanceToNode3DSearchCriterion::set_distance_to(Node3D *distance_to) {
-	_distance_to = distance_to;
+	_distance_to_id = distance_to != nullptr ? ObjectID(distance_to->get_instance_id()) : ObjectID();
 }
 
 Node3D *NNDistanceToNode3DSearchCriterion::get_distance_to() const {
-	return _distance_to;
+	return Object::cast_to<Node3D>(ObjectDB::get_instance(_distance_to_id));
 }
 
 void NNDistanceToNode3DSearchCriterion::set_min_distance(float min_distance) {
@@ -57,7 +50,8 @@ float NNDistanceToNode3DSearchCriterion::get_max_distance() const {
 // Handing methods.
 
 void NNDistanceToNode3DSearchCriterion::apply_criterion(Node *node, bool &filter_out, float &score) {
-	if (_distance_to == nullptr)
+	Node3D *distance_to = get_distance_to();
+	if (distance_to == nullptr)
 		return;
 	Node3D *node3d = godot::Object::cast_to<Node3D>(node);
 	if (node3d == nullptr)
@@ -66,7 +60,7 @@ void NNDistanceToNode3DSearchCriterion::apply_criterion(Node *node, bool &filter
 	_is_filtered = false;
 	_score = 1.0f;
 
-	Vector3 from_to = node3d->get_global_position() - _distance_to->get_global_position();
+	Vector3 from_to = node3d->get_global_position() - distance_to->get_global_position();
 	float distance_squared = from_to.length_squared();
 
 	if (get_use_for_filtering()) {

@@ -5,6 +5,12 @@
 
 using namespace godot;
 
+// Variant::operator Object*() skips ObjectDB validation, so a freed entry would
+// be dereferenced as a live search space.
+static NNNQSSearchSpaces *_validated_search_space(const Variant &p_query) {
+	return godot::Object::cast_to<NNNQSSearchSpaces>(p_query.get_validated_object());
+}
+
 NNNodeQuerySystem::NNNodeQuerySystem() {
 	_current_high_priority_query_index = 0;
 	_current_regular_query_index = 0;
@@ -35,6 +41,9 @@ NNNodeQuerySystem::NNNodeQuerySystem() {
 }
 
 NNNodeQuerySystem::~NNNodeQuerySystem() {
+	// Posted spaces must forget this scheduler, or they can never be posted to
+	// another one.
+	clear_queries();
 }
 
 void NNNodeQuerySystem::_bind_methods() {
@@ -176,7 +185,7 @@ void NNNodeQuerySystem::run_queries() {
 			// "query_completed" callback may stop and/or re-post the query, so
 			// the completion must not release whatever is registered later.
 			const int high_priority_query_index = _current_high_priority_query_index;
-			NNNQSSearchSpaces *current_query = godot::Object::cast_to<NNNQSSearchSpaces>(_high_priority_queries[_current_high_priority_query_index]);
+			NNNQSSearchSpaces *current_query = _validated_search_space(_high_priority_queries[_current_high_priority_query_index]);
 			if (current_query != nullptr) {
 				const uint64_t query_registration = current_query->get_nqs_query_registration();
 				bool is_completed = current_query->execute_query(_high_priority_query_per_frame_execute_query_time_budget_usec);
@@ -215,7 +224,7 @@ void NNNodeQuerySystem::run_queries() {
 			// executing so a callback cannot make this completion release a
 			// newer registration.
 			const int regular_query_index = _current_regular_query_index;
-			NNNQSSearchSpaces *current_query = godot::Object::cast_to<NNNQSSearchSpaces>(_regular_queries[_current_regular_query_index]);
+			NNNQSSearchSpaces *current_query = _validated_search_space(_regular_queries[_current_regular_query_index]);
 			if (current_query != nullptr) {
 				const uint64_t query_registration = current_query->get_nqs_query_registration();
 				bool is_completed = current_query->execute_query(_regular_query_per_frame_execute_query_time_budget_usec);
@@ -259,6 +268,7 @@ int NNNodeQuerySystem::post_query(NNNQSSearchSpaces *search_space, bool is_high_
 			search_space->set_nqs_query_index(free_index);
 			_high_priority_queries[free_index] = search_space;
 		}
+		search_space->set_nqs_scheduler(this);
 		++_num_active_high_priority_queries;
 		// A registration token is bumped even when start_query() declined a
 		// disabled query: the query is scheduled regardless, and its later
@@ -291,6 +301,7 @@ int NNNodeQuerySystem::post_query(NNNQSSearchSpaces *search_space, bool is_high_
 		search_space->set_nqs_query_index(free_index);
 		_regular_queries[free_index] = search_space;
 	}
+	search_space->set_nqs_scheduler(this);
 	++_num_active_regular_priority_queries;
 	search_space->bump_nqs_query_registration();
 	_current_post_regular_queries_time_elapsed_usec += (godot::Time::get_singleton()->get_ticks_usec() - method_start_time_usec);
@@ -329,7 +340,7 @@ bool NNNodeQuerySystem::_release_query_slot(NNNQSSearchSpaces *search_space,
 	// posted, or if the slot has already been reused by another query. Leave
 	// the search space's index alone: it may belong to a live registration.
 	if (query_index >= (int)queries.size() ||
-			godot::Object::cast_to<NNNQSSearchSpaces>(queries[query_index]) != search_space) {
+			_validated_search_space(queries[query_index]) != search_space) {
 		return false;
 	}
 
@@ -338,6 +349,7 @@ bool NNNodeQuerySystem::_release_query_slot(NNNQSSearchSpaces *search_space,
 	available_query_indexes.push_back(query_index);
 	--num_active_queries;
 	search_space->set_nqs_query_index(-1);
+	search_space->set_nqs_scheduler(nullptr);
 	search_space->set_is_query_still_running(false);
 	// Invalidate any completion that captured the released registration.
 	search_space->bump_nqs_query_registration();
@@ -359,21 +371,23 @@ void NNNodeQuerySystem::clear_queries() {
 	// search space stores its own query index, so leaving it behind would make
 	// stop_query() (also called from _exit_tree()) index an empty list.
 	for (int i = 0; i < _high_priority_queries.size(); ++i) {
-		NNNQSSearchSpaces *search_space = godot::Object::cast_to<NNNQSSearchSpaces>(_high_priority_queries[i]);
+		NNNQSSearchSpaces *search_space = _validated_search_space(_high_priority_queries[i]);
 		if (search_space == nullptr) {
 			continue;
 		}
 		search_space->set_nqs_query_index(-1);
+		search_space->set_nqs_scheduler(nullptr);
 		search_space->set_is_query_still_running(false);
 		// Invalidate any in-flight completion for this registration.
 		search_space->bump_nqs_query_registration();
 	}
 	for (int i = 0; i < _regular_queries.size(); ++i) {
-		NNNQSSearchSpaces *search_space = godot::Object::cast_to<NNNQSSearchSpaces>(_regular_queries[i]);
+		NNNQSSearchSpaces *search_space = _validated_search_space(_regular_queries[i]);
 		if (search_space == nullptr) {
 			continue;
 		}
 		search_space->set_nqs_query_index(-1);
+		search_space->set_nqs_scheduler(nullptr);
 		search_space->set_is_query_still_running(false);
 		search_space->bump_nqs_query_registration();
 	}

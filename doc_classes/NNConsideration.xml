@@ -35,7 +35,7 @@
 			The input value passed to [member activation_curve] (or used directly as the score when no curve is set). Typically in the [code]0..1[/code] range, though values outside that range are not clamped. When [member input_sensor] is assigned, evaluation overwrites this property with the sensor's [member NNSensors.sensor_value].
 		</member>
 		<member name="input_sensor" type="NNSensors" setter="set_input_sensor" getter="get_input_sensor">
-			The sensor or sensor group whose [member NNSensors.sensor_value] is used as the [member activation_input_value]. When not set, [member activation_input_value] is used as assigned.
+			The sensor or sensor group whose [member NNSensors.sensor_value] is used as the [member activation_input_value]. When not set, [member activation_input_value] is used as assigned. If the node is freed, this property reads as [code]null[/code] and is treated as unset.
 		</member>
 	</members>
 </class>

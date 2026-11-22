@@ -140,6 +140,28 @@ func test_action_written_fact_changes_the_next_behaviour_pick() -> void:
 	assert_same(agent.get_current_behaviour_node(), flee, "flee now outscores patrol")
 
 
+func test_freed_input_sensor_is_treated_as_unset() -> void:
+	var sensor := _make_sensor("enemy_near")
+	var consideration: NNConsideration = NNConsideration.new()
+	consideration.activation_input_value = 0.4
+	consideration.input_sensor = sensor
+	var behaviour: NNBehaviour = NNBehaviour.new()
+	behaviour.add_child(consideration)
+	behaviour.add_child(NNAction.new())
+	var agent := _make_agent_with_sensor(sensor)
+	agent.add_child(behaviour)
+
+	agent.set_blackboard("enemy_near", true)
+	agent.tick(0.1)
+	assert_almost_eq(consideration.score, 1.0, 0.0001, "the sensor value overrides the activation input value")
+
+	sensor.free()
+	assert_null(consideration.get_input_sensor(), "a freed sensor reads as unset")
+	consideration.activation_input_value = 0.4
+	agent.tick(0.1)
+	assert_almost_eq(consideration.score, 0.4, 0.0001, "evaluation falls back to the stored activation input value")
+
+
 func test_blackboard_sensor_uses_the_shared_range_model() -> void:
 	var _sensor: NNBlackboardSensor = NNBlackboardSensor.new()
 	_sensor.key = "distance"

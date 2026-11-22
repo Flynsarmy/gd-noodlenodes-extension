@@ -122,11 +122,21 @@ void NNNQSSearchSpaces::_exit_tree() {
 	if (Engine::get_singleton()->is_editor_hint())
 		return;
 	_uninitialize_search_space();
-	// If we don't remove this search space from the singleton, it'll cause a memory leak.
-	NNNodeQuerySystem *nqs = godot::Object::cast_to<NNNodeQuerySystem>(Engine::get_singleton()->get_singleton("NodeQuerySystem"));
-	if (nqs == nullptr)
-		return;
-	nqs->stop_query(this);
+	_leave_scheduler();
+}
+
+void NNNQSSearchSpaces::_notification(int p_what) {
+	if (p_what == NOTIFICATION_PREDELETE) {
+		// A space freed while outside the tree never reaches _exit_tree().
+		_leave_scheduler();
+	}
+}
+
+void NNNQSSearchSpaces::_leave_scheduler() {
+	NNNodeQuerySystem *nqs = get_nqs_scheduler();
+	if (nqs != nullptr) {
+		nqs->stop_query(this);
+	}
 }
 
 // Getters and setters.
@@ -145,6 +155,14 @@ void NNNQSSearchSpaces::set_nqs_query_index(int nqs_query_index) {
 
 int NNNQSSearchSpaces::get_nqs_query_index() const {
 	return _nqs_query_index;
+}
+
+void NNNQSSearchSpaces::set_nqs_scheduler(NNNodeQuerySystem *nqs_scheduler) {
+	_nqs_scheduler_id = nqs_scheduler != nullptr ? nqs_scheduler->get_instance_id() : ObjectID();
+}
+
+NNNodeQuerySystem *NNNQSSearchSpaces::get_nqs_scheduler() const {
+	return godot::Object::cast_to<NNNodeQuerySystem>(godot::ObjectDB::get_instance(_nqs_scheduler_id));
 }
 
 void NNNQSSearchSpaces::set_nqs_query_is_high_priority(bool nqs_query_is_high_priority) {
@@ -390,8 +408,10 @@ bool NNNQSSearchSpaces::execute_query(uint64_t time_budget_usec) {
 				nodes_since_time_check = 0;
 			}
 
-			Node *node = godot::Object::cast_to<Node>((*_ptr_current_search_space)[_current_result_index]);
-			place_to_query_results_based_on_score(node, (*_ptr_current_scores)[_current_result_index]);
+			Node *node = godot::Object::cast_to<Node>((*_ptr_current_search_space)[_current_result_index].get_validated_object());
+			if (node != nullptr) {
+				place_to_query_results_based_on_score(node, (*_ptr_current_scores)[_current_result_index]);
+			}
 			++_current_result_index;
 			++nodes_since_time_check;
 		}
@@ -402,11 +422,15 @@ bool NNNQSSearchSpaces::execute_query(uint64_t time_budget_usec) {
 		// _query_results only keeps the top N; the debugger's viewport draw needs
 		// every surviving candidate and its score.
 		if (_debug_score_watch_count > 0) {
-			_debug_scored_nodes.resize(_num_search_space_nodes);
-			_debug_scored_scores.resize(_num_search_space_nodes);
+			_debug_scored_nodes.clear();
+			_debug_scored_scores.clear();
 			for (unsigned int i = 0; i < _num_search_space_nodes; ++i) {
-				_debug_scored_nodes[i] = (*_ptr_current_search_space)[i];
-				_debug_scored_scores[i] = (*_ptr_current_scores)[i];
+				Node *node = godot::Object::cast_to<Node>((*_ptr_current_search_space)[i].get_validated_object());
+				if (node == nullptr) {
+					continue;
+				}
+				_debug_scored_nodes.push_back(node);
+				_debug_scored_scores.push_back((*_ptr_current_scores)[i]);
 			}
 		}
 #endif
@@ -455,7 +479,8 @@ bool NNNQSSearchSpaces::apply_criterion_with_time_budget(NNNQSSearchCriteria *cr
 			nodes_since_time_check = 0;
 		}
 
-		Node *node = godot::Object::cast_to<Node>((*_ptr_current_search_space)[_current_node_index]);
+		// The raw Variant cast does not detect a freed node.
+		Node *node = godot::Object::cast_to<Node>((*_ptr_current_search_space)[_current_node_index].get_validated_object());
 		if (node == nullptr) {
 			++_current_node_index;
 			continue;

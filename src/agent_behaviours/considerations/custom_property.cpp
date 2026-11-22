@@ -29,7 +29,6 @@ void NNCustomPropertyConsideration::_bind_methods() {
 NNCustomPropertyConsideration::NNCustomPropertyConsideration() {
 	_property_max_value = 1.0;
 	_one_over_property_max_value = 1.0;
-	_node_with_property = nullptr;
 }
 
 NNCustomPropertyConsideration::~NNCustomPropertyConsideration() {
@@ -46,10 +45,10 @@ Ref<Curve> NNCustomPropertyConsideration::get_activation_curve() const {
 }
 
 void NNCustomPropertyConsideration::set_node_with_property(Node *node_with_property) {
-	_node_with_property = node_with_property;
+	_node_with_property_id = node_with_property != nullptr ? ObjectID(node_with_property->get_instance_id()) : ObjectID();
 }
 Node *NNCustomPropertyConsideration::get_node_with_property() const {
-	return _node_with_property;
+	return Object::cast_to<Node>(ObjectDB::get_instance(_node_with_property_id));
 }
 
 void NNCustomPropertyConsideration::set_property_max_value(float property_max_value) {
@@ -95,12 +94,13 @@ float NNCustomPropertyConsideration::evaluate() {
 		return 0.0;
 	if (!get_is_enabled())
 		return 0.0;
-	if (_node_with_property == nullptr)
+	Node *node_with_property = get_node_with_property();
+	if (node_with_property == nullptr)
 		return 0.0;
 	if (get_has_vetoed())
 		return 0.0;
 
-	_property_variant_value = _node_with_property->get(_property_name);
+	_property_variant_value = node_with_property->get(_property_name);
 	_score = (float)_property_variant_value * _one_over_property_max_value;
 
 	if (_activation_curve.is_valid()) {

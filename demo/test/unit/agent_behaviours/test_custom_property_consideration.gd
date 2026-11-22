@@ -67,3 +67,20 @@ func test_scores_are_not_clamped_by_normalization() -> void:
 	holder.amount = -5.0
 	agent.evaluate_options(1.0)
 	assert_almost_eq(consideration.score, -0.5, 0.0001)
+
+
+func test_freed_node_with_property_is_treated_as_unset() -> void:
+	var holder := Holder.new()
+	add_child_autofree(holder)
+	var consideration := _make_consideration(holder, 10.0)
+	var agent := _make_agent(consideration)
+
+	var behaviour: NNBehaviour = consideration.get_parent()
+
+	agent.evaluate_options(1.0)
+	assert_almost_eq(behaviour.score, 0.5, 0.0001)
+
+	holder.free()
+	assert_null(consideration.get_node_with_property(), "a freed node reads as unset")
+	agent.evaluate_options(1.0)
+	assert_eq(behaviour.score, 0.0, "a freed node scores like an unset one")

@@ -9,7 +9,7 @@ class NNCustomPropertyConsideration : public NNConsiderations {
 	GDCLASS(NNCustomPropertyConsideration, NNConsiderations)
 
 private:
-	Node *_node_with_property;
+	ObjectID _node_with_property_id;
 	StringName _property_name;
 	float _property_max_value;
 	float _one_over_property_max_value;

@@ -4,6 +4,7 @@
 #include "nqs.h"
 
 #include <godot_cpp/classes/node3d.hpp>
+#include <godot_cpp/core/object_id.hpp>
 
 namespace godot {
 
@@ -13,16 +14,13 @@ class NNDistanceToNode3DSearchCriterion : public NNNQSSearchCriteria {
 private:
 	NNDistanceRange _distance_range;
 
-	Node3D *_distance_to;
+	ObjectID _distance_to_id;
 
 protected:
 	static void _bind_methods();
 	virtual void _initialize_criterion() override;
 
 public:
-	NNDistanceToNode3DSearchCriterion();
-	~NNDistanceToNode3DSearchCriterion();
-
 	// Getters and setters for attributes.
 
 	void set_distance_to(Node3D *distance_to);

@@ -20,7 +20,7 @@
 	</methods>
 	<members>
 		<member name="node_with_property" type="Node" setter="set_node_with_property" getter="get_node_with_property">
-			The node whose [member property_name] property is read. The consideration scores [code]0.0[/code] when this is not set.
+			The node whose [member property_name] property is read. The consideration scores [code]0.0[/code] when this is not set. If the node is freed, this property reads as [code]null[/code] and is treated as unset.
 		</member>
 		<member name="property_max_value" type="float" setter="set_property_max_value" getter="get_property_max_value" default="1.0">
 			Divisor applied to the float value of [member property_name] to produce [member NNConsiderations.score]. Must be finite and non-zero; invalid assignments report an error and keep the previous value.

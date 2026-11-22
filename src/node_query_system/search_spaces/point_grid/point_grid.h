@@ -144,7 +144,7 @@ inline bool point_grid_snap_to_navigation(unsigned int &r_current_index, const T
 	// The point grid is assignable, so it may not match the generated positions one to one.
 	const unsigned int num_points = MIN((unsigned int)p_point_grid.size(), (unsigned int)p_positions.size());
 	while (r_current_index < num_points) {
-		NodeT *node = Object::cast_to<NodeT>(p_point_grid[r_current_index]);
+		NodeT *node = Object::cast_to<NodeT>(p_point_grid[r_current_index].get_validated_object());
 		if (node != nullptr) {
 			const VectorT local_position = p_positions[r_current_index] + p_offset;
 			node->set_global_position(p_nav_server->map_get_closest_point(p_navigation_map, p_parent->get_global_transform().xform(local_position)));

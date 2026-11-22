@@ -11,7 +11,7 @@
 	</tutorials>
 	<members>
 		<member name="distance_to" type="Node3D" setter="set_distance_to" getter="get_distance_to">
-			The [Node3D] whose global position candidate distances are measured to. When [code]null[/code], candidates are left unfiltered with a score of [code]1.0[/code].
+			The [Node3D] whose global position candidate distances are measured to. When [code]null[/code], candidates are left unfiltered with a score of [code]1.0[/code]. If the node is freed, this property reads as [code]null[/code] and is treated as unset.
 		</member>
 		<member name="max_distance" type="float" setter="set_max_distance" getter="get_max_distance" default="100.0">
 			Maximum distance. Distances above this are filtered out when [member NNNQSSearchCriteria.use_for_filtering] is [code]true[/code], and map to a raw score of [code]1.0[/code] when scoring (linear in squared distance). Must be greater than [member min_distance]; smaller or equal values are ignored.

@@ -14,7 +14,7 @@ private:
 protected:
 	static void _bind_methods();
 
-	NNSensors *_input_sensor;
+	ObjectID _input_sensor_id;
 	Ref<Curve> _activation_curve;
 	float _activation_input_value;
 	bool _has_activation_input_changed;

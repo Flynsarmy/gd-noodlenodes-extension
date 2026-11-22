@@ -194,7 +194,7 @@ private:
 		}
 
 		for (int i = 0; i < entities.size();) {
-			TEntity *entity = Object::cast_to<TEntity>(entities[i]);
+			TEntity *entity = Object::cast_to<TEntity>(entities[i].get_validated_object());
 			if (entity == nullptr) {
 				entities.remove_at(i);
 				continue;

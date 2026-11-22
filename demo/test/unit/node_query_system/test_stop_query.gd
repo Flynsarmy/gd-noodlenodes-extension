@@ -195,3 +195,35 @@ func test_stop_after_completion_does_not_affect_a_reused_slot() -> void:
 
 	assert_gt(second_criterion.apply_count, 0)
 	assert_eq(nqs.get_num_active_high_priority_queries(), 0)
+
+
+func test_freeing_a_posted_search_space_releases_its_slot_on_a_local_scheduler() -> void:
+	var nqs: NNNodeQuerySystem = NqsHelpers.make_nqs(self)
+	var query: NNNodeChildrenSearchSpace = NqsHelpers.make_query(
+			self, NqsHelpers.make_container(self, 2), NqsHelpers.CountingCriterion.new())
+
+	assert_eq(nqs.post_query(query, true), 1)
+	query.free()
+
+	assert_eq(nqs.get_num_active_high_priority_queries(), 0, "Freeing a posted search space must release its slot.")
+	nqs.run_queries()
+
+	var second_criterion := NqsHelpers.CountingCriterion.new()
+	var second_query: NNNodeChildrenSearchSpace = NqsHelpers.make_query(
+			self, NqsHelpers.make_container(self, 2), second_criterion)
+	NqsHelpers.run_to_completion(self, nqs, second_query)
+	assert_gt(second_criterion.apply_count, 0, "The scheduler must still run queries after a posted space is freed.")
+
+
+func test_freeing_the_scheduler_lets_its_search_spaces_be_posted_elsewhere() -> void:
+	var scheduler: NNNodeQuerySystem = NNNodeQuerySystem.new()
+	var criterion := NqsHelpers.CountingCriterion.new()
+	var query: NNNodeChildrenSearchSpace = NqsHelpers.make_query(
+			self, NqsHelpers.make_container(self, 2), criterion)
+
+	assert_eq(scheduler.post_query(query, true), 1)
+	scheduler.free()
+
+	var replacement: NNNodeQuerySystem = NqsHelpers.make_nqs(self)
+	NqsHelpers.run_to_completion(self, replacement, query)
+	assert_gt(criterion.apply_count, 0, "The query must run on its new scheduler.")

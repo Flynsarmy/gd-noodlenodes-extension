@@ -70,7 +70,7 @@
 			Scores of the nodes in [member query_results], index for index, sorted highest first. Read-only runtime state: never saved with the scene.
 		</member>
 		<member name="query_results" type="Node[]" getter="get_query_results" default="[]">
-			Surviving candidate nodes from the latest completed query, sorted in descending order by score, up to [member top_n_to_find] entries. Read-only runtime state: never saved with the scene.
+			Surviving candidate nodes from the latest completed query, sorted in descending order by score, up to [member top_n_to_find] entries. Candidates freed while the query runs are skipped. Read-only runtime state: never saved with the scene.
 		</member>
 		<member name="search_space_fetch_time_usec" type="int" getter="get_search_space_fetch_time_usec" default="0">
 			Duration in microseconds spent fetching the candidate nodes before filtering and scoring. Read-only runtime state: never saved with the scene.

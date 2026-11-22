@@ -3,9 +3,12 @@
 #include "../noodle_nodes.h"
 #include "../search_criteria/nqs.h"
 #include <godot_cpp/classes/node.hpp>
+#include <godot_cpp/core/object_id.hpp>
 #include <vector>
 
 namespace godot {
+
+class NNNodeQuerySystem;
 
 class NNNQSSearchSpaces : public NoodleNodes {
 	GDCLASS(NNNQSSearchSpaces, NoodleNodes)
@@ -61,7 +64,8 @@ private:
 	std::vector<NNNQSSearchCriteria *> _filtering_criteria;
 	unsigned int _num_filtering_criteria;
 
-	int _nqs_query_index; // Index of the query in the singleton.
+	int _nqs_query_index; // Index of the query in the scheduler.
+	ObjectID _nqs_scheduler_id;
 	bool _nqs_query_is_high_priority;
 	// Monotonic token identifying the current scheduler registration. A
 	// completion may only release the registration it started with, even if a
@@ -69,6 +73,7 @@ private:
 	uint64_t _nqs_query_registration;
 
 	void record_call_runtime(uint64_t call_runtime_usec);
+	void _leave_scheduler();
 
 protected:
 	static void _bind_methods();
@@ -97,6 +102,9 @@ public:
 
 	void set_nqs_query_index(int nqs_query_index);
 	int get_nqs_query_index() const;
+
+	void set_nqs_scheduler(NNNodeQuerySystem *nqs_scheduler);
+	NNNodeQuerySystem *get_nqs_scheduler() const;
 
 	void set_nqs_query_is_high_priority(bool nqs_query_is_high_priority);
 	bool get_nqs_query_is_high_priority() const;
@@ -142,6 +150,7 @@ public:
 	// Godot virtuals.
 	void _ready() override;
 	void _exit_tree() override;
+	void _notification(int p_what);
 };
 
 } //namespace godot
