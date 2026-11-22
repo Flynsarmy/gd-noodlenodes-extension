@@ -60,4 +60,19 @@ theme_override_font_sizes/font_size = 45
 text = "- WASD to move
 - Space to jump
 - Hold shift to sprint
+- Tab to release or capture the mouse
 - Escape to exit"
+
+[node name="CaptureMouseButton" type="Button" parent="CanvasLayer"]
+unique_name_in_owner = true
+anchors_preset = 2
+anchor_top = 1.0
+anchor_bottom = 1.0
+offset_left = 26.0
+offset_top = -66.0
+offset_right = 276.0
+offset_bottom = -26.0
+grow_vertical = 0
+focus_mode = 0
+theme_override_font_sizes/font_size = 20
+text = "Release mouse (Tab)"
