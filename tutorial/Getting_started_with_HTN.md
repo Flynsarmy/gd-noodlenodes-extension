@@ -193,7 +193,7 @@ const ARRIVAL_DISTANCE := 0.5
 func on_execute(_delta: float, step: NNHTNPlanStep) -> Status:
 	var npc := get_actor() as NPC
 	var target: Variant = step.args.target
-	var destination: Vector3 = target.position if target is Node3D else target
+	var destination := npc.closest_reachable_point(target.position if target is Node3D else target)
 	var offset := destination - npc.position
 	if Vector2(offset.x, offset.z).length() <= ARRIVAL_DISTANCE:
 		npc.stop()
@@ -206,7 +206,7 @@ func on_cancel(_step: NNHTNPlanStep) -> void:
 	(get_actor() as NPC).stop()
 ```
 
-`target` is either a coin node or a point. When someone else collects the coin first, the coin leaves `coin_targets`, which triggers a new plan, and the coin node is freed. Before every tick the root also checks that the step's arguments are still alive, so a step holding a freed coin is invalidated instead of executed. Either way `on_cancel()` stops the NPC, and the task never has to check for a freed coin itself.
+`target` is either a coin node or a point. The NPC walks along the island's navigation mesh (a `NavigationRegion3D` in `objects/platform_grass_large_round.tscn`, followed by a `NavigationAgent3D` on the NPC), and `closest_reachable_point()` moves a destination past the edge back onto the mesh, so a roaming point near the shore never walks the NPC into the sea. When someone else collects the coin first, the coin leaves `coin_targets`, which triggers a new plan, and the coin node is freed. Before every tick the root also checks that the step's arguments are still alive, so a step holding a freed coin is invalidated instead of executed. Either way `on_cancel()` stops the NPC, and the task never has to check for a freed coin itself.
 
 `Idle` keeps its timer in `step.runtime`:
 

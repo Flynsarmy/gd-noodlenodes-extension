@@ -2,7 +2,10 @@ extends GutTest
 ## The demo_07_htn NPC domain, planned from its authored blackboard and driven by manual ticks.
 
 const Domain = preload("res://test/unit/htn/support/htn_domain.gd")
+const NPC = preload("res://demo_07_htn/npc/npc.gd")
 const NPC_SCENE: PackedScene = preload("res://demo_07_htn/npc/npc.tscn")
+const ISLAND_SCENE: PackedScene = preload("res://demo_07_htn/objects/platform_grass_large_round.tscn")
+const ISLAND_RADIUS := 55.0
 
 var npc: CharacterBody3D
 var htn: NNHTNRoot
@@ -80,3 +83,14 @@ func test_its_own_movement_never_replans_but_events_do() -> void:
 	htn.tick(0.1)
 	assert_eq(searches.count, 2)
 	assert_eq(htn.get_last_replan_trigger_keys(), PackedStringArray(["is_scared"]))
+
+
+func test_destinations_past_the_shore_are_pulled_back_onto_the_island() -> void:
+	var island: Node3D = add_child_autofree(ISLAND_SCENE.instantiate())
+	var map := island.get_world_3d().navigation_map
+	await wait_until(func() -> bool: return NPC.has_navigation_at(map, Vector3.ZERO), 2.0)
+
+	var point: Vector3 = npc.closest_reachable_point(Vector3(200, 0, 200))
+
+	var distance_from_centre := Vector2(point.x, point.z).length()
+	assert_between(distance_from_centre, ISLAND_RADIUS - 1.0, ISLAND_RADIUS, "lands on the shore nearest the destination")

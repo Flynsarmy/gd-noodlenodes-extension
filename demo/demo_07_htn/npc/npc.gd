@@ -10,6 +10,7 @@ const Player = preload("res://demo_07_htn/objects/player.gd")
 const SCARE_DISTANCE := 3.0
 const SCARES_BEFORE_TIRED := 3
 const FALL_LIMIT := -10.0
+const STOP_DISTANCE := 0.1
 
 @export var movement_speed: float = 4.0
 @export var jump_strength: float = 7.0
@@ -32,6 +33,7 @@ var _spawn_position: Vector3
 @onready var sound_coin: AudioStreamPlayer3D = $SoundCoin
 @onready var model: Node3D = $Character
 @onready var animation: AnimationPlayer = $Character/AnimationPlayer
+@onready var navigation_agent: NavigationAgent3D = $NavigationAgent
 
 
 func _ready() -> void:
@@ -82,9 +84,27 @@ func _handle_effects() -> void:
 
 
 func walk_towards(destination: Vector3) -> void:
-	var direction := destination - position
+	if not navigation_agent.target_position.is_equal_approx(destination):
+		navigation_agent.target_position = destination
+	var direction := navigation_agent.get_next_path_position() - global_position
 	direction.y = 0
+	# The path ends short of an off-mesh destination; stand still there instead of jittering.
+	if direction.length() < STOP_DISTANCE:
+		stop()
+		return
 	_movement_velocity = direction.normalized() * movement_speed
+
+
+func closest_reachable_point(destination: Vector3) -> Vector3:
+	var map := get_world_3d().navigation_map
+	if not has_navigation_at(map, destination):
+		return destination
+	return NavigationServer3D.map_get_closest_point(map, destination)
+
+
+static func has_navigation_at(map: RID, point: Vector3) -> bool:
+	# Querying a map before its first sync is an engine error, and an empty map answers the origin.
+	return NavigationServer3D.map_get_iteration_id(map) != 0 and NavigationServer3D.map_get_closest_point_owner(map, point).is_valid()
 
 
 func stop() -> void:

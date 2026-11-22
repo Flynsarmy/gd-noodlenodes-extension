@@ -207,6 +207,8 @@ mesh = SubResource("ArrayMesh_hpepq")
 [node name="antenna" parent="Character/character2/root/torso" index="2"]
 visible = false
 
+[node name="NavigationAgent" type="NavigationAgent3D" parent="."]
+
 [node name="Collider" type="CollisionShape3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.55, 0)
 shape = SubResource("CapsuleShape3D_xh78g")
