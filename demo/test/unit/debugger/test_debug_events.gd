@@ -361,7 +361,7 @@ func test_blackboard_events_follow_the_watched_board() -> void:
 	assert_true(_events_of(root, "bb_clear").size() > 0)
 
 	var replacement := NNBlackboard.new()
-	root.blackboard = replacement
+	root.assigned_blackboard = replacement
 	var before := _events(root).size()
 	replacement.set_value("alert", 0.5)
 	assert_eq(_last_of(root, "bb_set").value, 0.5, "the swapped board feeds the same root")

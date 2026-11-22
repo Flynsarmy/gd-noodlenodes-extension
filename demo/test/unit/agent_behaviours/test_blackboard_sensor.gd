@@ -68,7 +68,7 @@ func test_unsupported_value_scores_the_default_value() -> void:
 func test_roots_under_an_agent_evaluate_their_sensors_against_its_board() -> void:
 	var agent := _make_agent()
 	var board := NNBlackboard.new()
-	agent.blackboard = board
+	agent.assigned_blackboard = board
 
 	var bt_sensor := _make_sensor("alert")
 	var bt_root: NNBTRoot = NNBTRoot.new()

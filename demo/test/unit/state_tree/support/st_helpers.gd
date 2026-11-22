@@ -186,7 +186,7 @@ static func event_queue_root() -> NNSTRoot:
 	var root := NNSTRoot.new()
 	var board := NNBlackboard.new()
 	board.values = { "log": [] }
-	root.blackboard = board
+	root.assigned_blackboard = board
 	return root
 
 

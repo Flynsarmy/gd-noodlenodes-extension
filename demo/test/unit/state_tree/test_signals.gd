@@ -37,7 +37,7 @@ func test_state_check_enter_condition_not_called_when_method_exists() -> void:
 		"on_tick": 0,
 		"on_exit_state": 0
 	}
-	_root.blackboard = board
+	_root.assigned_blackboard = board
 
 	watch_signals(_child)
 	_root.add_child(_child)

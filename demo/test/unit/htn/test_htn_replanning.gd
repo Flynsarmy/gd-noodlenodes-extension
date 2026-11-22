@@ -145,7 +145,7 @@ func test_board_reassignment_switches_the_watched_board() -> void:
 
 	var shared := NNBlackboard.new()
 	shared.set_value("ready", true)
-	root.blackboard = shared
+	root.assigned_blackboard = shared
 	root.tick(0.1)
 	assert_eq(root.get_last_search_status(), NNHTNRoot.FOUND, "a new board is a new world state")
 

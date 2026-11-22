@@ -122,7 +122,7 @@ func test_root_info_reports_the_actor_distinct_from_the_owner() -> void:
 	var agent := NNAgent.new()
 	agent.name = "Agent"
 	agent.process_thread = NNAgent.MANUAL
-	agent.actor = npc
+	agent.assigned_actor = npc
 	scene.add_child(npc)
 	npc.add_child(agent)
 	add_child_autofree(scene)
@@ -135,7 +135,7 @@ func test_root_info_reports_the_actor_distinct_from_the_owner() -> void:
 
 	var detached := Node.new()
 	detached.name = "Detached"
-	agent.actor = detached
+	agent.assigned_actor = detached
 	info = debugger.get_root_info(agent.get_instance_id())
 	assert_eq(info["actor_id"], detached.get_instance_id())
 	assert_eq(info["actor_path"], "", "a detached actor has no path to report")

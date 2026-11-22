@@ -25,7 +25,7 @@ func test_inactive_branch_sees_child_added_after_ready() -> void:
 	var _branch: NNSTNode = _make_logger("Branch")
 	var board := NNBlackboard.new()
 	board.values = { "log": [] }
-	_root.blackboard = board
+	_root.assigned_blackboard = board
 	_root.add_child(_active_sibling)
 	_root.add_child(_branch)
 
@@ -66,7 +66,7 @@ func test_inactive_branch_sees_child_removed_after_ready() -> void:
 	var _old_child: NNSTNode = _make_logger("OldChild")
 	var board := NNBlackboard.new()
 	board.values = { "log": [] }
-	_root.blackboard = board
+	_root.assigned_blackboard = board
 	_root.add_child(_active_sibling)
 	_root.add_child(_branch)
 	_branch.add_child(_old_child)
@@ -102,7 +102,7 @@ func test_inactive_branch_sees_child_reorder_after_ready() -> void:
 	var _second_child: NNSTNode = _make_logger("SecondChild")
 	var board := NNBlackboard.new()
 	board.values = { "log": [] }
-	_root.blackboard = board
+	_root.assigned_blackboard = board
 	_root.add_child(_active_sibling)
 	_root.add_child(_branch)
 	_branch.add_child(_first_child)
@@ -133,7 +133,7 @@ func test_inactive_branch_sees_transition_added_after_ready() -> void:
 	var _target: NNSTNode = _make_logger("Target")
 	var board := NNBlackboard.new()
 	board.values = { "log": [] }
-	_root.blackboard = board
+	_root.assigned_blackboard = board
 	_root.add_child(_active_sibling)
 	_root.add_child(_branch)
 	_root.add_child(_target)
@@ -164,7 +164,7 @@ func test_inactive_branch_sees_consideration_added_after_ready() -> void:
 	var _branch: NNSTNode = _make_logger("Branch")
 	var board := NNBlackboard.new()
 	board.values = { "log": [] }
-	_root.blackboard = board
+	_root.assigned_blackboard = board
 	_root.child_state_selection_rule = STHelpers.UTILITY_SCORING
 	_start.add_child(Fixtures.consideration(1.0))
 	_rival.add_child(Fixtures.consideration(0.5))
@@ -204,7 +204,7 @@ func test_active_branch_reorder_and_removal_still_works() -> void:
 	var _sibling: NNSTNode = _make_logger("Sibling")
 	var board := NNBlackboard.new()
 	board.values = { "log": [] }
-	_root.blackboard = board
+	_root.assigned_blackboard = board
 	_root.add_child(_child)
 	_root.add_child(_sibling)
 

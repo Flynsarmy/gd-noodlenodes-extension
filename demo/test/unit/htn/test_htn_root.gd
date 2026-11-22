@@ -52,7 +52,7 @@ func test_invalid_search_settings_fail_closed() -> void:
 func test_nodes_reach_the_root_actor_and_blackboard() -> void:
 	var actor := Node.new()
 	add_child_autofree(actor)
-	root.actor = actor
+	root.assigned_actor = actor
 	var task := Domain.task(Domain.method(Domain.compound(root, "Domain"), "Main"), "Act")
 
 	assert_same(task.get_htn_root(), root)

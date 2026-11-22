@@ -33,7 +33,7 @@ func test_on_enter_condition_works_on_children() -> void:
 		"on_tick": 0,
 		"on_exit_state": 0
 	}
-	_root.blackboard = board
+	_root.assigned_blackboard = board
 	_root.add_child(_child1)
 	_root.add_child(_child2)
 
@@ -63,7 +63,7 @@ func test_removing_active_child_exits_it_and_reselects() -> void:
 	var _sibling: NNSTNode = STHelpers.LoggingNode.new()
 	var board := NNBlackboard.new()
 	board.values = { "log": [] }
-	_root.blackboard = board
+	_root.assigned_blackboard = board
 	_root.add_child(_child)
 	_root.add_child(_sibling)
 	_child.name = "Child"

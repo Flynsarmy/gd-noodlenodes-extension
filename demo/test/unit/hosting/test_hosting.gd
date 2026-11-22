@@ -966,8 +966,8 @@ func test_htn_root_nested_under_a_bt_root_shares_its_board_and_replans_on_it() -
 	add_child_autofree(actor)
 	var bt_root := _make_bt_root(_make_leaf(NNBTNodes.RUNNING))
 	bt_root.process_thread = NNBTRoot.MANUAL
-	bt_root.blackboard = board
-	bt_root.actor = actor
+	bt_root.assigned_blackboard = board
+	bt_root.assigned_actor = actor
 	var htn := HTNDomain.make_root()
 	var domain := HTNDomain.compound(htn, "Domain")
 	var patrol: NNHTNTask = HTNDomain.task(HTNDomain.method(domain, "Calm", ["not alarm"]), "Patrol")

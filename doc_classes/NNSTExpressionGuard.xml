@@ -12,7 +12,7 @@
 	</tutorials>
 	<members>
 		<member name="expression" type="String" setter="set_expression" getter="get_expression" default="&quot;&quot;">
-			An expression to be evaluated by the [Expression] class. Expressions have access to the values of the root's [member NNSTRoot.blackboard]. For example, when the blackboard has a key called [code]my_variable[/code], you can use it in the expression like this: [code]my_variable == 1[/code]. Identifiers the expression reads are looked up in the blackboard; a key that is missing from the blackboard is passed as [code]null[/code] and is not an error. A guard on a missing key therefore evaluates [code]false[/code], because a [code]null[/code] result is not a boolean.
+			An expression to be evaluated by the [Expression] class. Expressions have access to the values of the root's [member NNSTRoot.assigned_blackboard]. For example, when the blackboard has a key called [code]my_variable[/code], you can use it in the expression like this: [code]my_variable == 1[/code]. Identifiers the expression reads are looked up in the blackboard; a key that is missing from the blackboard is passed as [code]null[/code] and is not an error. A guard on a missing key therefore evaluates [code]false[/code], because a [code]null[/code] result is not a boolean.
 		</member>
 	</members>
 </class>

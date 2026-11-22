@@ -60,7 +60,7 @@ func test_auto_tick_step_passes_the_delta_and_resolves_the_root_board() -> void:
 	var leaf: BT.CountingLeaf = _make_leaf(NNBTNodes.RUNNING)
 	bt_root.add_child(leaf)
 	var board: NNBlackboard = NNBlackboard.new()
-	bt_root.blackboard = board
+	bt_root.assigned_blackboard = board
 
 	assert_true(bt_root.auto_tick_step(NNBTRoot.PHYSICS, 0.25), "auto_tick_step ticks and reports it")
 	assert_eq(leaf.tick_count, 1)

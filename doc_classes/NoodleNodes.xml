@@ -19,7 +19,7 @@
 		<method name="get_actor" qualifiers="const">
 			<return type="Node" />
 			<description>
-				Returns the actor of the nearest ancestor root, or [code]null[/code] when there is no root. A root resolves its own actor on demand: its explicit [code]actor[/code] wins, then its [code]actor_node_path[/code], then the actor inherited from the root above it, then its parent.
+				Returns the actor of the nearest ancestor root, or [code]null[/code] when there is no root. A root resolves its own actor on demand: its explicit [code]assigned_actor[/code] wins, then the actor inherited from the root above it, then its parent.
 			</description>
 		</method>
 		<method name="get_blackboard" qualifiers="const">

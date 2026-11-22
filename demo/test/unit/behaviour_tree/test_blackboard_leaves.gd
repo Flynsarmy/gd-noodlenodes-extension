@@ -227,7 +227,7 @@ func test_set_fails_when_the_schema_rejects_the_write() -> void:
 	var bt_root := NNBTRoot.new()
 	var board := NNBlackboard.new()
 	board.schema = Schema.make_schema({ "hp": [TYPE_INT] })
-	bt_root.blackboard = board
+	bt_root.assigned_blackboard = board
 
 	var leaf := NNBTBlackboardSet.new()
 	leaf.key = "hp"

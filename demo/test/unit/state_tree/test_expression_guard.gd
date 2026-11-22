@@ -21,7 +21,7 @@ func test_expression_guard_evaluates_literals_and_blackboard_vars() -> void:
 	var blackboard: Dictionary = {"foo": "bar"}
 	var board := NNBlackboard.new()
 	board.values = blackboard
-	_root.blackboard = board
+	_root.assigned_blackboard = board
 
 	_guard.expression = "foo=='bar'"
 	assert_true(_guard.is_satisfied(_transition, _child))
@@ -35,7 +35,7 @@ func test_each_evaluation_reads_current_blackboard_values() -> void:
 	var _guard: NNSTExpressionGuard = NNSTExpressionGuard.new()
 	var board := NNBlackboard.new()
 	_root.add_child(_child)
-	_root.blackboard = board
+	_root.assigned_blackboard = board
 	_guard.expression = "enabled"
 
 	# The key is missing at first, then appears, then changes again.
@@ -51,7 +51,7 @@ func test_changing_expression_updates_blackboard_inputs() -> void:
 	var _guard: NNSTExpressionGuard = NNSTExpressionGuard.new()
 	var board := NNBlackboard.new()
 	_root.add_child(_child)
-	_root.blackboard = board
+	_root.assigned_blackboard = board
 	board.values = {"first": true, "second": false}
 
 	_guard.expression = "first"
@@ -90,7 +90,7 @@ func test_null_transition_with_valid_state_evaluates_expression() -> void:
 
 	var board := NNBlackboard.new()
 	board.values = {"enabled": true}
-	_root.blackboard = board
+	_root.assigned_blackboard = board
 	_guard.expression = "enabled"
 	assert_true(_guard.is_satisfied(null, _child))
 
@@ -110,7 +110,7 @@ func test_missing_blackboard_key_reads_as_null() -> void:
 	var _guard: NNSTExpressionGuard = NNSTExpressionGuard.new()
 	var board := NNBlackboard.new()
 	_root.add_child(_child)
-	_root.blackboard = board
+	_root.assigned_blackboard = board
 
 	_guard.expression = "missing_key == null"
 	assert_true(_guard.is_satisfied(null, _child))

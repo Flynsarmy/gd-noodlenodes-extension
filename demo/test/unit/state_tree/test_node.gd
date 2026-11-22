@@ -17,7 +17,7 @@ func test_on_enter_condition_fail_checks() -> void:
 		"on_tick": 0,
 		"on_exit_state": 0
 	}
-	_root.blackboard = board
+	_root.assigned_blackboard = board
 
 	_root.add_child(_child)
 	_root.tick(0.1)
@@ -169,7 +169,7 @@ func test_active_grandchild_freed_before_tick_is_safe() -> void:
 	var _sibling: NNSTNode = STHelpers.LoggingNode.new()
 	var board := NNBlackboard.new()
 	board.values = { "log": [] }
-	_root.blackboard = board
+	_root.assigned_blackboard = board
 	_child.name = "Child"
 	_sibling.name = "Sibling"
 	_parent.add_child(_child)

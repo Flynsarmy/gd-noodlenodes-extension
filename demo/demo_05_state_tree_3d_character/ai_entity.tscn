@@ -145,7 +145,7 @@ parameters/jump_oneshot/internal_active = 0.0
 parameters/jump_oneshot/request = 0
 
 [node name="NNSTRoot" type="NNSTRoot" parent="."]
-blackboard = SubResource("NNBlackboard_a1b2c")
+assigned_blackboard = SubResource("NNBlackboard_a1b2c")
 script = ExtResource("3_twn2d")
 
 [node name="Root" type="NNSTParallel" parent="NNSTRoot"]

@@ -48,7 +48,7 @@ func test_children_failing_condition_dont_tick() -> void:
 		"on_tick": 0,
 		"on_exit_state": 0
 	}
-	_root.blackboard = board
+	_root.assigned_blackboard = board
 
 	_root.add_child(_parallel)
 	_parallel.add_child(_node1)
@@ -139,7 +139,7 @@ func test_removing_active_parallel_child_exits_only_that_child() -> void:
 	var _child2: NNSTNode = STHelpers.LoggingNode.new()
 	var board := NNBlackboard.new()
 	board.values = { "log": [] }
-	_root.blackboard = board
+	_root.assigned_blackboard = board
 	_child1.name = "Child1"
 	_child2.name = "Child2"
 	_parallel.add_child(_child1)
@@ -206,7 +206,7 @@ func test_reparenting_active_child_updates_both_branches() -> void:
 	var _leaf: NNSTNode = STHelpers.LoggingNode.new()
 	var board := NNBlackboard.new()
 	board.values = { "log": [] }
-	_root.blackboard = board
+	_root.assigned_blackboard = board
 	_leaf.name = "Leaf"
 	_branch1.add_child(_leaf)
 	_parallel.add_child(_branch1)

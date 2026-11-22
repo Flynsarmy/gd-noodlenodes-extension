@@ -431,7 +431,7 @@ func test_state_enter_evaluates_automatic_guard_once_per_entry() -> void:
 	_transition.to = _transition.get_path_to(_b)
 	var board := NNBlackboard.new()
 	board.values = {"counter": _counter}
-	_root.blackboard = board
+	_root.assigned_blackboard = board
 
 	Fixtures.add_manual_st_root(self, _root)
 	assert_true(_outside.get_is_active())
@@ -467,7 +467,7 @@ func test_state_enter_reentry_evaluates_guard_once_per_activation() -> void:
 	_transition.to = _transition.get_path_to(_b)
 	var board := NNBlackboard.new()
 	board.values = {"counter": _counter}
-	_root.blackboard = board
+	_root.assigned_blackboard = board
 
 	Fixtures.add_manual_st_root(self, _root)
 	assert_true(_outside.get_is_active())

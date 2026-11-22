@@ -268,10 +268,10 @@ monitorable = false
 [node name="CollisionShape3D" type="CollisionShape3D" parent="CloseRangeSensor"]
 shape = SubResource("SphereShape3D_1ir51")
 
-[node name="HTN" type="NNHTNRoot" parent="." node_paths=PackedStringArray("actor")]
+[node name="HTN" type="NNHTNRoot" parent="." node_paths=PackedStringArray("assigned_actor")]
 script = ExtResource("7_root")
-blackboard = SubResource("NNBlackboard_world")
-actor = NodePath("..")
+assigned_blackboard = SubResource("NNBlackboard_world")
+assigned_actor = NodePath("..")
 replan_ignored_keys = PackedStringArray("agent_position")
 
 [node name="Be NPC" type="NNHTNCompoundTask" parent="HTN"]

@@ -23,17 +23,13 @@ void NNAgent::_bind_methods() {
 	BIND_ENUM_CONSTANT(PHYSICS);
 	BIND_ENUM_CONSTANT(MANUAL);
 
-	ClassDB::bind_method(D_METHOD("set_blackboard_resource", "blackboard"), &NNAgent::set_blackboard_resource);
+	ClassDB::bind_method(D_METHOD("set_assigned_blackboard", "blackboard"), &NNAgent::set_assigned_blackboard);
 	ClassDB::bind_method(D_METHOD("get_assigned_blackboard"), &NNAgent::get_assigned_blackboard);
-	ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "blackboard", PROPERTY_HINT_RESOURCE_TYPE, "NNBlackboard"), "set_blackboard_resource", "get_assigned_blackboard");
+	ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "assigned_blackboard", PROPERTY_HINT_RESOURCE_TYPE, "NNBlackboard"), "set_assigned_blackboard", "get_assigned_blackboard");
 
-	ClassDB::bind_method(D_METHOD("set_actor", "actor"), &NNAgent::set_actor);
+	ClassDB::bind_method(D_METHOD("set_assigned_actor", "actor"), &NNAgent::set_assigned_actor);
 	ClassDB::bind_method(D_METHOD("get_assigned_actor"), &NNAgent::get_assigned_actor);
-	ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "actor", PROPERTY_HINT_NODE_TYPE, "Node"), "set_actor", "get_assigned_actor");
-
-	ClassDB::bind_method(D_METHOD("set_actor_node_path", "actor_node_path"), &NNAgent::set_actor_node_path);
-	ClassDB::bind_method(D_METHOD("get_actor_node_path"), &NNAgent::get_actor_node_path);
-	ADD_PROPERTY(PropertyInfo(Variant::NODE_PATH, "actor_node_path"), "set_actor_node_path", "get_actor_node_path");
+	ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "assigned_actor", PROPERTY_HINT_NODE_TYPE, "Node"), "set_assigned_actor", "get_assigned_actor");
 
 	ClassDB::bind_method(D_METHOD("get_current_behaviour_group_node"), &NNAgent::get_current_behaviour_group_node);
 	ClassDB::bind_method(D_METHOD("get_current_behaviour_node"), &NNAgent::get_current_behaviour_node);
@@ -768,8 +764,8 @@ bool NNAgent::_auto_tick_step_callback(double p_delta, double p_tick_delta, bool
 
 // Getters and Setters.
 
-void NNAgent::set_blackboard_resource(const Ref<NNBlackboard> &p_blackboard) {
-	_root_context.set_blackboard(p_blackboard);
+void NNAgent::set_assigned_blackboard(const Ref<NNBlackboard> &p_blackboard) {
+	_root_context.set_assigned_blackboard(p_blackboard);
 #ifdef DEBUG_ENABLED
 	_debug_blackboard_watch.sync();
 #endif
@@ -783,8 +779,8 @@ NNBlackboard *NNAgent::get_blackboard_resource() const {
 	return _root_context.resolve_blackboard(this);
 }
 
-void NNAgent::set_actor(Node *p_actor) {
-	_root_context.set_actor(p_actor);
+void NNAgent::set_assigned_actor(Node *p_actor) {
+	_root_context.set_assigned_actor(p_actor);
 }
 
 Node *NNAgent::get_assigned_actor() const {
@@ -793,14 +789,6 @@ Node *NNAgent::get_assigned_actor() const {
 
 Node *NNAgent::get_actor() const {
 	return _root_context.resolve_actor(this);
-}
-
-void NNAgent::set_actor_node_path(const NodePath &p_actor_node_path) {
-	_root_context.set_actor_node_path(p_actor_node_path);
-}
-
-NodePath NNAgent::get_actor_node_path() const {
-	return _root_context.get_actor_node_path();
 }
 
 godot::String NNAgent::get_current_behaviour_name() const {

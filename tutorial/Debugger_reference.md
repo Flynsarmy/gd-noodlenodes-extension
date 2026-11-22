@@ -67,7 +67,7 @@ An **agent**, **behaviour tree root**, **state tree root** and **HTN root** each
 | `host_node_name` | `String` | The host node's name. |
 | `host_node_class` | `String` | The host node's class, for example `"NNAction"` or `"NNHTNTask"`. |
 
-The **actor** is the node the root does its work for, normally an NPC or another entity node. A root resolves it with `NoodleNodes.get_actor()`: its explicit actor, then its `actor_node_path`, then the actor inherited from an ancestor root, then its parent node. The overlay groups roots by actor and anchors their labels at that node, falling back to the scene owner when a root has no actor. The **owner** is only the scene owner, so in a single-scene setup it is the scene root and says nothing about which entity the root belongs to.
+The **actor** is the node the root does its work for, normally an NPC or another entity node. A root resolves it with `NoodleNodes.get_actor()`: its assigned actor, then the actor inherited from an ancestor root, then its parent node. The overlay groups roots by actor and anchors their labels at that node, falling back to the scene owner when a root has no actor. The **owner** is only the scene owner, so in a single-scene setup it is the scene root and says nothing about which entity the root belongs to.
 
 The host fields describe where the root sits in another system's tree. There are two cases:
 

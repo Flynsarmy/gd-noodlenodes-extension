@@ -30,17 +30,13 @@ void NNHTNRoot::_bind_methods() {
 	BIND_ENUM_CONSTANT(BUDGET_EXHAUSTED);
 	BIND_ENUM_CONSTANT(INVALID_DOMAIN);
 
-	ClassDB::bind_method(D_METHOD("set_blackboard_resource", "blackboard"), &NNHTNRoot::set_blackboard_resource);
+	ClassDB::bind_method(D_METHOD("set_assigned_blackboard", "blackboard"), &NNHTNRoot::set_assigned_blackboard);
 	ClassDB::bind_method(D_METHOD("get_assigned_blackboard"), &NNHTNRoot::get_assigned_blackboard);
-	ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "blackboard", PROPERTY_HINT_RESOURCE_TYPE, "NNBlackboard"), "set_blackboard_resource", "get_assigned_blackboard");
+	ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "assigned_blackboard", PROPERTY_HINT_RESOURCE_TYPE, "NNBlackboard"), "set_assigned_blackboard", "get_assigned_blackboard");
 
-	ClassDB::bind_method(D_METHOD("set_actor", "actor"), &NNHTNRoot::set_actor);
+	ClassDB::bind_method(D_METHOD("set_assigned_actor", "actor"), &NNHTNRoot::set_assigned_actor);
 	ClassDB::bind_method(D_METHOD("get_assigned_actor"), &NNHTNRoot::get_assigned_actor);
-	ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "actor", PROPERTY_HINT_NODE_TYPE, "Node"), "set_actor", "get_assigned_actor");
-
-	ClassDB::bind_method(D_METHOD("set_actor_node_path", "actor_node_path"), &NNHTNRoot::set_actor_node_path);
-	ClassDB::bind_method(D_METHOD("get_actor_node_path"), &NNHTNRoot::get_actor_node_path);
-	ADD_PROPERTY(PropertyInfo(Variant::NODE_PATH, "actor_node_path"), "set_actor_node_path", "get_actor_node_path");
+	ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "assigned_actor", PROPERTY_HINT_NODE_TYPE, "Node"), "set_assigned_actor", "get_assigned_actor");
 
 	ClassDB::bind_method(D_METHOD("set_tick_rate", "tick_rate"), &NNHTNRoot::set_tick_rate);
 	ClassDB::bind_method(D_METHOD("get_tick_rate"), &NNHTNRoot::get_tick_rate);
@@ -143,8 +139,8 @@ NNHTNRoot::NNHTNRoot() {
 
 // Getters and setters.
 
-void NNHTNRoot::set_blackboard_resource(const Ref<NNBlackboard> &p_blackboard) {
-	_root_context.set_blackboard(p_blackboard);
+void NNHTNRoot::set_assigned_blackboard(const Ref<NNBlackboard> &p_blackboard) {
+	_root_context.set_assigned_blackboard(p_blackboard);
 	_reconnect_board();
 #ifdef DEBUG_ENABLED
 	_debug_blackboard_watch.sync();
@@ -159,8 +155,8 @@ NNBlackboard *NNHTNRoot::get_blackboard_resource() const {
 	return _root_context.resolve_blackboard(this);
 }
 
-void NNHTNRoot::set_actor(Node *p_actor) {
-	_root_context.set_actor(p_actor);
+void NNHTNRoot::set_assigned_actor(Node *p_actor) {
+	_root_context.set_assigned_actor(p_actor);
 }
 
 Node *NNHTNRoot::get_assigned_actor() const {
@@ -169,14 +165,6 @@ Node *NNHTNRoot::get_assigned_actor() const {
 
 Node *NNHTNRoot::get_actor() const {
 	return _root_context.resolve_actor(this);
-}
-
-void NNHTNRoot::set_actor_node_path(const NodePath &p_actor_node_path) {
-	_root_context.set_actor_node_path(p_actor_node_path);
-}
-
-NodePath NNHTNRoot::get_actor_node_path() const {
-	return _root_context.get_actor_node_path();
 }
 
 void NNHTNRoot::set_tick_rate(int p_tick_rate) {

@@ -8,7 +8,7 @@ NNRootContext::NNRootContext() {
 	_actor_id = ObjectID();
 }
 
-void NNRootContext::set_blackboard(const Ref<NNBlackboard> &p_blackboard) {
+void NNRootContext::set_assigned_blackboard(const Ref<NNBlackboard> &p_blackboard) {
 	_blackboard = p_blackboard;
 }
 
@@ -32,7 +32,7 @@ NNBlackboard *NNRootContext::resolve_blackboard(const Node *p_owner) const {
 	return _local_blackboard.ptr();
 }
 
-void NNRootContext::set_actor(Node *p_actor) {
+void NNRootContext::set_assigned_actor(Node *p_actor) {
 	_actor_id = p_actor != nullptr ? ObjectID(p_actor->get_instance_id()) : ObjectID();
 }
 
@@ -43,14 +43,6 @@ Node *NNRootContext::get_assigned_actor() const {
 	return Object::cast_to<Node>(ObjectDB::get_instance(_actor_id));
 }
 
-void NNRootContext::set_actor_node_path(const NodePath &p_actor_node_path) {
-	_actor_node_path = p_actor_node_path;
-}
-
-NodePath NNRootContext::get_actor_node_path() const {
-	return _actor_node_path;
-}
-
 Node *NNRootContext::resolve_actor(const Node *p_owner) const {
 	if (Node *actor = get_assigned_actor()) {
 		return actor;
@@ -58,12 +50,6 @@ Node *NNRootContext::resolve_actor(const Node *p_owner) const {
 
 	if (p_owner == nullptr) {
 		return nullptr;
-	}
-
-	if (!_actor_node_path.is_empty()) {
-		if (Node *actor = p_owner->get_node_or_null(_actor_node_path)) {
-			return actor;
-		}
 	}
 
 	const NoodleNodes *owner = Object::cast_to<NoodleNodes>(p_owner);

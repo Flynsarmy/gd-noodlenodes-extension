@@ -154,15 +154,13 @@ public:
 	Dictionary get_debug_snapshot() const override;
 #endif
 
-	void set_blackboard_resource(const Ref<NNBlackboard> &p_blackboard);
+	void set_assigned_blackboard(const Ref<NNBlackboard> &p_blackboard);
 	Ref<NNBlackboard> get_assigned_blackboard() const;
 	NNBlackboard *get_blackboard_resource() const override;
 
-	void set_actor(Node *p_actor);
+	void set_assigned_actor(Node *p_actor);
 	Node *get_assigned_actor() const;
 	Node *get_actor() const override;
-	void set_actor_node_path(const NodePath &p_actor_node_path);
-	NodePath get_actor_node_path() const;
 
 #ifdef DEBUG_ENABLED
 	inline uint64_t get_last_visited_timestamp() const { return _last_visited_timestamp; };

@@ -23,7 +23,7 @@ public:
 	void configure(NoodleNodes *p_owner);
 
 	void set_watched(bool p_watched);
-	// Follows a board change made through set_blackboard_resource().
+	// Follows a board change made through set_assigned_blackboard().
 	void sync();
 
 	// Relays for the owner's bound blackboard signal handlers.

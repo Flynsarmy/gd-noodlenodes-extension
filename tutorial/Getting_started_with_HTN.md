@@ -82,7 +82,7 @@ npc (CharacterBody3D)
       └─ Idle (NNHTNTask)
 ```
 
- * **NNHTNRoot** owns the world state, plans and executes the plan. Its **Actor** is the NPC, which the task scripts read with `get_actor()`. Like the other Noodle Nodes roots, it ticks itself on the **Physics** frame by default.
+ * **NNHTNRoot** owns the world state, plans and executes the plan. Its **Assigned Actor** is the NPC, which the task scripts read with `get_actor()`. Like the other Noodle Nodes roots, it ticks itself on the **Physics** frame by default.
  * **NNHTNCompoundTask** is a high-level task. The root plans for its only compound child, the **domain** (`Be NPC`). A compound is achieved by one of its methods.
  * **NNHTNMethod** is one way to achieve its parent compound. Its children are planned one after another.
  * **NNHTNTask** is a primitive task: an action with a script that the root executes, or a root it hosts (see [section 11](Getting_started_with_HTN.md#11-mixing-systems)).
@@ -93,7 +93,7 @@ Every domain node has **Conditions**, which must all hold for the node to be use
 
 ## 4. World state and conditions
 
-The world state is an **NNBlackboard**. Select the `HTN` node and open its **Blackboard** in the inspector. The initial state is authored in its **Values**:
+The world state is an **NNBlackboard**. Select the `HTN` node and open its **Assigned Blackboard** in the inspector. The initial state is authored in its **Values**:
 
 |Key|Initial value|Written by|
 |--|--|--|
@@ -280,7 +280,7 @@ An HTN root works with the other Noodle Nodes systems in both directions.
 
 **Another system inside an HTN task.** An `NNHTNTask` hosts the roots placed under it, so a primitive step can be carried out by a behaviour tree, a state tree, an agent or another HTN root. The hosted roots start when the step starts, tick with the HTN root's delta while it runs, and are reset when it ends or is cancelled. The first `finished` report gives the step its *success* or *failure*, so the task needs no script. If the task also has an `on_execute()`, it runs first each tick, and a *success* or *failure* it returns ends the step before the hosted roots tick.
 
-Either way, nested roots share blackboards and actors: a root without its own **Blackboard** or **Actor** uses the nearest ancestor root's. An HTN root nested under a behaviour tree therefore plans on that tree's board and replans when its relevant keys change, and a behaviour tree under an HTN task reads and writes the HTN world state.
+Either way, nested roots share blackboards and actors: a root without its own **Assigned Blackboard** or **Assigned Actor** uses the nearest ancestor root's. An HTN root nested under a behaviour tree therefore plans on that tree's board and replans when its relevant keys change, and a behaviour tree under an HTN task reads and writes the HTN world state.
 
 [Combining the systems](Combining_the_systems.md#5-a-goal-that-plans-with-htn) puts both directions in one scene: a utility agent's Investigate goal hosts an HTN root whose world state is the board shared with a movement state tree, and each task of its plan hosts a behaviour tree that queries the Node Query System and sends events to the chart.
 

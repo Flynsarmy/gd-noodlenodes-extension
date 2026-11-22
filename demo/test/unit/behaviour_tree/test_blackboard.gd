@@ -15,7 +15,7 @@ class HelperWritingLeaf extends NNBTLeaf:
 func test_root_board_defaults_to_a_private_board_and_accepts_an_assignment() -> void:
 	var bt_root := NNBTRoot.new()
 
-	assert_null(bt_root.blackboard, "no board is assigned by default")
+	assert_null(bt_root.assigned_blackboard, "no board is assigned by default")
 	assert_null(bt_root.get_assigned_blackboard(), "the assigned board is null by default")
 	var private_board := bt_root.get_blackboard_resource()
 	assert_true(private_board is NNBlackboard, "the root always resolves an effective board")
@@ -27,8 +27,8 @@ func test_root_board_defaults_to_a_private_board_and_accepts_an_assignment() -> 
 	assert_false(bt_root.has_blackboard("key"), "helpers erase through the private board")
 
 	var custom := NNBlackboard.new()
-	bt_root.blackboard = custom
-	assert_eq(bt_root.blackboard, custom, "assigning a custom resource replaces the default")
+	bt_root.assigned_blackboard = custom
+	assert_eq(bt_root.assigned_blackboard, custom, "assigning a custom resource replaces the default")
 
 	bt_root.set_blackboard("key", "value")
 	assert_eq(custom.get_value("key", ""), "value", "helpers write to the custom resource")
@@ -53,14 +53,14 @@ func test_null_blackboard_clears_the_assignment() -> void:
 	var bt_root := NNBTRoot.new()
 	var custom := NNBlackboard.new()
 
-	bt_root.blackboard = custom
+	bt_root.assigned_blackboard = custom
 	bt_root.set_blackboard("key", "value")
 	assert_eq(custom.get_value("key", ""), "value", "helpers write to the assigned board")
 
-	bt_root.blackboard = null
+	bt_root.assigned_blackboard = null
 
 	assert_engine_error_count(0, "assigning null is legal and reports no engine error")
-	assert_null(bt_root.blackboard, "the assignment is cleared")
+	assert_null(bt_root.assigned_blackboard, "the assignment is cleared")
 	assert_null(bt_root.get_assigned_blackboard())
 
 	var fallback := bt_root.get_blackboard_resource()
@@ -84,58 +84,42 @@ func test_actor_precedence_and_fallback() -> void:
 	bt_root.name = "Root"
 	container.add_child(bt_root)
 
-	var path_actor := Node.new()
-	path_actor.name = "PathActor"
-	container.add_child(path_actor)
-
 	var explicit_actor := Node.new()
 	explicit_actor.name = "ExplicitActor"
 	bt_root.add_child(explicit_actor)
-	bt_root.actor = explicit_actor
+	bt_root.assigned_actor = explicit_actor
 
-	bt_root.actor_node_path = NodePath("../PathActor")
-	assert_eq(bt_root.get_assigned_actor(), explicit_actor, "the property reads back the explicit actor")
-	assert_eq(bt_root.get_actor(), explicit_actor, "the explicit actor wins over the path")
+	assert_eq(bt_root.get_assigned_actor(), explicit_actor, "the property reads back the assigned actor")
+	assert_eq(bt_root.get_actor(), explicit_actor, "the assigned actor wins over the parent")
 
-	bt_root.actor = null
+	bt_root.assigned_actor = null
 	assert_null(bt_root.get_assigned_actor(), "clearing the actor clears the assignment")
-	assert_eq(bt_root.get_actor(), path_actor, "actor_node_path wins over the parent")
+	assert_eq(bt_root.get_actor(), container, "clearing the assignment falls back to the parent")
 
-	bt_root.actor = explicit_actor
+	bt_root.assigned_actor = explicit_actor
 	explicit_actor.free()
-	assert_null(bt_root.get_assigned_actor(), "a freed explicit actor is no longer assigned")
-	assert_eq(bt_root.get_actor(), path_actor, "a freed explicit actor falls back to the path")
-
-	bt_root.actor_node_path = NodePath("../Missing")
-	assert_eq(bt_root.get_actor(), container, "an invalid path falls through to the parent")
+	assert_null(bt_root.get_assigned_actor(), "a freed actor is no longer assigned")
+	assert_eq(bt_root.get_actor(), container, "a freed actor falls back to the parent")
 
 	container.free()
 
 
-func test_actor_node_path_resolves_on_entering_the_tree() -> void:
+func test_unassigned_actor_resolves_on_entering_the_tree() -> void:
 	var container := Node.new()
 	container.name = "Container"
-	var path_actor := Node.new()
-	path_actor.name = "PathActor"
-	container.add_child(path_actor)
 
 	var bt_root := NNBTRoot.new()
 	bt_root.name = "Root"
-	bt_root.actor_node_path = NodePath("../PathActor")
 
-	assert_eq(bt_root.get_actor_node_path(), NodePath("../PathActor"))
-	assert_null(bt_root.get_assigned_actor(), "only the path is set, no explicit actor")
-	assert_null(bt_root.get_actor(), "an orphaned root cannot resolve its actor yet")
+	assert_null(bt_root.get_assigned_actor(), "no actor is assigned")
+	assert_null(bt_root.get_actor(), "an orphaned root resolves no actor")
 
 	container.add_child(bt_root)
-	assert_eq(bt_root.get_actor(), path_actor, "entering the tree resolves actor_node_path")
+	assert_eq(bt_root.get_actor(), container, "entering the tree resolves the parent")
 
 	var other_container := Node.new()
 	other_container.name = "OtherContainer"
 	container.add_child(other_container)
-
-	bt_root.actor_node_path = NodePath("../Missing")
-	assert_eq(bt_root.get_actor(), container, "the parent fallback resolves inside the tree")
 
 	bt_root.reparent(other_container)
 	assert_eq(bt_root.get_actor(), other_container, "the parent fallback follows the new parent")
@@ -183,7 +167,7 @@ func test_node_reference_resolves_from_its_target() -> void:
 	var root_a := NNBTRoot.new()
 	var root_b := NNBTRoot.new()
 	var actor_b := Node.new()
-	root_b.actor = actor_b
+	root_b.assigned_actor = actor_b
 
 	var target := NNBTSequence.new()
 	root_b.add_child(target)
@@ -243,7 +227,7 @@ func test_behaviour_tree_under_state_tree_inherits_its_board() -> void:
 func test_inner_root_explicit_board_overrides_inheritance() -> void:
 	var st_root := NNSTRoot.new()
 	var outer_board := NNBlackboard.new()
-	st_root.blackboard = outer_board
+	st_root.assigned_blackboard = outer_board
 	var state := NNSTNode.new()
 	st_root.add_child(state)
 	var bt_root := NNBTRoot.new()
@@ -254,13 +238,13 @@ func test_inner_root_explicit_board_overrides_inheritance() -> void:
 	assert_eq(bt_root.get_blackboard_resource(), outer_board, "the inner root inherits the assigned board")
 
 	var inner_board := NNBlackboard.new()
-	bt_root.blackboard = inner_board
+	bt_root.assigned_blackboard = inner_board
 	assert_eq(bt_root.get_blackboard_resource(), inner_board, "an explicit assignment on the inner root wins")
 	assert_true(leaf.set_blackboard("key", "inner"))
 	assert_eq(inner_board.get_value("key", ""), "inner")
 	assert_false(outer_board.has_value("key"), "the inherited board is untouched")
 
-	bt_root.blackboard = null
+	bt_root.assigned_blackboard = null
 	assert_eq(bt_root.get_blackboard_resource(), outer_board, "clearing the assignment returns to inheritance")
 	assert_true(leaf.set_blackboard("key", "outer"))
 	assert_eq(outer_board.get_value("key", ""), "outer")
@@ -300,7 +284,7 @@ func test_inner_root_inherits_the_actor_of_its_ancestor_root() -> void:
 	container.add_child(st_root)
 	var outer_actor := Node.new()
 	container.add_child(outer_actor)
-	st_root.actor = outer_actor
+	st_root.assigned_actor = outer_actor
 
 	var state := NNSTNode.new()
 	st_root.add_child(state)
@@ -314,16 +298,13 @@ func test_inner_root_inherits_the_actor_of_its_ancestor_root() -> void:
 
 	var inner_actor := Node.new()
 	container.add_child(inner_actor)
-	bt_root.actor = inner_actor
-	assert_eq(bt_root.get_actor(), inner_actor, "an explicit actor on the inner root wins")
+	bt_root.assigned_actor = inner_actor
+	assert_eq(bt_root.get_actor(), inner_actor, "an assigned actor on the inner root wins")
 	assert_eq(leaf.get_actor(), inner_actor)
 
-	bt_root.actor = null
-	var path_actor := Node.new()
-	bt_root.add_child(path_actor)
-	bt_root.actor_node_path = bt_root.get_path_to(path_actor)
-	assert_eq(bt_root.get_actor(), path_actor, "actor_node_path wins over the inherited actor")
-	assert_eq(leaf.get_actor(), path_actor)
+	bt_root.assigned_actor = null
+	assert_eq(bt_root.get_actor(), outer_actor, "clearing the assignment returns to the inherited actor")
+	assert_eq(leaf.get_actor(), outer_actor)
 
 	assert_engine_error_count(0)
 	container.free()
@@ -454,7 +435,7 @@ func test_default_blackboard_is_private_and_not_serialised() -> void:
 	bt_root.owner = world
 
 	var text := Fixtures.save_serialised_scene(self, world, path)
-	assert_false(text.contains("blackboard"), "the private board is not serialised")
+	assert_false(text.contains("assigned_blackboard ="), "the private board is not serialised")
 	assert_false(text.contains("NNBlackboard"), "no blackboard sub-resource is written")
 
 	var first: Node = (load(path) as PackedScene).instantiate()
@@ -488,10 +469,10 @@ func test_assigned_blackboard_is_local_to_scene_by_default() -> void:
 	bt_root.name = "BT"
 	world.add_child(bt_root)
 	bt_root.owner = world
-	bt_root.blackboard = board
+	bt_root.assigned_blackboard = board
 
 	var text := Fixtures.save_serialised_scene(self, world, path)
-	assert_true(text.contains("blackboard"), "the assigned board is serialised")
+	assert_true(text.contains("assigned_blackboard ="), "the assigned board is serialised")
 	assert_true(text.contains("NNBlackboard"), "the assigned board is written as a sub-resource")
 
 	var first: Node = (load(path) as PackedScene).instantiate()
@@ -524,7 +505,7 @@ func test_deliberately_shared_blackboard_is_shared() -> void:
 	bt_root.name = "BT"
 	world.add_child(bt_root)
 	bt_root.owner = world
-	bt_root.blackboard = board
+	bt_root.assigned_blackboard = board
 
 	Fixtures.save_serialised_scene(self, world, path)
 
@@ -555,27 +536,14 @@ func test_resolved_actors_are_not_serialised() -> void:
 	plain.name = "Plain"
 	parent.add_child(plain)
 	plain.owner = world
-	var pathed := NNBTRoot.new()
-	pathed.name = "Pathed"
-	parent.add_child(pathed)
-	pathed.owner = world
-	var other := Node.new()
-	other.name = "Other"
-	parent.add_child(other)
-	other.owner = world
-	pathed.actor_node_path = NodePath("../Other")
 
 	var text := Fixtures.save_serialised_scene(self, world, path)
-	assert_true(text.contains("actor_node_path"), "the path is serialised")
-	assert_eq(text.count("actor ="), 0, "a resolved actor is never serialised")
+	assert_eq(text.count("assigned_actor ="), 0, "a resolved actor is never serialised")
 
 	var first: Node = (load(path) as PackedScene).instantiate()
 	var plain_root: NNBTRoot = first.get_node("Parent/Plain")
-	var pathed_root: NNBTRoot = first.get_node("Parent/Pathed")
 	assert_null(plain_root.get_assigned_actor(), "no actor is assigned")
 	assert_eq(plain_root.get_actor(), first.get_node("Parent"), "the parent is resolved on demand")
-	assert_null(pathed_root.get_assigned_actor(), "only the path is set")
-	assert_eq(pathed_root.get_actor(), first.get_node("Parent/Other"), "the path target is resolved on demand")
 
 	world.free()
 	first.free()
@@ -594,17 +562,17 @@ func test_explicit_actor_round_trips() -> void:
 	actor.name = "Actor"
 	bt_root.add_child(actor)
 	actor.owner = world
-	bt_root.actor = actor
+	bt_root.assigned_actor = actor
 
 	var text := Fixtures.save_serialised_scene(self, world, path)
-	assert_true(text.contains("actor ="), "the explicit actor is serialised")
+	assert_true(text.contains("assigned_actor ="), "the assigned actor is serialised")
 
 	var first: Node = (load(path) as PackedScene).instantiate()
 	var first_root: NNBTRoot = first.get_node("BT")
 	var assigned: Node = first_root.get_assigned_actor()
-	assert_not_null(assigned, "the explicit actor is assigned after loading")
+	assert_not_null(assigned, "the assigned actor is restored after loading")
 	assert_eq(assigned.name, "Actor")
-	assert_eq(first_root.get_actor(), assigned, "the resolved actor is the explicit actor")
+	assert_eq(first_root.get_actor(), assigned, "the resolved actor is the assigned actor")
 	assert_eq(first_root.get_node("Actor"), assigned)
 
 	world.free()

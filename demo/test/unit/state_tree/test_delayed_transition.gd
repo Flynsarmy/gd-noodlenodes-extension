@@ -245,7 +245,7 @@ func test_event_guard_is_not_re_evaluated_when_delay_elapses() -> void:
 	_guard.expression = "allowed"
 	var board := NNBlackboard.new()
 	board.values = { "allowed": true }
-	_root.blackboard = board
+	_root.assigned_blackboard = board
 
 	watch_signals(_transition)
 
@@ -269,7 +269,7 @@ func test_expression_delay_is_evaluated_from_blackboard() -> void:
 
 	var board := NNBlackboard.new()
 	board.values = { "delay_time": 0.5 }
-	_root.blackboard = board
+	_root.assigned_blackboard = board
 
 	assert_almost_eq(_transition.evaluate_delay(), 0.5, 0.0001)
 
@@ -287,7 +287,7 @@ func test_negative_delay_is_immediate() -> void:
 		var _transition: NNSTTransition = _tree["transition"]
 		var board := NNBlackboard.new()
 		board.values = { "delay_time": -2.0 }
-		_root.blackboard = board
+		_root.assigned_blackboard = board
 
 		assert_eq(_transition.evaluate_delay(), 0.0, delay)
 		assert_true(_transition.take(false), delay)
@@ -307,7 +307,7 @@ func test_non_float_expression_delay_falls_back_to_zero() -> void:
 
 	var board := NNBlackboard.new()
 	board.values = { "bad_delay": "not a number" }
-	_root.blackboard = board
+	_root.assigned_blackboard = board
 
 	assert_eq(_transition.evaluate_delay(), 0.0)
 	assert_engine_error("is not a float")
