@@ -4,17 +4,38 @@ on:
   workflow_call:
 
 jobs:
-  build:
+  clang-format:
     runs-on: ubuntu-latest
 
     steps:
       - name: Check out code
-        uses: actions/checkout@v4
-      - name: Setup clang-format
+        uses: actions/checkout@v7
+      - name: Setup Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: '3.x'
+      # Pinned: unpinned clang-format changes its formatting rules between releases.
+      - name: Install clang-format
         shell: bash
-        run: |
-          python -m pip install clang-format
+        run: python -m pip install clang-format==23.1.5
       - name: Run clang-format
         shell: bash
         run: |
-          clang-format --style=file:.clang-format --dry-run --Werror $(find "src/" | grep -E ".*(\.cpp|\.h)$")
+          find src -type f \( -name '*.cpp' -o -name '*.h' \) -exec clang-format --style=file:.clang-format --dry-run --Werror {} +
+
+  gdlint:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v7
+      - name: Setup Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: '3.x'
+      - name: Install gdtoolkit
+        shell: bash
+        run: python -m pip install gdtoolkit==4.5.0
+      - name: Run gdlint
+        shell: bash
+        run: gdlint demo

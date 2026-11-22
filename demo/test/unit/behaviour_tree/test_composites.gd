@@ -5,7 +5,7 @@ extends GutTest
 const BT = preload("res://test/unit/behaviour_tree/support/bt_helpers.gd")
 const Fixtures = preload("res://test/support/fixtures.gd")
 
-var COMPOSITE_TYPES: Array = [NNBTSequence, NNBTSelector, NNBTRandomSelector]
+var composite_types: Array = [NNBTSequence, NNBTSelector, NNBTRandomSelector]
 
 
 func _count_ticks(leaves: Array) -> int:
@@ -20,7 +20,7 @@ func _identity_result(composite: NNBTNodes) -> int:
 
 
 func test_single_child_result_passes_through() -> void:
-	for composite_type in COMPOSITE_TYPES:
+	for composite_type in composite_types:
 		for result: int in [NNBTNodes.RUNNING, NNBTNodes.FAILURE, NNBTNodes.SUCCESS]:
 			var composite: NNBTNodes = composite_type.new()
 			var leaf: BT.CountingLeaf = BT.make_leaf(result)
@@ -33,7 +33,7 @@ func test_single_child_result_passes_through() -> void:
 
 
 func test_empty_and_all_disabled_composites_return_their_identity_result() -> void:
-	for composite_type in COMPOSITE_TYPES:
+	for composite_type in composite_types:
 		var empty: NNBTNodes = composite_type.new()
 		var empty_root: NNBTRoot = BT.build_tree(empty, [])
 		BT.tick_and_assert(self, empty_root, empty, _identity_result(empty))
@@ -60,7 +60,7 @@ func test_trailing_skip_returns_the_identity_result() -> void:
 
 
 func test_a_new_run_after_failure_restarts_from_the_first_child() -> void:
-	for composite_type in COMPOSITE_TYPES:
+	for composite_type in composite_types:
 		var composite: NNBTNodes = composite_type.new()
 		var leaf: BT.CountingLeaf = BT.make_leaf(NNBTNodes.FAILURE)
 		var root: NNBTRoot = BT.build_tree(composite, [leaf])

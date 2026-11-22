@@ -7,32 +7,47 @@ on:
 
 concurrency:
     group: ${{ github.workflow }}-${{ github.ref }}
-    cancel-in-progress: true
+    cancel-in-progress: ${{ github.ref != 'refs/heads/master' }}
 
 jobs:
     lint:
         uses: ./.github/workflows/lint.yml
-    build_android:
-        needs: [lint]
-        uses: ./.github/workflows/build_android.yml
-    # build_ios:
-    #     needs: [lint]
-    #     uses: ./.github/workflows/build_ios.yml
-    build_linux:
-        needs: [lint]
-        uses: ./.github/workflows/build_linux.yml
-    build_macos:
-        needs: [lint]
-        uses: ./.github/workflows/build_macos.yml
-    build_windows:
-        needs: [lint]
-        uses: ./.github/workflows/build_windows.yml
-    build_web:
-        needs: [lint]
-        uses: ./.github/workflows/build_web.yml
-    group_builds:
-        needs: [build_android, build_linux, build_macos, build_windows, build_web]
-        uses: ./.github/workflows/group_builds.yml
+    build_test_lib:
+        uses: ./.github/workflows/build.yml
+        with:
+            platform: linux
+            arch: x86_64
+            target-type: template_debug
+            runs-on: ubuntu-latest
     test:
-        needs: [group_builds]
+        needs: [build_test_lib]
         uses: ./.github/workflows/test.yml
+    build:
+        uses: ./.github/workflows/build.yml
+        strategy:
+            fail-fast: false
+            matrix:
+                include:
+                    - { platform: android, arch: arm64, target-type: template_debug, runs-on: ubuntu-latest }
+                    - { platform: android, arch: x86_64, target-type: template_debug, runs-on: ubuntu-latest }
+                    - { platform: android, arch: arm64, target-type: template_release, runs-on: ubuntu-latest }
+                    - { platform: android, arch: x86_64, target-type: template_release, runs-on: ubuntu-latest }
+                    - { platform: linux, arch: x86_64, target-type: template_release, runs-on: ubuntu-latest }
+                    - { platform: linux, arch: arm64, target-type: template_debug, runs-on: ubuntu-24.04-arm }
+                    - { platform: linux, arch: arm64, target-type: template_release, runs-on: ubuntu-24.04-arm }
+                    # SConstruct writes a single framework name without an arch suffix, so macOS must be universal.
+                    - { platform: macos, arch: universal, target-type: template_debug, runs-on: macos-latest }
+                    - { platform: macos, arch: universal, target-type: template_release, runs-on: macos-latest }
+                    - { platform: windows, arch: x86_64, target-type: template_debug, runs-on: windows-latest }
+                    - { platform: windows, arch: x86_64, target-type: template_release, runs-on: windows-latest }
+                    - { platform: web, arch: wasm32, target-type: template_debug, runs-on: ubuntu-latest }
+                    - { platform: web, arch: wasm32, target-type: template_release, runs-on: ubuntu-latest }
+        with:
+            platform: ${{ matrix.platform }}
+            arch: ${{ matrix.arch }}
+            target-type: ${{ matrix.target-type }}
+            runs-on: ${{ matrix.runs-on }}
+    # Needs test: it deletes the artifact test downloads, and only tested builds get packaged.
+    group_builds:
+        needs: [lint, build_test_lib, build, test]
+        uses: ./.github/workflows/group_builds.yml

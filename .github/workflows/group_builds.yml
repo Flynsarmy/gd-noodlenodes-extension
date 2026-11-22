@@ -1,31 +1,29 @@
 name: Group Builds
+
 on:
-  workflow_dispatch:
   workflow_call:
 
 jobs:
-  build:
+  group_builds:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          submodules: true
-          fetch-depth: 0
+        uses: actions/checkout@v7
 
       - name: Download Build artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
-          path:  ${{ github.workspace }}/demo/addons/noodle_nodes/bin/
+          pattern: noodlenodes-*
+          path: ${{ github.workspace }}/demo/addons/noodle_nodes/bin/
           merge-multiple: true
 
       - name: Delete Build artifacts
-        uses: geekyeggo/delete-artifact@v5
+        uses: geekyeggo/delete-artifact@v6
         with:
-          name: libutilityai-*
+          name: noodlenodes-*
 
       - name: Upload Artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: noodle_nodes_demo_project
           path: ${{ github.workspace }}/demo/

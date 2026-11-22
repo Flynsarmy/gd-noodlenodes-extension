@@ -22,6 +22,6 @@ func _ready() -> void:
 		add_child(new_ai_entity)
 
 
-func _physics_process(delta: float) -> void:
+func _physics_process(_delta: float) -> void:
 	# Set the mouse cursor position as the to-vector.
 	mouse_position = get_viewport().get_mouse_position()

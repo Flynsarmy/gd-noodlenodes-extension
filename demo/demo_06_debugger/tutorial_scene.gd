@@ -8,6 +8,7 @@ extends Node2D
 const AGENT_SCENE: PackedScene = preload("agent_entity.tscn")
 const BEHAVIOUR_TREE_SCENE: PackedScene = preload("behaviour_tree_entity.tscn")
 const STATE_TREE_SCENE: PackedScene = preload("state_tree_entity.tscn")
+const BoxTexture: Texture2D = preload("res://icon.svg")
 
 const OVERLAY_NAME := "NoodleNodesOverlay"
 const AGENT := 1
@@ -152,10 +153,9 @@ func _create_avoidance_boxes() -> void:
 		Vector2(viewport_size.x * 0.36, viewport_size.y * 0.72),
 		Vector2(viewport_size.x * 0.62, viewport_size.y * 0.5),
 	]
-	var box_texture: Texture2D = preload("res://icon.svg")
 	for box_position in positions:
 		var box := Sprite2D.new()
-		box.texture = box_texture
+		box.texture = BoxTexture
 		box.scale = Vector2(0.3, 0.3)
 		box.modulate = Color(1.0, 0.4, 0.4, 0.85)
 		box.position = box_position

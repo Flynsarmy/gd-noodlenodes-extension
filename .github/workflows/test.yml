@@ -1,36 +1,49 @@
-name: Test build
+name: Test
+
 on:
-  workflow_dispatch:
   workflow_call:
 
+env:
+  GODOT_VERSION: 4.7.2
+
 jobs:
-  build:
+  test:
     runs-on: ubuntu-latest
+    # Godot runs under -d, so a hang would otherwise sit until the 6h default.
+    timeout-minutes: 15
     steps:
-      - name: Download Build artifacts
-        uses: actions/download-artifact@v4
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Download Test Library
+        uses: actions/download-artifact@v8
         with:
-          path:  ${{ github.workspace }}
-          name: noodle_nodes_demo_project
-      # - name: Run GDUnit4 tests
-      #   uses: MikeSchulze/gdUnit4-action@v1.1.5
-      #   with:
-      #     godot-version: 4.7.2
-      #     timeout: 3
-      #     paths: "res://test"
-      #     version: "installed"
-      #     publish-report: false
-      #     report-name: report_Godot4.7.2_unit-tests
+          name: noodlenodes-linux-x86_64-template_debug
+          path: ${{ github.workspace }}/demo/addons/noodle_nodes/bin/
+
+      - name: Cache Godot
+        id: godot-cache
+        uses: actions/cache@v6
+        with:
+          path: ${{ runner.tool_cache }}/godot
+          key: godot-${{ env.GODOT_VERSION }}-linux.x86_64
+
       - name: Download Godot
+        if: steps.godot-cache.outputs.cache-hit != 'true'
         shell: sh
         run: |
-          curl -fLO https://github.com/godotengine/godot-builds/releases/download/4.7.2-stable/Godot_v4.7.2-stable_linux.x86_64.zip
-          unzip Godot_v4.7.2-stable_linux.x86_64.zip -d /usr/local/bin
-          mv /usr/local/bin/Godot_v4.7.2-stable_linux.x86_64 /usr/local/bin/godot
-          chmod +x /usr/local/bin/godot
+          mkdir -p "${{ runner.tool_cache }}/godot"
+          curl -fL -o /tmp/godot.zip "https://github.com/godotengine/godot-builds/releases/download/${GODOT_VERSION}-stable/Godot_v${GODOT_VERSION}-stable_linux.x86_64.zip"
+          unzip -o /tmp/godot.zip -d "${{ runner.tool_cache }}/godot"
+          mv "${{ runner.tool_cache }}/godot/Godot_v${GODOT_VERSION}-stable_linux.x86_64" "${{ runner.tool_cache }}/godot/godot"
+          chmod +x "${{ runner.tool_cache }}/godot/godot"
+
+      - name: Add Godot to PATH
+        run: echo "${{ runner.tool_cache }}/godot" >> "$GITHUB_PATH"
+
       - name: Run tests
         shell: sh
+        working-directory: demo
         run: |
-          cd ${{ github.workspace }}
-          /usr/local/bin/godot --headless --path "$PWD" --import --quit
-          /usr/local/bin/godot --headless --path "$PWD" -d -s addons/gut/gut_cmdln.gd -gdir=res://test/ -gprefix=test_ -gsuffix=.gd -gexit -ginclude_subdirs
+          godot --headless --path . --import --quit
+          godot --headless --path . -d -s addons/gut/gut_cmdln.gd -gdir=res://test/ -gprefix=test_ -gsuffix=.gd -gexit -ginclude_subdirs

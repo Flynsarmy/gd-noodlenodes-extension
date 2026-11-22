@@ -1,0 +1,63 @@
+name: Build
+on:
+  workflow_call:
+    inputs:
+      platform:
+        required: true
+        type: string
+      arch:
+        required: true
+        type: string
+      target-type:
+        required: true
+        type: string
+      runs-on:
+        required: true
+        type: string
+
+jobs:
+  build:
+    # Taken mostly from https://github.com/godotengine/godot-cpp-template/blob/main/.github/workflows/builds.yml
+    runs-on: ${{ inputs.runs-on }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          submodules: true
+
+      - name: Setup godot-cpp
+        uses: ./godot-cpp/.github/actions/setup-godot-cpp
+        with:
+          platform: ${{ inputs.platform }}
+          ndk-version: r29
+
+      - name: Restore .scons-cache
+        uses: actions/cache/restore@v6
+        with:
+          path: ${{ github.workspace }}/.scons-cache/
+          key: scons-${{ inputs.platform }}-${{ inputs.arch }}-${{ inputs.target-type }}-${{ github.sha }}
+          restore-keys: scons-${{ inputs.platform }}-${{ inputs.arch }}-${{ inputs.target-type }}-
+
+      - name: Build GDExtension
+        shell: sh
+        env:
+          SCONS_CACHE: ${{ github.workspace }}/.scons-cache/
+        run: scons target=${{ inputs.target-type }} platform=${{ inputs.platform }} arch=${{ inputs.arch }}${{ inputs.platform == 'android' && ' ndk_version=29.0.14206865' || '' }}
+
+      - name: Save .scons-cache
+        if: github.ref == 'refs/heads/master'
+        uses: actions/cache/save@v6
+        with:
+          path: ${{ github.workspace }}/.scons-cache/
+          key: scons-${{ inputs.platform }}-${{ inputs.arch }}-${{ inputs.target-type }}-${{ github.sha }}
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: noodlenodes-${{ inputs.platform }}-${{ inputs.arch }}-${{ inputs.target-type }}
+          path: |
+            ${{ github.workspace }}/demo/addons/noodle_nodes/bin/libnoodlenodes.*
+            !${{ github.workspace }}/demo/addons/noodle_nodes/bin/**/*.exp
+            !${{ github.workspace }}/demo/addons/noodle_nodes/bin/**/*.lib
+            !${{ github.workspace }}/demo/addons/noodle_nodes/bin/**/*.pdb
+          if-no-files-found: error

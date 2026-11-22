@@ -1,0 +1,11 @@
+disable:
+- class-definitions-order
+- max-file-lines
+- max-line-length
+- max-public-methods
+- max-returns
+excluded_directories: !!set
+  .git: null
+  .godot: null
+  gut: null
+function-variable-name: _?[a-z][a-z0-9]*(_[a-z0-9]+)*

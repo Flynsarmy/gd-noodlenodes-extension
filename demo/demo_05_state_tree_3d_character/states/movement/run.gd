@@ -10,8 +10,7 @@ func on_tick(delta: float) -> void:
 	if not input_dir.length():
 		get_root().movement_state.send_event("movement_idle")
 		return
-	else:
-		target_speed = speed if not get_blackboard('holding_sprint', false) else sprint_speed
+	target_speed = speed if not get_blackboard('holding_sprint', false) else sprint_speed
 
 	var velocity: Vector3 = input_dir * target_speed
 
