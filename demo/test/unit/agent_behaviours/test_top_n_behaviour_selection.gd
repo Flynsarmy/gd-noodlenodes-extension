@@ -132,7 +132,7 @@ func test_fresh_pick_is_weighted_by_score() -> void:
 	assert_gt(counts["high"], counts["low"] * 5, "score-proportional picks should favour the higher score: %s" % [counts])
 
 
-func test_maximum_capacity_with_one_candidate_selects_only_filled_slot() -> void:
+func test_capacity_larger_than_the_candidate_count_selects_only_the_filled_slot() -> void:
 	var only: NNBehaviour = _make_behaviour("only", 0.5)
 	var agent: NNAgent = _make_agent([only], 16)
 
@@ -141,13 +141,22 @@ func test_maximum_capacity_with_one_candidate_selects_only_filled_slot() -> void
 	assert_eq(counts["only"], SELECTION_SAMPLES)
 
 
-func test_out_of_range_capacity_reports_error_and_preserves_valid_capacity() -> void:
+func test_more_than_sixteen_behaviours_are_all_selectable() -> void:
+	var behaviours: Array = []
+	for i in 20:
+		behaviours.append(_make_behaviour("behaviour_%d" % i, 0.5))
+	var agent: NNAgent = _make_agent(behaviours, 20)
+	agent.set_random_seed(4242)
+
+	var counts := _count_selections(agent, behaviours)
+
+	_assert_all_selectable(counts, SELECTION_SAMPLES)
+
+
+func test_zero_capacity_reports_error_and_preserves_valid_capacity() -> void:
 	var agent: NNAgent = _make_agent([], 2)
-	var message := "NNAgent::set_num_behaviours_to_select(): num_behaviours_to_select must be between 1 and 16."
+	var message := "NNAgent::set_num_behaviours_to_select(): num_behaviours_to_select must be at least 1."
 
 	agent.num_behaviours_to_select = 0
-	assert_engine_error(message)
-	assert_eq(agent.num_behaviours_to_select, 2)
-	agent.num_behaviours_to_select = 17
 	assert_engine_error(message)
 	assert_eq(agent.num_behaviours_to_select, 2)

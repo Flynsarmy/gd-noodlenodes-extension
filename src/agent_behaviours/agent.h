@@ -20,8 +20,6 @@
 #include <memory>
 #include <vector>
 
-#define NN_AGENT_MAX_TOP_SCORING_BEHAVIOURS 16
-
 namespace godot {
 
 class NNAgent : public NoodleNodes {
@@ -44,11 +42,14 @@ private:
 
 	float _current_behaviour_bias;
 
+	struct TopScoringBehaviour {
+		ObjectID group_id;
+		ObjectID behaviour_id;
+		float score;
+	};
+
 	int _num_behaviours_to_select;
-	int _num_possible_behaviours;
-	ObjectID _top_scoring_behaviour_group_ids[NN_AGENT_MAX_TOP_SCORING_BEHAVIOURS];
-	ObjectID _top_scoring_behaviour_ids[NN_AGENT_MAX_TOP_SCORING_BEHAVIOURS];
-	float _top_scoring_behaviours_score[NN_AGENT_MAX_TOP_SCORING_BEHAVIOURS];
+	std::vector<TopScoringBehaviour> _top_scoring_behaviours;
 	godot::String _top_scoring_behaviour_name;
 	godot::String _current_behaviour_name;
 

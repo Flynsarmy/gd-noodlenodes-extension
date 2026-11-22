@@ -13,6 +13,14 @@
 	</description>
 	<tutorials>
 	</tutorials>
+	<methods>
+		<method name="get_seconds_since_active" qualifiers="const">
+			<return type="float" />
+			<description>
+				Returns the seconds of agent time since this behaviour was last active: [code]INF[/code] when it has never been selected, [code]0.0[/code] while it is running between [signal behaviour_entered] and [signal behaviour_exited], and otherwise the time elapsed since it ended, starting again from [code]0.0[/code]. Time advances with the owning [NNAgent]'s ticks, like [member cooldown_seconds], not with wall-clock time. Feed it to a [NNTimeSinceBehaviourSensor] to score recency without a script.
+			</description>
+		</method>
+	</methods>
 	<members>
 		<member name="behaviour_id" type="int" setter="set_behaviour_id" getter="get_behaviour_id" default="0">
 			A user-definable ID for the behaviour. Useful for identifying which behaviour is currently running.

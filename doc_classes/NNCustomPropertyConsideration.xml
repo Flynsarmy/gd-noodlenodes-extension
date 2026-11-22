@@ -4,7 +4,7 @@
 		Scores a behaviour from a numeric property of any node.
 	</brief_description>
 	<description>
-		Reads a numeric property named [member property_name] from [member node_with_property] on every evaluation and divides its float value by [member property_max_value] to produce [member NNConsiderations.score].
+		Reads a numeric property named [member property_name] from [member node_with_property] on every evaluation and divides its float value by [member property_max_value] to produce [member NNConsiderations.score]. When [member activation_curve] is assigned, the normalized value is passed through it to produce the score.
 		Scores [code]0.0[/code] when disabled, in the editor, when [member node_with_property] is not set, or while [member NNConsiderations.has_vetoed] is [code]true[/code]. Unlike [NNConsideration], it does not read a sensor input or [member NNConsideration.activation_input_value].
 	</description>
 	<tutorials>
@@ -19,6 +19,9 @@
 		</method>
 	</methods>
 	<members>
+		<member name="activation_curve" type="Resource" setter="set_activation_curve" getter="get_activation_curve">
+			Optional [Curve] or [NNResponseCurve] applied to the normalized property value to produce [member NNConsiderations.score]. When [code]null[/code], the normalized value is used directly. Assigning any other resource type reports an error and keeps the previous curve.
+		</member>
 		<member name="node_with_property" type="Node" setter="set_node_with_property" getter="get_node_with_property">
 			The node whose [member property_name] property is read. The consideration scores [code]0.0[/code] when this is not set. If the node is freed, this property reads as [code]null[/code] and is treated as unset.
 		</member>

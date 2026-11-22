@@ -1,5 +1,6 @@
 #include "behaviour.h"
 
+#include <cmath>
 #include <godot_cpp/classes/engine.hpp>
 #include <godot_cpp/classes/random_number_generator.hpp>
 #include <godot_cpp/classes/time.hpp>
@@ -32,6 +33,8 @@ void NNBehaviour::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_cooldown_turns"), &NNBehaviour::get_cooldown_turns);
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "cooldown_turns", PROPERTY_HINT_RANGE, "0,64,or_greater,suffix:turns"), "set_cooldown_turns", "get_cooldown_turns");
 
+	ClassDB::bind_method(D_METHOD("get_seconds_since_active"), &NNBehaviour::get_seconds_since_active);
+
 	ClassDB::bind_method(D_METHOD("set_on_selected_event", "on_selected_event"), &NNBehaviour::set_on_selected_event);
 	ClassDB::bind_method(D_METHOD("get_on_selected_event"), &NNBehaviour::get_on_selected_event);
 	ADD_PROPERTY(PropertyInfo(Variant::STRING, "on_selected_event", PROPERTY_HINT_NONE), "set_on_selected_event", "get_on_selected_event");
@@ -44,7 +47,7 @@ void NNBehaviour::_bind_methods() {
 
 	ClassDB::bind_method(D_METHOD("set_current_action_index", "current_action_index"), &NNBehaviour::set_current_action_index);
 	ClassDB::bind_method(D_METHOD("get_current_action_index"), &NNBehaviour::get_current_action_index);
-	ADD_PROPERTY(PropertyInfo(Variant::INT, "current_action_index", PROPERTY_HINT_RANGE, "0,256"), "set_current_action_index", "get_current_action_index");
+	ADD_PROPERTY(PropertyInfo(Variant::INT, "current_action_index", PROPERTY_HINT_RANGE, "-1,256,1,or_greater"), "set_current_action_index", "get_current_action_index");
 
 	// Signals.
 	ADD_SIGNAL(MethodInfo("behaviour_entered"));
@@ -58,6 +61,8 @@ NNBehaviour::NNBehaviour() {
 	_score = 0.0f;
 	_cooldown_seconds = 0.0f;
 	_current_cooldown_seconds = 0.0f;
+	_seconds_since_active = INFINITY;
+	_is_active = false;
 	_cooldown_turns = 0;
 	_current_cooldown_turns = 0;
 	_current_action_index = 0;
@@ -107,6 +112,10 @@ int NNBehaviour::get_cooldown_turns() const {
 	return _cooldown_turns;
 }
 
+float NNBehaviour::get_seconds_since_active() const {
+	return _seconds_since_active;
+}
+
 void NNBehaviour::set_on_selected_event(const String &on_selected_event) {
 	_on_selected_event = on_selected_event;
 }
@@ -145,11 +154,14 @@ void NNBehaviour::_ready() {
 // Handling functions.
 
 void NNBehaviour::advance_cooldown(double delta) {
-	if (_current_cooldown_seconds <= 0.0f)
-		return;
-	_current_cooldown_seconds -= (float)delta;
-	if (_current_cooldown_seconds < 0.0f)
-		_current_cooldown_seconds = 0.0f;
+	if (_current_cooldown_seconds > 0.0f) {
+		_current_cooldown_seconds -= (float)delta;
+		if (_current_cooldown_seconds < 0.0f)
+			_current_cooldown_seconds = 0.0f;
+	}
+	if (!_is_active) {
+		_seconds_since_active += (float)delta;
+	}
 }
 
 float NNBehaviour::evaluate() {
@@ -189,6 +201,8 @@ float NNBehaviour::evaluate() {
 NNAction *NNBehaviour::start_behaviour() {
 	_current_cooldown_seconds = _cooldown_seconds;
 	_current_cooldown_turns = _cooldown_turns;
+	_seconds_since_active = 0.0f;
+	_is_active = true;
 	// No action selected yet; start the search at child index 0.
 	_current_action_index = -1;
 	emit_signal("behaviour_entered");
@@ -200,6 +214,8 @@ NNAction *NNBehaviour::start_behaviour() {
 
 void NNBehaviour::end_behaviour() {
 	emit_signal("behaviour_exited");
+	_seconds_since_active = 0.0f;
+	_is_active = false;
 	_current_action_index = 0;
 }
 

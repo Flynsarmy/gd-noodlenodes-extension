@@ -1,7 +1,7 @@
 #pragma once
 
 #include "../considerations.h"
-#include <godot_cpp/classes/curve.hpp>
+#include <godot_cpp/classes/resource.hpp>
 
 namespace godot {
 
@@ -14,7 +14,7 @@ private:
 	float _property_max_value;
 	float _one_over_property_max_value;
 	Variant _property_variant_value;
-	Ref<Curve> _activation_curve;
+	Ref<Resource> _activation_curve;
 
 protected:
 	static void _bind_methods();
@@ -25,8 +25,8 @@ public:
 
 	// Getters and setters for attributes.
 
-	void set_activation_curve(Ref<Curve> activation_curve);
-	Ref<Curve> get_activation_curve() const;
+	void set_activation_curve(Ref<Resource> activation_curve);
+	Ref<Resource> get_activation_curve() const;
 
 	void set_node_with_property(Node *node_with_property);
 	Node *get_node_with_property() const;

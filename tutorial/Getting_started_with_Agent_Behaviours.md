@@ -96,7 +96,7 @@ The *behaviours* the AI Agent will choose from are defined using the **Behaviour
 
 Each behaviour needs **Considerations** as either their child nodes or as a property in the *Inspector*. The considerations are used to **score** the behaviours. The AI Agent will choose its behaviour amongst the top-scoring behaviours.
 
-The *considerations* can be grouped and the score for a behaviour will be aggregated based on the consideration structure created for it. Each consideration has an **activation curve** property, that affects its **score**. 
+The *considerations* can be grouped and the score for a behaviour will be aggregated based on the consideration structure created for it. Each consideration has an **activation curve** property, that affects its **score**. The curve can be a hand-drawn `Curve`, or an `NNResponseCurve` preset chosen from **Linear**, **Polynomial**, **Exponential**, **Logistic**, **Logit**, **Normal**, **Sine** and **Step**. An `NNResponseCurve` is shaped by its **Slope**, **Exponent**, **X Shift**, **Y Shift** and **Invert** properties, and the Inspector shows a read-only preview of the result so you can tune the parameters instead of moving points. 
 
 The *behaviours* contain **actions** that are executed when a behaviour is active. The use of actions isn't strictly necessary, but they allow the creation of sequences of actions.
 
@@ -108,7 +108,7 @@ The AI Agent updates itself. On every eligible step of the **SceneTree** frame s
 
 The agent's **Tick Rate** property is the single thinking throttle: with a value of N the agent thinks on every Nth eligible step. The default of 6 thinks about ten times per second at 60 physics ticks per second, and the first eligible step always thinks, so a new agent picks a behaviour immediately. On every eligible step, whether it thinks or not, the selected behaviour group, behaviour and action all receive a `frame_tick(delta)` signal, so the code that realizes the behaviour can run every frame.
 
-The `evaluate_options()` method evaluates the behaviours in top-to-down order and places them to a list based on their score. If two behaviours get the same score, the one that is evaluated first gets higher priority. As an example, this means that in a situation where you want to choose top 3 behaviours out of 10 and you already have evaluated 3 behaviours, if the any of the later ones get the same score as the behaviour at third place, the later behaviour gets discarded. If later evaluated behaviour gets the same score as the second one, it will be placed third in the list.  
+The `evaluate_options()` method evaluates the behaviours in top-to-down order and places them to a list based on their score. If two behaviours get the same score, the one that is evaluated first gets higher priority. As an example, this means that in a situation where you want to choose top 3 behaviours out of 10 and you already have evaluated 3 behaviours, if the any of the later ones get the same score as the behaviour at third place, the later behaviour gets discarded. If later evaluated behaviour gets the same score as the second one, it will be placed third in the list. The size of that list is the agent's **Num Behaviours To Select** property, which accepts any value of 1 or greater. 
 
 The `update_current_behaviour()` method chooses an action to perform from the active behaviour. When an action gets selected the **action_changed()** signal is emitted with the chosen action. If a behaviour has no actions set as its child nodes, the `update_current_behaviour()` will exit and emit the **behaviour_changed()** signal with a **null** behaviour.
 
@@ -123,7 +123,9 @@ As mentioned earlier, the `evaluate_options()` method reports the chosen behavio
 
 One of the callenges with utility based systems comes from their strength: defining how the utility is calculated can be complex. The needed inputs can be many and setting a suitable curves or combinations of curves for them can be harder than you initially think. 
 
-Another issue can be *oscillation* between behaviours. The AI entity moves between two or more behaviours due to changes in the inputs and how the considerations weight them. This issue can be mitigated by using *cooldowns* and/or bias towards the currently active behaviour. 
+Another issue can be *oscillation* between behaviours. The AI entity moves between two or more behaviours due to changes in the inputs and how the considerations weight them. This issue can be mitigated by using *cooldowns* and/or bias towards the currently active behaviour.
+
+The agent's **Current Behaviour Bias** property adds to the score of the running behaviour before the candidates are ranked, so a positive value keeps it a candidate for longer and a negative value lets it drop out sooner. For a hard exclusion, a behaviour has **Cooldown Seconds** and **Cooldown Turns**: after it has been chosen it scores 0 in `evaluate_options()` until the cooldown has counted down, which is meant for real-time and turn-based games respectively. The softer option is the `NNTimeSinceBehaviourSensor` described in the next section, which scores how long it has been since a behaviour ran.
 
 
 ### 3.4 Realising a behaviour with a behaviour tree or state tree
@@ -156,11 +158,21 @@ A blackboard is a set of named facts shared by an agent and everything below it.
 
 Behaviour trees write facts, for example with an `NNBTBlackboardSet` node, and state-tree expression guards read them. Because the agent and the trees below it share one board, a fact written by a tree can drive your agent's scoring as well.
 
-The `NNBlackboardSensor` reads one key on every evaluation and turns it into a 0..1 sensor value, scaling the number to the range set by `range_min_value` and `range_max_value` exactly like the `NNFloatRangeSensor`. Bools read as 1 or 0, and `default_value` is used when the key is missing or holds something that is not a bool, int or float.
+The `NNBlackboardSensor` reads one key on every evaluation and turns it into a 0..1 sensor value, scaling the number to the range set by `range_min_value` and `range_max_value` exactly like the `NNFloatRangeSensor`. Bools read as 1 or 0, and `default_value` is used when the key is missing or holds something that is not a bool, int or float. When the board has a schema, the **Key** property suggests the schema's keys in the Inspector while still accepting any key.
 
 For instance, say your agent has *Patrol* and *Flee* behaviours and one of its actions hosts a behaviour tree that writes `enemy_near` when an enemy gets close. Add an `NNBlackboardSensor` that reads `enemy_near` and use it as the sensor of a consideration on *Flee*. On the agent's next evaluation the fact reads 1, the *Flee* consideration scores high, and the agent picks *Flee* over *Patrol*.
 
 The same sensor works as a child of a behaviour-tree or state-tree root. Those roots evaluate their own child sensors on every tick, so the sensor value stays current for whatever sits below them.
+
+
+
+### 3.6 Scoring time since a behaviour ran
+
+A behaviour is often more interesting right after it has been neglected than right after it ran. Add an `NNTimeSinceBehaviourSensor` as a child of the agent, point its **Behaviour** at the behaviour you want to track, and set its **Duration** to the number of seconds over which the score saturates. The sensor scores `min(seconds, duration) / duration`, where the seconds come from the behaviour's `get_seconds_since_active()` and advance with the agent's ticks.
+
+Say your agent has *Approach*, *Flee* and *Wander* behaviours. Right after *Wander* has run, its consideration scores 0, so the other two get their turn. Every second of agent time the sensor value climbs, and with a duration of 10 the consideration reaches 1 after ten seconds without wandering, where it is as attractive as anything else again. This is a soft cooldown: unlike **Cooldown Seconds** it never blocks the behaviour, it only makes it less likely for a while. Invert the consideration's activation curve if you would rather prefer what just ran.
+
+The sensor scores 1 until the behaviour has run once, and 0 while it is running. A duration of 0 or less scores 1 whenever the behaviour is not running. The seconds are agent time, the delta the agent is stepped with, rather than wall-clock time, and disabled behaviours do not age at all.
 
 
 
@@ -379,22 +391,16 @@ Next we will add the **Considerations** that will be used to choose which behavi
 ![Set the sensor](images/getting_started_ab_7.png)<br>
 
 
-10. Continuing in the **Inspector** for the consideration, add an **activation curve** by clicking on the property and selecting **New curve**.
-
-![Set the curve](images/getting_started_ab_8.png)<br>
+10. Continuing in the **Inspector** for the consideration, add an **activation curve** by clicking on the property and selecting **New NNResponseCurve**. Set the **Curve Type** to **Step** and leave the other properties at their defaults.
 
 
-10. The curve should get added and you should see the **curve editor** in the Inspector. If not, click on the curve you created. Add two points to the curve, one at Y=0 and slightly to the left of 0.5 on the X-axis, and another at Y=1 slightly to the right of the X-axis. The reason we create the curve like this is connected to the **sensor**. If you remember, we set the **Max Distance** property to 200. The sensor scales the *squared* distance by the squared max distance, so the X-axis value 0.5 corresponds to a distance of about 141 pixels (`sqrt(0.5) * 200`). If the entity is at least that far from the cursor, the **Do I need to go closer?** consideration will get a score of 1, and 0 otherwise.
+11. The curve is now a threshold at 0.5 on the X-axis: it scores 0 below it and 1 above it, and the Inspector's preview shows the step. The reason we use a threshold is connected to the **sensor**. If you remember, we set the **Max Distance** property to 200. The sensor scales the *squared* distance by the squared max distance, so the X-axis value 0.5 corresponds to a distance of about 141 pixels (`sqrt(0.5) * 200`). If the entity is at least that far from the cursor, the **Do I need to go closer?** consideration will get a score of 1, and 0 otherwise.
 
-![Set the sensor](images/getting_started_ab_9.png)<br>
 
-10. Create another **consideration** under the **Flee** node and rename it as **Do I need to get away?**. In the inspector, set the sensor similarly to step 6.9 and then set the curve as in the image below.
+12. Create another **consideration** under the **Flee** node and rename it as **Do I need to get away?**. In the inspector, set the sensor as in step 9 and then add a **New NNResponseCurve** with the **Curve Type** set to **Step**, the **X Shift** set to **-0.28** and **Invert** checked. The shift moves the threshold to 0.22, which corresponds to a distance of about 94 pixels (`sqrt(0.22) * 200`), and the invert flips the result so the consideration scores 1 while the cursor is closer than that and 0 otherwise.
 
-![Set the second curve](images/getting_started_ab_10.png)<br>
 
-11. Create one more consideration under the **Wait** node and rename it as **Do I just idle?**. In the inspector, set the sensor as before and then set the curve as in the image below (NOTE! Just one point!).
-
-![Set the third curve](images/getting_started_ab_11.png)<br>
+13. Create one more consideration under the **Wait** node and rename it as **Do I just idle?**. In the inspector, set the sensor as before and then add a **New NNResponseCurve** with the **Curve Type** left at **Linear**, the **Slope** set to **0** and the **Y Shift** set to **0.3**. A slope of 0 makes the curve a horizontal line, so the consideration always scores 0.3 no matter the distance, and the entity idles whenever the other two considerations score lower.
 
 
 We have now created the behaviour structure for the AI Agent. What is missing are ai_entity related code to handle the behaviour changes and movement.

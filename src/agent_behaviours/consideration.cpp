@@ -1,5 +1,6 @@
 #include "consideration.h"
 
+#include "../response_curve.h"
 #include <godot_cpp/classes/engine.hpp>
 #include <godot_cpp/classes/random_number_generator.hpp>
 #include <godot_cpp/classes/time.hpp>
@@ -16,7 +17,7 @@ void NNConsideration::_bind_methods() {
 
 	ClassDB::bind_method(D_METHOD("set_activation_curve", "activation_curve"), &NNConsideration::set_activation_curve);
 	ClassDB::bind_method(D_METHOD("get_activation_curve"), &NNConsideration::get_activation_curve);
-	ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "activation_curve", PROPERTY_HINT_RESOURCE_TYPE, "Curve"), "set_activation_curve", "get_activation_curve");
+	ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "activation_curve", PROPERTY_HINT_RESOURCE_TYPE, "Curve,NNResponseCurve"), "set_activation_curve", "get_activation_curve");
 
 	ClassDB::bind_method(D_METHOD("set_activation_input_value", "activation_input_value"), &NNConsideration::set_activation_input_value);
 	ClassDB::bind_method(D_METHOD("get_activation_input_value"), &NNConsideration::get_activation_input_value);
@@ -46,11 +47,13 @@ NNSensors *NNConsideration::get_input_sensor() const {
 	return Object::cast_to<NNSensors>(ObjectDB::get_instance(_input_sensor_id));
 }
 
-void NNConsideration::set_activation_curve(Ref<Curve> activation_curve) {
+void NNConsideration::set_activation_curve(Ref<Resource> activation_curve) {
+	ERR_FAIL_COND_MSG(activation_curve.is_valid() && !NNResponseCurve::is_activation_curve(activation_curve),
+			"NNConsideration::set_activation_curve(): activation_curve must be a Curve or an NNResponseCurve.");
 	_activation_curve = activation_curve;
 }
 
-Ref<Curve> NNConsideration::get_activation_curve() const {
+Ref<Resource> NNConsideration::get_activation_curve() const {
 	return _activation_curve;
 }
 
@@ -86,16 +89,9 @@ float NNConsideration::evaluate() {
 }
 
 float NNConsideration::sample_activation_curve(float input_value) const {
-	if (_activation_curve.is_valid()) {
-		return _activation_curve->sample(input_value);
-	}
-	return 0.0f;
+	return NNResponseCurve::sample_activation_curve(_activation_curve, input_value, 0.0f);
 }
 
 void NNConsideration::_evaluate_consideration() {
-	if (_activation_curve.is_valid()) {
-		_score = _activation_curve->sample(_activation_input_value);
-	} else {
-		_score = _activation_input_value;
-	}
+	_score = NNResponseCurve::sample_activation_curve(_activation_curve, _activation_input_value, _activation_input_value);
 }

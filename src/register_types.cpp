@@ -5,6 +5,7 @@
 
 #include "blackboard.h"
 #include "blackboard_schema.h"
+#include "response_curve.h"
 
 // Performance monitor singleton.
 #include "performance_monitor_singleton.h"
@@ -44,6 +45,7 @@
 #include "agent_behaviours/sensors/float_range.h"
 #include "agent_behaviours/sensors/int_range.h"
 #include "agent_behaviours/sensors/nqs_query.h"
+#include "agent_behaviours/sensors/time_since_behaviour.h"
 
 // Special considerations
 #include "agent_behaviours/considerations/boolean.h"
@@ -209,6 +211,7 @@ void register_scene_classes() {
 	GDREGISTER_CLASS(NNArea2DVisibilitySensor);
 	GDREGISTER_CLASS(NNArea3DVisibilitySensor);
 	GDREGISTER_CLASS(NNNQSQuerySensor);
+	GDREGISTER_CLASS(NNTimeSinceBehaviourSensor);
 
 	// Special considerations.
 	GDREGISTER_CLASS(NNBooleanConsideration);
@@ -218,6 +221,7 @@ void register_scene_classes() {
 	GDREGISTER_VIRTUAL_CLASS(NNBTNodes);
 	GDREGISTER_CLASS(NNBlackboardKey);
 	GDREGISTER_CLASS(NNBlackboardSchema);
+	GDREGISTER_CLASS(NNResponseCurve);
 	GDREGISTER_CLASS(NNBlackboard);
 	GDREGISTER_CLASS(NNBTRoot);
 

@@ -1,7 +1,7 @@
 #pragma once
 
 #include "../noodle_nodes.h"
-#include <godot_cpp/classes/curve.hpp>
+#include <godot_cpp/classes/resource.hpp>
 
 namespace godot {
 
@@ -12,7 +12,7 @@ private:
 	bool _use_for_scoring;
 	bool _use_for_filtering;
 
-	Ref<Curve> _activation_curve;
+	Ref<Resource> _activation_curve;
 
 protected:
 	static void _bind_methods();
@@ -43,8 +43,8 @@ public:
 	void set_score(float score);
 	float get_score() const;
 
-	void set_activation_curve(Ref<Curve> activation_curve);
-	Ref<Curve> get_activation_curve() const;
+	void set_activation_curve(Ref<Resource> activation_curve);
+	Ref<Resource> get_activation_curve() const;
 
 	// Handling methods.
 

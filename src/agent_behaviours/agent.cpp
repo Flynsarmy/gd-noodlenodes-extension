@@ -41,7 +41,7 @@ void NNAgent::_bind_methods() {
 
 	ClassDB::bind_method(D_METHOD("set_num_behaviours_to_select", "num_behaviours_to_select"), &NNAgent::set_num_behaviours_to_select);
 	ClassDB::bind_method(D_METHOD("get_num_behaviours_to_select"), &NNAgent::get_num_behaviours_to_select);
-	ADD_PROPERTY(PropertyInfo(Variant::INT, "num_behaviours_to_select", PROPERTY_HINT_RANGE, "1,16"), "set_num_behaviours_to_select", "get_num_behaviours_to_select");
+	ADD_PROPERTY(PropertyInfo(Variant::INT, "num_behaviours_to_select", PROPERTY_HINT_RANGE, "1,16,1,or_greater"), "set_num_behaviours_to_select", "get_num_behaviours_to_select");
 
 	ClassDB::bind_method(D_METHOD("set_tick_rate", "tick_rate"), &NNAgent::set_tick_rate);
 	ClassDB::bind_method(D_METHOD("get_tick_rate"), &NNAgent::get_tick_rate);
@@ -107,12 +107,7 @@ NNAgent::NNAgent() {
 	_current_behaviour_group_id = ObjectID();
 	_current_behaviour_id = ObjectID();
 	_num_behaviours_to_select = 1;
-	_num_possible_behaviours = 0;
-	for (int i = 0; i < NN_AGENT_MAX_TOP_SCORING_BEHAVIOURS; i++) {
-		_top_scoring_behaviours_score[i] = 0.0f;
-		_top_scoring_behaviour_ids[i] = ObjectID();
-		_top_scoring_behaviour_group_ids[i] = ObjectID();
-	}
+	_top_scoring_behaviours.reserve(_num_behaviours_to_select);
 	_top_scoring_behaviour_name = "";
 
 	_current_action_id = ObjectID();
@@ -386,12 +381,7 @@ void NNAgent::evaluate_options(float delta) {
 
 	// Go through the behaviours and check which one seems
 	// best to perform.
-	_num_possible_behaviours = 0;
-	for (int b = 0; b < _num_behaviours_to_select; ++b) {
-		_top_scoring_behaviour_group_ids[b] = ObjectID();
-		_top_scoring_behaviour_ids[b] = ObjectID();
-		_top_scoring_behaviours_score[b] = -1.0f;
-	}
+	_top_scoring_behaviours.clear();
 
 	// Snapshot the cached child IDs so a callback that adds or removes children
 	// cannot invalidate the loop. Every entry is resolved and revalidated
@@ -468,12 +458,10 @@ void NNAgent::evaluate_options(float delta) {
 
 	// Validate the candidates again. User callbacks may have removed or freed
 	// entries while the list was being built.
-	std::vector<int> valid_candidate_indices;
+	std::vector<size_t> valid_candidate_indices;
 	_top_scoring_behaviour_name = "";
-	for (int b = 0; b < _num_possible_behaviours; ++b) {
-		ObjectID behaviour_id = _top_scoring_behaviour_ids[b];
-		ObjectID behaviour_group_id = _top_scoring_behaviour_group_ids[b];
-		NNBehaviour *candidate = _get_candidate(behaviour_group_id, behaviour_id);
+	for (size_t b = 0; b < _top_scoring_behaviours.size(); ++b) {
+		NNBehaviour *candidate = _get_candidate(_top_scoring_behaviours[b].group_id, _top_scoring_behaviours[b].behaviour_id);
 		if (candidate == nullptr) {
 			continue;
 		}
@@ -505,7 +493,7 @@ void NNAgent::evaluate_options(float delta) {
 	int chosen_candidate_position = -1;
 	if (!_current_behaviour_id.is_null()) {
 		for (unsigned int i = 0; i < valid_candidate_indices.size(); ++i) {
-			if (_top_scoring_behaviour_ids[valid_candidate_indices[i]] == _current_behaviour_id) {
+			if (_top_scoring_behaviours[valid_candidate_indices[i]].behaviour_id == _current_behaviour_id) {
 				chosen_candidate_position = (int)i;
 				break;
 			}
@@ -516,12 +504,12 @@ void NNAgent::evaluate_options(float delta) {
 		// Weighted by score so better candidates are picked more often.
 		float total_score = 0.0f;
 		for (unsigned int i = 0; i < valid_candidate_indices.size(); ++i) {
-			total_score += _top_scoring_behaviours_score[valid_candidate_indices[i]];
+			total_score += _top_scoring_behaviours[valid_candidate_indices[i]].score;
 		}
 		float roll = _rng->randf() * total_score;
 		chosen_candidate_position = (int)valid_candidate_indices.size() - 1;
 		for (unsigned int i = 0; i < valid_candidate_indices.size(); ++i) {
-			roll -= _top_scoring_behaviours_score[valid_candidate_indices[i]];
+			roll -= _top_scoring_behaviours[valid_candidate_indices[i]].score;
 			if (roll < 0.0f) {
 				chosen_candidate_position = (int)i;
 				break;
@@ -529,8 +517,8 @@ void NNAgent::evaluate_options(float delta) {
 		}
 	}
 	int chosen_behaviour_index = valid_candidate_indices[chosen_candidate_position];
-	ObjectID chosen_behaviour_id = _top_scoring_behaviour_ids[chosen_behaviour_index];
-	ObjectID chosen_behaviour_group_id = _top_scoring_behaviour_group_ids[chosen_behaviour_index];
+	ObjectID chosen_behaviour_id = _top_scoring_behaviours[chosen_behaviour_index].behaviour_id;
+	ObjectID chosen_behaviour_group_id = _top_scoring_behaviours[chosen_behaviour_index].group_id;
 
 	if (chosen_behaviour_id == _current_behaviour_id) {
 		return; // No change.
@@ -553,8 +541,8 @@ void NNAgent::evaluate_options(float delta) {
 	for (unsigned int attempt = 0; attempt < valid_candidate_indices.size(); ++attempt) {
 		unsigned int position = (chosen_candidate_position + attempt) % valid_candidate_indices.size();
 		int candidate_index = valid_candidate_indices[position];
-		ObjectID candidate_behaviour_id = _top_scoring_behaviour_ids[candidate_index];
-		ObjectID candidate_behaviour_group_id = _top_scoring_behaviour_group_ids[candidate_index];
+		ObjectID candidate_behaviour_id = _top_scoring_behaviours[candidate_index].behaviour_id;
+		ObjectID candidate_behaviour_group_id = _top_scoring_behaviours[candidate_index].group_id;
 
 		NNBehaviour *candidate = _get_candidate(candidate_behaviour_group_id, candidate_behaviour_id);
 		if (candidate == nullptr) {
@@ -630,36 +618,21 @@ void NNAgent::evaluate_options(float delta) {
 
 void NNAgent::place_into_top_n_behaviour_list(const ObjectID &behaviour_group_id, const ObjectID &behaviour_id, float score) {
 	// Search filled slots only; equal scores retain evaluation order.
-	int place_in_behaviour_list = _num_possible_behaviours;
-	for (int b = 0; b < _num_possible_behaviours; ++b) {
-		if (score > _top_scoring_behaviours_score[b]) {
-			place_in_behaviour_list = b;
-			break;
-		}
+	size_t place = 0;
+	while (place < _top_scoring_behaviours.size() && score <= _top_scoring_behaviours[place].score) {
+		++place;
 	}
 
 	// The list is full and this score is not better than any of the kept ones.
-	if (place_in_behaviour_list >= _num_behaviours_to_select) {
+	if (place == _top_scoring_behaviours.size() && (int)place >= _num_behaviours_to_select) {
 		return;
 	}
 
 	// A full list drops its last entry instead of shifting past capacity.
-	int last_slot = _num_possible_behaviours;
-	if (last_slot >= _num_behaviours_to_select) {
-		last_slot = _num_behaviours_to_select - 1;
+	if ((int)_top_scoring_behaviours.size() >= _num_behaviours_to_select) {
+		_top_scoring_behaviours.pop_back();
 	}
-	for (int b = last_slot; b > place_in_behaviour_list; --b) {
-		_top_scoring_behaviour_group_ids[b] = _top_scoring_behaviour_group_ids[b - 1];
-		_top_scoring_behaviour_ids[b] = _top_scoring_behaviour_ids[b - 1];
-		_top_scoring_behaviours_score[b] = _top_scoring_behaviours_score[b - 1];
-	}
-
-	_top_scoring_behaviour_group_ids[place_in_behaviour_list] = behaviour_group_id;
-	_top_scoring_behaviour_ids[place_in_behaviour_list] = behaviour_id;
-	_top_scoring_behaviours_score[place_in_behaviour_list] = score;
-	if (_num_possible_behaviours < _num_behaviours_to_select) {
-		++_num_possible_behaviours;
-	}
+	_top_scoring_behaviours.insert(_top_scoring_behaviours.begin() + place, { behaviour_group_id, behaviour_id, score });
 }
 
 void NNAgent::update_current_behaviour() {
@@ -836,11 +809,11 @@ NNBehaviour *NNAgent::peek_last_behaviour() const {
 
 Array NNAgent::get_debug_top_scoring() const {
 	Array top_scoring;
-	for (int i = 0; i < _num_possible_behaviours && i < _num_behaviours_to_select; i++) {
+	for (size_t i = 0; i < _top_scoring_behaviours.size(); i++) {
 		Dictionary entry;
-		entry["behaviour"] = (int64_t)_top_scoring_behaviour_ids[i];
-		entry["group"] = (int64_t)_top_scoring_behaviour_group_ids[i];
-		entry["score"] = _top_scoring_behaviours_score[i];
+		entry["behaviour"] = (int64_t)_top_scoring_behaviours[i].behaviour_id;
+		entry["group"] = (int64_t)_top_scoring_behaviours[i].group_id;
+		entry["score"] = _top_scoring_behaviours[i].score;
 		top_scoring.push_back(entry);
 	}
 	return top_scoring;
@@ -873,9 +846,12 @@ void NNAgent::_debug_record_behaviour_changed(const ObjectID &p_behaviour_id, co
 #endif
 
 void NNAgent::set_num_behaviours_to_select(int num_behaviours_to_select) {
-	ERR_FAIL_COND_MSG(num_behaviours_to_select < 1 || num_behaviours_to_select > NN_AGENT_MAX_TOP_SCORING_BEHAVIOURS,
-			"NNAgent::set_num_behaviours_to_select(): num_behaviours_to_select must be between 1 and 16.");
+	ERR_FAIL_COND_MSG(num_behaviours_to_select < 1, "NNAgent::set_num_behaviours_to_select(): num_behaviours_to_select must be at least 1.");
 	_num_behaviours_to_select = num_behaviours_to_select;
+	_top_scoring_behaviours.reserve(num_behaviours_to_select);
+	if (_top_scoring_behaviours.size() > (size_t)_num_behaviours_to_select) {
+		_top_scoring_behaviours.resize(_num_behaviours_to_select);
+	}
 }
 
 int NNAgent::get_num_behaviours_to_select() const {

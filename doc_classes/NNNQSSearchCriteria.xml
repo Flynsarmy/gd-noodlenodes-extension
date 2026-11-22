@@ -10,8 +10,8 @@
 	<tutorials>
 	</tutorials>
 	<members>
-		<member name="activation_curve" type="Curve" setter="set_activation_curve" getter="get_activation_curve">
-			Optional [Curve] that maps the criterion's raw [code]0..1[/code] score to the final score when [member use_for_scoring] is [code]true[/code].
+		<member name="activation_curve" type="Resource" setter="set_activation_curve" getter="get_activation_curve">
+			Optional [Curve] or [NNResponseCurve] that maps the criterion's raw [code]0..1[/code] score to the final score when [member use_for_scoring] is [code]true[/code]. Assigning any other resource type reports an error and keeps the previous curve.
 		</member>
 		<member name="is_filtered" type="bool" setter="set_is_filtered" getter="get_is_filtered" default="true">
 			Filter result for the last evaluated node, updated by [code]apply_criterion()[/code]. When [code]true[/code] and [member use_for_filtering] is enabled, the candidate node is excluded. Concrete criteria reset this to [code]false[/code] before evaluating each node.

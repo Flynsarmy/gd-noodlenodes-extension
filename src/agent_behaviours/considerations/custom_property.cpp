@@ -1,4 +1,5 @@
 #include "custom_property.h"
+#include "../../response_curve.h"
 #include <godot_cpp/classes/engine.hpp>
 #include <godot_cpp/classes/random_number_generator.hpp>
 #include <godot_cpp/core/class_db.hpp>
@@ -21,6 +22,10 @@ void NNCustomPropertyConsideration::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_property_max_value"), &NNCustomPropertyConsideration::get_property_max_value);
 	ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "property_max_value", PROPERTY_HINT_NONE), "set_property_max_value", "get_property_max_value");
 
+	ClassDB::bind_method(D_METHOD("set_activation_curve", "activation_curve"), &NNCustomPropertyConsideration::set_activation_curve);
+	ClassDB::bind_method(D_METHOD("get_activation_curve"), &NNCustomPropertyConsideration::get_activation_curve);
+	ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "activation_curve", PROPERTY_HINT_RESOURCE_TYPE, "Curve,NNResponseCurve"), "set_activation_curve", "get_activation_curve");
+
 	ClassDB::bind_method(D_METHOD("sample_activation_curve", "input_value"), &NNCustomPropertyConsideration::sample_activation_curve);
 }
 
@@ -36,11 +41,13 @@ NNCustomPropertyConsideration::~NNCustomPropertyConsideration() {
 
 // Getters and Setters.
 
-void NNCustomPropertyConsideration::set_activation_curve(Ref<Curve> activation_curve) {
+void NNCustomPropertyConsideration::set_activation_curve(Ref<Resource> activation_curve) {
+	ERR_FAIL_COND_MSG(activation_curve.is_valid() && !NNResponseCurve::is_activation_curve(activation_curve),
+			"NNCustomPropertyConsideration::set_activation_curve(): activation_curve must be a Curve or an NNResponseCurve.");
 	_activation_curve = activation_curve;
 }
 
-Ref<Curve> NNCustomPropertyConsideration::get_activation_curve() const {
+Ref<Resource> NNCustomPropertyConsideration::get_activation_curve() const {
 	return _activation_curve;
 }
 
@@ -104,14 +111,11 @@ float NNCustomPropertyConsideration::evaluate() {
 	_score = (float)_property_variant_value * _one_over_property_max_value;
 
 	if (_activation_curve.is_valid()) {
-		_score = _activation_curve->sample(_score);
+		_score = NNResponseCurve::sample_activation_curve(_activation_curve, _score, _score);
 	}
 	return _score;
 }
 
 float NNCustomPropertyConsideration::sample_activation_curve(float input_value) const {
-	if (_activation_curve.is_valid()) {
-		return _activation_curve->sample(input_value);
-	}
-	return 0.0;
+	return NNResponseCurve::sample_activation_curve(_activation_curve, input_value, 0.0f);
 }

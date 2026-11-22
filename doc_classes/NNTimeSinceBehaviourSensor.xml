@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="NNTimeSinceBehaviourSensor" inherits="NNSensor" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
+	<brief_description>
+		Scores how long it has been since a behaviour last ran, normalised over a duration.
+	</brief_description>
+	<description>
+		Watches [member behaviour] and scores its [method NNBehaviour.get_seconds_since_active] value as [code]min(seconds, duration) / duration[/code]. The value is [code]1.0[/code] until the behaviour has run once, [code]0.0[/code] while it is running, and then rises from [code]0.0[/code] to [code]1.0[/code] over [member duration] seconds of agent time. Agent time advances on each eligible tick of the owning [NNAgent], not with wall-clock time, and only for enabled behaviours, so a disabled behaviour neither runs nor ages.
+		Scores [code]0.0[/code] when [member behaviour] is not set or has been freed. A [member duration] of [code]0.0[/code] or less scores [code]1.0[/code] whenever the behaviour is not running.
+		A typical setup adds the sensor as a child of the [NNAgent], points [member behaviour] at a behaviour such as "Wander", and uses the sensor as the [member NNConsideration.input_sensor] of a consideration on that behaviour. The behaviour then becomes more attractive the longer it has not run, a soft cooldown or boredom curve; an inverted consideration curve instead prefers what just ran. [member NNBehaviour.cooldown_seconds] is the hard alternative that blocks selection outright.
+	</description>
+	<tutorials>
+	</tutorials>
+	<members>
+		<member name="behaviour" type="NNBehaviour" setter="set_behaviour" getter="get_behaviour">
+			The behaviour whose time since last active is scored. The sensor stores the behaviour by instance ID, so it stays valid while the node exists and scores [code]0.0[/code] after it is freed or when it is unset.
+		</member>
+		<member name="duration" type="float" setter="set_duration" getter="get_duration" default="10.0">
+			The number of seconds of agent time after which the sensor saturates at [code]1.0[/code]. Seconds past this clamp the value to [code]1.0[/code].
+		</member>
+	</members>
+</class>

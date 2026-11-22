@@ -17,6 +17,8 @@ class NNBehaviour : public NNBehaviours {
 private:
 	float _cooldown_seconds;
 	float _current_cooldown_seconds;
+	float _seconds_since_active;
+	bool _is_active;
 	int _cooldown_turns;
 	int _current_cooldown_turns;
 	int _behaviour_id;
@@ -57,6 +59,8 @@ public:
 
 	void set_cooldown_turns(int cooldown_turns);
 	int get_cooldown_turns() const;
+
+	float get_seconds_since_active() const;
 
 	void set_on_selected_event(const String &on_selected_event);
 	String get_on_selected_event() const;

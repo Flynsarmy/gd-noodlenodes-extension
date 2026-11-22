@@ -11,6 +11,7 @@
 #include "../agent_behaviours/sensors.h"
 #include "../agent_behaviours/sensors/nqs_query.h"
 #include "../blackboard.h"
+#include "../response_curve.h"
 #include "debug_root.h"
 #include "snapshot_common.h"
 
@@ -38,14 +39,14 @@ String _evaluation_method_name(NoodleNodes::EvaluationMethod p_method) {
 	return "sum";
 }
 
-PackedVector2Array _curve_samples(const Ref<Curve> &p_curve) {
+PackedVector2Array _curve_samples(const Ref<Resource> &p_curve) {
 	PackedVector2Array points;
 	if (p_curve.is_null()) {
 		return points;
 	}
 	for (int i = 0; i < CURVE_SAMPLES; i++) {
 		const float x = (float)i / (float)(CURVE_SAMPLES - 1);
-		points.push_back(Vector2(x, p_curve->sample(x)));
+		points.push_back(Vector2(x, NNResponseCurve::sample_activation_curve(p_curve, x, 0.0f)));
 	}
 	return points;
 }

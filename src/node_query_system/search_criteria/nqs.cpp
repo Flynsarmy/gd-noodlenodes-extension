@@ -1,4 +1,5 @@
 #include "nqs.h"
+#include "../../response_curve.h"
 #include <godot_cpp/classes/engine.hpp>
 
 using namespace godot;
@@ -32,7 +33,7 @@ void NNNQSSearchCriteria::_bind_methods() {
 
 	ClassDB::bind_method(D_METHOD("set_activation_curve", "activation_curve"), &NNNQSSearchCriteria::set_activation_curve);
 	ClassDB::bind_method(D_METHOD("get_activation_curve"), &NNNQSSearchCriteria::get_activation_curve);
-	ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "activation_curve", PROPERTY_HINT_RESOURCE_TYPE, "Curve"), "set_activation_curve", "get_activation_curve");
+	ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "activation_curve", PROPERTY_HINT_RESOURCE_TYPE, "Curve,NNResponseCurve"), "set_activation_curve", "get_activation_curve");
 
 	ADD_SUBGROUP("Debugging", "");
 
@@ -47,11 +48,13 @@ void NNNQSSearchCriteria::_bind_methods() {
 
 // Getters and setters.
 
-void NNNQSSearchCriteria::set_activation_curve(Ref<Curve> activation_curve) {
+void NNNQSSearchCriteria::set_activation_curve(Ref<Resource> activation_curve) {
+	ERR_FAIL_COND_MSG(activation_curve.is_valid() && !NNResponseCurve::is_activation_curve(activation_curve),
+			"NNNQSSearchCriteria::set_activation_curve(): activation_curve must be a Curve or an NNResponseCurve.");
 	_activation_curve = activation_curve;
 }
 
-Ref<Curve> NNNQSSearchCriteria::get_activation_curve() const {
+Ref<Resource> NNNQSSearchCriteria::get_activation_curve() const {
 	return _activation_curve;
 }
 
@@ -93,8 +96,5 @@ void NNNQSSearchCriteria::apply_criterion(Node *node, bool &filter_out, float &s
 }
 
 float NNNQSSearchCriteria::sample_activation_curve(float input_value) const {
-	if (_activation_curve.is_valid()) {
-		return _activation_curve->sample(input_value);
-	}
-	return input_value;
+	return NNResponseCurve::sample_activation_curve(_activation_curve, input_value, input_value);
 }

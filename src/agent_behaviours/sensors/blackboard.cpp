@@ -24,6 +24,34 @@ void NNBlackboardSensor::_bind_methods() {
 	ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "range_max_value", PROPERTY_HINT_NONE), "set_range_max_value", "get_range_max_value");
 }
 
+void NNBlackboardSensor::_validate_property(PropertyInfo &p_property) const {
+	if (p_property.name != StringName("key")) {
+		return;
+	}
+	NNBlackboard *board = get_blackboard_resource();
+	if (board == nullptr) {
+		return;
+	}
+	Ref<NNBlackboardSchema> schema = board->get_schema();
+	if (!schema.is_valid()) {
+		return;
+	}
+
+	PackedStringArray suggestions;
+	const TypedArray<NNBlackboardKey> keys = schema->get_keys();
+	for (int i = 0; i < keys.size(); i++) {
+		const Ref<NNBlackboardKey> key = keys[i];
+		if (key.is_valid()) {
+			suggestions.push_back(key->get_key());
+		}
+	}
+	if (suggestions.is_empty()) {
+		return;
+	}
+	p_property.hint = PROPERTY_HINT_ENUM_SUGGESTION;
+	p_property.hint_string = String(",").join(suggestions);
+}
+
 // Constructor and destructor.
 
 NNBlackboardSensor::NNBlackboardSensor() {

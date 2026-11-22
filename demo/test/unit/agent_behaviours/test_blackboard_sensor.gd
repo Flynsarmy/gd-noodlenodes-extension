@@ -2,6 +2,7 @@ extends GutTest
 @warning_ignore('unused_parameter')
 
 const Fixtures = preload("res://test/support/fixtures.gd")
+const Schema = preload("res://test/unit/blackboard/support/schema.gd")
 
 
 class WaitingLeaf extends NNBTLeaf:
@@ -160,6 +161,24 @@ func test_freed_input_sensor_is_treated_as_unset() -> void:
 	consideration.activation_input_value = 0.4
 	agent.tick(0.1)
 	assert_almost_eq(consideration.score, 0.4, 0.0001, "evaluation falls back to the stored activation input value")
+
+
+func test_key_property_suggests_the_schema_keys() -> void:
+	var board := NNBlackboard.new()
+	board.schema = Schema.make_schema({ "health": [TYPE_FLOAT], "alert": [TYPE_BOOL] })
+	var agent := _make_agent()
+	agent.assigned_blackboard = board
+	var sensor := _make_sensor("health")
+	agent.add_child(sensor)
+	var key_property: Dictionary
+	for property in sensor.get_property_list():
+		if property.name == "key":
+			key_property = property
+			break
+
+	assert_eq(key_property.get("hint", -1), PROPERTY_HINT_ENUM_SUGGESTION, "the schema keys are offered as suggestions")
+	assert_string_contains(key_property.get("hint_string", ""), "health")
+	assert_string_contains(key_property.get("hint_string", ""), "alert")
 
 
 func test_blackboard_sensor_uses_the_shared_range_model() -> void:
