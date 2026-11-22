@@ -1,6 +1,6 @@
 [gd_scene format=3]
 
-[ext_resource type="Script" path="res://demo_07_htn/htn_demo.gd" id="0_demo"]
+[ext_resource type="Script" path="res://demo_07_htn/tutorial_scene.gd" id="0_demo"]
 [ext_resource type="Environment" path="res://demo_07_htn/environment.tres" id="1_7j23q"]
 [ext_resource type="PackedScene" path="res://demo_07_htn/objects/player.tscn" id="2_j4k8i"]
 [ext_resource type="Script" path="res://demo_07_htn/objects/view.gd" id="3_ft7bw"]

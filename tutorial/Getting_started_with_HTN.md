@@ -29,7 +29,7 @@ In this beginner tutorial, you will learn how Hierarchical Task Network (HTN) pl
 
 ## 1. Running the demo
 
-Open the `demo` project in Godot and run `demo_07_htn/htn_demo.tscn`. `htn_demo_multiple_agents.tscn` is the same world with six NPCs.
+Open the `demo` project in Godot and run `demo_07_htn/tutorial_scene.tscn`. `htn_demo_multiple_agents.tscn` is the same world with six NPCs.
 
 Move with **WASD**, jump with **Space**, rotate the camera with the **arrow keys** and zoom with **Q** and **E**. The NPC:
 

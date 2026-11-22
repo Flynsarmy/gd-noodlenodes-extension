@@ -7,7 +7,7 @@ const DEMOS: Array[Dictionary] = [
 	{"title": "04 - Node Query System", "scene": "res://demo_04_node_query_system/tutorial_scene.tscn"},
 	{"title": "05 - State Tree 3D Character", "scene": "res://demo_05_state_tree_3d_character/tutorial_scene.tscn"},
 	{"title": "06 - Debugger Overlay", "scene": "res://demo_06_debugger/tutorial_scene.tscn"},
-	{"title": "07 - HTN Planner", "scene": "res://demo_07_htn/htn_demo.tscn"},
+	{"title": "07 - HTN Planner", "scene": "res://demo_07_htn/tutorial_scene.tscn"},
 	{"title": "08 - Integrated NPC", "scene": "res://demo_08_integrated_npc/tutorial_scene.tscn"},
 ]
 const RETURN_HOOK_NAME := "ReturnToLauncher"
