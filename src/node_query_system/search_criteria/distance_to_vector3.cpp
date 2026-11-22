@@ -55,28 +55,49 @@ float NNDistanceToVector3SearchCriterion::get_max_distance() const {
 
 // Handing methods.
 
+namespace {
+
+class ThreadedDistanceToVector3 : public NNNQSThreadedCriterion {
+public:
+	NNDistanceRange distance_range;
+	bool use_for_filtering = false;
+	bool use_for_scoring = true;
+	NNActivationCurveSampler activation_curve;
+	Vector3 distance_to_vector;
+
+	void evaluate(const NNNQSCandidate &p_candidate, bool &r_filter_out, float &r_score) const override {
+		if (p_candidate.kind != NNNQSCandidate::NODE_3D) {
+			return;
+		}
+		const Vector3 from_to = p_candidate.global_transform_3d.origin - distance_to_vector;
+		apply_distance_range(distance_range, use_for_filtering, use_for_scoring, activation_curve, from_to.length_squared(), r_filter_out, r_score);
+	}
+};
+
+} //namespace
+
 void NNDistanceToVector3SearchCriterion::apply_criterion(Node *node, bool &filter_out, float &score) {
 	Node3D *node3d = godot::Object::cast_to<Node3D>(node);
 	if (node3d == nullptr)
 		return;
 
-	_is_filtered = false;
-	_score = 1.0f;
-
 	Vector3 from_to = node3d->get_global_position() - _distance_to_vector;
 	float distance_squared = from_to.length_squared();
 
-	if (get_use_for_filtering()) {
-		_is_filtered = _distance_range.filters(distance_squared);
-	} //endif do filtering
+	apply_distance_range(_distance_range, get_use_for_filtering(), get_use_for_scoring(), NNActivationCurveSampler(get_activation_curve()), distance_squared, filter_out, score);
+	_is_filtered = filter_out;
+	_score = score;
+}
 
-	if (get_use_for_scoring()) {
-		_score = _distance_range.score(distance_squared);
-		if (get_activation_curve().is_valid()) {
-			_score = sample_activation_curve(_score);
-		}
-	} //endif do scoring
-
-	filter_out = _is_filtered;
-	score = _score;
+std::unique_ptr<NNNQSThreadedCriterion> NNDistanceToVector3SearchCriterion::create_threaded_criterion() const {
+	auto kernel = std::make_unique<ThreadedDistanceToVector3>();
+	kernel->distance_range = _distance_range;
+	kernel->use_for_filtering = get_use_for_filtering();
+	kernel->use_for_scoring = get_use_for_scoring();
+	kernel->distance_to_vector = _distance_to_vector;
+	const Ref<Resource> activation_curve = get_activation_curve();
+	if (activation_curve.is_valid()) {
+		kernel->activation_curve = NNActivationCurveSampler(activation_curve->duplicate());
+	}
+	return kernel;
 }

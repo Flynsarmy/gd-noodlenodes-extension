@@ -177,6 +177,7 @@ void NNNodeQuerySystem::run_queries() {
 	}
 
 	if (_num_active_high_priority_queries > 0 && _high_priority_queries.size() > 0) {
+		int idle_slots_in_a_row = 0;
 		while (true) {
 			if (_current_high_priority_query_index >= _high_priority_queries.size()) {
 				_current_high_priority_query_index = 0;
@@ -195,11 +196,15 @@ void NNNodeQuerySystem::run_queries() {
 					// have changed the index without changing the running flag.
 					_release_query_slot(current_query, true, high_priority_query_index, query_registration);
 				}
+				idle_slots_in_a_row = (!is_completed && current_query->is_waiting_for_worker()) ? idle_slots_in_a_row + 1 : 0;
+			} else {
+				++idle_slots_in_a_row;
 			}
 
 			++_current_high_priority_query_index;
 			uint64_t time_used = godot::Time::get_singleton()->get_ticks_usec() - method_start_time_usec;
-			if (time_used >= _run_queries_time_budget_per_frame_high_priority_queries || _num_active_high_priority_queries == 0) {
+			// Queries waiting on worker threads must not spin out the frame budget.
+			if (time_used >= _run_queries_time_budget_per_frame_high_priority_queries || _num_active_high_priority_queries == 0 || idle_slots_in_a_row >= _high_priority_queries.size()) {
 				break;
 			}
 		} //endwhile run queries
@@ -207,6 +212,7 @@ void NNNodeQuerySystem::run_queries() {
 	uint64_t regular_query_start_time_usec = godot::Time::get_singleton()->get_ticks_usec();
 
 	if (_num_active_regular_priority_queries > 0 && _regular_queries.size() > 0) {
+		int idle_slots_in_a_row = 0;
 		// Compare before subtracting to avoid unsigned wraparound after an overrun.
 		uint64_t elapsed_before_regular_queries_usec = regular_query_start_time_usec - method_start_time_usec;
 		if (elapsed_before_regular_queries_usec >= frame_time_left) {
@@ -231,11 +237,14 @@ void NNNodeQuerySystem::run_queries() {
 				if (is_completed) {
 					_release_query_slot(current_query, false, regular_query_index, query_registration);
 				}
+				idle_slots_in_a_row = (!is_completed && current_query->is_waiting_for_worker()) ? idle_slots_in_a_row + 1 : 0;
+			} else {
+				++idle_slots_in_a_row;
 			}
 
 			++_current_regular_query_index;
 			uint64_t time_used = godot::Time::get_singleton()->get_ticks_usec() - regular_query_start_time_usec;
-			if (time_used >= frame_time_left || _num_active_regular_priority_queries == 0) {
+			if (time_used >= frame_time_left || _num_active_regular_priority_queries == 0 || idle_slots_in_a_row >= _regular_queries.size()) {
 				break;
 			}
 		} //endwhile run queries

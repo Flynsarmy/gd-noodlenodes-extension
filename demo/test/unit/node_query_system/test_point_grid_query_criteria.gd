@@ -153,3 +153,88 @@ func test_2d_navmesh_snapping_tolerates_a_shorter_assigned_point_grid() -> void:
 	NqsHelpers.run_to_completion(self, nqs, space)
 
 	assert_eq(criterion.apply_count, 1, "only the assigned point should be scored")
+
+
+# Threading only moves where the closest-point queries run, so a threaded query
+# must snap to the same positions and produce the same results as a serial one.
+func test_2d_threaded_snapping_matches_serial() -> void:
+	await _assert_threaded_snapping_matches_serial(false)
+
+
+func test_3d_threaded_snapping_matches_serial() -> void:
+	await _assert_threaded_snapping_matches_serial(true)
+
+
+func _make_snapping_space(parent: Node, is_3d: bool, threading_mode: NNNQSSearchSpaces.ThreadingMode) -> NNNQSSearchSpaces:
+	var space: NNNQSSearchSpaces
+	if is_3d:
+		var space_3d: NNPointGrid3DSearchSpace = NNPointGrid3DSearchSpace.new()
+		space_3d.grid_size = Vector3(24, 0, 24)
+		space_3d.point_grid_base_spacing_vector = Vector3(2, 1, 2)
+		space_3d.point_grid_parent_node = parent
+		space = space_3d
+	else:
+		var space_2d: NNPointGrid2DSearchSpace = NNPointGrid2DSearchSpace.new()
+		space_2d.grid_size = Vector2(16, 16)
+		space_2d.point_grid_base_spacing_vector = Vector2(2, 2)
+		space_2d.point_grid_parent_node = parent
+		space = space_2d
+	space.threading_mode = threading_mode
+	space.top_n_to_find = 3
+
+	# An off center distance target keeps every score distinct, so result order
+	# cannot depend on how ties are handled.
+	if is_3d:
+		var criterion_3d := NNDistanceToVector3SearchCriterion.new()
+		criterion_3d.distance_to_vector = Vector3(3.3, 0.7, -1.1)
+		criterion_3d.max_distance = 100.0
+		criterion_3d.use_for_filtering = false
+		criterion_3d.use_for_scoring = true
+		space.add_child(criterion_3d)
+	else:
+		var criterion_2d := NNDistanceToVector2SearchCriterion.new()
+		criterion_2d.distance_to_vector = Vector2(3.3, -1.1)
+		criterion_2d.max_distance = 100.0
+		criterion_2d.use_for_filtering = false
+		criterion_2d.use_for_scoring = true
+		space.add_child(criterion_2d)
+
+	parent.add_child(space)
+	return space
+
+
+func _assert_threaded_snapping_matches_serial(is_3d: bool) -> void:
+	var parent: Node
+	if is_3d:
+		parent = add_child_autofree(Node3D.new())
+		await NqsHelpers.make_navmesh_3d(self, parent, 8.0)
+	else:
+		parent = add_child_autofree(Node2D.new())
+		await NqsHelpers.make_navmesh_2d(self, parent, 8.0)
+
+	var nqs: NNNodeQuerySystem = NqsHelpers.make_nqs(self, 1000000, 100000)
+	var serial: NNNQSSearchSpaces = _make_snapping_space(parent, is_3d, NNNQSSearchSpaces.THREADING_OFF)
+	var threaded: NNNQSSearchSpaces = _make_snapping_space(parent, is_3d, NNNQSSearchSpaces.THREADING_ALWAYS)
+
+	var grid_positions: Array = []
+	for point in serial.point_grid:
+		grid_positions.append(point.global_position)
+
+	await NqsHelpers.run_to_completion_over_frames(self, nqs, serial)
+	await NqsHelpers.run_to_completion_over_frames(self, nqs, threaded)
+
+	assert_eq(threaded.point_grid.size(), serial.point_grid.size(), "both grids must hold the same points")
+	var moved: int = 0
+	for i in serial.point_grid.size():
+		if not grid_positions[i].is_equal_approx(serial.point_grid[i].global_position):
+			moved += 1
+		assert_true(serial.point_grid[i].global_position.is_equal_approx(threaded.point_grid[i].global_position),
+				"point %d must snap to the same position on both paths" % i)
+	assert_gt(moved, 0, "the smaller navmesh must move some points for this comparison to mean anything")
+
+	assert_eq(threaded.query_results.size(), serial.query_results.size(), "both paths must keep the same results")
+	for i in serial.query_results.size():
+		assert_true(serial.query_results[i].global_position.is_equal_approx(threaded.query_results[i].global_position),
+				"result %d must be the same point on both paths" % i)
+		assert_almost_eq(threaded.query_result_scores[i], serial.query_result_scores[i], EPSILON,
+				"score %d must match" % i)

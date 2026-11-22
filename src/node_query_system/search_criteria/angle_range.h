@@ -1,5 +1,7 @@
 #pragma once
 
+#include "activation_curve.h"
+
 #include <godot_cpp/core/math.hpp>
 
 namespace godot {
@@ -90,6 +92,19 @@ inline float NNAngleRange::score(float p_angle) const {
 inline void NNAngleRange::_recalculate_span() {
 	const float span_radians = _max_radians - _min_radians;
 	_one_over_span_radians = 1.0f / span_radians;
+}
+
+inline void apply_angle_range(const NNAngleRange &p_range, bool p_use_for_filtering, bool p_use_for_scoring, const NNActivationCurveSampler &p_activation_curve, float p_angle, bool &r_filter_out, float &r_score) {
+	bool is_filtered = false;
+	float score = 1.0f;
+	if (p_use_for_filtering) {
+		is_filtered = p_range.filters(p_angle);
+	}
+	if (p_use_for_scoring) {
+		score = p_activation_curve.sample(p_range.score(p_angle));
+	}
+	r_filter_out = is_filtered;
+	r_score = score;
 }
 
 } //namespace godot

@@ -46,6 +46,7 @@
 		</member>
 		<member name="use_navigation_mesh_positions" type="bool" setter="set_use_navigation_mesh_positions" getter="get_use_navigation_mesh_positions" default="true">
 			If [code]true[/code] and [member navigation_map_rid] is valid, each point's global position is snapped to the closest point on the navigation map via [method NavigationServer3D.map_get_closest_point] during query preprocessing.
+			The closest point queries run on worker threads according to [member NNNQSSearchSpaces.threading_mode], and the snapped positions are written back to the point nodes on the main thread.
 		</member>
 	</members>
 </class>

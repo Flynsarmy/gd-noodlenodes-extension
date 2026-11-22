@@ -3,10 +3,38 @@
 
 using namespace godot;
 
+namespace {
+
+// Both directions must project the same way for an aligned node to score zero.
+inline Vector2 project_direction_to_xz(Vector3 direction) {
+	return Vector2(-direction.z, direction.x);
+}
+
+class ThreadedAngleToVector3XZ : public NNNQSThreadedCriterion {
+public:
+	NNAngleRange angle_range{ 0.0f, 0.0f };
+	bool use_for_filtering = false;
+	bool use_for_scoring = true;
+	NNActivationCurveSampler activation_curve;
+	Vector2 xz_direction_vector;
+
+	void evaluate(const NNNQSCandidate &p_candidate, bool &r_filter_out, float &r_score) const override {
+		if (p_candidate.kind != NNNQSCandidate::NODE_3D) {
+			return;
+		}
+		const Vector3 node_direction_vector = -p_candidate.global_transform_3d.basis.get_column(2);
+		const Vector2 node_xz_direction_vector = project_direction_to_xz(node_direction_vector);
+		const float angle = xz_direction_vector.angle_to(node_xz_direction_vector);
+		apply_angle_range(angle_range, use_for_filtering, use_for_scoring, activation_curve, angle, r_filter_out, r_score);
+	}
+};
+
+} //namespace
+
 NNAngleToVector3XZSearchCriterion::NNAngleToVector3XZSearchCriterion() :
 		_angle_range(-90.0f, 90.0f) {
 	_angle_to_direction_vector = Vector3(0.0, 0.0, -1.0);
-	_xz_angle_vector = _project_direction_to_xz(_angle_to_direction_vector);
+	_xz_angle_vector = project_direction_to_xz(_angle_to_direction_vector);
 }
 
 NNAngleToVector3XZSearchCriterion::~NNAngleToVector3XZSearchCriterion() {
@@ -30,19 +58,11 @@ void NNAngleToVector3XZSearchCriterion::_initialize_criterion() {
 	_angle_range.initialize(true);
 }
 
-Vector2 NNAngleToVector3XZSearchCriterion::_project_direction_to_xz(Vector3 direction) const {
-	// Project a direction onto the XZ plane. The same signed projection must be
-	// used for the reference direction and for the candidate node forward
-	// vector (-global_transform.basis.z), so that an aligned node has an angle
-	// of zero and rotating around +Y produces a signed angle.
-	return Vector2(-direction.z, direction.x);
-}
-
 // Getters and setters.
 
 void NNAngleToVector3XZSearchCriterion::set_angle_to_direction_vector(Vector3 angle_to_direction_vector) {
 	_angle_to_direction_vector = angle_to_direction_vector;
-	_xz_angle_vector = _project_direction_to_xz(_angle_to_direction_vector);
+	_xz_angle_vector = project_direction_to_xz(_angle_to_direction_vector);
 }
 
 Vector3 NNAngleToVector3XZSearchCriterion::get_angle_to_direction_vector() const {
@@ -72,25 +92,25 @@ void NNAngleToVector3XZSearchCriterion::apply_criterion(Node *node, bool &filter
 	if (node3d == nullptr)
 		return;
 
-	_is_filtered = false;
-	_score = 1.0f;
-
 	Vector3 node3d_direction_vector = -node3d->get_global_transform().basis.get_column(2);
-	Vector2 node3d_2d_direction_vector = _project_direction_to_xz(node3d_direction_vector);
+	Vector2 node3d_2d_direction_vector = project_direction_to_xz(node3d_direction_vector);
 
 	float angle = _xz_angle_vector.angle_to(node3d_2d_direction_vector);
 
-	if (get_use_for_filtering()) {
-		_is_filtered = _angle_range.filters(angle);
-	} //endif do filtering
+	apply_angle_range(_angle_range, get_use_for_filtering(), get_use_for_scoring(), NNActivationCurveSampler(get_activation_curve()), angle, filter_out, score);
+	_is_filtered = filter_out;
+	_score = score;
+}
 
-	if (get_use_for_scoring()) {
-		_score = _angle_range.score(angle);
-		if (get_activation_curve().is_valid()) {
-			_score = sample_activation_curve(_score);
-		}
-	} //endif do scoring
-
-	filter_out = _is_filtered;
-	score = _score;
+std::unique_ptr<NNNQSThreadedCriterion> NNAngleToVector3XZSearchCriterion::create_threaded_criterion() const {
+	auto kernel = std::make_unique<ThreadedAngleToVector3XZ>();
+	kernel->angle_range = _angle_range;
+	kernel->use_for_filtering = get_use_for_filtering();
+	kernel->use_for_scoring = get_use_for_scoring();
+	kernel->xz_direction_vector = _xz_angle_vector;
+	const Ref<Resource> activation_curve = get_activation_curve();
+	if (activation_curve.is_valid()) {
+		kernel->activation_curve = NNActivationCurveSampler(activation_curve->duplicate());
+	}
+	return kernel;
 }

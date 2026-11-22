@@ -1,9 +1,11 @@
 #pragma once
 
 #include "../noodle_nodes.h"
+#include "../nqs_threading.h"
 #include "../search_criteria/nqs.h"
 #include <godot_cpp/classes/node.hpp>
 #include <godot_cpp/core/object_id.hpp>
+#include <memory>
 #include <vector>
 
 namespace godot {
@@ -13,12 +15,21 @@ class NNNodeQuerySystem;
 class NNNQSSearchSpaces : public NoodleNodes {
 	GDCLASS(NNNQSSearchSpaces, NoodleNodes)
 
+public:
+	enum ThreadingMode {
+		THREADING_OFF,
+		THREADING_AUTO,
+		THREADING_ALWAYS,
+	};
+
 private:
 	// Members, not statics: static StringNames outlive the engine's StringName table.
 	StringName _is_filtered_property;
 	StringName _score_property;
 
 	bool _is_run_in_debug_mode;
+	ThreadingMode _threading_mode;
+	bool _is_last_query_threaded;
 
 	int _top_n_to_find;
 	unsigned int _current_criterion_index;
@@ -64,6 +75,29 @@ private:
 	std::vector<NNNQSSearchCriteria *> _filtering_criteria;
 	unsigned int _num_filtering_criteria;
 
+	struct CriteriaChunkResult {
+		std::vector<uint32_t> candidate_indexes;
+		std::vector<float> scores;
+		unsigned int visits = 0;
+	};
+
+	// Worker threads read and write only these buffers.
+	bool _is_threading_decision_made;
+	bool _is_criteria_threaded;
+	unsigned int _threaded_snapshot_index;
+	bool _threaded_snapshot_completed;
+	bool _threaded_job_started;
+	bool _threaded_keep_all_candidates;
+	int _threaded_top_n;
+	std::vector<ObjectID> _threaded_candidate_ids;
+	std::vector<NNNQSCandidate> _threaded_candidates;
+	std::vector<std::unique_ptr<NNNQSThreadedCriterion>> _threaded_criteria;
+	std::vector<CriteriaChunkResult> _threaded_chunk_results;
+	std::vector<uint8_t> _threaded_candidate_kept;
+	std::vector<float> _threaded_candidate_scores;
+	// After the buffers above: its destructor waits before they go away.
+	NNNQSWorkerJob _threaded_job;
+
 	int _nqs_query_index; // Index of the query in the scheduler.
 	ObjectID _nqs_scheduler_id;
 	bool _nqs_query_is_high_priority;
@@ -79,15 +113,24 @@ protected:
 	static void _bind_methods();
 	virtual void _initialize_search_space() {}
 	virtual void _uninitialize_search_space() {}
+	virtual void _cancel_preprocessing() {}
 
 	bool apply_criterion_with_time_budget(NNNQSSearchCriteria *criterion,
 			uint64_t start_time_usec,
 			uint64_t deadline_usec);
+	bool decide_threaded_criteria();
+	bool snapshot_threaded_candidates(uint64_t start_time_usec, uint64_t deadline_usec);
+	void dispatch_threaded_criteria();
+	void run_threaded_criteria_chunk(uint32_t begin, uint32_t end);
+	void apply_threaded_criteria();
+	void clear_threaded_query_data();
 	virtual bool preprocess_search_space(uint64_t time_limit_timestamp_usec) {
 		_is_preprocessing_completed = true;
 		return true;
 	};
 	void place_to_query_results_based_on_score(Node *node, float score);
+	bool uses_threads_for(unsigned int p_item_count, unsigned int p_auto_min_items) const;
+	bool _is_waiting_for_worker;
 
 	unsigned int _current_preprocessing_node_index;
 
@@ -99,6 +142,12 @@ public:
 
 	void set_is_run_in_debug_mode(bool is_run_in_debug_mode);
 	bool get_is_run_in_debug_mode() const;
+
+	void set_threading_mode(ThreadingMode threading_mode);
+	ThreadingMode get_threading_mode() const;
+
+	bool get_is_last_query_threaded() const;
+	bool is_waiting_for_worker() const;
 
 	void set_nqs_query_index(int nqs_query_index);
 	int get_nqs_query_index() const;
@@ -154,3 +203,5 @@ public:
 };
 
 } //namespace godot
+
+VARIANT_ENUM_CAST(NNNQSSearchSpaces::ThreadingMode);

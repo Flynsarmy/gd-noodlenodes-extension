@@ -14,8 +14,6 @@ private:
 	Vector3 _angle_to_direction_vector;
 	Vector2 _xz_angle_vector;
 
-	Vector2 _project_direction_to_xz(Vector3 direction) const;
-
 protected:
 	static void _bind_methods();
 	virtual void _initialize_criterion() override;
@@ -38,6 +36,7 @@ public:
 	// Handling methods.
 
 	virtual void apply_criterion(Node *node, bool &filter_out, float &score) override;
+	virtual std::unique_ptr<NNNQSThreadedCriterion> create_threaded_criterion() const override;
 };
 
 } //namespace godot

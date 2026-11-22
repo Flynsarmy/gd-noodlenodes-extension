@@ -49,6 +49,28 @@ float NNDistanceToNode2DSearchCriterion::get_max_distance() const {
 
 // Handing methods.
 
+namespace {
+
+class ThreadedDistanceToNode2D : public NNNQSThreadedCriterion {
+public:
+	NNDistanceRange distance_range;
+	bool use_for_filtering = false;
+	bool use_for_scoring = true;
+	NNActivationCurveSampler activation_curve;
+	bool has_target = false;
+	Vector2 target_position;
+
+	void evaluate(const NNNQSCandidate &p_candidate, bool &r_filter_out, float &r_score) const override {
+		if (!has_target || p_candidate.kind != NNNQSCandidate::NODE_2D) {
+			return;
+		}
+		const Vector2 from_to = p_candidate.global_transform_2d.get_origin() - target_position;
+		apply_distance_range(distance_range, use_for_filtering, use_for_scoring, activation_curve, from_to.length_squared(), r_filter_out, r_score);
+	}
+};
+
+} //namespace
+
 void NNDistanceToNode2DSearchCriterion::apply_criterion(Node *node, bool &filter_out, float &score) {
 	Node2D *distance_to = get_distance_to();
 	if (distance_to == nullptr)
@@ -57,23 +79,27 @@ void NNDistanceToNode2DSearchCriterion::apply_criterion(Node *node, bool &filter
 	if (node2d == nullptr)
 		return;
 
-	_is_filtered = false;
-	_score = 1.0f;
-
 	Vector2 from_to = node2d->get_global_position() - distance_to->get_global_position();
 	float distance_squared = from_to.length_squared();
 
-	if (get_use_for_filtering()) {
-		_is_filtered = _distance_range.filters(distance_squared);
-	} //endif do filtering
+	apply_distance_range(_distance_range, get_use_for_filtering(), get_use_for_scoring(), NNActivationCurveSampler(get_activation_curve()), distance_squared, filter_out, score);
+	_is_filtered = filter_out;
+	_score = score;
+}
 
-	if (get_use_for_scoring()) {
-		_score = _distance_range.score(distance_squared);
-		if (get_activation_curve().is_valid()) {
-			_score = sample_activation_curve(_score);
-		}
-	} //endif do scoring
-
-	filter_out = _is_filtered;
-	score = _score;
+std::unique_ptr<NNNQSThreadedCriterion> NNDistanceToNode2DSearchCriterion::create_threaded_criterion() const {
+	auto kernel = std::make_unique<ThreadedDistanceToNode2D>();
+	kernel->distance_range = _distance_range;
+	kernel->use_for_filtering = get_use_for_filtering();
+	kernel->use_for_scoring = get_use_for_scoring();
+	Node2D *distance_to = get_distance_to();
+	kernel->has_target = distance_to != nullptr;
+	if (kernel->has_target) {
+		kernel->target_position = distance_to->get_global_position();
+	}
+	const Ref<Resource> activation_curve = get_activation_curve();
+	if (activation_curve.is_valid()) {
+		kernel->activation_curve = NNActivationCurveSampler(activation_curve->duplicate());
+	}
+	return kernel;
 }

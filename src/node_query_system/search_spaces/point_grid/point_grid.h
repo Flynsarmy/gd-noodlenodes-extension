@@ -1,5 +1,7 @@
 #pragma once
 
+#include "../../nqs_threading.h"
+#include <functional>
 #include <godot_cpp/classes/time.hpp>
 #include <godot_cpp/core/defs.hpp>
 #include <godot_cpp/core/error_macros.hpp>
@@ -7,9 +9,12 @@
 #include <godot_cpp/core/object.hpp>
 #include <godot_cpp/variant/rid.hpp>
 #include <godot_cpp/variant/string.hpp>
+#include <godot_cpp/variant/transform2d.hpp>
+#include <godot_cpp/variant/transform3d.hpp>
 #include <godot_cpp/variant/typed_array.hpp>
 #include <godot_cpp/variant/vector2.hpp>
 #include <godot_cpp/variant/vector3.hpp>
+#include <utility>
 #include <vector>
 
 namespace godot {
@@ -22,6 +27,23 @@ struct NNPointGridLatticePreset {
 	VectorT spacing;
 	VectorT lattice_vector;
 };
+
+template <typename VectorT>
+struct NNPointGridTransformType;
+template <>
+struct NNPointGridTransformType<Vector2> {
+	using type = Transform2D;
+};
+template <>
+struct NNPointGridTransformType<Vector3> {
+	using type = Transform3D;
+};
+
+// Serial snapping costs about 12 usec per point, so below this many the group task does not pay.
+constexpr unsigned int POINT_GRID_AUTO_MIN_POINTS = 32;
+constexpr unsigned int POINT_GRID_SNAP_CHUNK_SIZE = 32;
+// Batching the clock read bounds a budget overrun to a full batch of points.
+constexpr unsigned int POINT_GRID_TIME_CHECK_INTERVAL_POINTS = 64;
 
 inline bool point_grid_spacing_is_valid(const Vector2 &p_spacing) {
 	return p_spacing.is_finite() && p_spacing.x > 0.0f && p_spacing.y > 0.0f;
@@ -155,6 +177,134 @@ inline bool point_grid_snap_to_navigation(unsigned int &r_current_index, const T
 		}
 	}
 	return true;
+}
+
+// Workers read only the captured buffers below and never touch a node, so points may be freed mid-job.
+template <typename VectorT, typename NodeT, typename NavigationServerT>
+class NNPointGridSnapper {
+public:
+	bool snap(const TypedArray<NodeT> &p_point_grid, const std::vector<VectorT> &p_positions, const VectorT &p_offset, NodeT *p_parent, RID p_navigation_map, NavigationServerT *p_nav_server, uint64_t p_time_limit_timestamp_usec) {
+		if (_stage == STAGE_IDLE) {
+			_stage = STAGE_CAPTURE;
+			_num_points = MIN((unsigned int)p_point_grid.size(), (unsigned int)p_positions.size());
+			_local_positions.resize(_num_points);
+			_snapped_positions.resize(_num_points);
+			_node_ids.resize(_num_points);
+			_navigation_map = p_navigation_map;
+			_parent_transform = p_parent->get_global_transform();
+			_capture_index = 0;
+			_apply_index = 0;
+		}
+
+		if (_stage == STAGE_CAPTURE) {
+			unsigned int points_since_time_check = POINT_GRID_TIME_CHECK_INTERVAL_POINTS;
+			while (_capture_index < _num_points) {
+				const NodeT *node = Object::cast_to<NodeT>(p_point_grid[_capture_index]);
+				_node_ids[_capture_index] = node != nullptr ? static_cast<uint64_t>(node->get_instance_id()) : 0;
+				_local_positions[_capture_index] = p_positions[_capture_index] + p_offset;
+				++_capture_index;
+				if (--points_since_time_check == 0) {
+					points_since_time_check = POINT_GRID_TIME_CHECK_INTERVAL_POINTS;
+					if (Time::get_singleton()->get_ticks_usec() >= p_time_limit_timestamp_usec) {
+						return false;
+					}
+				}
+			}
+			_stage = STAGE_SNAP;
+			const RID navigation_map = _navigation_map;
+			const TransformT parent_transform = _parent_transform;
+			std::function<void(uint32_t, uint32_t)> work = [this, p_nav_server, navigation_map, parent_transform](uint32_t p_begin, uint32_t p_end) {
+				for (uint32_t i = p_begin; i < p_end; ++i) {
+					_snapped_positions[i] = p_nav_server->map_get_closest_point(navigation_map, parent_transform.xform(_local_positions[i]));
+				}
+			};
+			_job.start(_num_points, POINT_GRID_SNAP_CHUNK_SIZE, std::move(work), "Point grid navmesh snapping");
+		}
+
+		if (_stage == STAGE_SNAP) {
+			if (!_job.poll()) {
+				return false;
+			}
+			_stage = STAGE_APPLY;
+		}
+
+		unsigned int points_since_time_check = POINT_GRID_TIME_CHECK_INTERVAL_POINTS;
+		while (_apply_index < _num_points) {
+			// A point may be freed while the job runs, so write only ids that still resolve.
+			const uint64_t node_id = _node_ids[_apply_index];
+			NodeT *node = node_id != 0 ? Object::cast_to<NodeT>(ObjectDB::get_instance(node_id)) : nullptr;
+			if (node != nullptr) {
+				node->set_global_position(_snapped_positions[_apply_index]);
+			}
+			++_apply_index;
+			if (--points_since_time_check == 0) {
+				points_since_time_check = POINT_GRID_TIME_CHECK_INTERVAL_POINTS;
+				if (Time::get_singleton()->get_ticks_usec() >= p_time_limit_timestamp_usec) {
+					return false;
+				}
+			}
+		}
+
+		cancel();
+		return true;
+	}
+
+	bool is_active() const {
+		return _stage != STAGE_IDLE;
+	}
+
+	bool is_waiting_for_job() const {
+		return _stage == STAGE_SNAP;
+	}
+
+	void cancel() {
+		_job.wait();
+		_local_positions.clear();
+		_snapped_positions.clear();
+		_node_ids.clear();
+		_capture_index = 0;
+		_apply_index = 0;
+		_num_points = 0;
+		_stage = STAGE_IDLE;
+	}
+
+private:
+	enum Stage {
+		STAGE_IDLE,
+		STAGE_CAPTURE,
+		STAGE_SNAP,
+		STAGE_APPLY,
+	};
+
+	using TransformT = typename NNPointGridTransformType<VectorT>::type;
+
+	// Members are destroyed in reverse order, so the job must stay last.
+	std::vector<VectorT> _local_positions;
+	std::vector<VectorT> _snapped_positions;
+	std::vector<uint64_t> _node_ids;
+	TransformT _parent_transform;
+	RID _navigation_map;
+	NNNQSWorkerJob _job;
+	unsigned int _num_points = 0;
+	unsigned int _capture_index = 0;
+	unsigned int _apply_index = 0;
+	Stage _stage = STAGE_IDLE;
+};
+
+template <typename VectorT, typename NodeT, typename NavigationServerT>
+inline bool point_grid_preprocess(NNPointGridSnapper<VectorT, NodeT, NavigationServerT> &r_snapper, bool p_use_threads, unsigned int &r_current_index, bool &r_is_waiting_for_worker, const TypedArray<NodeT> &p_point_grid, const std::vector<VectorT> &p_positions, const VectorT &p_offset, NodeT *p_parent, RID p_navigation_map, NavigationServerT *p_nav_server, uint64_t p_time_limit_timestamp_usec) {
+	if (p_use_threads) {
+		const bool is_complete = r_snapper.snap(p_point_grid, p_positions, p_offset, p_parent, p_navigation_map, p_nav_server, p_time_limit_timestamp_usec);
+		r_is_waiting_for_worker = !is_complete && r_snapper.is_waiting_for_job();
+		return is_complete;
+	}
+
+	if (r_snapper.is_active()) {
+		// Threading was switched off mid-query, so the serial pass restarts rather than skips unapplied points.
+		r_snapper.cancel();
+		r_current_index = 0;
+	}
+	return point_grid_snap_to_navigation(r_current_index, p_point_grid, p_positions, p_offset, p_parent, p_navigation_map, p_nav_server, p_time_limit_timestamp_usec);
 }
 
 } //namespace godot

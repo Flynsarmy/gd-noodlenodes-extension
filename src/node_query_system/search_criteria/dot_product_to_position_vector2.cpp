@@ -58,13 +58,35 @@ int NNDotProductToPositionVector2SearchCriterion::get_filtering_rule() const {
 
 // Handing methods.
 
+namespace {
+
+class ThreadedDotProductToPositionVector2 : public NNNQSThreadedCriterion {
+public:
+	bool use_for_filtering = false;
+	bool use_for_scoring = true;
+	NNActivationCurveSampler activation_curve;
+	Vector2 position_vector;
+	float filtering_value = 0.0f;
+	int filtering_rule = 0;
+
+	void evaluate(const NNNQSCandidate &p_candidate, bool &r_filter_out, float &r_score) const override {
+		if (p_candidate.kind != NNNQSCandidate::NODE_2D) {
+			return;
+		}
+		const Vector2 node_position_vector = p_candidate.global_transform_2d.get_origin();
+		const Vector2 node_direction_vector = Vector2(1.0, 0.0).rotated(p_candidate.global_transform_2d.get_rotation());
+		const Vector2 from_to = (position_vector - node_position_vector).normalized();
+		const float dot_product = node_direction_vector.dot(from_to);
+		apply_dot_product<NNDotProductToPositionVector2SearchCriterion::NNDotProductToPositionVector2SearchCriteriaFilteringRule>(use_for_filtering, use_for_scoring, activation_curve, dot_product, filtering_value, filtering_rule, r_filter_out, r_score);
+	}
+};
+
+} //namespace
+
 void NNDotProductToPositionVector2SearchCriterion::apply_criterion(Node *node, bool &filter_out, float &score) {
 	Node2D *node2d = godot::Object::cast_to<Node2D>(node);
 	if (node2d == nullptr)
 		return;
-
-	_is_filtered = false;
-	_score = 1.0f;
 
 	Vector2 node2d_position_vector = node2d->get_global_position();
 	Vector2 node2d_direction_vector = Vector2(1.0, 0.0).rotated(node2d->get_global_rotation());
@@ -73,17 +95,21 @@ void NNDotProductToPositionVector2SearchCriterion::apply_criterion(Node *node, b
 
 	float DotProductToPosition = node2d_direction_vector.dot(node2d_from_to_vector);
 
-	if (get_use_for_filtering()) {
-		_is_filtered = filter_dot_product<NNDotProductToPositionVector2SearchCriteriaFilteringRule>(DotProductToPosition, _filtering_value, _filtering_rule);
-	} //endif do filtering
+	apply_dot_product<NNDotProductToPositionVector2SearchCriteriaFilteringRule>(get_use_for_filtering(), get_use_for_scoring(), NNActivationCurveSampler(get_activation_curve()), DotProductToPosition, _filtering_value, _filtering_rule, filter_out, score);
+	_is_filtered = filter_out;
+	_score = score;
+}
 
-	if (get_use_for_scoring()) {
-		_score = score_dot_product(DotProductToPosition);
-		if (get_activation_curve().is_valid()) {
-			_score = sample_activation_curve(_score);
-		}
-	} //endif do scoring
-
-	filter_out = _is_filtered;
-	score = _score;
+std::unique_ptr<NNNQSThreadedCriterion> NNDotProductToPositionVector2SearchCriterion::create_threaded_criterion() const {
+	auto kernel = std::make_unique<ThreadedDotProductToPositionVector2>();
+	kernel->use_for_filtering = get_use_for_filtering();
+	kernel->use_for_scoring = get_use_for_scoring();
+	kernel->position_vector = _dot_product_position_vector;
+	kernel->filtering_value = _filtering_value;
+	kernel->filtering_rule = _filtering_rule;
+	const Ref<Resource> activation_curve = get_activation_curve();
+	if (activation_curve.is_valid()) {
+		kernel->activation_curve = NNActivationCurveSampler(activation_curve->duplicate());
+	}
+	return kernel;
 }

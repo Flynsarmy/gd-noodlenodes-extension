@@ -107,6 +107,21 @@ In this tutorial we create an extreme example to illustrate the functionality of
 In a real game, you will likely have less AI entities running queries, they will run the queries at different times, and your search spaces will be more optimized. They will also have more opportunities to do *intelligent waiting* in your game world.
 
 
+### 4.1. Threading
+
+The **Threading Mode** property of a search space decides whether the search criteria may run on worker threads:
+
+ * **Off** keeps every query on the main thread.
+ * **Auto** (the default) uses worker threads only when the search space is large enough for the hand-off to pay off.
+ * **Always** uses worker threads whenever the query supports it, however small the search space.
+
+Threading does not change the results: a threaded query scores exactly like a single-threaded one, including how equal scores are ordered. The read-only **Is Last Query Threaded** property tells you which path the latest completed query took. **NNPointGrid2DSearchSpace** and **NNPointGrid3DSearchSpace** also snap their points to the navigation mesh on worker threads under the same setting, during their preprocessing phase.
+
+Only the built-in criteria that depend purely on the candidate's own transform are thread-safe: the distance, dot product and angle criteria. A query stays on the main thread when any enabled criterion is a **NNCustomSearchCriterion**, a **NNMetadataSearchCriterion**, a built-in criterion with a script attached, or when **Is Run In Debug Mode** is enabled. Those criteria may read or write arbitrary game state, so they cannot be evaluated off the main thread.
+
+Candidate nodes are read once, on the main thread, when the scoring phase begins. Worker threads only see that snapshot, so every criterion scores the positions and rotations the nodes had at that moment, even if the game moves them while the query is still running. Results are applied and the **query_completed** signal is emitted on the main thread, so writing results to the blackboard or moving nodes stays safe. A candidate freed while a worker job is running is dropped from the results.
+
+
 ## 5. Creating the scenes
 
 The Node Query System works with both 2D and 3D scenes. For this tutorial we are creating everything in 2D because setting up the assets for 2D scenes is much quicker.

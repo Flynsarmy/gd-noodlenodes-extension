@@ -1,9 +1,13 @@
 #include "nqs.h"
 #include "../node_query_system.h"
 #include <godot_cpp/classes/engine.hpp>
+#include <godot_cpp/classes/node2d.hpp>
+#include <godot_cpp/classes/node3d.hpp>
 #include <godot_cpp/classes/time.hpp>
+#include <godot_cpp/core/object.hpp>
 
 #include <cstdint>
+#include <utility>
 
 using namespace godot;
 
@@ -30,6 +34,16 @@ NNNQSSearchSpaces::NNNQSSearchSpaces() {
 	_preprocessing_time_usec = 0;
 	_completed_signal_time_usec = 0;
 	_is_run_in_debug_mode = false;
+	_threading_mode = THREADING_AUTO;
+	_is_last_query_threaded = false;
+	_is_waiting_for_worker = false;
+	_is_threading_decision_made = false;
+	_is_criteria_threaded = false;
+	_threaded_snapshot_index = 0;
+	_threaded_snapshot_completed = false;
+	_threaded_job_started = false;
+	_threaded_keep_all_candidates = false;
+	_threaded_top_n = 1;
 #ifdef DEBUG_ENABLED
 	_debug_score_watch_count = 0;
 #endif
@@ -42,6 +56,10 @@ NNNQSSearchSpaces::~NNNQSSearchSpaces() {
 
 // Batching the clock read bounds a budget overrun to at most N - 1 node visits.
 constexpr unsigned int TIME_CHECK_INTERVAL_NODES = 16;
+// One worker chunk is also one top-N list during the criteria phase.
+constexpr uint32_t CRITERIA_THREADING_CHUNK_SIZE = 256;
+// Below this many candidates the snapshot and dispatch cost more than the scoring they replace.
+constexpr unsigned int CRITERIA_THREADING_AUTO_MIN_NODES = 700;
 
 static PropertyInfo _runtime_stat(PropertyInfo p_info) {
 	p_info.usage = PROPERTY_USAGE_EDITOR | PROPERTY_USAGE_READ_ONLY;
@@ -72,6 +90,13 @@ void NNNQSSearchSpaces::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_is_run_in_debug_mode"), &NNNQSSearchSpaces::get_is_run_in_debug_mode);
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "is_run_in_debug_mode", PROPERTY_HINT_NONE), "set_is_run_in_debug_mode", "get_is_run_in_debug_mode");
 
+	ClassDB::bind_method(D_METHOD("set_threading_mode", "threading_mode"), &NNNQSSearchSpaces::set_threading_mode);
+	ClassDB::bind_method(D_METHOD("get_threading_mode"), &NNNQSSearchSpaces::get_threading_mode);
+	ADD_PROPERTY(PropertyInfo(Variant::INT, "threading_mode", PROPERTY_HINT_ENUM, "Off,Auto,Always"), "set_threading_mode", "get_threading_mode");
+
+	ClassDB::bind_method(D_METHOD("get_is_last_query_threaded"), &NNNQSSearchSpaces::get_is_last_query_threaded);
+	ADD_PROPERTY(_runtime_stat(PropertyInfo(Variant::BOOL, "is_last_query_threaded", PROPERTY_HINT_NONE)), "", "get_is_last_query_threaded");
+
 	ClassDB::bind_method(D_METHOD("get_is_query_still_running"), &NNNQSSearchSpaces::get_is_query_still_running);
 	ADD_PROPERTY(_runtime_stat(PropertyInfo(Variant::BOOL, "is_query_still_running", PROPERTY_HINT_NONE)), "", "get_is_query_still_running");
 
@@ -98,6 +123,10 @@ void NNNQSSearchSpaces::_bind_methods() {
 
 	ClassDB::bind_method(D_METHOD("initialize_search_space"), &NNNQSSearchSpaces::initialize_search_space);
 	ClassDB::bind_method(D_METHOD("execute_query", "time_budget_usec"), &NNNQSSearchSpaces::execute_query);
+
+	BIND_ENUM_CONSTANT(THREADING_OFF);
+	BIND_ENUM_CONSTANT(THREADING_AUTO);
+	BIND_ENUM_CONSTANT(THREADING_ALWAYS);
 
 	ADD_SIGNAL(MethodInfo("query_completed", PropertyInfo(Variant::OBJECT, "search_space")));
 }
@@ -147,6 +176,33 @@ void NNNQSSearchSpaces::set_is_run_in_debug_mode(bool is_run_in_debug_mode) {
 
 bool NNNQSSearchSpaces::get_is_run_in_debug_mode() const {
 	return _is_run_in_debug_mode;
+}
+
+void NNNQSSearchSpaces::set_threading_mode(ThreadingMode threading_mode) {
+	_threading_mode = threading_mode;
+}
+
+NNNQSSearchSpaces::ThreadingMode NNNQSSearchSpaces::get_threading_mode() const {
+	return _threading_mode;
+}
+
+bool NNNQSSearchSpaces::get_is_last_query_threaded() const {
+	return _is_last_query_threaded;
+}
+
+bool NNNQSSearchSpaces::is_waiting_for_worker() const {
+	return _is_waiting_for_worker;
+}
+
+bool NNNQSSearchSpaces::uses_threads_for(unsigned int p_item_count, unsigned int p_auto_min_items) const {
+	switch (_threading_mode) {
+		case THREADING_ALWAYS:
+			return p_item_count > 0;
+		case THREADING_AUTO:
+			return p_item_count >= p_auto_min_items;
+		default:
+			return false;
+	}
 }
 
 void NNNQSSearchSpaces::set_nqs_query_index(int nqs_query_index) {
@@ -275,6 +331,9 @@ void NNNQSSearchSpaces::initialize_search_space() {
 }
 
 void NNNQSSearchSpaces::reset_query_variables() {
+	clear_threaded_query_data();
+	_cancel_preprocessing();
+
 	// Query was not running already, so initialize a new one.
 	_current_query_runtime_usec = 0;
 	_current_query_node_visits = 0;
@@ -312,19 +371,23 @@ void NNNQSSearchSpaces::start_query() {
 
 bool NNNQSSearchSpaces::execute_query(uint64_t time_budget_usec) {
 	uint64_t method_start_time_usec = godot::Time::get_singleton()->get_ticks_usec();
+	_is_waiting_for_worker = false;
 	const uint64_t deadline_usec = time_budget_usec > 0 ? method_start_time_usec + time_budget_usec : UINT64_MAX;
 
 	if (!get_is_enabled()) {
 		_is_query_still_running = false;
+		_is_last_query_threaded = false;
 		return true;
 	}
 	if (Engine::get_singleton()->is_editor_hint()) {
 		_is_query_still_running = false;
+		_is_last_query_threaded = false;
 		return true;
 	}
 	if (get_child_count() < 1) {
 		WARN_PRINT("NNNodeQuerySystem::execute_query() - No search criteria nodes added.");
 		_is_query_still_running = false;
+		_is_last_query_threaded = false;
 		return true;
 	}
 
@@ -368,32 +431,58 @@ bool NNNQSSearchSpaces::execute_query(uint64_t time_budget_usec) {
 		_is_preprocessing_completed = preprocess_search_space(deadline_usec);
 		uint64_t preprocessing_end_timestamp_usec = godot::Time::get_singleton()->get_ticks_usec();
 		_preprocessing_time_usec += (preprocessing_end_timestamp_usec - preprocessing_start_timestamp_usec);
-		if (preprocessing_end_timestamp_usec >= deadline_usec) {
+		if (!_is_preprocessing_completed || preprocessing_end_timestamp_usec >= deadline_usec) {
 			record_call_runtime(preprocessing_end_timestamp_usec - method_start_time_usec);
-			return false; // Preprocessing used the time budget.
+			return false; // Preprocessing used the time budget or waits on worker threads.
 		}
 	}
 
 	// Handle the criteria.
 	if (!_is_criteria_handled) {
-		while (_current_criterion_index < (int)_num_filtering_criteria) {
-			NNNQSSearchCriteria *criterion = _filtering_criteria[_current_criterion_index];
-			if (!criterion->get_is_enabled()) {
+		if (!_is_threading_decision_made) {
+			_is_criteria_threaded = decide_threaded_criteria();
+			_is_threading_decision_made = true;
+		}
+		if (_is_criteria_threaded) {
+			if (!_threaded_snapshot_completed) {
+				if (!snapshot_threaded_candidates(method_start_time_usec, deadline_usec)) {
+					return false; // Snapshot used the time budget.
+				}
+				_threaded_snapshot_completed = true;
+			}
+			if (!_threaded_job_started) {
+				dispatch_threaded_criteria();
+				_threaded_job_started = true;
+			}
+			// An unlimited budget promises to finish the query in this call.
+			if (time_budget_usec == 0) {
+				_threaded_job.wait();
+			} else if (!_threaded_job.poll()) {
+				_is_waiting_for_worker = true;
+				record_call_runtime(godot::Time::get_singleton()->get_ticks_usec() - method_start_time_usec);
+				return false;
+			}
+			apply_threaded_criteria();
+		} else {
+			while (_current_criterion_index < (int)_num_filtering_criteria) {
+				NNNQSSearchCriteria *criterion = _filtering_criteria[_current_criterion_index];
+				if (!criterion->get_is_enabled()) {
+					++_current_criterion_index;
+					continue;
+				}
+				bool is_criterion_complete = apply_criterion_with_time_budget(criterion,
+						method_start_time_usec,
+						deadline_usec);
+				if (!is_criterion_complete) {
+					// Note: the runtime is already updated in the apply_criterion_with_time_budget() method.
+					return false; // The criterion did not complete, so it timed out.
+				}
 				++_current_criterion_index;
-				continue;
-			}
-			bool is_criterion_complete = apply_criterion_with_time_budget(criterion,
-					method_start_time_usec,
-					deadline_usec);
-			if (!is_criterion_complete) {
-				// Note: the runtime is already updated in the apply_criterion_with_time_budget() method.
-				return false; // The criterion did not complete, so it timed out.
-			}
-			++_current_criterion_index;
-		} //endwhile criterions left to process
-		_is_criteria_handled = true;
-		_current_query_results.clear();
-		_current_query_result_scores.clear();
+			} //endwhile criterions left to process
+			_is_criteria_handled = true;
+			_current_query_results.clear();
+			_current_query_result_scores.clear();
+		}
 	} //endif is criteria handled
 	// Put all the remaining scores to the search results in order.
 	if (!_is_results_copied) {
@@ -437,6 +526,8 @@ bool NNNQSSearchSpaces::execute_query(uint64_t time_budget_usec) {
 	} //endif results are copied
 
 	// Clear everything to be ready for the next query.
+	_is_last_query_threaded = _is_criteria_threaded;
+	clear_threaded_query_data();
 	_current_criterion_index = 0;
 	_current_node_index = 0;
 	_current_result_index = 0;
@@ -525,33 +616,220 @@ bool NNNQSSearchSpaces::apply_criterion_with_time_budget(NNNQSSearchCriteria *cr
 	return true;
 }
 
-void NNNQSSearchSpaces::place_to_query_results_based_on_score(Node *node, float score) {
-	int num_entries = _current_query_result_scores.size();
-	if (num_entries == 0) {
-		_current_query_results.push_back(node);
-		_current_query_result_scores.push_back(score);
-		return;
-	} else if (num_entries == _top_n_to_find) {
-		if (score < _current_query_result_scores[_top_n_to_find - 1])
-			return; // Worse than the worst on the list.
-	}
+namespace {
 
+// Descending; a tie goes after its equals, and a full list returns -1 for a worse score.
+template <typename TScore>
+int score_insert_position(const TScore *p_scores, int p_num_entries, float p_score, int p_top_n) {
+	if (p_num_entries > 0 && p_num_entries == p_top_n && p_score < p_scores[p_top_n - 1]) {
+		return -1;
+	}
 	int i = 0;
-	while (i < num_entries && _current_query_result_scores[i] >= score) {
-		i++;
+	while (i < p_num_entries && p_scores[i] >= p_score) {
+		++i;
 	}
+	return i;
+}
 
-	if (i < num_entries) {
-		_current_query_results.insert(i, node);
-		_current_query_result_scores.insert(i, score);
-		if (num_entries + 1 > _top_n_to_find) {
-			_current_query_result_scores.remove_at(_top_n_to_find);
-			_current_query_results.remove_at(_top_n_to_find);
-		}
+} //namespace
+
+void NNNQSSearchSpaces::place_to_query_results_based_on_score(Node *node, float score) {
+	const int num_entries = _current_query_result_scores.size();
+	const int insertion_index = score_insert_position(_current_query_result_scores.ptr(), num_entries, score, _top_n_to_find);
+	if (insertion_index < 0) {
 		return;
 	}
-	if (i < _top_n_to_find) {
-		_current_query_results.push_back(node);
-		_current_query_result_scores.push_back(score);
+	_current_query_results.insert(insertion_index, node);
+	_current_query_result_scores.insert(insertion_index, score);
+	if (num_entries + 1 > _top_n_to_find) {
+		_current_query_result_scores.remove_at(_top_n_to_find);
+		_current_query_results.remove_at(_top_n_to_find);
 	}
+}
+
+bool NNNQSSearchSpaces::decide_threaded_criteria() {
+	if (!uses_threads_for(_num_search_space_nodes, CRITERIA_THREADING_AUTO_MIN_NODES)) {
+		return false;
+	}
+	if (_is_run_in_debug_mode) {
+		return false;
+	}
+
+	_threaded_criteria.clear();
+	for (NNNQSSearchCriteria *criterion : _filtering_criteria) {
+		if (!criterion->get_is_enabled()) {
+			continue;
+		}
+		// A script can override apply_criterion(), so its kernel is not trustworthy.
+		Object *script = criterion->get_script();
+		if (script != nullptr) {
+			_threaded_criteria.clear();
+			return false;
+		}
+		std::unique_ptr<NNNQSThreadedCriterion> kernel = criterion->create_threaded_criterion();
+		if (kernel == nullptr) {
+			_threaded_criteria.clear();
+			return false;
+		}
+		_threaded_criteria.push_back(std::move(kernel));
+	}
+	return !_threaded_criteria.empty();
+}
+
+bool NNNQSSearchSpaces::snapshot_threaded_candidates(uint64_t start_time_usec, uint64_t deadline_usec) {
+	// Array::ptr() is private in godot-cpp, so take the address of the first element once.
+	const Variant *search_space_nodes = _num_search_space_nodes > 0 ? &(*_ptr_current_search_space)[0] : nullptr;
+	unsigned int nodes_since_time_check = TIME_CHECK_INTERVAL_NODES;
+	while (_threaded_snapshot_index < _num_search_space_nodes) {
+		if (nodes_since_time_check >= TIME_CHECK_INTERVAL_NODES) {
+			const uint64_t current_time_usec = godot::Time::get_singleton()->get_ticks_usec();
+			if (current_time_usec >= deadline_usec) {
+				record_call_runtime(current_time_usec - start_time_usec);
+				return false;
+			}
+			nodes_since_time_check = 0;
+		}
+
+		Node *node = godot::Object::cast_to<Node>(search_space_nodes[_threaded_snapshot_index]);
+		if (node != nullptr) {
+			NNNQSCandidate candidate;
+			if (Node3D *node3d = godot::Object::cast_to<Node3D>(node)) {
+				candidate.kind = NNNQSCandidate::NODE_3D;
+				candidate.global_transform_3d = node3d->get_global_transform();
+			} else if (Node2D *node2d = godot::Object::cast_to<Node2D>(node)) {
+				candidate.kind = NNNQSCandidate::NODE_2D;
+				candidate.global_transform_2d = node2d->get_global_transform();
+			}
+			_threaded_candidates.push_back(candidate);
+			_threaded_candidate_ids.push_back(ObjectID(node->get_instance_id()));
+		}
+		++_threaded_snapshot_index;
+		++nodes_since_time_check;
+	}
+	return true;
+}
+
+void NNNQSSearchSpaces::dispatch_threaded_criteria() {
+	const uint32_t candidate_count = (uint32_t)_threaded_candidates.size();
+	const uint32_t chunk_count = (candidate_count + CRITERIA_THREADING_CHUNK_SIZE - 1) / CRITERIA_THREADING_CHUNK_SIZE;
+	_threaded_chunk_results.assign(chunk_count, CriteriaChunkResult());
+	// Workers read this copy: top_n_to_find may be set while the job runs.
+	_threaded_top_n = _top_n_to_find;
+	const size_t chunk_list_capacity = MIN((size_t)_threaded_top_n, (size_t)CRITERIA_THREADING_CHUNK_SIZE);
+	for (CriteriaChunkResult &chunk_result : _threaded_chunk_results) {
+		chunk_result.candidate_indexes.reserve(chunk_list_capacity);
+		chunk_result.scores.reserve(chunk_list_capacity);
+	}
+
+#ifdef DEBUG_ENABLED
+	_threaded_keep_all_candidates = _debug_score_watch_count > 0;
+#endif
+	if (_threaded_keep_all_candidates) {
+		_threaded_candidate_kept.assign(candidate_count, 0);
+		_threaded_candidate_scores.assign(candidate_count, 0.0f);
+	}
+
+	if (candidate_count == 0) {
+		return;
+	}
+	_threaded_job.start(candidate_count, CRITERIA_THREADING_CHUNK_SIZE, [this](uint32_t begin, uint32_t end) { run_threaded_criteria_chunk(begin, end); }, "NQS criteria");
+}
+
+void NNNQSSearchSpaces::run_threaded_criteria_chunk(uint32_t p_begin, uint32_t p_end) {
+	CriteriaChunkResult &chunk_result = _threaded_chunk_results[p_begin / CRITERIA_THREADING_CHUNK_SIZE];
+	unsigned int visits = 0;
+	for (uint32_t i = p_begin; i < p_end; ++i) {
+		float score = 1.0f;
+		bool is_dropped = false;
+		for (const std::unique_ptr<NNNQSThreadedCriterion> &criterion : _threaded_criteria) {
+			bool filter_out = false;
+			float criterion_score = 1.0f;
+			criterion->evaluate(_threaded_candidates[i], filter_out, criterion_score);
+			++visits;
+			if (filter_out) {
+				is_dropped = true;
+				break;
+			}
+			score = score * criterion_score;
+		}
+
+		if (_threaded_keep_all_candidates) {
+			_threaded_candidate_kept[i] = is_dropped ? 0 : 1;
+			_threaded_candidate_scores[i] = score;
+		}
+		if (is_dropped) {
+			continue;
+		}
+
+		const int insertion_index = score_insert_position(chunk_result.scores.data(), (int)chunk_result.scores.size(), score, _threaded_top_n);
+		if (insertion_index < 0) {
+			continue;
+		}
+		chunk_result.candidate_indexes.insert(chunk_result.candidate_indexes.begin() + insertion_index, i);
+		chunk_result.scores.insert(chunk_result.scores.begin() + insertion_index, score);
+		if ((int)chunk_result.scores.size() > _threaded_top_n) {
+			chunk_result.candidate_indexes.pop_back();
+			chunk_result.scores.pop_back();
+		}
+	}
+	chunk_result.visits = visits;
+}
+
+void NNNQSSearchSpaces::apply_threaded_criteria() {
+	_current_query_results.clear();
+	_current_query_result_scores.clear();
+
+	unsigned int visits = 0;
+	for (const CriteriaChunkResult &chunk_result : _threaded_chunk_results) {
+		visits += chunk_result.visits;
+		for (size_t i = 0; i < chunk_result.candidate_indexes.size(); ++i) {
+			const uint32_t candidate_index = chunk_result.candidate_indexes[i];
+			Node *node = godot::Object::cast_to<Node>(ObjectDB::get_instance(_threaded_candidate_ids[candidate_index]));
+			if (node != nullptr) {
+				place_to_query_results_based_on_score(node, chunk_result.scores[i]);
+			}
+		}
+	}
+	_current_query_node_visits += visits;
+
+	_query_results = _current_query_results;
+	_query_result_scores = _current_query_result_scores;
+
+#ifdef DEBUG_ENABLED
+	if (_threaded_keep_all_candidates) {
+		_debug_scored_nodes.clear();
+		_debug_scored_scores.clear();
+		for (size_t i = 0; i < _threaded_candidate_ids.size(); ++i) {
+			if (_threaded_candidate_kept[i] == 0) {
+				continue;
+			}
+			Node *node = godot::Object::cast_to<Node>(ObjectDB::get_instance(_threaded_candidate_ids[i]));
+			if (node == nullptr) {
+				continue;
+			}
+			_debug_scored_nodes.push_back(node);
+			_debug_scored_scores.push_back(_threaded_candidate_scores[i]);
+		}
+	}
+#endif
+
+	_num_search_space_nodes = 0;
+	_is_criteria_handled = true;
+	_is_results_copied = true;
+}
+
+void NNNQSSearchSpaces::clear_threaded_query_data() {
+	_threaded_job.wait();
+	_threaded_candidate_ids.clear();
+	_threaded_candidates.clear();
+	_threaded_criteria.clear();
+	_threaded_chunk_results.clear();
+	_threaded_candidate_kept.clear();
+	_threaded_candidate_scores.clear();
+	_threaded_snapshot_index = 0;
+	_threaded_snapshot_completed = false;
+	_threaded_job_started = false;
+	_threaded_keep_all_candidates = false;
+	_is_threading_decision_made = false;
+	_is_criteria_threaded = false;
 }

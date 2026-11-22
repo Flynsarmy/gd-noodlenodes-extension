@@ -60,6 +60,9 @@
 		<member name="current_call_runtime_usec" type="int" getter="get_current_call_runtime_usec" default="0">
 			Duration in microseconds of the latest [method execute_query] call. Read-only runtime state: never saved with the scene.
 		</member>
+		<member name="is_last_query_threaded" type="bool" getter="get_is_last_query_threaded" default="false">
+			Whether the latest completed query scored its candidates on worker threads. See [member threading_mode]. Read-only runtime state: never saved with the scene.
+		</member>
 		<member name="is_query_still_running" type="bool" getter="get_is_query_still_running" default="false">
 			Whether a query is currently in progress. Set to [code]true[/code] when posted with [method NNNodeQuerySystem.post_query] and to [code]false[/code] when it completes or is stopped with [method NNNodeQuerySystem.stop_query]. Read-only runtime state: never saved with the scene.
 		</member>
@@ -74,6 +77,9 @@
 		</member>
 		<member name="search_space_fetch_time_usec" type="int" getter="get_search_space_fetch_time_usec" default="0">
 			Duration in microseconds spent fetching the candidate nodes before filtering and scoring. Read-only runtime state: never saved with the scene.
+		</member>
+		<member name="threading_mode" type="int" setter="set_threading_mode" getter="get_threading_mode" enum="NNNQSSearchSpaces.ThreadingMode" default="1">
+			Whether the query may move work to [WorkerThreadPool] threads. Threaded and single-threaded queries return the same results, including the order of equal scores. A query only uses threads when every enabled criterion supports it: built-in criteria without an attached script do, while [NNCustomSearchCriterion], [NNMetadataSearchCriterion], scripted criteria and [member is_run_in_debug_mode] keep the whole query on the main thread. Worker threads score a main-thread snapshot of every candidate's global transform taken when the scoring phase begins, so scoring sees the transforms the nodes had at that moment, and a candidate freed while the job runs is dropped from the results. See [member is_last_query_threaded].
 		</member>
 		<member name="top_n_to_find" type="int" setter="set_top_n_to_find" getter="get_top_n_to_find" default="1">
 			Maximum number of highest-scoring nodes returned in [member query_results]. Must be at least [code]1[/code]; smaller values are rejected with an error.
@@ -96,4 +102,15 @@
 			</description>
 		</signal>
 	</signals>
+	<constants>
+		<constant name="THREADING_OFF" value="0" enum="ThreadingMode">
+			Always run the query on the main thread.
+		</constant>
+		<constant name="THREADING_AUTO" value="1" enum="ThreadingMode">
+			Use worker threads only when the search space is large enough for threads to pay off.
+		</constant>
+		<constant name="THREADING_ALWAYS" value="2" enum="ThreadingMode">
+			Use worker threads whenever the query supports them, however small the search space.
+		</constant>
+	</constants>
 </class>

@@ -1,5 +1,7 @@
 #pragma once
 
+#include "activation_curve.h"
+
 namespace godot {
 
 // Shared range maths for the distance criteria. The criterion keeps ownership
@@ -74,6 +76,19 @@ inline float NNDistanceRange::score(float p_distance_squared) const {
 inline void NNDistanceRange::_recalculate_span() {
 	const float span_length = _max_distance_squared - _min_distance_squared;
 	_one_over_span_length = 1.0f / span_length;
+}
+
+inline void apply_distance_range(const NNDistanceRange &p_range, bool p_use_for_filtering, bool p_use_for_scoring, const NNActivationCurveSampler &p_activation_curve, float p_distance_squared, bool &r_filter_out, float &r_score) {
+	bool is_filtered = false;
+	float score = 1.0f;
+	if (p_use_for_filtering) {
+		is_filtered = p_range.filters(p_distance_squared);
+	}
+	if (p_use_for_scoring) {
+		score = p_activation_curve.sample(p_range.score(p_distance_squared));
+	}
+	r_filter_out = is_filtered;
+	r_score = score;
 }
 
 } //namespace godot

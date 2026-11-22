@@ -34,6 +34,10 @@ void NNPointGrid3DSearchSpace::destroy_generated_point_grid_nodes() {
 	point_grid_destroy_nodes(_generated_point_grid_node_ids, _point_grid, _point_grid_parent_node_id);
 }
 
+void NNPointGrid3DSearchSpace::_cancel_preprocessing() {
+	_snapper.cancel();
+}
+
 void NNPointGrid3DSearchSpace::_bind_methods() {
 	ADD_SUBGROUP("Configuration", "");
 
@@ -233,7 +237,10 @@ void NNPointGrid3DSearchSpace::_initialize_search_space() {
 bool NNPointGrid3DSearchSpace::preprocess_search_space(uint64_t time_limit_timestamp_usec) {
 	Node3D *point_grid_parent_node = _resolve_point_grid_parent_node();
 	if (!_use_navigation_mesh_positions || !_navigation_map_rid.is_valid() || point_grid_parent_node == nullptr) {
+		_snapper.cancel();
 		return true;
 	}
-	return point_grid_snap_to_navigation(_current_preprocessing_node_index, _point_grid, _point_grid_default_positions, _offset_vector, point_grid_parent_node, _navigation_map_rid, NavigationServer3D::get_singleton(), time_limit_timestamp_usec);
+
+	const unsigned int num_points = MIN((unsigned int)_point_grid.size(), (unsigned int)_point_grid_default_positions.size());
+	return point_grid_preprocess(_snapper, uses_threads_for(num_points, POINT_GRID_AUTO_MIN_POINTS), _current_preprocessing_node_index, _is_waiting_for_worker, _point_grid, _point_grid_default_positions, _offset_vector, point_grid_parent_node, _navigation_map_rid, NavigationServer3D::get_singleton(), time_limit_timestamp_usec);
 }

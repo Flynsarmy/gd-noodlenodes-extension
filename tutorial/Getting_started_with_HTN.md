@@ -243,6 +243,8 @@ func on_resolve_arguments(state: Dictionary, args: Dictionary) -> Array[Dictiona
 
 Other planning hooks are `on_check_preconditions(state, args)` for availability that conditions cannot express, `on_get_effects(state, args)` and, for the search policies in [section 12](Getting_started_with_HTN.md#12-next-steps), `on_get_priority(state, args)` and `on_get_estimated_cost(state, args)`. Planning hooks may be called for alternatives that are later abandoned, so they must never change the scene.
 
+Planning always runs on the main thread, inside the root's tick. Hooks and bindings may therefore read the scene freely, for example node positions or groups. A search for a domain like the demo's takes tens of microseconds, much less than the cost of handing it to a worker thread. To keep a large domain from stalling a frame, limit its search with the expansion and time budgets in `NNHTNSearchSettings`.
+
 
 ## 9. Replanning and dependency keys
 

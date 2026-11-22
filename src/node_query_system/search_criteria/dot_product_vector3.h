@@ -44,6 +44,7 @@ public:
 	// Handling methods.
 
 	virtual void apply_criterion(Node *node, bool &filter_out, float &score) override;
+	virtual std::unique_ptr<NNNQSThreadedCriterion> create_threaded_criterion() const override;
 };
 
 } //namespace godot
