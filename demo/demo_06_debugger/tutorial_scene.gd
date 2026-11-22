@@ -214,8 +214,8 @@ func _toggle_overlay() -> void:
 
 
 func _debugger() -> Object:
-	if Engine.has_singleton("NoodleNodesDebugger"):
-		return Engine.get_singleton("NoodleNodesDebugger")
+	if Engine.has_singleton("NNDebugger"):
+		return Engine.get_singleton("NNDebugger")
 	return null
 
 

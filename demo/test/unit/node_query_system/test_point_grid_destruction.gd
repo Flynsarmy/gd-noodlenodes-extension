@@ -18,6 +18,10 @@ const SNAPPING_POINT_GRID_3D_SIZE := Vector3(40, 0, 40)
 const SNAPPING_NAV_MESH_SIZE := 12.0
 
 
+func after_each() -> void:
+	NqsHelpers.reset_nqs()
+
+
 func _snapshot(point_grid: Array) -> Array:
 	var nodes: Array = []
 	for node in point_grid:
@@ -166,7 +170,7 @@ func test_external_point_grid_entries_survive_space_free() -> void:
 # A grid large enough that the snapping job is still running when the test
 # resumes from the execute_query() call that started it.
 func _make_snapping_grid(is_3d: bool) -> Dictionary:
-	var nqs: NNNodeQuerySystem = NqsHelpers.make_nqs(self, 1000000, 100000)
+	NqsHelpers.configure_nqs(1000000, 100000)
 	var parent: Node
 	var space: NNNQSSearchSpaces
 	if is_3d:
@@ -188,7 +192,7 @@ func _make_snapping_grid(is_3d: bool) -> Dictionary:
 	space.threading_mode = NNNQSSearchSpaces.THREADING_ALWAYS
 	space.add_child(NNCustomSearchCriterion.new())
 	parent.add_child(space)
-	return { "nqs": nqs, "space": space, "points": _snapshot(space.point_grid) }
+	return { "space": space, "points": _snapshot(space.point_grid) }
 
 
 func _is_on_snapping_navmesh(position: Variant, is_3d: bool) -> bool:
@@ -203,17 +207,16 @@ func _is_on_snapping_navmesh(position: Variant, is_3d: bool) -> bool:
 func test_point_freed_while_snapping_is_safe() -> void:
 	for is_3d in [false, true]:
 		var grid: Dictionary = await _make_snapping_grid(is_3d)
-		var nqs: NNNodeQuerySystem = grid["nqs"]
 		var space: NNNQSSearchSpaces = grid["space"]
 		var points: Array = grid["points"]
 		var freed_point = points[0]
 		var kept_point = points[points.size() - 1]
 		var kept_start: Variant = kept_point.global_position
 
-		assert_eq(nqs.post_query(space, true), 1)
+		assert_eq(NNNodeQuerySystem.post_query(space, true), 1)
 		assert_false(space.execute_query(0), "the threaded pass must return while the job runs")
 		freed_point.free()
-		assert_true(nqs.stop_query(space), "a query whose grid lost a point can still be stopped")
+		assert_true(NNNodeQuerySystem.stop_query(space), "a query whose grid lost a point can still be stopped")
 
 		# The criteria and result phases read the grid outside of the snapping
 		# pass, so the replacement query is given the surviving points only.
@@ -223,7 +226,7 @@ func test_point_freed_while_snapping_is_safe() -> void:
 				surviving.append(point)
 		space.point_grid = surviving
 
-		await NqsHelpers.run_to_completion_over_frames(self, nqs, space)
+		await NqsHelpers.run_to_completion_over_frames(self, space)
 
 		assert_false(is_instance_valid(freed_point))
 		assert_true(is_instance_valid(kept_point), "a point that outlives the job is still snapped")
@@ -255,15 +258,14 @@ func test_space_freed_while_snapping_is_safe() -> void:
 func test_stop_and_repost_while_snapping_restarts_cleanly() -> void:
 	for is_3d in [false, true]:
 		var grid: Dictionary = await _make_snapping_grid(is_3d)
-		var nqs: NNNodeQuerySystem = grid["nqs"]
 		var space: NNNQSSearchSpaces = grid["space"]
 		var points: Array = grid["points"]
 
-		assert_eq(nqs.post_query(space, true), 1)
+		assert_eq(NNNodeQuerySystem.post_query(space, true), 1)
 		assert_false(space.execute_query(0), "the threaded pass must return while the job runs")
-		assert_true(nqs.stop_query(space), "a posted query can be stopped mid-job")
+		assert_true(NNNodeQuerySystem.stop_query(space), "a posted query can be stopped mid-job")
 
-		await NqsHelpers.run_to_completion_over_frames(self, nqs, space)
+		await NqsHelpers.run_to_completion_over_frames(self, space)
 
 		assert_false(space.is_query_still_running, "the re-posted query must complete")
 		for point in points:

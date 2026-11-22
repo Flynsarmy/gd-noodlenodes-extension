@@ -2,7 +2,7 @@
 ## Message names and labels shared by the editor debugger and the in-game overlay.
 ## The wire format is described in tutorial/Debugger_reference.md.
 
-const SINGLETON := "NoodleNodesDebugger"
+const SINGLETON := "NNDebugger"
 const PREFIX := "noodle_nodes"
 
 const ROOT_ADDED := PREFIX + ":root_added"

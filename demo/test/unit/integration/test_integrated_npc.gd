@@ -25,7 +25,7 @@ var _run_move: NNBTMoveTo2D
 
 
 func before_each() -> void:
-	Engine.get_singleton("NodeQuerySystem").clear_queries()
+	NNNodeQuerySystem.clear_queries()
 
 	_showcase = (load(SCENE_PATH) as PackedScene).instantiate() as Node2D
 	add_child_autofree(_showcase)
@@ -47,7 +47,7 @@ func before_each() -> void:
 
 
 func after_each() -> void:
-	Engine.get_singleton("NodeQuerySystem").clear_queries()
+	NNNodeQuerySystem.clear_queries()
 
 
 func _place_threat(distance: float) -> void:

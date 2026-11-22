@@ -9,6 +9,10 @@ const NqsHelpers = preload("res://test/unit/node_query_system/support/nqs_helper
 const SCORE_EPSILON := 0.0001
 
 
+func after_each() -> void:
+	NqsHelpers.reset_nqs()
+
+
 func _make_candidate(container: Node, candidate_name: String, y_rotation: float) -> Node3D:
 	var candidate: Node3D = Node3D.new()
 	candidate.name = candidate_name
@@ -42,7 +46,8 @@ func test_default_reference_selects_aligned_node_not_opposite() -> void:
 	criterion.use_for_scoring = false
 
 	var query: NNNodeChildrenSearchSpace = NqsHelpers.make_query(self, container, criterion, 2)
-	NqsHelpers.run_to_completion(self, NqsHelpers.make_nqs(self), query)
+	NqsHelpers.configure_nqs()
+	NqsHelpers.run_to_completion(self, query)
 
 	assert_eq(_result_names(query), ["aligned"], "An identity Node3D faces the default -Z reference; the PI rotation faces away.")
 
@@ -58,7 +63,8 @@ func test_rotated_reference_selects_facing_node() -> void:
 	criterion.use_for_scoring = false
 
 	var query: NNNodeChildrenSearchSpace = NqsHelpers.make_query(self, container, criterion, 2)
-	NqsHelpers.run_to_completion(self, NqsHelpers.make_nqs(self), query)
+	NqsHelpers.configure_nqs()
+	NqsHelpers.run_to_completion(self, query)
 
 	assert_eq(_result_names(query), ["aligned"], "With a +X reference, only the node facing +X is within the default -90..90 range.")
 
@@ -77,7 +83,8 @@ func test_positive_range_selects_the_positive_side_of_a_rotated_reference() -> v
 	criterion.use_for_scoring = false
 
 	var query: NNNodeChildrenSearchSpace = NqsHelpers.make_query(self, container, criterion, 3)
-	NqsHelpers.run_to_completion(self, NqsHelpers.make_nqs(self), query)
+	NqsHelpers.configure_nqs()
+	NqsHelpers.run_to_completion(self, query)
 
 	assert_eq(_result_names(query), ["aligned", "positive_45"], "0..90 degrees keeps the aligned node and the +45 degree side only.")
 
@@ -96,7 +103,8 @@ func test_negative_range_selects_the_negative_side_of_a_rotated_reference() -> v
 	criterion.use_for_scoring = false
 
 	var query: NNNodeChildrenSearchSpace = NqsHelpers.make_query(self, container, criterion, 3)
-	NqsHelpers.run_to_completion(self, NqsHelpers.make_nqs(self), query)
+	NqsHelpers.configure_nqs()
+	NqsHelpers.run_to_completion(self, query)
 
 	assert_eq(_result_names(query), ["aligned", "negative_45"], "-90..0 degrees keeps the aligned node and the -45 degree side only.")
 
@@ -115,7 +123,8 @@ func test_signed_scoring_for_a_rotated_reference() -> void:
 	criterion.use_for_scoring = true
 
 	var query: NNNodeChildrenSearchSpace = NqsHelpers.make_query(self, container, criterion, 3)
-	NqsHelpers.run_to_completion(self, NqsHelpers.make_nqs(self), query)
+	NqsHelpers.configure_nqs()
+	NqsHelpers.run_to_completion(self, query)
 
 	var expected_scores := {
 		"negative_45": 0.25,
@@ -162,7 +171,8 @@ func test_2d_criterion_defaults_to_a_signed_90_degree_window() -> void:
 	criterion.use_for_filtering = true
 
 	var query: NNNodeChildrenSearchSpace = NqsHelpers.make_query(self, container, criterion, 2)
-	NqsHelpers.run_to_completion(self, NqsHelpers.make_nqs(self), query)
+	NqsHelpers.configure_nqs()
+	NqsHelpers.run_to_completion(self, query)
 
 	assert_eq(_result_names(query), ["aligned"], "Only the node facing the default +X reference is within -90..90 degrees.")
 	assert_almost_eq(query.get_query_result_scores()[0], 0.5, SCORE_EPSILON, "Zero degrees sits in the middle of the -90..90 window.")

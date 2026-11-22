@@ -81,7 +81,7 @@ void NNNQSQuerySensor::_cancel_posted_query() {
 		}
 		// Stop only our live registration, never an externally replaced query.
 		if (_posted_query_registration != 0 && search_space->get_nqs_query_registration() == _posted_query_registration) {
-			NNNodeQuerySystem *nqs = godot::Object::cast_to<NNNodeQuerySystem>(Engine::get_singleton()->get_singleton("NodeQuerySystem"));
+			NNNodeQuerySystem *nqs = godot::Object::cast_to<NNNodeQuerySystem>(Engine::get_singleton()->get_singleton("NNNodeQuerySystem"));
 			if (nqs != nullptr) {
 				nqs->stop_query(search_space);
 			}
@@ -133,7 +133,7 @@ void NNNQSQuerySensor::_on_query_completed(Object *p_search_space, int64_t p_que
 
 float NNNQSQuerySensor::evaluate_sensor_value() {
 	NNNQSSearchSpaces *search_space = _resolve_nqs_search_space();
-	NNNodeQuerySystem *nqs = godot::Object::cast_to<NNNodeQuerySystem>(Engine::get_singleton()->get_singleton("NodeQuerySystem"));
+	NNNodeQuerySystem *nqs = godot::Object::cast_to<NNNodeQuerySystem>(Engine::get_singleton()->get_singleton("NNNodeQuerySystem"));
 	if (!is_node_ready() || Engine::get_singleton()->is_editor_hint() || search_space == nullptr || nqs == nullptr) {
 		_cancel_posted_query();
 		return get_sensor_value();

@@ -7,6 +7,10 @@ const NqsHelpers = preload("res://test/unit/node_query_system/support/nqs_helper
 const EPSILON := 0.0001
 
 
+func after_each() -> void:
+	NqsHelpers.reset_nqs()
+
+
 class FreeEarlierCandidateOnLast extends NNCustomSearchCriterion:
 	var candidates: Array[Node] = []
 
@@ -66,7 +70,8 @@ func test_chained_criteria_multiply_scores_and_a_filter_removes_nodes_before_lat
 
 	var query: NNNodeChildrenSearchSpace = NqsHelpers.make_query(
 			self, container, [filter, first_score, second_score, counter], 3)
-	NqsHelpers.run_to_completion(self, NqsHelpers.make_nqs(self), query)
+	NqsHelpers.configure_nqs()
+	NqsHelpers.run_to_completion(self, query)
 
 	assert_eq(_result_names(query), ["mid", "near"], "The filter must remove the far node before the scoring criteria run.")
 	assert_almost_eq(query.get_query_result_scores()[0], 0.25, EPSILON, "10 units scores 0.25 then 1.0.")
@@ -88,7 +93,8 @@ func test_top_n_to_find_smaller_than_the_candidates_returns_the_best_in_score_or
 	criterion.use_for_scoring = true
 
 	var query: NNNodeChildrenSearchSpace = NqsHelpers.make_query(self, container, criterion, 2)
-	NqsHelpers.run_to_completion(self, NqsHelpers.make_nqs(self), query)
+	NqsHelpers.configure_nqs()
+	NqsHelpers.run_to_completion(self, query)
 
 	assert_eq(_result_names(query), ["d40", "d30"], "Only the two best scores are kept, best first.")
 	assert_almost_eq(query.get_query_result_scores()[0], 0.16, EPSILON)
@@ -108,7 +114,8 @@ func test_metadata_criterion_filters_on_both_the_metadata_name_and_value() -> vo
 	criterion.use_for_filtering = true
 
 	var query: NNNodeChildrenSearchSpace = NqsHelpers.make_query(self, container, criterion, 4)
-	NqsHelpers.run_to_completion(self, NqsHelpers.make_nqs(self), query)
+	NqsHelpers.configure_nqs()
+	NqsHelpers.run_to_completion(self, query)
 
 	assert_eq(_result_names(query), ["red"], "A node must match both the metadata name and its value.")
 	assert_almost_eq(query.get_query_result_scores()[0], 1.0, EPSILON, "A metadata match scores 1.0.")
@@ -121,7 +128,8 @@ func test_custom_criterion_filters_and_scores_through_on_apply_criterion() -> vo
 
 	var query: NNNodeChildrenSearchSpace = NqsHelpers.make_query(
 			self, container, FilterAndScoreCriterion.new(), 2)
-	NqsHelpers.run_to_completion(self, NqsHelpers.make_nqs(self), query)
+	NqsHelpers.configure_nqs()
+	NqsHelpers.run_to_completion(self, query)
 
 	assert_eq(_result_names(query), ["keep"], "is_filtered set by on_apply_criterion must drop the node")
 	assert_almost_eq(query.get_query_result_scores()[0], 0.5, EPSILON, "score set by on_apply_criterion must be used")
@@ -134,7 +142,8 @@ func test_custom_criterion_without_on_apply_criterion_leaves_nodes_unfiltered() 
 
 	var query: NNNodeChildrenSearchSpace = NqsHelpers.make_query(
 			self, container, NNCustomSearchCriterion.new(), 2)
-	NqsHelpers.run_to_completion(self, NqsHelpers.make_nqs(self), query)
+	NqsHelpers.configure_nqs()
+	NqsHelpers.run_to_completion(self, query)
 
 	var names: Array = _result_names(query)
 	names.sort()
@@ -179,7 +188,8 @@ func test_freed_distance_to_node_is_treated_as_unset() -> void:
 	assert_null(criterion.get_distance_to(), "The property must read as null once the node is freed.")
 
 	var query: NNNodeChildrenSearchSpace = NqsHelpers.make_query(self, container, criterion, 1)
-	NqsHelpers.run_to_completion(self, NqsHelpers.make_nqs(self), query)
+	NqsHelpers.configure_nqs()
+	NqsHelpers.run_to_completion(self, query)
 
 	assert_eq(_result_names(query), ["far"], "An unset target must leave the candidate unfiltered.")
 	assert_almost_eq(query.get_query_result_scores()[0], 1.0, EPSILON, "An unset target must leave the candidate score untouched.")
@@ -192,7 +202,8 @@ func test_freed_parent_node_empties_the_children_search_space() -> void:
 	parent.free()
 
 	assert_null(query.get_parent_node(), "The property must read as null once the node is freed.")
-	NqsHelpers.run_to_completion(self, NqsHelpers.make_nqs(self), query)
+	NqsHelpers.configure_nqs()
+	NqsHelpers.run_to_completion(self, query)
 	assert_eq(query.get_query_results(), [], "A freed parent must yield no results.")
 	assert_eq(criterion.apply_count, 0, "No candidates must reach the criteria.")
 
@@ -205,7 +216,8 @@ func test_candidate_freed_during_the_query_is_left_out_of_results() -> void:
 	criterion.candidates = container.get_children()
 	var query: NNNodeChildrenSearchSpace = NqsHelpers.make_query(self, container, criterion, 3)
 
-	NqsHelpers.run_to_completion(self, NqsHelpers.make_nqs(self), query)
+	NqsHelpers.configure_nqs()
+	NqsHelpers.run_to_completion(self, query)
 
 	assert_eq(query.get_query_results().size(), 2, "The freed candidate must not appear in the results.")
 	for result in query.get_query_results():

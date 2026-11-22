@@ -146,7 +146,7 @@ The **score based picker** node can be placed anywhere in the behaviour tree and
 It is possible to start **Node Query System** queries from the Behaviour Trees by using the **RunNQSQuery** node. To do this, you need a *Search Space* that has been setup elsewhere in your scene. The RunNQSQuery node will post the query and return *running* until the query completes, in which case the RunNQSQuery node returns *success*.
 
 > [!NOTE]
-> When using the RunNQSQuery node, it is expected that you call the `NodeQuerySystem.run_queries()` method once per physics frame in your main scene.
+> When using the RunNQSQuery node, it is expected that you call the `NNNodeQuerySystem.run_queries()` method once per physics frame in your main scene.
 
 
 ## 5. Creating the scenes

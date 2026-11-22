@@ -20,12 +20,12 @@ var _status_labels_visible := true
 
 
 func _ready() -> void:
-	NodeQuerySystem.clear_queries()
+	NNNodeQuerySystem.clear_queries()
 	_open_overlay()
 
 
 func _physics_process(delta: float) -> void:
-	NodeQuerySystem.run_queries()
+	NNNodeQuerySystem.run_queries()
 
 	_status_cooldown -= delta
 	if _status_cooldown > 0.0:
@@ -50,7 +50,7 @@ func _unhandled_input(event: InputEvent) -> void:
 
 
 func _exit_tree() -> void:
-	NodeQuerySystem.clear_queries()
+	NNNodeQuerySystem.clear_queries()
 
 
 func _overlay_node() -> Node:
@@ -63,11 +63,11 @@ func _overlay_is_open() -> bool:
 
 
 func _open_overlay() -> void:
-	_overlay_node().visible = Engine.has_singleton("NoodleNodesDebugger")
+	_overlay_node().visible = Engine.has_singleton("NNDebugger")
 
 
 func _toggle_overlay() -> void:
-	if not Engine.has_singleton("NoodleNodesDebugger"):
+	if not Engine.has_singleton("NNDebugger"):
 		return
 	_overlay_node().visible = not _overlay_is_open()
 	_update_status()

@@ -7,7 +7,7 @@
 #include "../tick_scheduler.h"
 #include "noodle_nodes.h"
 
-#include "performance_monitor_singleton.h"
+#include "performance_monitor.h"
 #include <godot_cpp/classes/node.hpp>
 #include <godot_cpp/classes/random_number_generator.hpp>
 #include <godot_cpp/classes/time.hpp>
@@ -66,11 +66,11 @@ private:
 	// Records the elapsed usec on scope exit, so every early return reports once.
 	class NNTimingScope {
 	public:
-		NNTimingScope(uint64_t &total_usec, void (NNPerformanceMonitorSingleton::*increment)(uint64_t)) :
+		NNTimingScope(uint64_t &total_usec, void (NNPerformanceMonitor::*increment)(uint64_t)) :
 				_start_usec(godot::Time::get_singleton()->get_ticks_usec()), _total_usec(total_usec), _increment(increment) {}
 		~NNTimingScope() {
 			_total_usec = godot::Time::get_singleton()->get_ticks_usec() - _start_usec;
-			(NNPerformanceMonitorSingleton::get_singleton()->*_increment)(_total_usec);
+			(NNPerformanceMonitor::get_singleton()->*_increment)(_total_usec);
 		}
 
 		inline uint64_t get_start_usec() const { return _start_usec; }
@@ -78,7 +78,7 @@ private:
 	private:
 		uint64_t _start_usec;
 		uint64_t &_total_usec;
-		void (NNPerformanceMonitorSingleton::*_increment)(uint64_t);
+		void (NNPerformanceMonitor::*_increment)(uint64_t);
 	};
 
 	uint64_t _total_evaluate_options_usec;

@@ -8,7 +8,7 @@
 #include "response_curve.h"
 
 // Performance monitor singleton.
-#include "performance_monitor_singleton.h"
+#include "performance_monitor.h"
 
 #ifdef DEBUG_ENABLED
 // Debugger singleton.
@@ -182,9 +182,9 @@ using namespace godot;
 
 // Singletons
 static NNNodeQuerySystem *gpNodeQuerySystem;
-static NNPerformanceMonitorSingleton *gpAIPerformanceMonitor;
+static NNPerformanceMonitor *gpPerformanceMonitor;
 #ifdef DEBUG_ENABLED
-static NNDebugger *gpNoodleNodesDebugger;
+static NNDebugger *gpDebugger;
 #endif
 
 void register_scene_classes() {
@@ -307,7 +307,7 @@ void register_scene_classes() {
 	GDREGISTER_CLASS(NNHTNRoot);
 
 	// Node Query System.
-	GDREGISTER_CLASS(NNNodeQuerySystem);
+	GDREGISTER_ABSTRACT_CLASS(NNNodeQuerySystem);
 
 	GDREGISTER_VIRTUAL_CLASS(NNNQSSearchSpaces);
 	GDREGISTER_CLASS(NNNodeGroupSearchSpace);
@@ -338,23 +338,23 @@ void register_scene_classes() {
 	GDREGISTER_CLASS(NNDotProductToPositionVector3SearchCriterion);
 	GDREGISTER_CLASS(NNDotProductToPositionVector2SearchCriterion);
 
-	// Add singletons.
+	// Add singletons. Their classes are abstract so ClassDB can't create a second instance.
 	gpNodeQuerySystem = memnew(NNNodeQuerySystem);
-	Engine::get_singleton()->register_singleton("NodeQuerySystem", gpNodeQuerySystem);
+	Engine::get_singleton()->register_singleton("NNNodeQuerySystem", gpNodeQuerySystem);
 
-	GDREGISTER_CLASS(NNPerformanceMonitorSingleton);
-	gpAIPerformanceMonitor = memnew(NNPerformanceMonitorSingleton);
-	Engine::get_singleton()->register_singleton("AIPerformanceMonitor", gpAIPerformanceMonitor);
+	GDREGISTER_ABSTRACT_CLASS(NNPerformanceMonitor);
+	gpPerformanceMonitor = memnew(NNPerformanceMonitor);
+	Engine::get_singleton()->register_singleton("NNPerformanceMonitor", gpPerformanceMonitor);
 
 #ifdef DEBUG_ENABLED
-	GDREGISTER_CLASS(NNDebugger);
+	GDREGISTER_ABSTRACT_CLASS(NNDebugger);
 	// The editor runs no game roots, so the game-side singleton belongs to a
 	// running game only.
 	if (!Engine::get_singleton()->is_editor_hint()) {
-		gpNoodleNodesDebugger = memnew(NNDebugger);
-		NNDebugRoot::set_registry(gpNoodleNodesDebugger);
-		Engine::get_singleton()->register_singleton("NoodleNodesDebugger", gpNoodleNodesDebugger);
-		gpNoodleNodesDebugger->install_transport();
+		gpDebugger = memnew(NNDebugger);
+		NNDebugRoot::set_registry(gpDebugger);
+		Engine::get_singleton()->register_singleton("NNDebugger", gpDebugger);
+		gpDebugger->install_transport();
 	}
 #endif
 }
@@ -376,18 +376,18 @@ void uninitialize_noodle_nodes_module(ModuleInitializationLevel p_level) {
 		return;
 	}
 
-	Engine::get_singleton()->unregister_singleton("NodeQuerySystem");
+	Engine::get_singleton()->unregister_singleton("NNNodeQuerySystem");
 	memdelete(gpNodeQuerySystem);
 
-	Engine::get_singleton()->unregister_singleton("AIPerformanceMonitor");
-	memdelete(gpAIPerformanceMonitor);
+	Engine::get_singleton()->unregister_singleton("NNPerformanceMonitor");
+	memdelete(gpPerformanceMonitor);
 
 #ifdef DEBUG_ENABLED
-	if (gpNoodleNodesDebugger != nullptr) {
+	if (gpDebugger != nullptr) {
 		NNDebugRoot::set_registry(nullptr);
-		Engine::get_singleton()->unregister_singleton("NoodleNodesDebugger");
-		memdelete(gpNoodleNodesDebugger);
-		gpNoodleNodesDebugger = nullptr;
+		Engine::get_singleton()->unregister_singleton("NNDebugger");
+		memdelete(gpDebugger);
+		gpDebugger = nullptr;
 	}
 #endif
 }

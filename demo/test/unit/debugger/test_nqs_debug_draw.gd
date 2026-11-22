@@ -11,9 +11,13 @@ const OTHER_TARGET_2D := Vector2(5.0, -5.0)
 const EPSILON := 0.0001
 
 
+func after_each() -> void:
+	NqsHelpers.reset_nqs()
+
+
 # Distance scoring rewards distance from the target, so the far grid corner wins.
 func _make_2d_query(target: Vector2 = TARGET_2D, top_n: int = 4) -> Dictionary:
-	var nqs: NNNodeQuerySystem = NqsHelpers.make_nqs(self, 1000000, 100000)
+	NqsHelpers.configure_nqs(1000000, 100000)
 	var parent: Node2D = add_child_autofree(Node2D.new())
 	var space: NNPointGrid2DSearchSpace = NNPointGrid2DSearchSpace.new()
 	space.grid_size = Vector2(10, 10)
@@ -27,11 +31,11 @@ func _make_2d_query(target: Vector2 = TARGET_2D, top_n: int = 4) -> Dictionary:
 	criterion.use_for_scoring = true
 	space.add_child(criterion)
 	parent.add_child(space)
-	return {"nqs": nqs, "space": space, "criterion": criterion}
+	return {"space": space, "criterion": criterion}
 
 
 func _make_3d_query() -> Dictionary:
-	var nqs: NNNodeQuerySystem = NqsHelpers.make_nqs(self, 1000000, 100000)
+	NqsHelpers.configure_nqs(1000000, 100000)
 	var parent: Node3D = add_child_autofree(Node3D.new())
 	var space: NNPointGrid3DSearchSpace = NNPointGrid3DSearchSpace.new()
 	space.grid_size = Vector3(2, 0, 0)
@@ -45,7 +49,7 @@ func _make_3d_query() -> Dictionary:
 	criterion.use_for_scoring = true
 	space.add_child(criterion)
 	parent.add_child(space)
-	return {"nqs": nqs, "space": space}
+	return {"space": space}
 
 
 func _winner(points: Array) -> Dictionary:
@@ -67,7 +71,7 @@ func test_2d_points_are_coloured_by_score_with_the_top_result_as_winner() -> voi
 	var drawer: Node = add_child_autofree(DRAW_2D.instantiate())
 	drawer.set_search_space_id(space.get_instance_id())
 
-	NqsHelpers.run_to_completion(self, query["nqs"], space)
+	NqsHelpers.run_to_completion(self, space)
 
 	var points: Array = drawer.get_points()
 	assert_eq(points.size(), 4, "every scored grid point must be drawn")
@@ -95,7 +99,7 @@ func test_every_scored_point_is_drawn_even_when_only_the_top_result_is_returned(
 	var drawer: Node = add_child_autofree(DRAW_2D.instantiate())
 	drawer.set_search_space_id(space.get_instance_id())
 
-	NqsHelpers.run_to_completion(self, query["nqs"], space)
+	NqsHelpers.run_to_completion(self, space)
 
 	assert_eq(space.get_query_results().size(), 1, "the query must only return the top result")
 	assert_eq(drawer.get_points().size(), 4, "all scored candidates must be drawn")
@@ -111,7 +115,7 @@ func test_attaching_after_a_completed_query_draws_the_returned_results() -> void
 	var query := _make_2d_query(TARGET_2D, 1)
 	var space: NNNQSSearchSpaces = query["space"]
 
-	NqsHelpers.run_to_completion(self, query["nqs"], space)
+	NqsHelpers.run_to_completion(self, space)
 
 	var drawer: Node = add_child_autofree(DRAW_2D.instantiate())
 	drawer.set_search_space_id(space.get_instance_id())
@@ -129,17 +133,17 @@ func test_changed_query_result_redraws_and_unchanged_result_does_not() -> void:
 	var drawer: Node = add_child_autofree(DRAW_2D.instantiate())
 	drawer.set_search_space_id(space.get_instance_id())
 
-	NqsHelpers.run_to_completion(self, query["nqs"], space)
+	NqsHelpers.run_to_completion(self, space)
 	var redraws: int = drawer.get_redraw_request_count()
 	var winner_before: Dictionary = _winner(drawer.get_points())
 
-	NqsHelpers.run_to_completion(self, query["nqs"], space)
+	NqsHelpers.run_to_completion(self, space)
 	assert_eq(drawer.get_points().size(), 4, "the result must still be drawn")
 	assert_eq(drawer.get_redraw_request_count(), redraws,
 			"an unchanged query result must not request a redraw")
 
 	query["criterion"].distance_to_vector = OTHER_TARGET_2D
-	NqsHelpers.run_to_completion(self, query["nqs"], space)
+	NqsHelpers.run_to_completion(self, space)
 
 	assert_eq(drawer.get_redraw_request_count(), redraws + 1,
 			"a changed query result must request exactly one redraw")
@@ -153,7 +157,7 @@ func test_freed_search_space_is_harmless() -> void:
 	var drawer: Node = add_child_autofree(DRAW_2D.instantiate())
 	drawer.set_search_space_id(space.get_instance_id())
 
-	NqsHelpers.run_to_completion(self, query["nqs"], space)
+	NqsHelpers.run_to_completion(self, space)
 	assert_eq(drawer.get_points().size(), 4, "the query result must be drawn first")
 
 	var freed_id: int = space.get_instance_id()
@@ -171,11 +175,11 @@ func test_freeing_the_last_drawer_stops_recording() -> void:
 	add_child(drawer)
 	drawer.set_search_space_id(space.get_instance_id())
 
-	NqsHelpers.run_to_completion(self, query["nqs"], space)
+	NqsHelpers.run_to_completion(self, space)
 	assert_eq(space.get_debug_scored_nodes().size(), 4, "the watched query must record every candidate")
 
 	drawer.free()
-	NqsHelpers.run_to_completion(self, query["nqs"], space)
+	NqsHelpers.run_to_completion(self, space)
 	assert_eq(space.get_debug_scored_nodes().size(), 0, "nothing may be recorded while nobody watches")
 
 
@@ -193,7 +197,7 @@ func test_two_drawers_on_one_space_keep_recording_after_one_is_freed() -> void:
 	first.free()
 
 	query["criterion"].distance_to_vector = OTHER_TARGET_2D
-	NqsHelpers.run_to_completion(self, query["nqs"], space)
+	NqsHelpers.run_to_completion(self, space)
 
 	assert_eq(space.get_debug_scored_nodes().size(), 4,
 			"the remaining watcher must still record every candidate")
@@ -207,7 +211,7 @@ func test_3d_points_are_drawn_at_the_query_results() -> void:
 	var drawer: Node = add_child_autofree(DRAW_3D.instantiate())
 	drawer.set_search_space_id(space.get_instance_id())
 
-	NqsHelpers.run_to_completion(self, query["nqs"], space)
+	NqsHelpers.run_to_completion(self, space)
 
 	var points: Array = drawer.get_points()
 	assert_eq(points.size(), 4, "every scored grid point must be drawn")
@@ -233,7 +237,7 @@ func test_3d_show_scores_toggles_the_score_labels() -> void:
 	var space: NNNQSSearchSpaces = query["space"]
 	var drawer: Node = add_child_autofree(DRAW_3D.instantiate())
 	drawer.set_search_space_id(space.get_instance_id())
-	NqsHelpers.run_to_completion(self, query["nqs"], space)
+	NqsHelpers.run_to_completion(self, space)
 
 	var labels: Node3D = drawer.get_node("%Scores")
 	assert_gt(labels.get_child_count(), 0, "scores must be labelled by default")

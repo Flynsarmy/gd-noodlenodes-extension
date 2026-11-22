@@ -8,6 +8,10 @@ const NqsHelpers = preload("res://test/unit/node_query_system/support/nqs_helper
 const EPSILON := 0.0001
 
 
+func after_each() -> void:
+	NqsHelpers.reset_nqs()
+
+
 func _assert_scores_descending(space: NNNQSSearchSpaces) -> void:
 	var previous := INF
 	for score in space.query_result_scores:
@@ -24,7 +28,7 @@ func _assert_scores_almost_eq(space: NNNQSSearchSpaces, expected: Array) -> void
 
 # All four generated 2D grid points are further away than max_distance.
 func test_2d_point_grid_applies_filtering_criterion() -> void:
-	var nqs: NNNodeQuerySystem = NqsHelpers.make_nqs(self, 1000000, 100000)
+	NqsHelpers.configure_nqs(1000000, 100000)
 	var parent: Node2D = add_child_autofree(Node2D.new())
 
 	var space: NNPointGrid2DSearchSpace = NNPointGrid2DSearchSpace.new()
@@ -41,14 +45,14 @@ func test_2d_point_grid_applies_filtering_criterion() -> void:
 
 	assert_eq(space.point_grid.size(), 4, "the 2D grid should generate four points")
 
-	NqsHelpers.run_to_completion(self, nqs, space)
+	NqsHelpers.run_to_completion(self, space)
 
 	assert_false(space.is_query_still_running, "the query should have completed")
 	assert_eq(space.query_results.size(), 0, "every grid point is outside max_distance and must be filtered out")
 
 
 func test_2d_point_grid_applies_scoring_criterion() -> void:
-	var nqs: NNNodeQuerySystem = NqsHelpers.make_nqs(self, 1000000, 100000)
+	NqsHelpers.configure_nqs(1000000, 100000)
 	var parent: Node2D = add_child_autofree(Node2D.new())
 
 	var space: NNPointGrid2DSearchSpace = NNPointGrid2DSearchSpace.new()
@@ -68,7 +72,7 @@ func test_2d_point_grid_applies_scoring_criterion() -> void:
 
 	assert_eq(space.point_grid.size(), 4, "the 2D grid should generate four points")
 
-	NqsHelpers.run_to_completion(self, nqs, space)
+	NqsHelpers.run_to_completion(self, space)
 
 	assert_false(space.is_query_still_running, "the query should have completed")
 	assert_eq(space.query_results.size(), 4, "scoring must keep every grid point")
@@ -77,7 +81,7 @@ func test_2d_point_grid_applies_scoring_criterion() -> void:
 
 
 func test_3d_point_grid_applies_scoring_criterion() -> void:
-	var nqs: NNNodeQuerySystem = NqsHelpers.make_nqs(self, 1000000, 100000)
+	NqsHelpers.configure_nqs(1000000, 100000)
 	var parent: Node3D = add_child_autofree(Node3D.new())
 
 	var space: NNPointGrid3DSearchSpace = NNPointGrid3DSearchSpace.new()
@@ -97,7 +101,7 @@ func test_3d_point_grid_applies_scoring_criterion() -> void:
 
 	assert_eq(space.point_grid.size(), 4, "the 3D grid should generate four points")
 
-	NqsHelpers.run_to_completion(self, nqs, space)
+	NqsHelpers.run_to_completion(self, space)
 
 	assert_false(space.is_query_still_running, "the query should have completed")
 	assert_eq(space.query_results.size(), 4, "scoring must keep every grid point")
@@ -108,7 +112,7 @@ func test_3d_point_grid_applies_scoring_criterion() -> void:
 # Criteria must be cached exactly once and the grid must be generated exactly
 # once: one on_apply_criterion call per grid point.
 func test_2d_point_grid_applies_criteria_exactly_once() -> void:
-	var nqs: NNNodeQuerySystem = NqsHelpers.make_nqs(self, 1000000, 100000)
+	NqsHelpers.configure_nqs(1000000, 100000)
 	var parent: Node2D = add_child_autofree(Node2D.new())
 
 	var space: NNPointGrid2DSearchSpace = NNPointGrid2DSearchSpace.new()
@@ -123,7 +127,7 @@ func test_2d_point_grid_applies_criteria_exactly_once() -> void:
 
 	assert_eq(space.point_grid.size(), 4, "the 2D grid should be generated exactly once")
 
-	NqsHelpers.run_to_completion(self, nqs, space)
+	NqsHelpers.run_to_completion(self, space)
 
 	assert_eq(criterion.apply_count, space.point_grid.size(),
 			"the criterion should be applied exactly once per grid point")
@@ -133,7 +137,7 @@ func test_2d_point_grid_applies_criteria_exactly_once() -> void:
 # point_grid is assignable, so navmesh snapping must stay within the shorter of
 # the assigned points and the generated positions.
 func test_2d_navmesh_snapping_tolerates_a_shorter_assigned_point_grid() -> void:
-	var nqs: NNNodeQuerySystem = NqsHelpers.make_nqs(self, 1000000, 100000)
+	NqsHelpers.configure_nqs(1000000, 100000)
 	var parent: Node2D = add_child_autofree(Node2D.new())
 
 	var space: NNPointGrid2DSearchSpace = NNPointGrid2DSearchSpace.new()
@@ -150,7 +154,7 @@ func test_2d_navmesh_snapping_tolerates_a_shorter_assigned_point_grid() -> void:
 	var map_rid: RID = parent.get_world_2d().navigation_map
 	await wait_until(func() -> bool: return NavigationServer2D.map_get_iteration_id(map_rid) > 0, 2.0)
 
-	NqsHelpers.run_to_completion(self, nqs, space)
+	NqsHelpers.run_to_completion(self, space)
 
 	assert_eq(criterion.apply_count, 1, "only the assigned point should be scored")
 
@@ -212,7 +216,7 @@ func _assert_threaded_snapping_matches_serial(is_3d: bool) -> void:
 		parent = add_child_autofree(Node2D.new())
 		await NqsHelpers.make_navmesh_2d(self, parent, 8.0)
 
-	var nqs: NNNodeQuerySystem = NqsHelpers.make_nqs(self, 1000000, 100000)
+	NqsHelpers.configure_nqs(1000000, 100000)
 	var serial: NNNQSSearchSpaces = _make_snapping_space(parent, is_3d, NNNQSSearchSpaces.THREADING_OFF)
 	var threaded: NNNQSSearchSpaces = _make_snapping_space(parent, is_3d, NNNQSSearchSpaces.THREADING_ALWAYS)
 
@@ -220,8 +224,8 @@ func _assert_threaded_snapping_matches_serial(is_3d: bool) -> void:
 	for point in serial.point_grid:
 		grid_positions.append(point.global_position)
 
-	await NqsHelpers.run_to_completion_over_frames(self, nqs, serial)
-	await NqsHelpers.run_to_completion_over_frames(self, nqs, threaded)
+	await NqsHelpers.run_to_completion_over_frames(self, serial)
+	await NqsHelpers.run_to_completion_over_frames(self, threaded)
 
 	assert_eq(threaded.point_grid.size(), serial.point_grid.size(), "both grids must hold the same points")
 	var moved: int = 0

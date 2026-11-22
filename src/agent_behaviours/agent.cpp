@@ -355,7 +355,7 @@ void NNAgent::_exit_behaviour_group(ObjectID behaviour_group_id, bool require_di
 void NNAgent::evaluate_options(float delta) {
 	(void)delta;
 #ifdef DEBUG_ENABLED
-	NNTimingScope timing(_total_evaluate_options_usec, &NNPerformanceMonitorSingleton::increment_total_time_elapsed_ai_agents_usec);
+	NNTimingScope timing(_total_evaluate_options_usec, &NNPerformanceMonitor::increment_total_time_elapsed_ai_agents_usec);
 	_last_evaluated_timestamp = timing.get_start_usec();
 #endif
 	if (Engine::get_singleton()->is_editor_hint())
@@ -637,7 +637,7 @@ void NNAgent::place_into_top_n_behaviour_list(const ObjectID &behaviour_group_id
 
 void NNAgent::update_current_behaviour() {
 #ifdef DEBUG_ENABLED
-	NNTimingScope timing(_total_update_behaviour_usec, &NNPerformanceMonitorSingleton::increment_total_time_elapsed_ai_agents_update_behaviour_usec);
+	NNTimingScope timing(_total_update_behaviour_usec, &NNPerformanceMonitor::increment_total_time_elapsed_ai_agents_update_behaviour_usec);
 #endif
 
 	_reconcile_selected_nodes();

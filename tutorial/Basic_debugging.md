@@ -83,19 +83,19 @@ You can pause, step and choose the scope from code:
 const PAUSE_SCOPE_GAME := 1 # NNDebugger.PAUSE_SCOPE_GAME
 
 func toggle_pause() -> void:
-    if Engine.has_singleton("NoodleNodesDebugger"):
-        var debugger := Engine.get_singleton("NoodleNodesDebugger")
+    if Engine.has_singleton("NNDebugger"):
+        var debugger := Engine.get_singleton("NNDebugger")
         debugger.set_paused(not debugger.is_paused())
 
 
 func step_once() -> void:
-    if Engine.has_singleton("NoodleNodesDebugger"):
-        Engine.get_singleton("NoodleNodesDebugger").step()
+    if Engine.has_singleton("NNDebugger"):
+        Engine.get_singleton("NNDebugger").step()
 
 
 func pause_the_whole_game() -> void:
-    if Engine.has_singleton("NoodleNodesDebugger"):
-        Engine.get_singleton("NoodleNodesDebugger").set_pause_scope(PAUSE_SCOPE_GAME)
+    if Engine.has_singleton("NNDebugger"):
+        Engine.get_singleton("NNDebugger").set_pause_scope(PAUSE_SCOPE_GAME)
 ```
 
 ## 5. Follow active path
@@ -180,7 +180,7 @@ const OVERLAY := preload("res://addons/noodle_nodes/debugger/overlay/noodle_node
 func _ready() -> void:
     var overlay := OVERLAY.instantiate()
     $CanvasLayer.add_child(overlay)
-    overlay.visible = Engine.has_singleton("NoodleNodesDebugger")
+    overlay.visible = Engine.has_singleton("NNDebugger")
 ```
 
 The overlay does nothing when the debugger singleton is absent, so it is safe to leave in the scene for release builds; hiding it keeps the screen clean.
@@ -235,7 +235,7 @@ The debug score copy is reference counted on the search space. To build your own
 
 Everything in this tutorial is compiled into debug builds only:
 
-- The **NoodleNodesDebugger** singleton does not exist in a release build. Code must guard it with `Engine.has_singleton("NoodleNodesDebugger")`.
+- The **NNDebugger** singleton does not exist in a release build. Code must guard it with `Engine.has_singleton("NNDebugger")`.
 - The `NNDebugger` class, `NoodleNodes.get_debug_snapshot()` and the `NNNQSSearchSpaces` debug score methods are not registered. Calling them by name from an unguarded script is a runtime error in a release build.
 - The editor debugger tab is never created because the game does not register the capture.
 - The overlay scene loads and instantiates, but it has no singleton to talk to and shows no labels or panel.
@@ -249,8 +249,8 @@ Keep debug-only calls behind `Engine.has_singleton()` or `OS.is_debug_build()` s
 The debugger is not a replacement for the editor's own tools:
 
 - **Remote scene tree and inspector**: run the game, switch the Scene dock to **Remote**, select any node and use the inspector to see and edit its properties live. This is still the way to change a sensor value or a consideration curve while the game runs. The Noodle Nodes inspector shows the same values read-only, but gathers them in one place next to the views.
-- **AI Performance Monitor**: measures the per-node cost of agents, behaviour trees, state trees and considerations. See [Using the AIPerformanceMonitor](Using_the_AIPerformanceMonitor.md).
-- **Node Query System monitors**: measure query time, node visits and per-criterion cost. See [Using the NodeQuerySystem performance monitors](Using_the_NodeQuerySystemMonitor.md).
+- **NNPerformanceMonitor**: measures the per-node cost of agents, behaviour trees, state trees and considerations. See [Using the NNPerformanceMonitor](Using_the_NNPerformanceMonitor.md).
+- **Node Query System monitors**: measure query time, node visits and per-criterion cost. See [Using the NNNodeQuerySystem performance monitors](Using_the_NNNodeQuerySystemMonitor.md).
 
 A practical workflow is to use the debugger to find *which* node is misbehaving, the views to understand *why* it scored or transitioned the way it did, and the remote inspector to change a value and watch the effect immediately.
 

@@ -126,7 +126,7 @@ void NNBTRunNQSQuery::_cancel_posted_query() {
 		}
 		// Stop only our live registration, never a joined or externally replaced query.
 		if (_owns_posted_query && _posted_query_registration != 0 && search_space->get_nqs_query_registration() == _posted_query_registration) {
-			NNNodeQuerySystem *nqs = godot::Object::cast_to<NNNodeQuerySystem>(Engine::get_singleton()->get_singleton("NodeQuerySystem"));
+			NNNodeQuerySystem *nqs = godot::Object::cast_to<NNNodeQuerySystem>(Engine::get_singleton()->get_singleton("NNNodeQuerySystem"));
 			if (nqs != nullptr) {
 				nqs->stop_query(search_space);
 			}
@@ -226,7 +226,7 @@ void NNBTRunNQSQuery::_on_query_completed(Object *p_search_space, int64_t p_quer
 
 NNBTNodes::Status NNBTRunNQSQuery::_tick(float delta) {
 	NNNQSSearchSpaces *search_space = _resolve_nqs_search_space();
-	NNNodeQuerySystem *nqs = godot::Object::cast_to<NNNodeQuerySystem>(Engine::get_singleton()->get_singleton("NodeQuerySystem"));
+	NNNodeQuerySystem *nqs = godot::Object::cast_to<NNNodeQuerySystem>(Engine::get_singleton()->get_singleton("NNNodeQuerySystem"));
 	Status result = Status::FAILURE;
 	if (!is_node_ready() || Engine::get_singleton()->is_editor_hint() || search_space == nullptr || nqs == nullptr) {
 		_cancel_posted_query();

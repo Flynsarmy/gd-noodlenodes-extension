@@ -4,7 +4,7 @@
 #include "nodes.h"
 #include "transition.h"
 
-#include "../performance_monitor_singleton.h"
+#include "../performance_monitor.h"
 #include <godot_cpp/classes/engine.hpp>
 #include <godot_cpp/classes/time.hpp>
 #include <godot_cpp/core/class_db.hpp>
@@ -272,7 +272,7 @@ void NNSTRoot::tick(float delta) {
 	}
 #ifdef DEBUG_ENABLED
 	_total_tick_usec = godot::Time::get_singleton()->get_ticks_usec() - method_start_time_usec;
-	NNPerformanceMonitorSingleton::get_singleton()->increment_total_time_elapsed_state_trees_usec(_total_tick_usec);
+	NNPerformanceMonitor::get_singleton()->increment_total_time_elapsed_state_trees_usec(_total_tick_usec);
 #endif
 }
 

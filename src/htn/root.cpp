@@ -1,7 +1,7 @@
 #include "root.h"
 
 #include "../expression_util.h"
-#include "../performance_monitor_singleton.h"
+#include "../performance_monitor.h"
 #include "compound_task.h"
 #include "parallel_task.h"
 #include "repair.h"
@@ -272,7 +272,7 @@ void NNHTNRoot::tick(double p_delta) {
 	}
 
 #ifdef DEBUG_ENABLED
-	NNPerformanceMonitorSingleton::get_singleton()->increment_total_time_elapsed_htn_usec(Time::get_singleton()->get_ticks_usec() - start_usec);
+	NNPerformanceMonitor::get_singleton()->increment_total_time_elapsed_htn_usec(Time::get_singleton()->get_ticks_usec() - start_usec);
 #endif
 
 	// Handlers may free this root, so only locals are used from here on.

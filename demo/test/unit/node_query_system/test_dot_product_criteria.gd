@@ -7,6 +7,10 @@ const NqsHelpers = preload("res://test/unit/node_query_system/support/nqs_helper
 # dimensions must still map a node's facing direction the same way.
 
 
+func after_each() -> void:
+	NqsHelpers.reset_nqs()
+
+
 func _scores_by_name(query: NNNodeChildrenSearchSpace) -> Dictionary:
 	var scores: Dictionary = {}
 	var results: Array = query.get_query_results()
@@ -28,7 +32,8 @@ func test_direction_criterion_filters_and_scores_2d_and_3d() -> void:
 	var criterion_2d: NNDotProductVector2SearchCriterion = NNDotProductVector2SearchCriterion.new()
 	criterion_2d.use_for_filtering = true
 	var query_2d: NNNodeChildrenSearchSpace = NqsHelpers.make_query(self, container_2d, criterion_2d, 2)
-	NqsHelpers.run_to_completion(self, NqsHelpers.make_nqs(self), query_2d)
+	NqsHelpers.configure_nqs()
+	NqsHelpers.run_to_completion(self, query_2d)
 
 	assert_eq(_scores_by_name(query_2d), { "facing": 1.0 }, "The default +X reference keeps only the node facing +X.")
 
@@ -44,7 +49,8 @@ func test_direction_criterion_filters_and_scores_2d_and_3d() -> void:
 	var criterion_3d: NNDotProductVector3SearchCriterion = NNDotProductVector3SearchCriterion.new()
 	criterion_3d.use_for_filtering = true
 	var query_3d: NNNodeChildrenSearchSpace = NqsHelpers.make_query(self, container_3d, criterion_3d, 2)
-	NqsHelpers.run_to_completion(self, NqsHelpers.make_nqs(self), query_3d)
+	NqsHelpers.configure_nqs()
+	NqsHelpers.run_to_completion(self, query_3d)
 
 	assert_eq(_scores_by_name(query_3d), { "facing": 1.0 }, "The default -Z reference keeps only the node facing -Z.")
 
@@ -63,7 +69,8 @@ func test_position_criterion_filters_and_scores_2d_and_3d() -> void:
 	criterion_2d.dot_product_position = Vector2(10.0, 0.0)
 	criterion_2d.use_for_filtering = true
 	var query_2d: NNNodeChildrenSearchSpace = NqsHelpers.make_query(self, container_2d, criterion_2d, 2)
-	NqsHelpers.run_to_completion(self, NqsHelpers.make_nqs(self), query_2d)
+	NqsHelpers.configure_nqs()
+	NqsHelpers.run_to_completion(self, query_2d)
 
 	assert_eq(_scores_by_name(query_2d), { "facing": 1.0 }, "Only the node facing the target position survives filtering.")
 
@@ -80,6 +87,7 @@ func test_position_criterion_filters_and_scores_2d_and_3d() -> void:
 	criterion_3d.dot_product_position = Vector3(0.0, 0.0, -10.0)
 	criterion_3d.use_for_filtering = true
 	var query_3d: NNNodeChildrenSearchSpace = NqsHelpers.make_query(self, container_3d, criterion_3d, 2)
-	NqsHelpers.run_to_completion(self, NqsHelpers.make_nqs(self), query_3d)
+	NqsHelpers.configure_nqs()
+	NqsHelpers.run_to_completion(self, query_3d)
 
 	assert_eq(_scores_by_name(query_3d), { "facing": 1.0 }, "Only the node facing the target position survives filtering.")

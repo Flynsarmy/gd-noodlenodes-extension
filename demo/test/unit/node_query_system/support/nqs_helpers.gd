@@ -1,10 +1,14 @@
 ## Builders shared by the node query system tests. Preload with
 ## `const NqsHelpers = preload("res://test/unit/node_query_system/support/nqs_helpers.gd")`.
+## The helpers configure the shared NNNodeQuerySystem singleton, so every test
+## file that calls configure_nqs must call reset_nqs in after_each.
 
 extends RefCounted
 
 const GENEROUS_BUDGET_USEC := 100000
 const MAX_RUN_QUERIES_CALLS := 100
+
+static var _snapshot := {}
 
 
 class CountingCriterion extends NNCustomSearchCriterion:
@@ -14,17 +18,33 @@ class CountingCriterion extends NNCustomSearchCriterion:
 		apply_count += 1
 
 
-static func make_nqs(
-		test: GutTest,
+static func configure_nqs(
 		run_budget_usec := GENEROUS_BUDGET_USEC,
-		execute_budget_usec := GENEROUS_BUDGET_USEC) -> NNNodeQuerySystem:
-	var nqs: NNNodeQuerySystem = test.autofree(NNNodeQuerySystem.new())
-	nqs.run_queries_time_budget_per_frame_usec = run_budget_usec
+		execute_budget_usec := GENEROUS_BUDGET_USEC) -> void:
+	if _snapshot.is_empty():
+		_snapshot = {
+			"run_budget_usec": NNNodeQuerySystem.run_queries_time_budget_per_frame_usec,
+			"high_priority_pct": NNNodeQuerySystem.time_allocation_pct_to_high_priority_queries,
+			"high_priority_execute_budget_usec": NNNodeQuerySystem.high_priority_query_per_frame_execute_query_time_budget_usec,
+			"regular_execute_budget_usec": NNNodeQuerySystem.regular_query_per_frame_execute_query_time_budget_usec,
+		}
+	NNNodeQuerySystem.clear_queries()
+	NNNodeQuerySystem.run_queries_time_budget_per_frame_usec = run_budget_usec
 	# Recompute the priority split after changing the frame budget.
-	nqs.time_allocation_pct_to_high_priority_queries = 0.8
-	nqs.high_priority_query_per_frame_execute_query_time_budget_usec = execute_budget_usec
-	nqs.regular_query_per_frame_execute_query_time_budget_usec = execute_budget_usec
-	return nqs
+	NNNodeQuerySystem.time_allocation_pct_to_high_priority_queries = 0.8
+	NNNodeQuerySystem.high_priority_query_per_frame_execute_query_time_budget_usec = execute_budget_usec
+	NNNodeQuerySystem.regular_query_per_frame_execute_query_time_budget_usec = execute_budget_usec
+
+
+static func reset_nqs() -> void:
+	NNNodeQuerySystem.clear_queries()
+	if _snapshot.is_empty():
+		return
+	NNNodeQuerySystem.run_queries_time_budget_per_frame_usec = _snapshot["run_budget_usec"]
+	NNNodeQuerySystem.time_allocation_pct_to_high_priority_queries = _snapshot["high_priority_pct"]
+	NNNodeQuerySystem.high_priority_query_per_frame_execute_query_time_budget_usec = _snapshot["high_priority_execute_budget_usec"]
+	NNNodeQuerySystem.regular_query_per_frame_execute_query_time_budget_usec = _snapshot["regular_execute_budget_usec"]
+	_snapshot.clear()
 
 
 static func make_container(test: GutTest, child_count: int) -> Node:
@@ -50,11 +70,11 @@ static func make_query(
 	return test.add_child_autofree(query)
 
 
-static func run_to_completion(test: GutTest, nqs: NNNodeQuerySystem, query: NNNQSSearchSpaces) -> void:
-	test.assert_eq(nqs.post_query(query, true), 1, "The test query must be posted.")
+static func run_to_completion(test: GutTest, query: NNNQSSearchSpaces) -> void:
+	test.assert_eq(NNNodeQuerySystem.post_query(query, true), 1, "The test query must be posted.")
 	var calls: int = 0
 	while query.is_query_still_running and calls < MAX_RUN_QUERIES_CALLS:
-		nqs.run_queries()
+		NNNodeQuerySystem.run_queries()
 		calls += 1
 	test.assert_false(query.is_query_still_running, "The query must complete with a generous budget.")
 	test.assert_lt(calls, MAX_RUN_QUERIES_CALLS, "The query must not spin across frames.")
@@ -62,11 +82,11 @@ static func run_to_completion(test: GutTest, nqs: NNNodeQuerySystem, query: NNNQ
 
 # Worker pool queries make no progress until the pool has run, so poll them once
 # per frame instead of spinning in place.
-static func run_to_completion_over_frames(test: GutTest, nqs: NNNodeQuerySystem, query: NNNQSSearchSpaces) -> void:
-	test.assert_eq(nqs.post_query(query, true), 1, "The test query must be posted.")
+static func run_to_completion_over_frames(test: GutTest, query: NNNQSSearchSpaces) -> void:
+	test.assert_eq(NNNodeQuerySystem.post_query(query, true), 1, "The test query must be posted.")
 	var calls: int = 0
 	while query.is_query_still_running and calls < MAX_RUN_QUERIES_CALLS:
-		nqs.run_queries()
+		NNNodeQuerySystem.run_queries()
 		await test.get_tree().process_frame
 		calls += 1
 	test.assert_false(query.is_query_still_running, "The query must complete with a generous budget.")

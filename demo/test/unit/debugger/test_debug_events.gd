@@ -13,12 +13,12 @@ var _debugger: Object
 
 
 func before_each() -> void:
-	_debugger = Engine.get_singleton("NoodleNodesDebugger") if Engine.has_singleton("NoodleNodesDebugger") else null
+	_debugger = Engine.get_singleton("NNDebugger") if Engine.has_singleton("NNDebugger") else null
 
 
 func _require_debugger() -> bool:
 	if _debugger == null:
-		pending("needs NoodleNodesDebugger")
+		pending("needs NNDebugger")
 		return false
 	return true
 

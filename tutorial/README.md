@@ -8,8 +8,8 @@ The goal of these tutorials is to help you learn how to use Noodle Nodes.
 |Tutorial|Description|
 |--|--|
 |[How to install Noodle Nodes](How_to_install_Noodle_Nodes.md)|Installing Noodle Nodes from a release or a source build.|
-|[Using the AIPerformanceMonitor](Using_the_AIPerformanceMonitor.md)|How to setup the AI Performance monitor to measure the performance of the AI you've built for your game.|
-|[Using the NodeQuerySystem performance monitors](Using_the_NodeQuerySystemMonitor.md)|How to setup the NodeQuerySystem Performance monitors to measure the performance of NQS queries.|
+|[Using the NNPerformanceMonitor](Using_the_NNPerformanceMonitor.md)|How to setup the NNPerformanceMonitor to measure the performance of the AI you've built for your game.|
+|[Using the NNNodeQuerySystem performance monitors](Using_the_NNNodeQuerySystemMonitor.md)|How to setup the NNNodeQuerySystem performance monitors to measure the performance of NQS queries.|
 
 ### Getting started
 
@@ -36,7 +36,7 @@ These getting started tutorials create the same AI using AI Agent Behaviours, a 
 
 |Tutorial|Description|
 |--|--|
-|[Debugger reference](Debugger_reference.md)|The NoodleNodesDebugger singleton API, the root and snapshot schemas, the event kinds and the editor debugger message protocol, for tools built on the debugger.|
+|[Debugger reference](Debugger_reference.md)|The NNDebugger singleton API, the root and snapshot schemas, the event kinds and the editor debugger message protocol, for tools built on the debugger.|
 
 
 ## Older tutorials 

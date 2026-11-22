@@ -84,7 +84,7 @@ The **search criteria** define how the search space nodes are **scored** and **f
 
 ### 3.2 Posting queries and retrieving their results
 
-The queries are posted using the `NodeQuerySystem` singleton's `post_query(search_space, is_high_priority)` method. The first parameter is a reference to the **search space node** and the second a boolean that defines if the query is high priority or not. The query system uses **time budgeting**, also commonly called *time slicing*. High priority queries get more time per physics frame for their execution than regular, non-high priority queries.
+The queries are posted using the `NNNodeQuerySystem` singleton's `post_query(search_space, is_high_priority)` method. `NNNodeQuerySystem` is an engine singleton: you call it by name and never instantiate it or type variables as it. The first parameter is a reference to the **search space node** and the second a boolean that defines if the query is high priority or not. The query system uses **time budgeting**, also commonly called *time slicing*. High priority queries get more time per physics frame for their execution than regular, non-high priority queries.
 
 When a query is posted it is added to a list of active queries. Queries in the active list are executed in a *round-robin* manner. This means that the queries are run in a *loop* starting from the first posted query going towards the latest posted query, and looping back to the first, until the queries have completed or the time to run queries for the physics frame has run out. A high priority query gets to run up to 20 microseconds per update, and a regular priority query up to 10 microseconds. 
 
@@ -263,10 +263,10 @@ var mouse_position:Vector2
 func _ready():
 	
 	# To see how the NQS is running, we initialize the performance counters.
-	NodeQuerySystem.initialize_performance_counters()
+	NNNodeQuerySystem.initialize_performance_counters()
 	# We won't be using regular queries, so allocate 100% of the time budget to 
 	# the high priority queries.
-	NodeQuerySystem.set_time_allocation_pct_to_high_priority_queries(1.0)
+	NNNodeQuerySystem.set_time_allocation_pct_to_high_priority_queries(1.0)
 	
 	# For convinience in changing the number of AI-entities to create
 	var num_entities:int = 256
@@ -284,7 +284,7 @@ func _ready():
 
 func _physics_process(delta):
 	# This will run the node queries that have been posted by the ai entities.
-	NodeQuerySystem.run_queries()
+	NNNodeQuerySystem.run_queries()
 
 	# Set the mouse cursor position as the to-vector.
 	mouse_position = get_viewport().get_mouse_position()
@@ -298,11 +298,11 @@ This code will instantiate the given number of AI-entities to the main scene to 
 
  * On the row The `@onready var ai_entity_template:PackedScene = preload("res://ai_entity.tscn)` we load the **ai_entity** scene which we will use to instantiate the AI entities in the **_ready()** method.
  * After that we create a variable **mouse_position** that the AI entities will use to check where the mouse cursor is.
- * In the **_ready()** method we first initialize the Node Query System performance counters by calling `NodeQuerySystem.initialize_performance_counters()`. This isn't necessary, but allows us to see how the queries are doing in the Debugging-menu when running the scene.
- * We then set the **time allocation percent** to allocate 100% of the time budget to high priority queries by calling the `NodeQuerySystem.set_time_allocation_pct_to_high_priority_queries(1.0)`. 
+ * In the **_ready()** method we first initialize the Node Query System performance counters by calling `NNNodeQuerySystem.initialize_performance_counters()`. This isn't necessary, but allows us to see how the queries are doing in the Debugging-menu when running the scene.
+ * We then set the **time allocation percent** to allocate 100% of the time budget to high priority queries by calling the `NNNodeQuerySystem.set_time_allocation_pct_to_high_priority_queries(1.0)`. 
  * After that we set the number of entities to instantiate as 256 in `var num_entities:int = 256`. 
  * Then in the **for-loop** we first use the `instantiate()` method of the loaded *ai_entity* scene to create a new instance of the AI entity, we then set a random position for it, and finally add it to the *main scene* by adding it as a child using the `add_child(new_ai_entity)` method. 
- * In the **_physics_process(delta)** method we run all the NQS queries by calling `NodeQuerySystem.run_queries()` method. **Remember**: this only should be done once per frame in the main scene. We then set the `mouse_position` variable as the current position. We do this once in the main scene, as finding the mouse position is a surprisingly costly operation and calling this method for each AI entity can get quite costly when you add more AI entities. And finally, we move the point grid to the mouse position by updating the position of the **mouse_point_grid** node.
+ * In the **_physics_process(delta)** method we run all the NQS queries by calling `NNNodeQuerySystem.run_queries()` method. **Remember**: this only should be done once per frame in the main scene. We then set the `mouse_position` variable as the current position. We do this once in the main scene, as finding the mouse position is a surprisingly costly operation and calling this method for each AI entity can get quite costly when you add more AI entities. And finally, we move the point grid to the mouse position by updating the position of the **mouse_point_grid** node.
 
 We are now done with the main scene. Next we will focus on creating the **ai_entity** scene and create a NQS query for it that will utilize the point grid we created. We will use a Behaviour Tree root node to post the query.
 

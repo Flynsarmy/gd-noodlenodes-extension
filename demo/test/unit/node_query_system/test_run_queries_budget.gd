@@ -9,6 +9,10 @@ const NqsHelpers = preload("res://test/unit/node_query_system/support/nqs_helper
 const NUM_CANDIDATES := 12
 
 
+func after_each() -> void:
+	NqsHelpers.reset_nqs()
+
+
 class SlowCriterion extends NNCustomSearchCriterion:
 	var apply_count := 0
 
@@ -20,47 +24,47 @@ class SlowCriterion extends NNCustomSearchCriterion:
 # When high priority work overruns the frame budget, regular priority queries
 # must not run at all in that frame.
 func test_regular_query_does_not_run_after_high_priority_overruns_budget() -> void:
-	var nqs: NNNodeQuerySystem = NqsHelpers.make_nqs(self, 100, 10000)
+	NqsHelpers.configure_nqs(100, 10000)
 	var candidates: Node = NqsHelpers.make_container(self, NUM_CANDIDATES)
 	var high_criterion: SlowCriterion = SlowCriterion.new()
 	var regular_criterion := NqsHelpers.CountingCriterion.new()
 	var high_query: NNNodeChildrenSearchSpace = NqsHelpers.make_query(self, candidates, high_criterion)
 	var regular_query: NNNodeChildrenSearchSpace = NqsHelpers.make_query(self, candidates, regular_criterion)
 
-	assert_eq(nqs.post_query(high_query, true), 1)
-	assert_eq(nqs.post_query(regular_query, false), 1)
+	assert_eq(NNNodeQuerySystem.post_query(high_query, true), 1)
+	assert_eq(NNNodeQuerySystem.post_query(regular_query, false), 1)
 
-	nqs.run_queries()
+	NNNodeQuerySystem.run_queries()
 
 	assert_gt(high_criterion.apply_count, 0, "high priority query should be executed first")
 	assert_eq(regular_criterion.apply_count, 0, "regular criterion must not execute after the high priority queries overrun the frame budget")
 	assert_true(regular_query.is_query_still_running, "regular query should remain pending for a later frame")
 
-	nqs.stop_query(high_query)
-	nqs.stop_query(regular_query)
+	NNNodeQuerySystem.stop_query(high_query)
+	NNNodeQuerySystem.stop_query(regular_query)
 
 
 # When high priority work leaves budget available, regular priority queries
 # must still run as before.
 func test_regular_query_runs_when_high_priority_leaves_budget() -> void:
-	var nqs: NNNodeQuerySystem = NqsHelpers.make_nqs(self, 1000000, 20000)
+	NqsHelpers.configure_nqs(1000000, 20000)
 	var candidates: Node = NqsHelpers.make_container(self, 3)
 	var high_criterion := NqsHelpers.CountingCriterion.new()
 	var regular_criterion := NqsHelpers.CountingCriterion.new()
 	var high_query: NNNodeChildrenSearchSpace = NqsHelpers.make_query(self, candidates, high_criterion)
 	var regular_query: NNNodeChildrenSearchSpace = NqsHelpers.make_query(self, candidates, regular_criterion)
 
-	assert_eq(nqs.post_query(high_query, true), 1)
-	assert_eq(nqs.post_query(regular_query, false), 1)
+	assert_eq(NNNodeQuerySystem.post_query(high_query, true), 1)
+	assert_eq(NNNodeQuerySystem.post_query(regular_query, false), 1)
 
-	nqs.run_queries()
+	NNNodeQuerySystem.run_queries()
 
 	assert_gt(high_criterion.apply_count, 0, "high priority query should be executed first")
 	assert_eq(regular_criterion.apply_count, 3, "regular criterion should execute for every candidate when budget is left")
 	assert_false(regular_query.is_query_still_running, "regular query should complete when budget is left")
 
-	nqs.stop_query(high_query)
-	nqs.stop_query(regular_query)
+	NNNodeQuerySystem.stop_query(high_query)
+	NNNodeQuerySystem.stop_query(regular_query)
 
 
 # A zero budget means no limit, so a direct execute_query() call must finish.

@@ -21,7 +21,7 @@ class NoodleNodes;
 class SceneTree;
 
 // Registry, EngineDebugger transport and pause gate for every debug root.
-// Registered as the NoodleNodesDebugger engine singleton in debug builds.
+// Registered as the NNDebugger engine singleton in debug builds.
 class NNDebugger : public Object, public NNDebugRoot::Registry {
 	GDCLASS(NNDebugger, Object)
 

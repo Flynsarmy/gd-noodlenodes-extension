@@ -153,8 +153,8 @@ void NNNodeQuerySystem::initialize_performance_counters() {
 	Performance *perf = godot::Performance::get_singleton();
 	if (perf == nullptr)
 		return;
-	perf->add_custom_monitor("NodeQuerySystem/Run queries time usec", Callable(this, "get_run_queries_time_elapsed_usec"));
-	perf->add_custom_monitor("NodeQuerySystem/Post queries time usec", Callable(this, "get_post_queries_time_elapsed_usec"));
+	perf->add_custom_monitor("NNNodeQuerySystem/Run queries time usec", Callable(this, "get_run_queries_time_elapsed_usec"));
+	perf->add_custom_monitor("NNNodeQuerySystem/Post queries time usec", Callable(this, "get_post_queries_time_elapsed_usec"));
 	_is_performance_counter_initialized = true;
 }
 

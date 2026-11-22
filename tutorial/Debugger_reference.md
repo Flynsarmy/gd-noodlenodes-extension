@@ -1,6 +1,6 @@
 # Debugger reference
 
-This page describes the runtime side of the Noodle Nodes debugger for people who build their own tools on it: the **NoodleNodesDebugger** singleton, the root information and snapshot dictionaries it returns, the event stream, and the messages it exchanges with the Godot editor. The editor tab and the in-game overlay are built on this API; see [Basic debugging](Basic_debugging.md) for how to use them.
+This page describes the runtime side of the Noodle Nodes debugger for people who build their own tools on it: the **NNDebugger** singleton, the root information and snapshot dictionaries it returns, the event stream, and the messages it exchanges with the Godot editor. The editor tab and the in-game overlay are built on this API; see [Basic debugging](Basic_debugging.md) for how to use them.
 
 **Contents:**
 
@@ -14,7 +14,7 @@ This page describes the runtime side of the Noodle Nodes debugger for people who
 
 ## 1. Availability and ids
 
-The debugger exists only in debug builds. `NNDebugger` is compiled under `DEBUG_ENABLED`, the singleton is registered only when a game is running, and every bound method disappears from a release build. The editor plugin and the NQS debug draw follow the same rule.
+The debugger exists only in debug builds. `NNDebugger` is compiled under `DEBUG_ENABLED`, its singleton is registered only when a game is running, and every bound method disappears from a release build. The editor plugin and the NQS debug draw follow the same rule.
 
 Everything the debugger exposes is live data from the running game process. Root ids, node ids and blackboard ids are Godot instance ids. They are opaque numbers that are only valid inside that process, and they can become invalid at any time when a node is freed. A tool must resolve an id every time it uses it:
 
@@ -32,12 +32,14 @@ Values that cross the API are copied and sanitised. The debugger never hands out
 
 ```gdscript
 func _debugger() -> Object:
-    if Engine.has_singleton("NoodleNodesDebugger"):
-        return Engine.get_singleton("NoodleNodesDebugger")
+    if Engine.has_singleton("NNDebugger"):
+        return Engine.get_singleton("NNDebugger")
     return null
 ```
 
 `Engine.has_singleton()` is the only safe test. It returns `false` in a release build and while editing scenes in the editor, so code written this way keeps working in every build.
+
+It is an engine singleton: nothing instantiates it and no variable can be typed as it, so reach it through `Engine.get_singleton()`.
 
 The singleton is a plain `Object`. It has no per-frame cost of its own: roots record events only while they are watched, and nothing is built, sent or copied while no tool watches a root.
 
@@ -461,10 +463,10 @@ var _watched := {}
 
 
 func _ready() -> void:
-    if not Engine.has_singleton("NoodleNodesDebugger"):
+    if not Engine.has_singleton("NNDebugger"):
         set_process(false)
         return
-    _debugger = Engine.get_singleton("NoodleNodesDebugger")
+    _debugger = Engine.get_singleton("NNDebugger")
     _debugger.root_added.connect(_watch_all)
     _debugger.root_removed.connect(_on_root_removed)
     _watch_all()

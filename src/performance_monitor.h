@@ -4,8 +4,8 @@
 
 namespace godot {
 
-class NNPerformanceMonitorSingleton : public Object {
-	GDCLASS(NNPerformanceMonitorSingleton, Object)
+class NNPerformanceMonitor : public Object {
+	GDCLASS(NNPerformanceMonitor, Object)
 
 private:
 	bool _is_performance_counter_initialized;
@@ -24,13 +24,13 @@ private:
 
 protected:
 	static void _bind_methods();
-	static NNPerformanceMonitorSingleton *_singleton;
+	static NNPerformanceMonitor *_singleton;
 
 public:
-	NNPerformanceMonitorSingleton();
-	~NNPerformanceMonitorSingleton();
+	NNPerformanceMonitor();
+	~NNPerformanceMonitor();
 
-	static NNPerformanceMonitorSingleton *get_singleton() { return _singleton; };
+	static NNPerformanceMonitor *get_singleton() { return _singleton; };
 
 	// Getters and setters for attributes.
 

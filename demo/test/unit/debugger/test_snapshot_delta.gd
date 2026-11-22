@@ -9,8 +9,8 @@ var debugger: Object
 
 
 func before_all() -> void:
-	assert_true(Engine.has_singleton("NoodleNodesDebugger"), "debug builds register the debugger singleton")
-	debugger = Engine.get_singleton("NoodleNodesDebugger")
+	assert_true(Engine.has_singleton("NNDebugger"), "debug builds register the debugger singleton")
+	debugger = Engine.get_singleton("NNDebugger")
 
 
 func _make_manual_bt() -> NNBTRoot:

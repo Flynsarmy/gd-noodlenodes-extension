@@ -1,7 +1,7 @@
 #include "root.h"
 #include "nodes.h"
 
-#include "../performance_monitor_singleton.h"
+#include "../performance_monitor.h"
 #include <godot_cpp/classes/engine.hpp>
 #include <godot_cpp/classes/time.hpp>
 #include <godot_cpp/core/class_db.hpp>
@@ -300,14 +300,14 @@ NNBTNodes::Status NNBTRoot::_tick(float delta) {
 	if (!get_is_enabled()) {
 #ifdef DEBUG_ENABLED
 		_total_tick_usec = godot::Time::get_singleton()->get_ticks_usec() - method_start_time_usec;
-		NNPerformanceMonitorSingleton::get_singleton()->increment_total_time_elapsed_behaviour_trees_usec(_total_tick_usec);
+		NNPerformanceMonitor::get_singleton()->increment_total_time_elapsed_behaviour_trees_usec(_total_tick_usec);
 #endif
 		return Status::FAILURE;
 	}
 #ifdef DEBUG_ENABLED
 	if (Engine::get_singleton()->is_editor_hint()) {
 		_total_tick_usec = godot::Time::get_singleton()->get_ticks_usec() - method_start_time_usec;
-		NNPerformanceMonitorSingleton::get_singleton()->increment_total_time_elapsed_behaviour_trees_usec(_total_tick_usec);
+		NNPerformanceMonitor::get_singleton()->increment_total_time_elapsed_behaviour_trees_usec(_total_tick_usec);
 
 		return Status::FAILURE;
 	}
@@ -338,7 +338,7 @@ NNBTNodes::Status NNBTRoot::_tick(float delta) {
 		Status result = btnode->tick(delta);
 #ifdef DEBUG_ENABLED
 		_total_tick_usec = godot::Time::get_singleton()->get_ticks_usec() - method_start_time_usec;
-		NNPerformanceMonitorSingleton::get_singleton()->increment_total_time_elapsed_behaviour_trees_usec(_total_tick_usec);
+		NNPerformanceMonitor::get_singleton()->increment_total_time_elapsed_behaviour_trees_usec(_total_tick_usec);
 #endif
 		if (result == Status::RUNNING) {
 			// Keep the running child, interrupt any other child that is active.
@@ -348,7 +348,7 @@ NNBTNodes::Status NNBTRoot::_tick(float delta) {
 	} //endfor btnodes
 #ifdef DEBUG_ENABLED
 	_total_tick_usec = godot::Time::get_singleton()->get_ticks_usec() - method_start_time_usec;
-	NNPerformanceMonitorSingleton::get_singleton()->increment_total_time_elapsed_behaviour_trees_usec(_total_tick_usec);
+	NNPerformanceMonitor::get_singleton()->increment_total_time_elapsed_behaviour_trees_usec(_total_tick_usec);
 #endif
 	return Status::FAILURE; // We shouldn't get here. If we do, there were no child nodes.
 }

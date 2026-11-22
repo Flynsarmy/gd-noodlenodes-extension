@@ -20,6 +20,10 @@ class DebugCandidate extends Node2D:
 	var is_filtered := false
 
 
+func after_each() -> void:
+	NqsHelpers.reset_nqs()
+
+
 func _make_curve() -> Curve:
 	var curve := Curve.new()
 	curve.add_point(Vector2(0.0, 0.0))
@@ -248,12 +252,12 @@ func _drive_to_completion(space: NNNQSSearchSpaces) -> void:
 	fail_test("the threaded query must complete within %d ms" % DRIVE_TIMEOUT_MSEC)
 
 
-func _drive_nqs_to_completion(nqs: NNNodeQuerySystem, space: NNNQSSearchSpaces) -> void:
+func _drive_nqs_to_completion(space: NNNQSSearchSpaces) -> void:
 	var deadline := Time.get_ticks_msec() + DRIVE_TIMEOUT_MSEC
 	while Time.get_ticks_msec() < deadline:
 		if not space.is_query_still_running:
 			return
-		nqs.run_queries()
+		NNNodeQuerySystem.run_queries()
 	fail_test("the threaded query must complete within %d ms" % DRIVE_TIMEOUT_MSEC)
 
 
@@ -308,14 +312,14 @@ func test_stopping_and_reposting_mid_job_restarts_from_a_clean_snapshot() -> voi
 	var serial_scores := space.get_query_result_scores()
 
 	space.threading_mode = NNNQSSearchSpaces.THREADING_ALWAYS
-	var nqs: NNNodeQuerySystem = NqsHelpers.make_nqs(self, 2000000, GENEROUS_BUDGET_USEC)
-	assert_eq(nqs.post_query(space, true), 1)
-	nqs.run_queries()
+	NqsHelpers.configure_nqs(2000000, GENEROUS_BUDGET_USEC)
+	assert_eq(NNNodeQuerySystem.post_query(space, true), 1)
+	NNNodeQuerySystem.run_queries()
 	assert_true(space.is_query_still_running, "the worker job must still be running")
 
-	assert_true(nqs.stop_query(space))
-	assert_eq(nqs.post_query(space, true), 1, "a stopped query can be posted again")
-	_drive_nqs_to_completion(nqs, space)
+	assert_true(NNNodeQuerySystem.stop_query(space))
+	assert_eq(NNNodeQuerySystem.post_query(space, true), 1, "a stopped query can be posted again")
+	_drive_nqs_to_completion(space)
 
 	assert_false(space.is_query_still_running, "the re-posted query must complete")
 	assert_true(space.is_last_query_threaded)
@@ -326,16 +330,16 @@ func test_stopping_and_reposting_mid_job_restarts_from_a_clean_snapshot() -> voi
 func test_run_queries_does_not_spin_on_a_waiting_query() -> void:
 	var space := _make_point_grid_space(8)
 	space.threading_mode = NNNQSSearchSpaces.THREADING_ALWAYS
-	var nqs: NNNodeQuerySystem = NqsHelpers.make_nqs(self, 50000, GENEROUS_BUDGET_USEC)
-	assert_eq(nqs.post_query(space, true), 1)
+	NqsHelpers.configure_nqs(50000, GENEROUS_BUDGET_USEC)
+	assert_eq(NNNodeQuerySystem.post_query(space, true), 1)
 
-	nqs.run_queries()
+	NNNodeQuerySystem.run_queries()
 	assert_true(space.is_query_still_running, "the worker job must still be running")
 
 	var start_usec := Time.get_ticks_usec()
-	nqs.run_queries()
+	NNNodeQuerySystem.run_queries()
 	var elapsed_usec := Time.get_ticks_usec() - start_usec
 
 	assert_lt(elapsed_usec, 10000, "a waiting query must not spin out the frame budget")
-	_drive_nqs_to_completion(nqs, space)
+	_drive_nqs_to_completion(space)
 	assert_false(space.is_query_still_running)

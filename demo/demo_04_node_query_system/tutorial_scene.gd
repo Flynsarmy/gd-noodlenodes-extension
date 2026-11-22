@@ -10,10 +10,10 @@ var mouse_position: Vector2
 func _ready() -> void:
 
 	# To see how the NQS is running, we initialize the performance counters.
-	NodeQuerySystem.initialize_performance_counters()
+	NNNodeQuerySystem.initialize_performance_counters()
 	# We won't be using regular queries, so allocate 100% of the time budget to
 	# the high priority queries.
-	NodeQuerySystem.set_time_allocation_pct_to_high_priority_queries(1.0)
+	NNNodeQuerySystem.set_time_allocation_pct_to_high_priority_queries(1.0)
 
 	# For convinience in changing the number of AI-entities to create
 	var num_entities: int = 250
@@ -31,7 +31,7 @@ func _ready() -> void:
 
 func _physics_process(_delta: float) -> void:
 	# This will run the node queries that have been posted by the ai entities.
-	NodeQuerySystem.run_queries()
+	NNNodeQuerySystem.run_queries()
 
 	# Set the mouse cursor position as the to-vector.
 	mouse_position = get_viewport().get_mouse_position()

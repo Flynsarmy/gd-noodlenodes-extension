@@ -5,6 +5,10 @@ const NqsHelpers = preload("res://test/unit/node_query_system/support/nqs_helper
 const NON_CURVE_ERROR := "NNConsideration::set_activation_curve(): activation_curve must be a Curve or an NNResponseCurve."
 
 
+func after_each() -> void:
+	NqsHelpers.reset_nqs()
+
+
 func _curve(type: NNResponseCurve.CurveType, parameters := {}) -> NNResponseCurve:
 	var curve := NNResponseCurve.new()
 	curve.curve_type = type
@@ -102,7 +106,8 @@ func test_search_criterion_scores_through_a_response_curve() -> void:
 	criterion.activation_curve = _curve(NNResponseCurve.CURVE_POLYNOMIAL)
 
 	var query := NqsHelpers.make_query(self, container, criterion)
-	NqsHelpers.run_to_completion(self, NqsHelpers.make_nqs(self), query)
+	NqsHelpers.configure_nqs()
+	NqsHelpers.run_to_completion(self, query)
 
 	assert_almost_eq(query.get_query_result_scores()[0], 0.0625, 0.0001, "the raw 0.25 distance score is squared")
 

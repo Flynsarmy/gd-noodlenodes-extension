@@ -6,18 +6,17 @@ const Fixtures = preload("res://test/support/fixtures.gd")
 
 
 func before_each() -> void:
-	Engine.get_singleton("NodeQuerySystem").clear_queries()
+	NNNodeQuerySystem.clear_queries()
 
 func after_each() -> void:
-	Engine.get_singleton("NodeQuerySystem").clear_queries()
+	NNNodeQuerySystem.clear_queries()
 
 # The singleton does not run by itself in headless GUT, so tests drive it.
 func _complete_query(search_space: NNNQSSearchSpaces) -> void:
-	var _nqs: NNNodeQuerySystem = Engine.get_singleton("NodeQuerySystem")
 	for _i in 128:
 		if not search_space.is_query_still_running:
 			return
-		_nqs.run_queries()
+		NNNodeQuerySystem.run_queries()
 	assert_false(search_space.is_query_still_running, "The query did not complete.")
 
 func _make_search_space(parent_node: Node = null) -> NNNodeChildrenSearchSpace:
@@ -119,8 +118,7 @@ func test_cancelled_query_writes_nothing_and_keeps_the_last_result() -> void:
 
 	_root.tick(0.1)
 	assert_true(_search_space.is_query_still_running)
-	var _nqs: NNNodeQuerySystem = Engine.get_singleton("NodeQuerySystem")
-	assert_true(_nqs.stop_query(_search_space))
+	assert_true(NNNodeQuerySystem.stop_query(_search_space))
 
 	_root.tick(0.1)
 

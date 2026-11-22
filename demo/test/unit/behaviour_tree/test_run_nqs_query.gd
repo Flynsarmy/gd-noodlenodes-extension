@@ -10,23 +10,22 @@ class InterruptCountingQuery extends NNBTRunNQSQuery:
 		interrupt_count += 1
 
 
-# The NodeQuerySystem used by the leaf is the engine-wide singleton created by
-# the GDExtension. Drop anything a previous test left scheduled so these tests
-# only observe their own queries.
+# The NNNodeQuerySystem used by the leaf is the engine-wide singleton created
+# by the GDExtension. Drop anything a previous test left scheduled so these
+# tests only observe their own queries.
 func before_each() -> void:
-	Engine.get_singleton("NodeQuerySystem").clear_queries()
+	NNNodeQuerySystem.clear_queries()
 
 func after_each() -> void:
-	Engine.get_singleton("NodeQuerySystem").clear_queries()
+	NNNodeQuerySystem.clear_queries()
 
 # Drive the scheduler until the space finishes. The singleton does not run by
 # itself in headless GUT, so tests call run_queries() explicitly.
 func _complete_query(search_space: NNNQSSearchSpaces) -> void:
-	var _nqs: NNNodeQuerySystem = Engine.get_singleton("NodeQuerySystem")
 	for _i in 128:
 		if not search_space.is_query_still_running:
 			return
-		_nqs.run_queries()
+		NNNodeQuerySystem.run_queries()
 	assert_false(search_space.is_query_still_running, "The query did not complete.")
 
 # These tests drive every root by hand, so automatic physics ticking is off.
@@ -49,8 +48,6 @@ func _make_search_space() -> NNNodeChildrenSearchSpace:
 	return _search_space
 
 func test_cancelling_a_query_fails_without_writing_and_the_leaf_can_post_a_fresh_query() -> void:
-	var _nqs: NNNodeQuerySystem = Engine.get_singleton("NodeQuerySystem")
-
 	for cancel_method in ["stop", "clear"]:
 		var _search_space: NNNodeChildrenSearchSpace = _make_search_space()
 		add_child_autofree(_search_space)
@@ -62,9 +59,9 @@ func test_cancelling_a_query_fails_without_writing_and_the_leaf_can_post_a_fresh
 		assert_true(_search_space.is_query_still_running)
 
 		if cancel_method == "stop":
-			assert_true(_nqs.stop_query(_search_space))
+			assert_true(NNNodeQuerySystem.stop_query(_search_space))
 		else:
-			_nqs.clear_queries()
+			NNNodeQuerySystem.clear_queries()
 		assert_false(_search_space.is_query_still_running)
 
 		assert_eq(_root.tick(0.1), NNBTNodes.FAILURE, "A cancelled query must not report success.")
@@ -210,19 +207,18 @@ func test_rejected_posting_fails_then_retry_succeeds() -> void:
 	var _root: NNBTRoot = _nodes[0]
 	var _child: NNBTRunNQSQuery = _nodes[1]
 	_child.top_n_to_find = 2
-	var _nqs: NNNodeQuerySystem = Engine.get_singleton("NodeQuerySystem")
 
 	# Another poster's query asks for fewer results than the leaf needs, so it cannot be joined.
-	assert_eq(_nqs.post_query(_search_space, true), 1)
+	assert_eq(NNNodeQuerySystem.post_query(_search_space, true), 1)
 	assert_true(_search_space.is_query_still_running)
 
 	assert_eq(_root.tick(0.1), NNBTNodes.FAILURE, "A rejected post must not report success.")
 	assert_false(_child.get_is_running())
 	assert_true(_search_space.is_query_still_running, "The other poster's query must be left untouched.")
 	assert_eq(_search_space.top_n_to_find, 1)
-	assert_eq(_nqs.get_num_active_high_priority_queries(), 1)
+	assert_eq(NNNodeQuerySystem.get_num_active_high_priority_queries(), 1)
 
-	assert_true(_nqs.stop_query(_search_space))
+	assert_true(NNNodeQuerySystem.stop_query(_search_space))
 	assert_eq(_root.tick(0.1), NNBTNodes.RUNNING, "After the owner releases the space it can be posted.")
 	assert_true(_search_space.is_query_still_running)
 	_complete_query(_search_space)
@@ -237,8 +233,7 @@ func test_joins_another_posters_query_and_writes_its_own_result_limit() -> void:
 	_search_space.parent_node = _container
 	_search_space.top_n_to_find = 2
 	add_child_autofree(_search_space)
-	var _nqs: NNNodeQuerySystem = Engine.get_singleton("NodeQuerySystem")
-	assert_eq(_nqs.post_query(_search_space, true), 1)
+	assert_eq(NNNodeQuerySystem.post_query(_search_space, true), 1)
 	var _nodes: Array = _make_root_with_leaf(_search_space)
 	var _root: NNBTRoot = _nodes[0]
 	var _child: NNBTRunNQSQuery = _nodes[1]
@@ -256,8 +251,7 @@ func test_joins_another_posters_query_and_writes_its_own_result_limit() -> void:
 func test_resetting_a_joined_leaf_leaves_the_other_query_running() -> void:
 	var _search_space: NNNodeChildrenSearchSpace = _make_search_space()
 	add_child_autofree(_search_space)
-	var _nqs: NNNodeQuerySystem = Engine.get_singleton("NodeQuerySystem")
-	assert_eq(_nqs.post_query(_search_space, true), 1)
+	assert_eq(NNNodeQuerySystem.post_query(_search_space, true), 1)
 	var _nodes: Array = _make_root_with_leaf(_search_space)
 	var _root: NNBTRoot = _nodes[0]
 
@@ -266,18 +260,17 @@ func test_resetting_a_joined_leaf_leaves_the_other_query_running() -> void:
 	_root.is_enabled = true
 
 	assert_true(_search_space.is_query_still_running)
-	assert_eq(_nqs.get_num_active_high_priority_queries(), 1)
+	assert_eq(NNNodeQuerySystem.get_num_active_high_priority_queries(), 1)
 
 func test_stopping_a_joined_query_makes_the_leaf_post_its_own() -> void:
 	var _search_space: NNNodeChildrenSearchSpace = _make_search_space()
 	add_child_autofree(_search_space)
-	var _nqs: NNNodeQuerySystem = Engine.get_singleton("NodeQuerySystem")
-	assert_eq(_nqs.post_query(_search_space, true), 1)
+	assert_eq(NNNodeQuerySystem.post_query(_search_space, true), 1)
 	var _nodes: Array = _make_root_with_leaf(_search_space)
 	var _root: NNBTRoot = _nodes[0]
 
 	assert_eq(_root.tick(0.1), NNBTNodes.RUNNING)
-	assert_true(_nqs.stop_query(_search_space))
+	assert_true(NNNodeQuerySystem.stop_query(_search_space))
 
 	assert_eq(_root.tick(0.1), NNBTNodes.RUNNING, "The owner stopping its query is not this leaf's failure.")
 	assert_true(_search_space.is_query_still_running)
@@ -292,7 +285,6 @@ func test_reassigning_while_running_stops_the_old_query_and_runs_the_new_one() -
 	var _nodes: Array = _make_root_with_leaf(_old_space)
 	var _root: NNBTRoot = _nodes[0]
 	var _child: NNBTRunNQSQuery = _nodes[1]
-	var _nqs: NNNodeQuerySystem = Engine.get_singleton("NodeQuerySystem")
 
 	assert_eq(_root.tick(0.1), NNBTNodes.RUNNING)
 	assert_true(_old_space.is_query_still_running)
@@ -300,7 +292,7 @@ func test_reassigning_while_running_stops_the_old_query_and_runs_the_new_one() -
 	_child.nqs_search_space = _new_space
 
 	assert_false(_old_space.is_query_still_running, "The leaf must not orphan its old query.")
-	assert_eq(_nqs.get_num_active_high_priority_queries(), 0)
+	assert_eq(NNNodeQuerySystem.get_num_active_high_priority_queries(), 0)
 	assert_eq(_root.tick(0.1), NNBTNodes.RUNNING)
 	assert_true(_new_space.is_query_still_running)
 	_complete_query(_new_space)
@@ -352,15 +344,14 @@ func test_configured_search_space_still_runs_and_resets() -> void:
 	_child.nqs_search_space = _search_space
 	_root.add_child(_child)
 
-	# Add to the scene tree so the query node resolves the NodeQuerySystem singleton.
+	# Add to the scene tree so the query node resolves the NNNodeQuerySystem singleton.
 	add_child_autofree(_search_space)
 	add_child_autofree(_root)
 
-	var _nqs: NNNodeQuerySystem = Engine.get_singleton("NodeQuerySystem")
 	for _query_index in 2:
 		assert_eq(_root.tick(0.1), NNBTNodes.RUNNING)
 		assert_true(_search_space.is_query_still_running)
-		_nqs.run_queries()
+		NNNodeQuerySystem.run_queries()
 		assert_false(_search_space.is_query_still_running)
 
 		assert_eq(_root.tick(0.1), NNBTNodes.SUCCESS)
@@ -381,8 +372,7 @@ func test_search_space_freed_while_query_is_running_fails_without_crashing() -> 
 
 	# Stop the query while the space is still alive so the singleton does not keep
 	# a reference to it, then free it out from under the running leaf.
-	var _nqs: NNNodeQuerySystem = Engine.get_singleton("NodeQuerySystem")
-	_nqs.stop_query(_search_space)
+	NNNodeQuerySystem.stop_query(_search_space)
 	_search_space.free()
 
 	assert_null(_child.nqs_search_space)
@@ -404,8 +394,7 @@ func test_interrupt_with_a_freed_search_space_cancels_without_crashing() -> void
 	assert_true(_search_space.is_query_still_running)
 
 	# Release the query while the space is alive, then free the space.
-	var _nqs: NNNodeQuerySystem = Engine.get_singleton("NodeQuerySystem")
-	_nqs.stop_query(_search_space)
+	NNNodeQuerySystem.stop_query(_search_space)
 	_search_space.free()
 	assert_null(_child.nqs_search_space)
 
@@ -430,7 +419,7 @@ func test_reassigning_after_a_freed_search_space_starts_a_new_query() -> void:
 		if was_running:
 			assert_eq(_root.tick(0.1), NNBTNodes.RUNNING)
 			assert_true(_freed_space.is_query_still_running)
-			Engine.get_singleton("NodeQuerySystem").stop_query(_freed_space)
+			NNNodeQuerySystem.stop_query(_freed_space)
 		_freed_space.free()
 		assert_null(_child.nqs_search_space, "a freed search space reads back as null")
 
@@ -445,7 +434,7 @@ func test_reassigning_after_a_freed_search_space_starts_a_new_query() -> void:
 		assert_true(_fresh_space.is_query_still_running)
 
 		# Tear down cleanly while the space is still alive.
-		Engine.get_singleton("NodeQuerySystem").stop_query(_fresh_space)
+		NNNodeQuerySystem.stop_query(_fresh_space)
 
 func test_replaced_query_is_not_adopted_or_cancelled() -> void:
 	for complete_replacement in [false, true]:
@@ -453,11 +442,10 @@ func test_replaced_query_is_not_adopted_or_cancelled() -> void:
 		add_child_autofree(space)
 		var nodes := _make_root_with_leaf(space)
 		var root: NNBTRoot = nodes[0]
-		var nqs: NNNodeQuerySystem = Engine.get_singleton("NodeQuerySystem")
 
 		assert_eq(root.tick(0.1), NNBTNodes.RUNNING)
-		assert_true(nqs.stop_query(space))
-		assert_eq(nqs.post_query(space, false), 1)
+		assert_true(NNNodeQuerySystem.stop_query(space))
+		assert_eq(NNNodeQuerySystem.post_query(space, false), 1)
 		if complete_replacement:
 			_complete_query(space)
 
@@ -466,8 +454,8 @@ func test_replaced_query_is_not_adopted_or_cancelled() -> void:
 		assert_eq(root.get_blackboard_resource().keys(), [],
 				"Another poster's completion must not write results.")
 		assert_eq(space.is_query_still_running, not complete_replacement)
-		assert_eq(nqs.get_num_active_regular_priority_queries(), 0 if complete_replacement else 1)
-		nqs.clear_queries()
+		assert_eq(NNNodeQuerySystem.get_num_active_regular_priority_queries(), 0 if complete_replacement else 1)
+		NNNodeQuerySystem.clear_queries()
 
 func test_freeing_leaf_releases_only_its_own_query() -> void:
 	for replace_query in [false, true]:
@@ -476,17 +464,16 @@ func test_freeing_leaf_releases_only_its_own_query() -> void:
 		var nodes := _make_root_with_leaf(space)
 		var root: NNBTRoot = nodes[0]
 		var leaf: NNBTRunNQSQuery = nodes[1]
-		var nqs: NNNodeQuerySystem = Engine.get_singleton("NodeQuerySystem")
 
 		assert_eq(root.tick(0.1), NNBTNodes.RUNNING)
 		if replace_query:
-			assert_true(nqs.stop_query(space))
-			assert_eq(nqs.post_query(space, true), 1)
+			assert_true(NNNodeQuerySystem.stop_query(space))
+			assert_eq(NNNodeQuerySystem.post_query(space, true), 1)
 		leaf.free()
 
 		assert_eq(space.is_query_still_running, replace_query)
-		assert_eq(nqs.get_num_active_high_priority_queries(), 1 if replace_query else 0)
-		nqs.clear_queries()
+		assert_eq(NNNodeQuerySystem.get_num_active_high_priority_queries(), 1 if replace_query else 0)
+		NNNodeQuerySystem.clear_queries()
 
 func test_leaf_does_not_post_before_it_is_ready() -> void:
 	var space := _make_search_space()
@@ -520,7 +507,7 @@ func test_root_disable_stops_a_running_query_and_reenable_posts_again() -> void:
 	assert_eq(_root.tick(0.1), NNBTNodes.RUNNING)
 	assert_true(_search_space.is_query_still_running, "a fresh query is posted after re-enabling")
 
-	Engine.get_singleton("NodeQuerySystem").stop_query(_search_space)
+	NNNodeQuerySystem.stop_query(_search_space)
 
 func test_root_interrupt_stops_a_running_query_and_is_idempotent() -> void:
 	var _search_space: NNNodeChildrenSearchSpace = _make_search_space()
@@ -544,7 +531,7 @@ func test_root_interrupt_stops_a_running_query_and_is_idempotent() -> void:
 	assert_eq(_root.tick(0.1), NNBTNodes.RUNNING)
 	assert_true(_search_space.is_query_still_running, "a fresh query is posted after the interrupt")
 
-	Engine.get_singleton("NodeQuerySystem").stop_query(_search_space)
+	NNNodeQuerySystem.stop_query(_search_space)
 
 
 func test_top_n_to_find_below_one_is_rejected() -> void:
