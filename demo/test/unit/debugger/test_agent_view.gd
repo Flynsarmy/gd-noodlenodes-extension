@@ -3,6 +3,7 @@ extends GutTest
 const Fixtures = preload("res://test/unit/debugger/fixtures/debugger_fixtures.gd")
 const AgentViewScene = preload("res://addons/noodle_nodes/editor/views/agent/agent_view.tscn")
 const TimelineScript = preload("res://addons/noodle_nodes/editor/views/agent/timeline.gd")
+const MarqueeScene = preload("res://addons/noodle_nodes/editor/shell/marquee_label.tscn")
 
 var _view
 
@@ -27,9 +28,9 @@ func _row_names() -> Array:
 	return names
 
 
-func _editor_like_theme() -> Theme:
+func _editor_like_theme(font_size := 28) -> Theme:
 	var theme := Theme.new()
-	theme.default_font_size = 28
+	theme.default_font_size = font_size
 	var normal := StyleBoxFlat.new()
 	normal.bg_color = Color(0, 0, 0, 0)
 	normal.content_margin_left = 16
@@ -71,6 +72,13 @@ func _node(snapshot: Dictionary, node_id: int) -> Dictionary:
 		if node["id"] == node_id:
 			return node
 	return {}
+
+
+func _ages_visible(rows: Array) -> Array:
+	var visible := []
+	for row in rows:
+		visible.append(row.get_node("%Age").visible)
+	return visible
 
 
 func _choice(seq: int, ago_usec: int, behaviour: int) -> Dictionary:
@@ -320,6 +328,52 @@ func test_a_single_choice_change_does_not_warn() -> void:
 	assert_false(warning.visible)
 
 
+func test_the_oscillation_warning_keeps_its_start_and_the_full_text_as_tooltip() -> void:
+	var frame := Control.new()
+	frame.theme = _editor_like_theme()
+	frame.size = Vector2(650, 170)
+	add_child_autofree(frame)
+	var view = AgentViewScene.instantiate()
+	frame.add_child(view)
+	view.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	view.set_snapshot(Fixtures.agent_snapshot())
+	view.apply_events(Fixtures.agent_events())
+	await get_tree().process_frame
+	await get_tree().process_frame
+
+	var warning = view.get_node("%OscillationWarning")
+	assert_true(warning.visible)
+	assert_string_starts_with(warning.text, "Oscillation: Patrol")
+	assert_eq(warning.tooltip_text, warning.text, "the whole warning is the tooltip")
+	assert_gt(warning.get_content_width(), warning.size.x, "the warning is wider than the header")
+	assert_eq(warning.get_scroll_offset(), 0.0, "the start of the warning is not clipped away")
+	assert_true(warning.is_scrolling())
+
+
+func test_the_marquee_scrolls_only_when_its_text_overflows() -> void:
+	var marquee = MarqueeScene.instantiate()
+	add_child_autofree(marquee)
+	marquee.set_text("Oscillation: Patrol ↔ Investigate")
+	marquee.size = Vector2(600, 20)
+	await get_tree().process_frame
+
+	assert_false(marquee.is_scrolling(), "static when the text fits")
+
+	marquee.size = Vector2(40, 20)
+	await get_tree().process_frame
+	assert_true(marquee.is_scrolling(), "scrolls when the text overflows")
+
+	marquee.visible = false
+	await get_tree().process_frame
+	assert_false(marquee.is_scrolling(), "hidden marquees stop scrolling")
+
+	marquee.visible = true
+	marquee.size = Vector2(600, 20)
+	await get_tree().process_frame
+	assert_false(marquee.is_scrolling(), "stops when the text fits again")
+	assert_eq(marquee.get_scroll_offset(), 0.0, "the text resets to its start")
+
+
 func test_selecting_a_row_emits_node_selected() -> void:
 	_view.set_snapshot(Fixtures.agent_snapshot())
 	var row = _find_row(_view.get_node("%BehaviourList"), Fixtures.AGENT_PATROL)
@@ -450,3 +504,50 @@ func test_timeline_tick_labels_do_not_overlap() -> void:
 		for j in range(i + 1, labels.size()):
 			var other: Rect2 = labels[j]["rect"]
 			assert_false(rect.intersects(other), "tick labels must not overlap")
+
+
+func test_timeline_tick_labels_stay_inside_the_timeline_at_narrow_widths() -> void:
+	_view.theme = _editor_like_theme(48)
+	_view.set_snapshot(Fixtures.agent_snapshot())
+	_view.apply_events(Fixtures.agent_events())
+	var timeline = _view.get_node("%Timeline")
+
+	for width in [200.0, 245.0, 320.0]:
+		timeline.size = Vector2(width, 84)
+		var labels: Array = timeline.get_tick_labels()
+		assert_gt(labels.size(), 0, "labels survive at %d px" % width)
+		for label in labels:
+			var rect: Rect2 = label["rect"]
+			assert_true(rect.position.x >= -0.5 and rect.end.x <= timeline.size.x + 0.5,
+					"%s stays inside the timeline at %d px" % [label["text"], width])
+
+
+func test_sensor_rows_show_or_hide_the_age_together() -> void:
+	var frame := Control.new()
+	frame.size = Vector2(650, 170)
+	add_child_autofree(frame)
+	var view = AgentViewScene.instantiate()
+	frame.add_child(view)
+	view.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	await get_tree().process_frame
+	var snapshot := Fixtures.agent_snapshot()
+	snapshot["nodes"].append({
+		"id": Fixtures.ID_BASE + 3003, "parent": Fixtures.AGENT, "name": "AlertSensorWithExtra", "kind": "sensor",
+		"value": true, "last_evaluated_usec": Fixtures.NOW_USEC - 100_000,
+	})
+	view.set_snapshot(snapshot)
+	await get_tree().process_frame
+	await get_tree().process_frame
+	await get_tree().process_frame
+
+	var rows := view.get_node("%SensorList").get_children()
+	assert_eq(_ages_visible(rows), [false, false, false], "narrow rows hide the age for every sensor")
+	var alert = _find_row(view.get_node("%SensorList"), Fixtures.AGENT_ALERT_SENSOR)
+	assert_string_contains(alert.tooltip_text, "0.10s ago", "the hidden age is still in the tooltip")
+
+	frame.size = Vector2(1100, 170)
+	await get_tree().process_frame
+	await get_tree().process_frame
+	await get_tree().process_frame
+
+	assert_eq(_ages_visible(rows), [true, true, true], "wide rows show the age for every sensor")

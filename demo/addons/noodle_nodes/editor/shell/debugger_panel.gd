@@ -44,7 +44,6 @@ signal send_message(message: String, data: Array)
 @onready var _step_button: Button = %StepButton
 @onready var _pause_scope_option: OptionButton = %PauseScopeOption
 @onready var _follow_button: Button = %FollowButton
-@onready var _layout_button: Button = %LayoutButton
 @onready var _float_button: Button = %FloatButton
 @onready var _float_window: Window = %FloatWindow
 
@@ -80,7 +79,6 @@ func _ready() -> void:
 	_step_button.pressed.connect(_on_step_pressed)
 	_pause_scope_option.item_selected.connect(_on_pause_scope_selected)
 	_follow_button.toggled.connect(_on_follow_toggled)
-	_layout_button.toggled.connect(_on_layout_toggled)
 	_float_button.toggled.connect(_on_float_toggled)
 	_float_window.close_requested.connect(_on_float_window_close_requested)
 	_main_split.dragged.connect(func(offset: int) -> void: _save_setting("split_main", offset))
@@ -653,12 +651,6 @@ func _on_follow_toggled(pressed: bool) -> void:
 	_save_setting("follow_active_path", _follow)
 
 
-func _on_layout_toggled(pressed: bool) -> void:
-	_main_split.vertical = pressed
-	_layout_button.text = "Vertical" if pressed else "Horizontal"
-	_save_setting("layout", "vertical" if pressed else "horizontal")
-
-
 func _on_float_toggled(pressed: bool) -> void:
 	_set_detached(pressed)
 
@@ -690,12 +682,10 @@ func _set_detached(detached: bool) -> void:
 
 func _load_settings() -> void:
 	var settings := _settings()
-	var vertical := false
 	var follow := false
 	var detached := false
 	var pause_scope := Protocol.PAUSE_SCOPE_AI
 	if settings != null:
-		vertical = str(_read_setting(settings, "layout", "horizontal")) == "vertical"
 		follow = bool(_read_setting(settings, "follow_active_path", false))
 		detached = bool(_read_setting(settings, "detached", false))
 		pause_scope = int(_read_setting(settings, "pause_scope", Protocol.PAUSE_SCOPE_AI))
@@ -704,9 +694,6 @@ func _load_settings() -> void:
 		if settings.has_setting(_setting_key("split_inspector")):
 			_content_split.split_offset = int(settings.get_setting(_setting_key("split_inspector")))
 	_pause_scope = _valid_scope(pause_scope)
-	_main_split.vertical = vertical
-	_layout_button.set_pressed_no_signal(vertical)
-	_layout_button.text = "Vertical" if vertical else "Horizontal"
 	_follow = follow
 	_follow_button.set_pressed_no_signal(follow)
 	if detached:

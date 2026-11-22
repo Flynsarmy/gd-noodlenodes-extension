@@ -1,5 +1,5 @@
 @tool
-extends Control
+extends "res://addons/noodle_nodes/editor/views/graph_camera.gd"
 ## Read-only, zoomable decision tree for one recorded HTN search attempt.
 ##
 ## Records arrive as [code]{ id, parent_id, kind, path, outcome, reason, detail,
@@ -24,8 +24,6 @@ const MAX_ZOOM := 1.8
 ## instead of being squeezed into an illegible overview. The debugger pane is
 ## often narrow as well as short, so this stays low enough to frame a whole row.
 const FIT_MIN_ZOOM := 0.5
-const WHEEL_ZOOM_STEP := 1.12
-const PAN_SPEED := 24.0
 const EDGE_WIDTH := 1.5
 const DRAG_THRESHOLD := 4.0
 const DENSE_LIMIT := 250
@@ -56,7 +54,6 @@ var _node_size := NODE_SIZE
 var _gap_x := GAP_X
 var _gap_y := GAP_Y
 var _padding := PADDING
-var _pan_speed := PAN_SPEED
 var _edge_width := EDGE_WIDTH
 var _drag_threshold := DRAG_THRESHOLD
 var _zoom := 1.0
@@ -77,7 +74,6 @@ func _ready() -> void:
 	_gap_x = EditorScale.px(GAP_X)
 	_gap_y = EditorScale.px(GAP_Y)
 	_padding = EditorScale.px(PADDING)
-	_pan_speed = EditorScale.px(PAN_SPEED)
 	_edge_width = EditorScale.px(EDGE_WIDTH)
 	_drag_threshold = EditorScale.px(DRAG_THRESHOLD)
 
@@ -154,6 +150,7 @@ func fit_to_view() -> void:
 	if size.x <= 1.0 or size.y <= 1.0:
 		return
 	_pending_fit = false
+	_user_transformed = false
 	var factor := minf(size.x / _bounds.size.x, size.y / _bounds.size.y)
 	_zoom = clampf(factor, FIT_MIN_ZOOM, 1.0)
 	var fits := _bounds.size.x * _zoom <= size.x and _bounds.size.y * _zoom <= size.y
@@ -521,36 +518,22 @@ func _draw() -> void:
 # Input ------------------------------------------------------------------------
 
 func _gui_input(event: InputEvent) -> void:
-	if event is InputEventMouseButton:
-		_handle_mouse_button(event)
+	if event is InputEventMouseButton and _handle_mouse_button(event):
+		accept_event()
 	elif event is InputEventMouseMotion:
 		_handle_mouse_motion(event)
-	elif event is InputEventMagnifyGesture:
-		_zoom_at(event.position, maxf(0.01, event.factor))
+	elif event is InputEventKey and _handle_key(event):
 		accept_event()
-	elif event is InputEventPanGesture:
-		_pan -= event.delta * _pan_speed
-		_user_transformed = true
-		_apply_transform()
+	elif graph_input(event):
 		accept_event()
-	elif event is InputEventKey:
-		_handle_key(event)
 
 
-func _handle_mouse_button(button: InputEventMouseButton) -> void:
+func _handle_mouse_button(button: InputEventMouseButton) -> bool:
 	match button.button_index:
-		MOUSE_BUTTON_WHEEL_UP:
-			if button.pressed:
-				_zoom_at(button.position, WHEEL_ZOOM_STEP)
-				accept_event()
-		MOUSE_BUTTON_WHEEL_DOWN:
-			if button.pressed:
-				_zoom_at(button.position, 1.0 / WHEEL_ZOOM_STEP)
-				accept_event()
 		MOUSE_BUTTON_RIGHT:
 			if button.pressed:
 				fit_to_view()
-				accept_event()
+			return button.pressed
 		MOUSE_BUTTON_LEFT, MOUSE_BUTTON_MIDDLE:
 			if button.pressed:
 				var hit := _hit_test(button.position)
@@ -561,12 +544,12 @@ func _handle_mouse_button(button: InputEventMouseButton) -> void:
 					_drag_moved = false
 					_drag_origin = button.position
 					_pan_origin = _pan
-				accept_event()
-			else:
-				# A click rather than a drag on empty space dismisses the details.
-				if _dragging and not _drag_moved and button.button_index == MOUSE_BUTTON_LEFT:
-					clear_selection()
-				_dragging = false
+				return true
+			# A click rather than a drag on empty space dismisses the details.
+			if _dragging and not _drag_moved and button.button_index == MOUSE_BUTTON_LEFT:
+				clear_selection()
+			_dragging = false
+	return false
 
 
 func _handle_mouse_motion(motion: InputEventMouseMotion) -> void:
@@ -580,22 +563,17 @@ func _handle_mouse_motion(motion: InputEventMouseMotion) -> void:
 	_apply_transform()
 
 
-func _handle_key(key: InputEventKey) -> void:
+func _handle_key(key: InputEventKey) -> bool:
 	if not key.pressed or key.echo:
-		return
+		return false
 	match key.keycode:
 		KEY_ESCAPE:
 			clear_selection()
-			accept_event()
-		KEY_F, KEY_0:
+		KEY_F:
 			fit_to_view()
-			accept_event()
-		KEY_EQUAL, KEY_PLUS, KEY_KP_ADD:
-			_zoom_at(size * 0.5, WHEEL_ZOOM_STEP)
-			accept_event()
-		KEY_MINUS, KEY_KP_SUBTRACT:
-			_zoom_at(size * 0.5, 1.0 / WHEEL_ZOOM_STEP)
-			accept_event()
+		_:
+			return false
+	return true
 
 
 func clear_selection() -> void:
@@ -633,7 +611,7 @@ func _hit_test(at: Vector2) -> int:
 	return -1
 
 
-func _zoom_at(at: Vector2, factor: float) -> void:
+func zoom_graph(at: Vector2, factor: float) -> void:
 	var before := (at - _pan) / _zoom
 	var next_zoom := clampf(_zoom * factor, MIN_ZOOM, MAX_ZOOM)
 	if is_equal_approx(next_zoom, _zoom):
@@ -642,3 +620,13 @@ func _zoom_at(at: Vector2, factor: float) -> void:
 	_user_transformed = true
 	_pan = at - before * _zoom
 	_apply_transform()
+
+
+func pan_graph(delta: Vector2) -> void:
+	_pan += delta
+	_user_transformed = true
+	_apply_transform()
+
+
+func fit_graph() -> void:
+	fit_to_view()

@@ -290,8 +290,141 @@ func test_showing_a_different_root_refits_after_the_user_moved_the_view() -> voi
 	assert_true(_all_items_visible(graph), "a different root is fitted even after the user panned")
 
 	_view.clear()
+	_view.set_snapshot(DebuggerFixtures.patrol_bt_snapshot())
+	assert_true(_all_items_visible(graph), "a tree the user never moved is fitted after clear")
+
+
+func test_coming_back_to_a_tree_restores_its_camera() -> void:
+	var graph := _graph()
+	graph.size = Vector2(900, 620)
 	_view.set_snapshot(DebuggerFixtures.bt_snapshot())
-	assert_true(_all_items_visible(graph), "the first snapshot after clear is fitted")
+	_pan(graph, Vector2(220, 140))
+	_zoom(graph, 2)
+	var moved := _item_positions(graph)
+
+	_view.set_snapshot(DebuggerFixtures.patrol_bt_snapshot())
+	assert_true(_all_items_visible(graph), "a tree the user has not touched is fitted when first shown")
+
+	_view.set_snapshot(DebuggerFixtures.bt_snapshot())
+	assert_eq(_item_positions(graph), moved, "returning to a tree restores the zoom and pan it was left with")
+
+
+func test_a_fitted_tree_is_fitted_again_on_return() -> void:
+	var graph := _graph()
+	graph.size = Vector2(900, 620)
+	_view.set_snapshot(DebuggerFixtures.bt_snapshot())
+	_pan(graph, Vector2(220, 140))
+	_zoom(graph, 2)
+
+	_view.set_snapshot(DebuggerFixtures.patrol_bt_snapshot())
+	_view.set_snapshot(DebuggerFixtures.bt_snapshot())
+	graph.fit()
+	var fitted := _item_positions(graph)
+
+	_view.set_snapshot(DebuggerFixtures.patrol_bt_snapshot())
+	_view.set_snapshot(DebuggerFixtures.bt_snapshot())
+	assert_eq(_item_positions(graph), fitted, "a tree left in Fit comes back fitted, not on its earlier camera")
+
+
+func test_trackpad_scroll_pans_and_command_scroll_zooms() -> void:
+	var graph := _graph()
+	graph.size = Vector2(900, 620)
+	_view.set_snapshot(DebuggerFixtures.bt_snapshot())
+	var zoom := graph.get_zoom()
+	var before := _item_positions(graph)
+
+	graph._gui_input(_pan_gesture(Vector2(0, 6)))
+	assert_ne(_item_positions(graph), before, "a two-finger scroll pans the graph")
+	assert_almost_eq(graph.get_zoom(), zoom, 0.0001, "a two-finger scroll does not zoom")
+
+	before = _item_positions(graph)
+	graph._gui_input(_pan_gesture(Vector2(0, -6), true))
+	assert_gt(graph.get_zoom(), zoom, "scrolling up with Cmd/Ctrl zooms in")
+	assert_ne(_item_positions(graph), before, "the zoom keeps the pointer over the same content")
+
+
+func test_a_pinch_zooms_by_its_factor() -> void:
+	var graph := _graph()
+	graph.size = Vector2(900, 620)
+	_view.set_snapshot(DebuggerFixtures.bt_snapshot())
+	var zoom := graph.get_zoom()
+
+	var magnify := InputEventMagnifyGesture.new()
+	magnify.factor = 1.25
+	magnify.position = Vector2(300, 200)
+	graph._gui_input(magnify)
+
+	assert_almost_eq(graph.get_zoom(), zoom * 1.25, 0.0001, "a trackpad pinch zooms by its factor")
+
+
+func test_command_keys_zoom_and_fit_the_graph() -> void:
+	var graph := _graph()
+	graph.size = Vector2(900, 620)
+	_view.set_snapshot(DebuggerFixtures.bt_snapshot())
+	var zoom := graph.get_zoom()
+
+	graph._gui_input(_command_key(KEY_EQUAL))
+	assert_gt(graph.get_zoom(), zoom, "Cmd/Ctrl+= zooms in")
+	graph._gui_input(_command_key(KEY_MINUS))
+	assert_almost_eq(graph.get_zoom(), zoom, 0.0001, "Cmd/Ctrl+- zooms back out")
+
+	_pan(graph, Vector2(180, 120))
+	_zoom(graph, 3)
+	graph._gui_input(_command_key(KEY_0))
+	assert_true(_all_items_visible(graph), "Cmd/Ctrl+0 frames the whole tree")
+
+	var fitted := _item_positions(graph)
+	graph.size = Vector2(700, 480)
+	assert_true(_all_items_visible(graph), "a resize after Cmd/Ctrl+0 refits")
+	assert_ne(_item_positions(graph), fitted, "the fitted view followed the new size")
+
+
+func test_a_tree_first_shown_is_fitted_once_the_panel_lays_out() -> void:
+	var host := PanelContainer.new()
+	host.size = Vector2(620, 380)
+	add_child_autofree(host)
+	var view: BTView = ViewScene.instantiate()
+	host.add_child(view)
+	view.set_snapshot(DebuggerFixtures.bt_snapshot())
+	await wait_process_frames(2)
+
+	var graph: BTGraph = view.get_node("%Graph")
+	assert_lt(graph.get_zoom(), 1.0, "the first tree shown is zoomed to fit, got %s" % graph.get_zoom())
+	assert_true(_all_items_visible(graph), "the first tree shown is framed once the graph has its size")
+
+
+func test_the_success_green_flashes_in_instantly() -> void:
+	var snapshot := DebuggerFixtures.bt_snapshot()
+	_view.set_snapshot(snapshot)
+	var item: Control = _graph().get_item(DebuggerFixtures.COVER_MOVE)
+
+	for entry in snapshot["nodes"]:
+		if int(entry["id"]) == DebuggerFixtures.COVER_MOVE:
+			entry["status"] = "success"
+			entry["last_visited_usec"] = snapshot["time_usec"]
+	_view.set_snapshot(snapshot)
+	assert_lt(_color_distance(_border(item), StatusPalette.SUCCESS), 0.05, "turning success shows the light green at once")
+
+	for entry in snapshot["nodes"]:
+		if int(entry["id"]) == DebuggerFixtures.COVER_MOVE:
+			entry["status"] = "failure"
+			entry["last_visited_usec"] = snapshot["time_usec"]
+	_view.set_snapshot(snapshot)
+	assert_gt(_color_distance(_border(item), StatusPalette.FAILURE), 0.05, "leaving the green fades towards the new colour")
+	await wait_seconds(0.7)
+	assert_lt(_color_distance(_border(item), StatusPalette.FAILURE), 0.05, "the fade settles on the new colour")
+
+
+func test_graph_nodes_look_clickable() -> void:
+	_view.set_snapshot(DebuggerFixtures.bt_snapshot())
+	var item: Control = _graph().get_item(DebuggerFixtures.COVER_MOVE)
+	assert_eq(item.mouse_default_cursor_shape, Control.CURSOR_POINTING_HAND, "the node shows a pointing hand")
+
+	var resting := _border(item)
+	item.mouse_entered.emit()
+	assert_gt(_border(item).get_luminance(), resting.get_luminance(), "hovering brightens the node border")
+	item.mouse_exited.emit()
+	assert_eq(_border(item), resting, "leaving the node restores its border")
 
 
 func test_the_view_fits_the_default_panel_height() -> void:
@@ -307,48 +440,23 @@ func test_the_view_fits_the_default_panel_height() -> void:
 	assert_true(view.get_combined_minimum_size().y <= 150, "the view minimum fits the default panel height")
 	var graph: BTGraph = view.get_node("%Graph")
 	assert_true(graph.size.y >= 100, "the graph keeps the space at the default panel height, got %s" % graph.size)
-	assert_true(_node_visible(graph, DebuggerFixtures.COVER_MOVE), "the running node is framed inside the graph")
+	assert_true(_all_items_visible(graph), "the whole tree is framed inside the graph")
 
 
-func test_auto_fit_keeps_the_running_leaf_legible_and_on_screen() -> void:
+func test_a_large_tree_is_framed_whole_on_first_show() -> void:
 	var graph := _graph()
-	graph.size = Vector2(1100, 130)
+	graph.size = Vector2(420, 220)
 	var snapshot := DebuggerFixtures.patrol_bt_snapshot()
 	snapshot["running_node"] = DebuggerFixtures.PATROL_WALKER
 	_view.set_snapshot(snapshot)
+	var shown := _item_positions(graph)
 
-	assert_true(graph.get_zoom() >= 0.6, "auto-fit keeps node text legible, got zoom %s" % graph.get_zoom())
-	assert_true(_node_visible(graph, DebuggerFixtures.PATROL_WALKER), "the deepest running node is framed, not just the root")
+	assert_true(graph.get_zoom() < 1.0, "the tree is zoomed out to fit, got %s" % graph.get_zoom())
+	assert_true(_all_items_visible(graph), "a tree too large for the panel is still framed whole")
 
+	_pan(graph, Vector2(120, 90))
 	graph.fit()
-	assert_true(graph.get_zoom() < 0.6, "the manual Fit button may still frame the whole tree")
-	assert_true(_all_items_visible(graph), "the manual fit shows every node")
-
-
-func test_auto_fit_frames_the_whole_tree_when_the_panel_grows() -> void:
-	var graph := _graph()
-	graph.size = Vector2(1100, 130)
-	var snapshot := DebuggerFixtures.patrol_bt_snapshot()
-	snapshot["running_node"] = DebuggerFixtures.PATROL_WALKER
-	_view.set_snapshot(snapshot)
-
-	graph.size = Vector2(1100, 420)
-	assert_true(_all_items_visible(graph), "a taller graph frames the whole tree")
-	assert_true(graph.get_zoom() >= 0.6, "the whole-tree fit stays readable")
-
-
-func test_auto_fit_follows_a_new_running_node() -> void:
-	var graph := _graph()
-	graph.size = Vector2(1100, 130)
-	var before := DebuggerFixtures.bt_snapshot()
-	before["running_node"] = DebuggerFixtures.COVER_FIND
-	_view.set_snapshot(before)
-	assert_false(_node_visible(graph, DebuggerFixtures.COVER_MOVE), "the other leaf starts outside the framed path")
-
-	var after := DebuggerFixtures.bt_snapshot()
-	after["running_node"] = DebuggerFixtures.COVER_MOVE
-	_view.set_snapshot(after)
-	assert_true(_node_visible(graph, DebuggerFixtures.COVER_MOVE), "a new running node is brought into view")
+	assert_eq(_item_positions(graph), shown, "the first show frames exactly what Fit does")
 
 
 func test_a_running_change_does_not_move_a_view_the_user_panned() -> void:
@@ -374,8 +482,8 @@ func _color_distance(a: Color, b: Color) -> float:
 	return Vector3(a.r - b.r, a.g - b.g, a.b - b.b).length()
 
 
-func _node_visible(graph: BTGraph, node_id: int) -> bool:
-	return graph.get_global_rect().encloses(graph.get_item(node_id).get_global_rect())
+func _border(item: Control) -> Color:
+	return (item.get_theme_stylebox("panel") as StyleBoxFlat).border_color
 
 
 func _all_items_visible(graph: BTGraph) -> bool:
@@ -409,9 +517,43 @@ func _pan(graph: BTGraph, relative: Vector2) -> void:
 	graph._gui_input(release)
 
 
+func _zoom(graph: BTGraph, steps: int) -> void:
+	for i in steps:
+		var wheel := InputEventMouseButton.new()
+		wheel.button_index = MOUSE_BUTTON_WHEEL_UP
+		wheel.pressed = true
+		wheel.position = Vector2(60, 60)
+		graph._gui_input(wheel)
+
+
 func _left_click(double_click: bool) -> InputEventMouseButton:
 	var event := InputEventMouseButton.new()
 	event.button_index = MOUSE_BUTTON_LEFT
 	event.pressed = true
 	event.double_click = double_click
 	return event
+
+
+func _pan_gesture(delta: Vector2, command := false) -> InputEventPanGesture:
+	var gesture := InputEventPanGesture.new()
+	gesture.delta = delta
+	gesture.position = Vector2(300, 200)
+	if command:
+		_command(gesture)
+	return gesture
+
+
+func _command_key(keycode: Key) -> InputEventKey:
+	var key := InputEventKey.new()
+	key.keycode = keycode
+	key.pressed = true
+	_command(key)
+	return key
+
+
+## is_command_or_control_pressed() is Cmd on macOS and Ctrl elsewhere.
+func _command(event: InputEventWithModifiers) -> void:
+	if OS.has_feature("macos"):
+		event.meta_pressed = true
+	else:
+		event.ctrl_pressed = true

@@ -1,6 +1,7 @@
 #include "blackboard.h"
 
 #include <godot_cpp/classes/object.hpp>
+#include <godot_cpp/classes/resource.hpp>
 #include <godot_cpp/core/class_db.hpp>
 #include <godot_cpp/core/error_macros.hpp>
 
@@ -12,7 +13,8 @@ namespace {
 // overflow the stack while sanitising debug data.
 constexpr int MAX_DEBUG_DATA_DEPTH = 16;
 
-// Replaces every Object value with its class name and sanitises Arrays and
+// Replaces every Object value with its class name, or with the class and path
+// of a Resource so the editor can open it, and sanitises Arrays and
 // Dictionaries recursively so no raw Object can leak out of debug data.
 Variant _sanitize_for_debug(const Variant &p_value, int p_depth = 0) {
 	if (p_depth >= MAX_DEBUG_DATA_DEPTH) {
@@ -31,6 +33,16 @@ Variant _sanitize_for_debug(const Variant &p_value, int p_depth = 0) {
 			Object *object = ObjectDB::get_instance(id);
 			if (object == nullptr) {
 				return String("<freed object>");
+			}
+			Resource *resource = Object::cast_to<Resource>(object);
+			if (resource != nullptr) {
+				Dictionary envelope;
+				envelope["__resource_class"] = object->get_class();
+				const String path = resource->get_path();
+				if (!path.is_empty()) {
+					envelope["__resource"] = path;
+				}
+				return envelope;
 			}
 			return String(object->get_class());
 		} break;

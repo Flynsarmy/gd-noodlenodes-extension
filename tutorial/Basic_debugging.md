@@ -43,11 +43,11 @@ The tab has four parts:
 - **Root list** on the left, grouped by scene owner. Each root is labelled with its type; roots hosted by another system are nested under the root that hosts them. The filter matches names, owner names, classes and types. **Copy node path** copies the selected root's absolute path, which is handy when you want to select the same node in the remote scene tree.
 - **Breadcrumbs** above the view. They show how the root on screen is nested inside the other systems.
 - **The system view** in the middle. It changes with the root type.
-- **Inspector** at the bottom: the selected node's live properties, the root's blackboard, and the recent events that mention the selected node.
+- **Inspector** on the right: the selected node's live properties, the root's blackboard, and the recent events that mention the selected node.
 
 Godot's default bottom panel is short, so for longer sessions drag the bottom panel taller or use the tab's **Float** button to open it in its own resizable window.
 
-The toolbar has the pause and step buttons, the **AI**/**Game** pause scope selector, the **Follow active path** toggle, a **Horizontal**/**Vertical** layout toggle and **Float**. **Float** moves the whole panel into its own window so you can put it on a second monitor; **Dock** brings it back. The split positions, layout, follow state, float state and pause scope are saved in the editor settings under `noodle_nodes/debugger/`.
+The toolbar has the pause and step buttons, the **AI**/**Game** pause scope selector, the **Follow active path** toggle and **Float**. The root list, view and inspector always sit side by side. **Float** moves the whole panel into its own window so you can put it on a second monitor; **Dock** brings it back. The split positions, follow state, float state and pause scope are saved in the editor settings under `noodle_nodes/debugger/`.
 
 If several game sessions run at once, each has its own **Noodle Nodes** tab.
 
@@ -112,7 +112,7 @@ Select a node in any view to inspect it. The inspector shows:
 - **Blackboard**: the values of the root's blackboard. Values that change while you watch flash. The blackboard shown is the one resolved by the root on screen, so a nested system that shares the top root's board shows the same keys.
 - **Recent events**: the last hundred events that mention the selected node, newest first. A behaviour tree node shows its enter, exit and tick events; a state tree transition shows its guard results, pending countdowns and transitions; a node with no events says so. Clicking a row in a system's own history log selects the node it refers to.
 
-The inspector updates while the game runs, at the debugger's snapshot rate (about ten times per second), and when events for the selected node arrive.
+The inspector updates while the game runs, at the debugger's snapshot rate (about ten times per second), and when events for the selected node arrive. Drag the divider between two sections to make one taller; each section scrolls its own list. Hover a name, value or event that is cut off to see it in full.
 
 ## 7. Behaviour tree view
 
@@ -123,7 +123,9 @@ The behaviour tree view draws the whole tree as an auto-laid-out graph:
 - The running path is drawn with marching dashes.
 - Badges show live decorator state: `cool 1.2s`, `cool 3t`, `2/5 reps`, `uses 1/3`, `delay 0.8s`, `1.5s left`, `space #123` and `pick FindCover`. Nodes under an `NNBTScoreBasedPicker` also show their score.
 
-**Fit** frames the tree, dragging pans, the wheel zooms. Use the **scrubber** under the graph to step back through the last 120 ticks: the label switches from **Live** to **Tick 4/120**, and the graph shows the statuses and running path as they were at that tick. Drag it back to the right end to return to live data. The summary line shows the tree name, tick count, last result and elapsed time.
+**Navigating the graph:** drag or two-finger scroll to pan, and pinch or scroll the wheel to zoom. Holding Cmd (macOS) or Ctrl while scrolling zooms at the pointer instead of panning. With the graph focused, Cmd/Ctrl with `=`, `-` and `0` zooms in, zooms out and fits. This covers a Magic Mouse and a trackpad, which send pan and pinch gestures rather than wheel clicks.
+
+**Fit** frames the tree. A tree is fitted the first time you open it, when you resize the panel and when you press **Fit**, until you pan or zoom it; after that it keeps the view you left it with, per root. Use the **scrubber** under the graph to step back through the last 120 ticks: the label switches from **Live** to **Tick 4/120**, and the graph shows the statuses and running path as they were at that tick. Drag it back to the right end to return to live data. The summary line shows the tree name, tick count, last result and elapsed time.
 
 Selecting a card fills the inspector. Double-clicking a portal card opens the hosted root.
 
@@ -152,7 +154,7 @@ Sidebar:
 Detail:
 
 - **Plan** lists the installed steps in order and, below them, the recently completed steps. Each row shows the step state colour, the task, its call path, cost and parallel group, plus the failure reason when there is one. The current occurrence is marked. Steps that belong to a parallel group are grouped together.
-- **Trace** is the decision tree of the selected search attempt. Each decision shows its outcome and reason; selecting one shows the kind, path, outcome, the failing condition and the captured blackboard values the condition read, the arguments, the observed state and any detail. Rejected decisions are red, pruned ones orange, accepted ones gold and the final plan green. Pan, zoom and **Fit** work like the behaviour tree graph, and double-clicking a node expands or collapses it.
+- **Trace** is the decision tree of the selected search attempt. Each decision shows its outcome and reason; selecting one shows the kind, path, outcome, the failing condition and the captured blackboard values the condition read, the arguments, the observed state and any detail. Rejected decisions are red, pruned ones orange, accepted ones gold and the final plan green. Pan, zoom and **Fit** work like the behaviour tree graph: two-finger scroll pans, pinch or the wheel zooms, Cmd/Ctrl with a scroll zooms at the pointer, and `F` or Cmd/Ctrl+`0` fits. Double-clicking a node expands or collapses it.
 - **Diff** compares the blackboard as the selected attempt saw it with the current blackboard: added, removed and changed keys, with both values.
 
 The header above the sidebar summarises the last search (status, expansions, cost, whether it is proven optimal and any cutoff), the plan's dependency keys and whether they are complete, the last replan triggers and the last repair result.
@@ -161,12 +163,12 @@ Search traces are only recorded while `track_search` is enabled on the planner. 
 
 ## 10. Agent view
 
-The agent view shows how the agent picked its current behaviour:
+The agent view shows how the agent picked its current behaviour. The behaviours fill the left column; the right column shows the timeline above the sensor list:
 
 - **Behaviours** are sorted by score, best first, with a score bar each. Badges mark the current behaviour, the top-scoring picks and any cooldown. When no behaviour is current, the most recently chosen behaviour keeps a `last` badge instead. A **selection cutoff** line separates the behaviours that can be selected from the rest.
 - Expanding a behaviour shows its considerations and its actions. Each consideration row shows its score, the evaluation method for a group, and a sparkline of its activation curve with the current input value marked. Expanding a consideration group shows its children. Action rows show whether they are active or finished; a hosted tree on an action is a portal.
-- **Sensors** lists each sensor with its value and how long ago it was evaluated.
 - **Chosen behaviour · last 30 s** is a timeline of the behaviours the agent has run, one coloured segment per run, with the top scores in the tooltip. An `agent_choice` with a behaviour of `0` reports that the previous behaviour completed rather than a switch: the timeline does not start a new segment for it and the oscillation check ignores it, so an agent whose behaviours finish within one update does not look like it is flapping. If the agent flips back and forth between two behaviours at least twice within five seconds, an **Oscillation** warning names both behaviours and counts the flips. That is usually a sign that two behaviours score too closely together or that a consideration curve is too steep near the current input.
+- **Sensors** lists each sensor with its value and how long ago it was evaluated.
 
 ## 11. The in-game overlay
 

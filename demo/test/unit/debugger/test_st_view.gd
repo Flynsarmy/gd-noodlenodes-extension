@@ -288,8 +288,8 @@ func test_log_filters_search_and_max_lines() -> void:
 	max_lines.value = 3
 	var rows := _log_rows()
 	assert_eq(rows.size(), 3)
-	assert_false(rows[0].entry_text.contains("Event \""))
-	assert_string_contains(rows[2].entry_text, "Stop pending")
+	assert_string_contains(rows[0].entry_text, "Stop pending", "the newest rows are kept")
+	assert_false(rows.any(func(row: Node) -> bool: return row.entry_text.contains("Event \"")))
 
 	_view.apply_events(Fixtures.st_events())
 	assert_eq(_log_rows().size(), 3)
@@ -299,6 +299,15 @@ func test_log_filters_search_and_max_lines() -> void:
 		more[index]["seq"] = 100 + index
 	_view.apply_events(more)
 	assert_eq(_log_rows().size(), 3)
+
+
+func test_history_log_lists_the_newest_entry_first() -> void:
+	_view.set_snapshot(Fixtures.st_snapshot())
+	_view.apply_events(Fixtures.st_events())
+
+	var rows := _visible_log_rows()
+	assert_string_contains(rows[0].entry_text, "Stop pending")
+	assert_string_contains(rows[-1].entry_text, "Event \"run\"")
 
 
 func test_view_fits_the_default_debugger_height() -> void:

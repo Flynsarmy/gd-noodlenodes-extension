@@ -1,7 +1,8 @@
-[gd_scene load_steps=3 format=3]
+[gd_scene load_steps=4 format=3]
 
 [ext_resource type="Script" path="res://addons/noodle_nodes/editor/views/agent/agent_view.gd" id="1_view"]
 [ext_resource type="PackedScene" path="res://addons/noodle_nodes/editor/views/agent/timeline.tscn" id="2_timeline"]
+[ext_resource type="PackedScene" path="res://addons/noodle_nodes/editor/shell/marquee_label.tscn" id="3_warning"]
 
 [node name="AgentView" type="Control"]
 clip_contents = true
@@ -56,58 +57,68 @@ layout_mode = 2
 size_flags_horizontal = 3
 theme_override_constants/separation = 3
 
-[node name="Sensors" type="VBoxContainer" parent="Margin/Panes"]
-custom_minimum_size = Vector2(140, 0)
+[node name="Right" type="VBoxContainer" parent="Margin/Panes"]
+custom_minimum_size = Vector2(150, 0)
 clip_contents = true
 layout_mode = 2
 size_flags_horizontal = 3
-size_flags_stretch_ratio = 1.5
-theme_override_constants/separation = 2
+size_flags_stretch_ratio = 3.2
+theme_override_constants/separation = 6
 
-[node name="Title" type="Label" parent="Margin/Panes/Sensors"]
-layout_mode = 2
-theme_type_variation = &"HeaderSmall"
-theme_override_colors/font_color = Color(0.62, 0.66, 0.74, 1)
-text = "SENSORS"
-
-[node name="Scroll" type="ScrollContainer" parent="Margin/Panes/Sensors"]
-clip_contents = true
-layout_mode = 2
-size_flags_vertical = 3
-horizontal_scroll_mode = 0
-
-[node name="SensorList" type="VBoxContainer" parent="Margin/Panes/Sensors/Scroll"]
-unique_name_in_owner = true
-layout_mode = 2
-size_flags_horizontal = 3
-theme_override_constants/separation = 2
-
-[node name="TimelinePane" type="VBoxContainer" parent="Margin/Panes"]
+[node name="TimelinePane" type="VBoxContainer" parent="Margin/Panes/Right"]
 clip_contents = true
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_constants/separation = 2
 
-[node name="Header" type="HBoxContainer" parent="Margin/Panes/TimelinePane"]
+[node name="Header" type="HBoxContainer" parent="Margin/Panes/Right/TimelinePane"]
 layout_mode = 2
 theme_override_constants/separation = 6
 
-[node name="Title" type="Label" parent="Margin/Panes/TimelinePane/Header"]
+[node name="Title" type="Label" parent="Margin/Panes/Right/TimelinePane/Header"]
 layout_mode = 2
 theme_type_variation = &"HeaderSmall"
 theme_override_colors/font_color = Color(0.62, 0.66, 0.74, 1)
 text = "TIMELINE"
 
-[node name="OscillationWarning" type="Label" parent="Margin/Panes/TimelinePane/Header"]
+[node name="OscillationWarning" parent="Margin/Panes/Right/TimelinePane/Header" instance=ExtResource("3_warning")]
 unique_name_in_owner = true
 visible = false
-clip_text = true
+text_color = Color(1, 0.55, 0.3, 1)
 layout_mode = 2
 size_flags_horizontal = 3
-theme_override_colors/font_color = Color(1, 0.55, 0.3, 1)
-horizontal_alignment = 2
 
-[node name="Timeline" parent="Margin/Panes/TimelinePane" instance=ExtResource("2_timeline")]
+[node name="Timeline" parent="Margin/Panes/Right/TimelinePane" instance=ExtResource("2_timeline")]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
+
+[node name="Sensors" type="VBoxContainer" parent="Margin/Panes/Right"]
+clip_contents = true
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 2
+
+[node name="Scroll" type="ScrollContainer" parent="Margin/Panes/Right/Sensors"]
+clip_contents = true
+layout_mode = 2
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+
+[node name="Content" type="VBoxContainer" parent="Margin/Panes/Right/Sensors/Scroll"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 2
+
+[node name="Title" type="Label" parent="Margin/Panes/Right/Sensors/Scroll/Content"]
+layout_mode = 2
+theme_type_variation = &"HeaderSmall"
+theme_override_colors/font_color = Color(0.62, 0.66, 0.74, 1)
+text = "SENSORS"
+
+[node name="SensorList" type="VBoxContainer" parent="Margin/Panes/Right/Sensors/Scroll/Content"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 2

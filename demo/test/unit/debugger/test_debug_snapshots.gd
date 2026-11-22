@@ -171,6 +171,21 @@ func test_behaviour_tree_snapshot_uses_plain_variants_for_user_values() -> void:
 	assert_eq(leaf.get_debug_snapshot(), {})
 
 
+func test_behaviour_tree_snapshot_identifies_resources_by_class_and_path() -> void:
+	var root := BT.build_tree(BT.make_leaf(), [])
+	add_child_autofree(root)
+	var environment: Environment = load("res://demo_07_htn/environment.tres")
+	root.set_blackboard("environment", environment)
+	root.set_blackboard("gradient", Gradient.new())
+
+	var values: Dictionary = root.get_debug_snapshot().blackboard.values
+	assert_eq(values.environment, {
+		"__resource_class": "Environment",
+		"__resource": "res://demo_07_htn/environment.tres",
+	})
+	assert_eq(values.gradient, { "__resource_class": "Gradient" }, "a runtime-only resource has no path to open")
+
+
 # State tree ------------------------------------------------------------------
 
 func test_state_tree_snapshot_describes_states_and_transitions() -> void:

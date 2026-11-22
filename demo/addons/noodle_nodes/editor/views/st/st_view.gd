@@ -487,7 +487,8 @@ func _log_event(event: Dictionary, kind: String) -> void:
 	row.target_id = target
 	row.pressed.connect(_on_log_row_pressed.bind(row))
 	_log_entries.add_child(row)
-	_log_rows.append(row)
+	_log_entries.move_child(row, 0)
+	_log_rows.push_front(row)
 	row.visible = _row_matches(row)
 	_trim_log()
 	_update_log_count()
@@ -525,7 +526,7 @@ func _on_max_lines_changed(_value: float) -> void:
 func _trim_log() -> void:
 	var limit := int(_max_lines.value)
 	while _log_rows.size() > limit:
-		var oldest: Control = _log_rows.pop_front()
+		var oldest: Control = _log_rows.pop_back()
 		if oldest == _selected_log_row:
 			_selected_log_row = null
 		_log_entries.remove_child(oldest)

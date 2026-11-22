@@ -8,6 +8,7 @@ const BreadcrumbsScene := preload("res://addons/noodle_nodes/editor/shell/breadc
 const KvRowScene := preload("res://addons/noodle_nodes/editor/shell/kv_row.tscn")
 const EventRowScene := preload("res://addons/noodle_nodes/editor/shell/event_row.tscn")
 const GenericViewScene := preload("res://addons/noodle_nodes/editor/views/generic/generic_view.tscn")
+const EditorScale := preload("res://addons/noodle_nodes/editor/editor_scale.gd")
 
 var _panel
 var _sent: Array = []
@@ -608,10 +609,10 @@ func test_generic_view_drills_into_portal_rows() -> void:
 	assert_signal_emitted_with_parameters(view, "drill_into", [Fixtures.HTN])
 
 
-func test_inspector_lists_have_visible_height_at_minimum_size() -> void:
+func test_inspector_sections_resize_and_scroll_independently() -> void:
 	var inspector: Control = InspectorScene.instantiate()
 	add_child_autofree(inspector)
-	inspector.size = Vector2(600, inspector.custom_minimum_size.y)
+	inspector.size = Vector2(600, 460)
 	inspector.set_selected_node(Fixtures.COVER_MOVE, { "name": "MoveToCover", "class": "NNBTActionLeaf" })
 	var properties := {}
 	for i in 14:
@@ -628,12 +629,66 @@ func test_inspector_lists_have_visible_height_at_minimum_size() -> void:
 	await get_tree().process_frame
 	await get_tree().process_frame
 
-	assert_gt(inspector.get_node("%InspectorScroll").size.y, 0.0, "the inspector scrolls as a whole")
-	for list_name in ["%PropertiesScroll", "%BlackboardScroll", "%EventsScroll"]:
-		assert_gt(inspector.get_node(list_name).size.y, 0.0, "%s has visible height at the inspector minimum" % list_name)
-	assert_eq(inspector.get_node("%PropertiesList").get_child_count(), 14)
-	assert_eq(inspector.get_node("%BlackboardList").get_child_count(), 4)
-	assert_eq(inspector.get_node("%EventsList").get_child_count(), 100)
+	var sections: VSplitContainer = inspector.get_node("%Sections")
+	assert_eq(sections.get_child_count(), 3, "the three sections share one splitter")
+	var section_names := ["PropertiesSection", "BlackboardSection", "EventsSection"]
+	var scroll_names := ["PropertiesScroll", "BlackboardScroll", "EventsScroll"]
+	var header_names := ["PropertiesHeader", "BlackboardHeader", "EventsHeader"]
+	for i in 3:
+		var section: Control = inspector.get_node("%" + section_names[i])
+		var scroll: ScrollContainer = inspector.get_node("%" + scroll_names[i])
+		assert_eq(scroll.get_parent(), section, "%s has its own scroll" % section_names[i])
+		assert_gt(scroll.size.y, 0.0, "%s has visible height" % scroll_names[i])
+		assert_gt(section.size.y, inspector.get_node("%" + header_names[i]).size.y, "%s shows more than its header" % section_names[i])
+	var properties_scroll: ScrollContainer = inspector.get_node("%PropertiesScroll")
+	assert_lt(properties_scroll.size.y, inspector.get_node("%PropertiesList").size.y, "the properties list scrolls inside its section")
+	var events_scroll: ScrollContainer = inspector.get_node("%EventsScroll")
+	assert_lt(events_scroll.size.y, inspector.get_node("%EventsList").size.y, "the event list scrolls inside its section")
+
+	var properties_section: Control = inspector.get_node("%PropertiesSection")
+	var properties_before := properties_section.size.y
+	var list_before := properties_scroll.size.y
+	var offsets: PackedInt32Array = sections.split_offsets
+	offsets[0] += 60
+	sections.split_offsets = offsets
+	await get_tree().process_frame
+	assert_gt(properties_section.size.y, properties_before, "dragging the first divider grows the properties section")
+	assert_gt(properties_scroll.size.y, list_before, "the properties list grows with its section")
+
+	sections.split_offsets = PackedInt32Array([0, 0])
+	await get_tree().process_frame
+	for i in 3:
+		var section: Control = inspector.get_node("%" + section_names[i])
+		var scroll: ScrollContainer = inspector.get_node("%" + scroll_names[i])
+		assert_gt(section.size.y, 0.0, "%s cannot collapse to nothing" % section_names[i])
+		assert_gt(scroll.size.y, 0.0, "%s keeps room for its list when collapsed" % section_names[i])
+		assert_gte(section.size.y, inspector.get_node("%" + header_names[i]).size.y, "%s keeps its header visible" % section_names[i])
+
+
+func test_inspector_section_headers_are_one_row_tall() -> void:
+	var host := Control.new()
+	host.size = Vector2(400, 460)
+	add_child_autofree(host)
+	var inspector: Control = InspectorScene.instantiate()
+	host.add_child(inspector)
+	inspector.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	await get_tree().process_frame
+
+	var theme := Theme.new()
+	var category := StyleBoxFlat.new()
+	category.content_margin_left = 24
+	category.content_margin_top = 24
+	category.content_margin_right = 24
+	category.content_margin_bottom = 24
+	theme.set_stylebox("bg", "EditorInspectorCategory", category)
+	inspector.theme = theme
+	await get_tree().process_frame
+	await get_tree().process_frame
+
+	var title: Label = inspector.get_node("%PropertiesTitle")
+	var line_height := title.get_theme_font("font").get_height(title.get_theme_font_size("font_size"))
+	var header: Control = inspector.get_node("%PropertiesHeader")
+	assert_lte(header.size.y, line_height + EditorScale.px(8.0), "the category stylebox padding does not inflate the header")
 
 
 func test_root_list_labels_disambiguate_repeated_root_names() -> void:
@@ -673,6 +728,48 @@ func test_value_formatter_formats_property_and_event_values() -> void:
 	event_row.set_event({ "seq": 1, "frame": 12, "kind": "bb_set", "key": "threat_alert", "value": 0.35791884202223556 }, {})
 	assert_eq(event_row.get_node("%Detail").text, "threat_alert = 0.36")
 	assert_string_contains(event_row.tooltip_text, "0.35791884202223556")
+	var detail: Label = event_row.get_node("%Detail")
+	assert_eq(detail.tooltip_text, detail.text, "an event row field shows its full text as a tooltip")
+	assert_ne(detail.mouse_filter, Control.MOUSE_FILTER_IGNORE, "the field can receive the mouse for its tooltip")
+	assert_ne(event_row.get_node("%Kind").mouse_filter, Control.MOUSE_FILTER_IGNORE)
+
+
+func test_truncated_kv_row_text_is_available_as_a_tooltip() -> void:
+	var row = KvRowScene.instantiate()
+	add_child_autofree(row)
+	var key_text := "process_physics_priority_callback"
+	var value_text := "a value long enough to be cut off by the inspector column"
+	row.set_values(key_text, value_text)
+	await get_tree().process_frame
+
+	var key: Label = row.get_node("%Key")
+	var value: Label = row.get_node("%Value")
+	assert_eq(key.tooltip_text, key_text, "the full property name is in the key tooltip")
+	assert_eq(value.tooltip_text, value_text, "the full value is in the value tooltip")
+	assert_ne(key.mouse_filter, Control.MOUSE_FILTER_IGNORE, "a label that ignores the mouse cannot show a tooltip")
+	assert_ne(value.mouse_filter, Control.MOUSE_FILTER_IGNORE, "a label that ignores the mouse cannot show a tooltip")
+
+
+func test_resource_values_render_as_editor_links() -> void:
+	var row = KvRowScene.instantiate()
+	add_child_autofree(row)
+
+	row.set_values("environment", { "__resource_class": "Environment", "__resource": "res://demo_07_htn/environment.tres" })
+	var link: LinkButton = row.get_node("%ValueLink")
+	assert_true(link.visible, "file-backed resources are clickable")
+	assert_false(row.get_node("%Value").visible)
+	assert_eq(link.text, "environment.tres (Environment)")
+	assert_eq(link.tooltip_text, "res://demo_07_htn/environment.tres")
+	assert_eq(link.mouse_default_cursor_shape, Control.CURSOR_POINTING_HAND)
+
+	row.set_values("texture", { "__resource_class": "GradientTexture2D", "__resource": "res://main.tscn::GradientTexture2D_abc" })
+	assert_false(link.visible, "a scene sub-resource cannot be opened")
+	assert_true(row.get_node("%Value").visible)
+	assert_eq(row.get_node("%Value").tooltip_text, "res://main.tscn::GradientTexture2D_abc")
+
+	row.set_values("texture", { "__resource_class": "Gradient" })
+	assert_false(link.visible, "runtime-only resources cannot be opened")
+	assert_eq(row.get_node("%Value").text, "Gradient")
 
 
 func test_empty_inspector_collapses_and_restores() -> void:
@@ -797,6 +894,13 @@ func test_panel_works_at_the_default_bottom_panel_size() -> void:
 	assert_gte(view_host.size.y, 120.0, "the view host still has usable height")
 	assert_false(inspector.visible, "the empty inspector is hidden")
 	assert_gte(view_host.size.x, split.size.x * 0.8, "the view gets most of the content width")
+
+	view_host.get_child(0).node_selected.emit(Fixtures.ST_IDLE)
+	await get_tree().process_frame
+	await get_tree().process_frame
+	assert_true(inspector.visible, "selecting a node shows the inspector")
+	assert_lte(inspector.get_combined_minimum_size().y, split.size.y, "the inspector fits the default debugger panel height")
+	assert_gt(inspector.get_node("%PropertiesScroll").size.y, 0.0, "the sections still have room inside the default panel")
 
 
 func test_portal_labels_use_plain_name_and_type() -> void:
@@ -929,11 +1033,9 @@ func test_pause_scope_messages_and_selection() -> void:
 	assert_eq(_messages_named(Protocol.PAUSE_SCOPE)[-1].data, [Protocol.PAUSE_SCOPE_GAME])
 
 
-func test_toolbar_sends_pause_step_and_toggles_layout_and_float() -> void:
+func test_toolbar_sends_pause_step_and_toggles_float() -> void:
 	var pause: Button = _panel.get_node("%PauseButton")
 	var step: Button = _panel.get_node("%StepButton")
-	var split: SplitContainer = _panel.get_node("%MainSplit")
-	var layout: Button = _panel.get_node("%LayoutButton")
 	var float_button: Button = _panel.get_node("%FloatButton")
 	var content: Control = _panel.get_node("%Content")
 	var panel_root: Control = _panel.get_node("%PanelRoot")
@@ -949,12 +1051,6 @@ func test_toolbar_sends_pause_step_and_toggles_layout_and_float() -> void:
 	pause.button_pressed = false
 	assert_eq(_messages_named(Protocol.PAUSE)[-1].data, [false])
 	assert_true(step.disabled)
-
-	layout.button_pressed = true
-	assert_true(split.vertical)
-	assert_eq(layout.text, "Vertical")
-	layout.button_pressed = false
-	assert_false(split.vertical)
 
 	float_button.button_pressed = true
 	assert_eq(content.get_parent(), window)

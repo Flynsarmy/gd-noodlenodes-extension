@@ -11,12 +11,21 @@ const ValueFormat := preload("res://addons/noodle_nodes/debugger/value_format.gd
 
 func _ready() -> void:
 	EditorScale.apply_to_scene(self)
+	_apply_theme()
+
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_THEME_CHANGED and _frame != null and is_inside_tree():
+		_apply_theme()
 
 
 func set_event(event: Dictionary, node_names: Dictionary) -> void:
 	_frame.text = "f%d" % int(event.get("frame", 0))
 	_kind.text = str(event.get("kind", ""))
 	_detail.text = _describe(event, node_names)
+	_frame.tooltip_text = _frame.text
+	_kind.tooltip_text = _kind.text
+	_detail.tooltip_text = _detail.text
 	tooltip_text = "%s\n%s" % [_detail.text, var_to_str(event)]
 
 
@@ -74,6 +83,13 @@ func _name(id: Variant, node_names: Dictionary) -> String:
 	if int(id) == 0:
 		return "—"
 	return str(node_names.get(int(id), "#%d" % int(id)))
+
+
+func _apply_theme() -> void:
+	if _frame.has_theme_color("property_color", "EditorProperty"):
+		_frame.add_theme_color_override("font_color", _frame.get_theme_color("property_color", "EditorProperty"))
+	else:
+		_frame.remove_theme_color_override("font_color")
 
 
 func _joined_fields(event: Dictionary) -> String:

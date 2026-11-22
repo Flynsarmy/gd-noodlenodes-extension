@@ -9,6 +9,7 @@ const SensorRowScene := preload("res://addons/noodle_nodes/editor/views/agent/se
 const ActionRowScene := preload("res://addons/noodle_nodes/editor/views/agent/action_row.tscn")
 const CutoffRowScene := preload("res://addons/noodle_nodes/editor/views/agent/cutoff_row.tscn")
 const TimelineScript := preload("res://addons/noodle_nodes/editor/views/agent/timeline.gd")
+const MarqueeLabel := preload("res://addons/noodle_nodes/editor/shell/marquee_label.gd")
 const EditorScale := preload("res://addons/noodle_nodes/editor/editor_scale.gd")
 
 const BEHAVIOUR_KINDS := ["behaviour", "behaviour_group"]
@@ -26,7 +27,7 @@ const ROW_SCENES := {
 @onready var _behaviour_list: VBoxContainer = %BehaviourList
 @onready var _sensor_list: VBoxContainer = %SensorList
 @onready var _timeline: Variant = %Timeline
-@onready var _warning: Label = %OscillationWarning
+@onready var _warning: MarqueeLabel = %OscillationWarning
 
 var _root_id: int = 0
 var _nodes: Dictionary = {}
@@ -38,6 +39,7 @@ var _expanded: Dictionary = {}
 var _selected_id: int = 0
 var _choices: Array = []
 var _choice_seqs: Dictionary = {}
+var _sensor_ids: Array = []
 var _now_usec: int = 0
 var _current_behaviour: int = 0
 var _current_behaviour_group: int = 0
@@ -47,6 +49,7 @@ var _last_behaviour: int = 0
 func _ready() -> void:
 	EditorScale.apply_to_scene(self)
 	_strip_label_padding(self)
+	_sensor_list.resized.connect(_refresh_sensor_ages)
 
 
 func _strip_label_padding(node: Node) -> void:
@@ -106,11 +109,12 @@ func clear() -> void:
 		_clear_rows(_sensor_list)
 	_rows.clear()
 	_cutoff_row = null
+	_sensor_ids = []
 	if _timeline:
 		_timeline.set_data([], 0, {}, 0)
 	if _warning:
 		_warning.visible = false
-		_warning.text = ""
+		_warning.set_text("")
 
 
 func _reset() -> void:
@@ -204,7 +208,26 @@ func _sync_sensors() -> void:
 		var row = _rows[id]
 		row.configure(str(node.get("name", "")), node.get("value", null), -1 if evaluated == 0 else maxi(_now_usec - evaluated, 0))
 		row.set_selected(id == _selected_id)
+	_sensor_ids = ids
+	_refresh_sensor_ages()
 
+
+## One decision for the whole list: values differ in width per row, so a per-row
+## choice showed the age on some sensors and dropped it on others at the same width.
+func _refresh_sensor_ages() -> void:
+	var width := _sensor_list.size.x
+	if width <= 0.0:
+		return
+	var show := true
+	for id in _sensor_ids:
+		var row = _rows.get(id)
+		if row != null and is_instance_valid(row) and row.required_width() > width:
+			show = false
+			break
+	for id in _sensor_ids:
+		var row = _rows.get(id)
+		if row != null and is_instance_valid(row):
+			row.set_age_visible(show)
 
 ## Matches existing rows by node id and reorders them, so snapshots at 10 Hz do not
 ## churn nodes, lose hover/focus or invalidate a click in progress.
@@ -440,9 +463,9 @@ func _refresh_warning() -> void:
 	var oscillation: Dictionary = _timeline.get_oscillation()
 	_warning.visible = not oscillation.is_empty()
 	if oscillation.is_empty():
-		_warning.text = ""
+		_warning.set_text("")
 		return
-	_warning.text = "Oscillation: %s ↔ %s (%d flips in %.1fs)" % [
+	_warning.set_text("Oscillation: %s ↔ %s (%d flips in %.1fs)" % [
 		oscillation["first"], oscillation["second"], int(oscillation["count"]),
 		float(oscillation["span_usec"]) / 1000000.0,
-	]
+	])

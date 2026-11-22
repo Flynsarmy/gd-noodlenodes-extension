@@ -1,6 +1,7 @@
 @tool
 extends "res://addons/noodle_nodes/editor/views/agent/node_row.gd"
-## One sensor and its current value.
+## One sensor and its current value. The age column is shown or hidden for the
+## whole list by the view, so rows at the same width never disagree.
 
 @onready var _name: Label = %Name
 @onready var _value: Label = %Value
@@ -26,7 +27,7 @@ func configure(display_name: String, value: Variant, age_usec: int) -> void:
 	_age_text = "never" if age_usec < 0 else "%.2fs ago" % (float(age_usec) / 1000000.0)
 	_age.text = _age_text
 	_age.tooltip_text = _age_text
-	tooltip_text = "%s = %s" % [display_name, _value.text]
+	tooltip_text = "%s = %s · %s" % [display_name, _value.text, _age_text]
 	_queue_fit()
 
 
@@ -41,11 +42,36 @@ static func format_value(value: Variant) -> String:
 	return str(value)
 
 
+## Width this row needs for its full name, value and age. The view compares it
+## against the list width and hides the age on every row when one row overflows.
+func required_width() -> float:
+	var font := _name.get_theme_font("font")
+	if font == null:
+		return 0.0
+	var font_size := _name.get_theme_font_size("font_size")
+	var total := _label_text_width(_name, font, font_size, _name_text)
+	total += _label_text_width(_value, font, font_size, _value.text)
+	total += _label_text_width(_age, font, font_size, _age_text)
+	var row := _name.get_parent() as HBoxContainer
+	if row != null:
+		total += float(row.get_theme_constant("separation")) * 2.0
+	var panel := get_theme_stylebox("panel")
+	if panel != null:
+		total += panel.get_minimum_size().x
+	return total
+
+
+func set_age_visible(value: bool) -> void:
+	if _age.visible == value:
+		return
+	_age.visible = value
+	_queue_fit()
+
+
 func _queue_fit() -> void:
 	_fit.call_deferred()
 
 
-## Drops the age before the name is allowed to elide.
 func _fit() -> void:
 	if size.x <= 0.0 or _name.size.x <= 0.0:
 		return
@@ -53,21 +79,6 @@ func _fit() -> void:
 	if font == null:
 		return
 	var font_size := _name.get_theme_font_size("font_size")
-	var row := _name.get_parent() as HBoxContainer
-	if row == null:
-		return
-	var gap := float(row.get_theme_constant("separation"))
-	var name_width := font.get_string_size(_name_text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x
-	var name_padding := _label_padding(_name)
-	var age_width := _label_text_width(_age, font, font_size, _age_text)
-	_age.custom_minimum_size.x = age_width if _age.visible else 0.0
-	if _age.visible:
-		if _name.size.x - name_padding < name_width - 0.5:
-			_age.visible = false
-			_age.custom_minimum_size.x = 0.0
-			_queue_fit()
-	elif _name.size.x - name_padding >= name_width + age_width + gap - 0.5:
-		_age.visible = true
-		_age.custom_minimum_size.x = age_width
-		_queue_fit()
-	_name.text = _elide_text(font, font_size, _name_text, _name.size.x - name_padding)
+	var age_width := _label_text_width(_age, font, font_size, _age_text) if _age.visible else 0.0
+	_age.custom_minimum_size.x = age_width
+	_name.text = _elide_text(font, font_size, _name_text, _name.size.x - _label_padding(_name))

@@ -71,13 +71,6 @@ tooltip_text = "Automatically drill into the hosted roots on the active path."
 layout_mode = 2
 size_flags_horizontal = 3
 
-[node name="LayoutButton" type="Button" parent="PanelRoot/Content/Toolbar"]
-unique_name_in_owner = true
-layout_mode = 2
-toggle_mode = true
-text = "Horizontal"
-tooltip_text = "Switch between a horizontal and vertical split."
-
 [node name="FloatButton" type="Button" parent="PanelRoot/Content/Toolbar"]
 unique_name_in_owner = true
 layout_mode = 2

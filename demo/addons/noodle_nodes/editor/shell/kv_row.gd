@@ -10,16 +10,21 @@ const KEY_PADDING := 2
 
 @onready var _key: Label = %Key
 @onready var _value: Label = %Value
+@onready var _value_link: LinkButton = %ValueLink
 
 var _tween: Tween
+var _resource_path := ""
 
 
 func _ready() -> void:
 	EditorScale.apply_to_scene(self)
+	_value_link.pressed.connect(_on_value_link_pressed)
+	_apply_theme()
 
 
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_THEME_CHANGED and _key != null and is_inside_tree():
+		_apply_theme()
 		set_key_width(measured_key_width() + EditorScale.px(KEY_PADDING))
 
 
@@ -27,6 +32,13 @@ func set_values(key: String, value: Variant) -> void:
 	_key.text = key
 	_key.tooltip_text = key
 	set_key_width(measured_key_width() + EditorScale.px(KEY_PADDING))
+	_resource_path = ValueFormat.resource_path(value)
+	_value_link.visible = not _resource_path.is_empty()
+	_value.visible = not _value_link.visible
+	if _value_link.visible:
+		_value_link.text = ValueFormat.format(value)
+		_value_link.tooltip_text = _resource_path
+		return
 	_value.text = ValueFormat.format(value)
 	var full := ValueFormat.full(value)
 	_value.tooltip_text = full if not full.is_empty() else _value.text
@@ -54,3 +66,18 @@ func flash() -> void:
 		_tween.kill()
 	_tween = create_tween()
 	_tween.tween_property(self, "modulate", Color.WHITE, FLASH_SEC)
+
+
+func _apply_theme() -> void:
+	if _key.has_theme_color("property_color", "EditorProperty"):
+		_key.add_theme_color_override("font_color", _key.get_theme_color("property_color", "EditorProperty"))
+	else:
+		_key.remove_theme_color_override("font_color")
+
+
+func _on_value_link_pressed() -> void:
+	if _resource_path.is_empty() or not Engine.has_singleton("EditorInterface"):
+		return
+	var resource := load(_resource_path)
+	if resource != null:
+		Engine.get_singleton("EditorInterface").edit_resource(resource)

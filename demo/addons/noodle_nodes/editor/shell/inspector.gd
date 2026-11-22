@@ -16,19 +16,29 @@ const KEY_PADDING := 2
 @onready var _blackboard_empty: Label = %BlackboardEmpty
 @onready var _events: VBoxContainer = %EventsList
 @onready var _events_empty: Label = %EventsEmpty
+@onready var _sections: VSplitContainer = %Sections
+@onready var _section_headers: Array[PanelContainer] = [%PropertiesHeader, %BlackboardHeader, %EventsHeader]
+@onready var _section_titles: Array[Label] = [%PropertiesTitle, %BlackboardTitle, %EventsTitle]
+@onready var _section_panels: Array[Control] = [%PropertiesSection, %BlackboardSection, %EventsSection]
 
 var _property_rows: Dictionary = {}
 var _blackboard_rows: Dictionary = {}
 var _event_rows: Dictionary = {}
+var _section_ratios := [1.0, 1.0, 1.0]
 
 
 func _ready() -> void:
 	EditorScale.apply_to_scene(self)
+	_apply_theme()
 	resized.connect(_relayout_kv_rows)
+	_sections.resized.connect(_apply_section_ratios)
+	_sections.drag_ended.connect(_remember_section_ratios)
+	_apply_section_ratios()
 
 
 func _notification(what: int) -> void:
-	if what == NOTIFICATION_THEME_CHANGED:
+	if what == NOTIFICATION_THEME_CHANGED and is_node_ready():
+		_apply_theme()
 		_relayout_kv_rows.call_deferred()
 
 
@@ -136,7 +146,7 @@ func _sync_kv_rows(container: VBoxContainer, rows: Dictionary, values: Dictionar
 		row.call("set_values", key, values[key])
 		container.move_child(row, index)
 		index += 1
-	_layout_kv_rows(rows)
+	_relayout_kv_rows()
 	_relayout_kv_rows.call_deferred()
 
 
@@ -150,7 +160,7 @@ func _set_blackboard_value(key: String, value: Variant, flash: bool) -> void:
 	row.call("set_values", key, value)
 	if flash:
 		row.call("flash")
-	_layout_kv_rows(_blackboard_rows)
+	_relayout_kv_rows()
 	_relayout_kv_rows.call_deferred()
 
 
@@ -161,26 +171,78 @@ func _erase_blackboard_value(key: String) -> void:
 	_blackboard_rows.erase(key)
 	_blackboard.remove_child(row)
 	row.free()
-	_layout_kv_rows(_blackboard_rows)
+	_relayout_kv_rows()
 	_relayout_kv_rows.call_deferred()
 
 
-func _relayout_kv_rows() -> void:
-	_layout_kv_rows(_property_rows)
-	_layout_kv_rows(_blackboard_rows)
+func _apply_theme() -> void:
+	# The category stylebox carries its own padding; the header has its own margins.
+	if has_theme_stylebox("bg", "EditorInspectorCategory"):
+		var bar: StyleBox = get_theme_stylebox("bg", "EditorInspectorCategory").duplicate()
+		bar.content_margin_left = 0.0
+		bar.content_margin_top = 0.0
+		bar.content_margin_right = 0.0
+		bar.content_margin_bottom = 0.0
+		for header in _section_headers:
+			header.add_theme_stylebox_override("panel", bar)
+	for title in _section_titles:
+		if title.has_theme_font("bold", "EditorFonts"):
+			title.add_theme_font_override("font", title.get_theme_font("bold", "EditorFonts"))
+		if title.has_theme_font_size("bold_size", "EditorFonts"):
+			title.add_theme_font_size_override("font_size", title.get_theme_font_size("bold_size", "EditorFonts"))
+		if title.has_theme_color("font_color", "Tree"):
+			title.add_theme_color_override("font_color", title.get_theme_color("font_color", "Tree"))
+	var muted := _muted_color()
+	for label in [_properties_empty, _blackboard_empty, _events_empty]:
+		label.add_theme_color_override("font_color", muted)
 
 
-func _layout_kv_rows(rows: Dictionary) -> void:
-	if rows.is_empty():
+func _apply_section_ratios() -> void:
+	var ratio_total := 0.0
+	for ratio in _section_ratios:
+		ratio_total += ratio
+	if ratio_total <= 0.0:
 		return
+	var dragger := float(_sections.get_theme_constant("separation"))
+	var span := _sections.size.y - dragger * (_section_panels.size() - 1)
+	if span <= 0.0:
+		return
+	var offsets := PackedInt32Array()
+	var edge := 0.0
+	for i in _section_panels.size() - 1:
+		edge += span * _section_ratios[i] / ratio_total
+		offsets.append(roundi(edge))
+		edge += dragger
+	_sections.split_offsets = offsets
+
+
+func _remember_section_ratios() -> void:
+	var total := 0.0
+	for panel in _section_panels:
+		total += panel.size.y
+	if total <= 0.0:
+		return
+	for i in _section_panels.size():
+		_section_ratios[i] = _section_panels[i].size.y / total
+
+
+func _muted_color() -> Color:
+	if has_theme_color("property_color", "EditorProperty"):
+		return get_theme_color("property_color", "EditorProperty")
+	return get_theme_color("font_color", "Label")
+
+
+func _relayout_kv_rows() -> void:
 	var widest := 0.0
-	for row in rows.values():
-		widest = maxf(widest, float(row.call("measured_key_width")))
+	for rows in [_property_rows, _blackboard_rows]:
+		for row in rows.values():
+			widest = maxf(widest, float(row.call("measured_key_width")))
 	var floor := EditorScale.px(KEY_MIN_WIDTH)
 	var cap := maxf(floor, size.x * KEY_WIDTH_FRACTION)
 	var width := clampf(widest + EditorScale.px(KEY_PADDING), floor, cap)
-	for row in rows.values():
-		row.call("set_key_width", width)
+	for rows in [_property_rows, _blackboard_rows]:
+		for row in rows.values():
+			row.call("set_key_width", width)
 
 
 func _clear_rows(container: VBoxContainer) -> void:

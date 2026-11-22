@@ -384,6 +384,32 @@ func test_fit_frames_the_whole_trace_when_above_the_zoom_floor() -> void:
 	assert_eq(_records_outside_visible_rect(graph), [], "The fit must frame every node in full")
 
 
+func test_trackpad_gestures_and_command_keys_navigate_the_trace() -> void:
+	view.anchor_right = 0.0
+	view.anchor_bottom = 0.0
+	view.size = Vector2(2000, 900)
+	view.set_snapshot(Fixtures.htn_snapshot())
+	view.apply_events(Fixtures.htn_events())
+	view.select_attempt(3, true)
+	await _settle_layout()
+
+	var graph = _graph()
+	var fitted: Vector2 = graph.get_visible_rect().position
+	graph._gui_input(_pan_gesture(Vector2(0, 8)))
+	assert_ne(graph.get_visible_rect().position, fitted, "A two-finger scroll pans the trace")
+
+	var zoom: float = graph.get_zoom()
+	graph._gui_input(_pan_gesture(Vector2(0, -8), true))
+	assert_gt(graph.get_zoom(), zoom, "Scrolling with Cmd/Ctrl zooms the trace")
+
+	var before_drag: Vector2 = graph.get_visible_rect().position
+	_drag(graph, Vector2(5, 5), Vector2(305, 205))
+	assert_ne(graph.get_visible_rect().position, before_drag, "Dragging pans the trace")
+
+	graph._gui_input(_command_key(KEY_0))
+	assert_eq(graph.get_visible_rect().position, fitted, "Cmd/Ctrl+0 fits the trace again")
+
+
 func test_fit_stops_at_the_floor_and_keeps_the_first_decision_visible() -> void:
 	view.anchor_right = 0.0
 	view.anchor_bottom = 0.0
@@ -428,6 +454,44 @@ func test_fit_survives_tab_visibility_and_pane_resizes() -> void:
 			graph.get_visible_rect().grow(1.0).encloses(Rect2(first.position, TraceGraph.NODE_SIZE)),
 			"The first decision must stay visible when the floor binds"
 		)
+
+
+func _pan_gesture(delta: Vector2, command := false) -> InputEventPanGesture:
+	var gesture := InputEventPanGesture.new()
+	gesture.delta = delta
+	gesture.position = _graph().size * 0.5
+	if command:
+		_command(gesture)
+	return gesture
+
+
+func _drag(graph, from: Vector2, to: Vector2) -> void:
+	var press := InputEventMouseButton.new()
+	press.button_index = MOUSE_BUTTON_LEFT
+	press.pressed = true
+	press.position = from
+	graph._gui_input(press)
+	var motion := InputEventMouseMotion.new()
+	motion.position = to
+	graph._gui_input(motion)
+	press.pressed = false
+	graph._gui_input(press)
+
+
+func _command_key(keycode: Key) -> InputEventKey:
+	var key := InputEventKey.new()
+	key.keycode = keycode
+	key.pressed = true
+	_command(key)
+	return key
+
+
+## is_command_or_control_pressed() is Cmd on macOS and Ctrl elsewhere.
+func _command(event: InputEventWithModifiers) -> void:
+	if OS.has_feature("macos"):
+		event.meta_pressed = true
+	else:
+		event.ctrl_pressed = true
 
 
 func _assert_fitted(graph, message: String) -> void:

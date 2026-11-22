@@ -26,7 +26,7 @@ if is_instance_valid(node):
 
 Never keep a node reference instead of the id if the node can be freed, and never assume an id from one session is meaningful in the next. An editor-side tool cannot resolve these ids at all; it can only send them back to the game in messages such as `noodle_nodes:inspect`.
 
-Values that cross the API are copied and sanitised. The debugger never hands out raw `Object` values: blackboard values, sensor values and node properties run through the same sanitising as `NNBlackboard.get_debug_data()`, so an object appears as its class name and containers are copied.
+Values that cross the API are copied and sanitised. The debugger never hands out raw `Object` values: blackboard values, sensor values and node properties run through the same sanitising as `NNBlackboard.get_debug_data()`, so an object appears as its class name, and a resource as an envelope with its class and file path so the editor can open it. Containers are copied.
 
 ## 2. Getting the singleton
 

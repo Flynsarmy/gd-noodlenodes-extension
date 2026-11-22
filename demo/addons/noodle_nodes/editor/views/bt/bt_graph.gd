@@ -1,5 +1,5 @@
 @tool
-extends Control
+extends "res://addons/noodle_nodes/editor/views/graph_camera.gd"
 ## Auto-laid-out behaviour tree graph: pan, zoom and marching-dash flow along the running path.
 
 signal node_clicked(node_id: int)
@@ -14,14 +14,9 @@ const NODE_MIN_HEIGHT := 44.0
 const H_GAP := 22.0
 const V_GAP := 40.0
 const FIT_PADDING := 24.0
-## Low enough for the manual Fit button; auto-fit uses the legible floor instead.
 const MIN_ZOOM := 0.05
-## Auto-fit never goes below this text height (in display-scaled pixels): past it
-## the tree is unreadable dots, so the running path is framed instead.
-const MIN_LEGIBLE_TEXT := 10.0
 ## A graph much wider than tall lays out left to right, like the bottom panel.
 const HORIZONTAL_RATIO := 2.5
-const EDGE_MARGIN := 8.0
 const MAX_ZOOM := 2.0
 const EDGE_WIDTH := 1.5
 const FLOW_WIDTH := 2.0
@@ -47,11 +42,12 @@ var _dash_offset := 0.0
 var _zoom := 1.0
 var _pan := Vector2.ZERO
 var _root_id := 0
-var _running_node := 0
 var _horizontal := false
 var _auto_fit := true
 var _pending_fit := true
 var _panning := false
+var _cameras := {}
+var _fit_queued := false
 
 var _layout_children := {}
 var _layout_positions := {}
@@ -64,7 +60,6 @@ func _ready() -> void:
 
 func set_nodes(nodes: Array, now_usec: int, running_node: int) -> void:
 	_now_usec = now_usec
-	_running_node = running_node
 	_nodes.clear()
 	var root_id := 0
 	var structure := PackedInt64Array()
@@ -76,11 +71,16 @@ func set_nodes(nodes: Array, now_usec: int, running_node: int) -> void:
 		_nodes[id] = entry
 		structure.append(id)
 		structure.append(parent)
-	# The shell reuses this view between roots, so each new root gets a fresh fit.
+	# The shell reuses this view between roots, so a root change is where the saved
+	# camera comes back or a fit starts.
 	if root_id != _root_id:
+		_remember_camera()
 		_root_id = root_id
-		_auto_fit = true
-		_pending_fit = true
+		var camera: Variant = _cameras.get(root_id)
+		_auto_fit = camera == null
+		_pending_fit = _auto_fit
+		if camera is Dictionary:
+			_restore_camera(camera)
 	var structural := structure != _structure
 	if structural:
 		_structure = structure
@@ -91,7 +91,8 @@ func set_nodes(nodes: Array, now_usec: int, running_node: int) -> void:
 	if structural or resized:
 		_place_items()
 	_fit_if_pending()
-	_follow_running_node()
+	if _pending_fit:
+		_queue_fit()
 	queue_redraw()
 
 
@@ -129,43 +130,18 @@ func select(node_id: int) -> void:
 		_items[id].set_selected(id == _selected_id)
 
 
-## Manual fit: always frames everything, however small that gets.
+## Frames the whole tree, however small that gets, and follows later resizes again
+## until the user pans or zooms.
 func fit() -> void:
 	if _items.is_empty() or size.x < 1.0 or size.y < 1.0:
 		return
+	_auto_fit = true
 	var bounds := _all_bounds()
-	_frame(bounds, _fit_zoom(bounds), MIN_ZOOM)
-
-
-## Auto-fit: frames the whole tree while it stays readable, otherwise the deepest
-## readable stretch of the running path, so a short panel shows the active part
-## instead of illegible dots.
-func _auto_fit_now() -> void:
-	if _items.is_empty() or size.x < 1.0 or size.y < 1.0:
-		return
-	var legible := _legible_zoom()
-	var bounds := _all_bounds()
-	var zoom := _fit_zoom(bounds)
-	if zoom >= legible:
-		_frame(bounds, zoom, legible)
-		return
-	_frame(_focus_bounds(legible), legible, legible)
-	_keep_visible(_focus_rect())
+	_frame(bounds, _fit_zoom(bounds))
 
 
 func get_zoom() -> float:
 	return _zoom
-
-
-## Auto-fit keeps the running node on screen as the tree runs on, until the user
-## takes the view over.
-func _follow_running_node() -> void:
-	if not _auto_fit or _running_node == 0:
-		return
-	var item: Control = _items.get(_running_node)
-	if item == null or get_global_rect().encloses(item.get_global_rect()):
-		return
-	_auto_fit_now()
 
 
 func _notification(what: int) -> void:
@@ -215,21 +191,22 @@ func _draw_edge(edge: PackedInt64Array, running: bool) -> void:
 
 
 func _gui_input(event: InputEvent) -> void:
-	if event is InputEventMouseButton:
+	if event is InputEventMouseButton and _is_pan_button(event as InputEventMouseButton):
 		var mouse := event as InputEventMouseButton
-		if mouse.button_index == MOUSE_BUTTON_WHEEL_UP or mouse.button_index == MOUSE_BUTTON_WHEEL_DOWN:
-			if mouse.pressed:
-				_zoom_at(mouse.position, 1.1 if mouse.button_index == MOUSE_BUTTON_WHEEL_UP else 1.0 / 1.1)
-				accept_event()
-		elif mouse.button_index == MOUSE_BUTTON_LEFT or mouse.button_index == MOUSE_BUTTON_MIDDLE:
-			_panning = mouse.pressed
-			if mouse.pressed:
-				accept_event()
+		_panning = mouse.pressed
+		if mouse.pressed:
+			accept_event()
 	elif event is InputEventMouseMotion and _panning:
 		_pan += (event as InputEventMouseMotion).relative
 		_note_user_view_change()
 		_apply_transform()
 		accept_event()
+	elif graph_input(event):
+		accept_event()
+
+
+func _is_pan_button(button: InputEventMouseButton) -> bool:
+	return button.button_index == MOUSE_BUTTON_LEFT or button.button_index == MOUSE_BUTTON_MIDDLE
 
 
 func _sync_items() -> void:
@@ -427,6 +404,7 @@ func _on_item_gui_input(event: InputEvent, item: Control) -> void:
 	var mouse := event as InputEventMouseButton
 	if not mouse.pressed or mouse.button_index != MOUSE_BUTTON_LEFT:
 		return
+	grab_focus()
 	if mouse.double_click and item.is_portal:
 		portal_activated.emit(item.hosted_root)
 	else:
@@ -435,7 +413,7 @@ func _on_item_gui_input(event: InputEvent, item: Control) -> void:
 	item.accept_event()
 
 
-func _zoom_at(position: Vector2, factor: float) -> void:
+func zoom_graph(position: Vector2, factor: float) -> void:
 	_note_user_view_change()
 	var pivot := (position - _pan) / _zoom
 	_zoom = clampf(_zoom * factor, MIN_ZOOM, MAX_ZOOM)
@@ -443,7 +421,17 @@ func _zoom_at(position: Vector2, factor: float) -> void:
 	_apply_transform()
 
 
-## Auto-fitting stops once the user takes over the view, until the next root.
+func pan_graph(delta: Vector2) -> void:
+	_pan += delta
+	_note_user_view_change()
+	_apply_transform()
+
+
+func fit_graph() -> void:
+	fit()
+
+
+## Zooming or panning a root hands its camera to the user for the session.
 func _note_user_view_change() -> void:
 	_auto_fit = false
 	_pending_fit = false
@@ -451,17 +439,40 @@ func _note_user_view_change() -> void:
 
 func _fit_if_pending() -> void:
 	if _pending_fit:
-		_auto_fit_now()
+		fit()
+
+
+## The shell shows a tree in the same frame its container first lays the graph
+## out, so a fit that found no size yet is retried once the layout has landed.
+func _queue_fit() -> void:
+	if _fit_queued or not is_inside_tree():
+		return
+	_fit_queued = true
+	_retry_fit.call_deferred()
+
+
+func _retry_fit() -> void:
+	_fit_queued = false
+	_fit_if_pending()
+
+
+func _remember_camera() -> void:
+	if _root_id == 0:
+		return
+	if _auto_fit:
+		_cameras.erase(_root_id)
+		return
+	_cameras[_root_id] = { "zoom": _zoom, "pan": _pan }
+
+
+func _restore_camera(camera: Dictionary) -> void:
+	_zoom = float(camera.get("zoom", 1.0))
+	_pan = camera.get("pan", Vector2.ZERO)
+	_apply_transform()
 
 
 func _is_wide() -> bool:
 	return size.x > size.y * HORIZONTAL_RATIO
-
-
-## Zoom at which node labels stay at least MIN_LEGIBLE_TEXT logical pixels tall.
-func _legible_zoom() -> float:
-	var font_size := float(maxi(get_theme_font_size("font_size", "Label"), 1))
-	return clampf(MIN_LEGIBLE_TEXT * _scale / font_size, 0.4, 1.0)
 
 
 func _all_bounds() -> Rect2:
@@ -469,42 +480,6 @@ func _all_bounds() -> Rect2:
 	for item in _items.values():
 		bounds = bounds.merge(Rect2(item.position, item.size))
 	return bounds
-
-
-## Root → running node chain, or the root alone when nothing is running.
-func _focus_nodes() -> Array:
-	var ids := []
-	var id := _running_node
-	while id != 0 and _nodes.has(id):
-		ids.append(id)
-		id = int(_nodes[id].get("parent", 0))
-	if not ids.is_empty():
-		return ids
-	for candidate in _nodes:
-		if int(_nodes[candidate].get("parent", 0)) == 0:
-			return [candidate]
-	return []
-
-
-## Deepest stretch of the running path (the running node and its nearest ancestors)
-## that fits the view at this zoom, so it keeps as much context as the space allows.
-func _focus_bounds(zoom: float) -> Rect2:
-	var available := _available_size()
-	var bounds := Rect2()
-	for id in _focus_nodes():
-		var rect := Rect2(_items[id].position, _items[id].size)
-		var merged := rect if bounds.size == Vector2.ZERO else bounds.merge(rect)
-		if bounds.size != Vector2.ZERO and (merged.size.x * zoom > available.x or merged.size.y * zoom > available.y):
-			break
-		bounds = merged
-	return bounds
-
-
-func _focus_rect() -> Rect2:
-	var ids := _focus_nodes()
-	if ids.is_empty():
-		return Rect2()
-	return Rect2(_items[ids[0]].position, _items[ids[0]].size)
 
 
 func _available_size() -> Vector2:
@@ -517,31 +492,11 @@ func _fit_zoom(bounds: Rect2) -> float:
 	return minf(available.x / maxf(bounds.size.x, 1.0), available.y / maxf(bounds.size.y, 1.0))
 
 
-func _frame(bounds: Rect2, zoom: float, floor: float) -> void:
-	_zoom = clampf(zoom, floor, 1.0)
+func _frame(bounds: Rect2, zoom: float) -> void:
+	_zoom = clampf(zoom, MIN_ZOOM, 1.0)
 	_pan = (size - bounds.size * _zoom) * 0.5 - bounds.position * _zoom
 	_pending_fit = false
 	_apply_transform()
-
-
-## Keeps a framed node fully on screen when the chain around it does not fit.
-func _keep_visible(rect: Rect2) -> void:
-	if rect.size == Vector2.ZERO:
-		return
-	var margin := EDGE_MARGIN * _scale
-	var scaled := Rect2(rect.position * _zoom + _pan, rect.size * _zoom)
-	var shift := Vector2.ZERO
-	if scaled.position.x < margin:
-		shift.x = margin - scaled.position.x
-	elif scaled.end.x > size.x - margin:
-		shift.x = size.x - margin - scaled.end.x
-	if scaled.position.y < margin:
-		shift.y = margin - scaled.position.y
-	elif scaled.end.y > size.y - margin:
-		shift.y = size.y - margin - scaled.end.y
-	if shift != Vector2.ZERO:
-		_pan += shift
-		_apply_transform()
 
 
 func _apply_transform() -> void:

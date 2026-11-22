@@ -171,7 +171,8 @@ func _draw_time_axis(font: Font, font_size: int, top: float, height: float) -> v
 				label["text"], HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, TICK_LABEL)
 
 
-## Tick labels that fit without overlapping; tick lines are still drawn for every tick.
+## Tick labels that fit inside the timeline without overlapping; tick lines are
+## still drawn for every tick. Edge labels are clamped inwards rather than clipped.
 func get_tick_labels() -> Array:
 	var labels := []
 	if _now_usec <= 0 or size.x <= 0.0:
@@ -187,29 +188,40 @@ func get_tick_labels() -> Array:
 		var x := size.x * float(tick) / float(seconds)
 		var text := "now" if tick == seconds else "-%ds" % (seconds - tick)
 		var width := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x
+		if width > size.x:
+			continue
 		var left := x
 		if tick == seconds:
 			left = x - width
 		elif tick > 0:
 			left = x - width * 0.5
+		left = clampf(left, 0.0, size.x - width)
 		candidates.append({
 			"text": text,
 			"rect": Rect2(Vector2(left, baseline - font.get_ascent(font_size)), Vector2(width, font.get_height(font_size))),
 		})
-	# Keep labels from the right so "now" always survives, then restore time order.
+	if candidates.is_empty():
+		return labels
+	# "now" first, then the window start, then the rest from the right, so both
+	# edges keep a label whenever one fits.
 	var gap := EditorScale.px(TICK_LABEL_GAP)
-	for i in range(candidates.size() - 1, -1, -1):
-		var rect: Rect2 = candidates[i]["rect"]
-		var overlaps := false
-		for kept in labels:
-			var other: Rect2 = kept["rect"]
-			if rect.intersects(other.grow(gap)):
-				overlaps = true
-				break
-		if not overlaps:
+	labels.append(candidates[-1])
+	if candidates.size() > 1 and not _overlaps(candidates[0], labels, gap):
+		labels.append(candidates[0])
+	for i in range(candidates.size() - 2, 0, -1):
+		if not _overlaps(candidates[i], labels, gap):
 			labels.append(candidates[i])
-	labels.reverse()
+	labels.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return a["rect"].position.x < b["rect"].position.x)
 	return labels
+
+
+static func _overlaps(candidate: Dictionary, kept: Array, gap: float) -> bool:
+	var rect: Rect2 = candidate["rect"]
+	for other in kept:
+		var kept_rect: Rect2 = other["rect"]
+		if rect.intersects(kept_rect.grow(gap)):
+			return true
+	return false
 
 
 ## The coloured band, excluding the tick row drawn underneath it.

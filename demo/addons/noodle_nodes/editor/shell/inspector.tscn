@@ -14,92 +14,153 @@ theme_override_constants/margin_top = 4
 theme_override_constants/margin_right = 6
 theme_override_constants/margin_bottom = 4
 
-[node name="InspectorScroll" type="ScrollContainer" parent="Margin"]
-unique_name_in_owner = true
+[node name="Layout" type="VBoxContainer" parent="Margin"]
 layout_mode = 2
-size_flags_vertical = 3
-horizontal_scroll_mode = 0
-
-[node name="Sections" type="VBoxContainer" parent="Margin/InspectorScroll"]
-layout_mode = 2
-size_flags_horizontal = 3
 theme_override_constants/separation = 4
 
-[node name="NodeHeader" type="Label" parent="Margin/InspectorScroll/Sections"]
+[node name="NodeHeader" type="Label" parent="Margin/Layout"]
 unique_name_in_owner = true
 layout_mode = 2
 text = "No node selected"
 clip_text = true
 text_overrun_behavior = 3
 
-[node name="PropertiesTitle" type="Label" parent="Margin/InspectorScroll/Sections"]
-layout_mode = 2
-theme_override_colors/font_color = Color(0.65, 0.72, 0.82, 1)
-theme_type_variation = "HeaderSmall"
-text = "PROPERTIES"
-
-[node name="PropertiesScroll" type="ScrollContainer" parent="Margin/InspectorScroll/Sections"]
+[node name="Sections" type="VSplitContainer" parent="Margin/Layout"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(0, 56)
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="PropertiesSection" type="VBoxContainer" parent="Margin/Layout/Sections"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 36)
+layout_mode = 2
+theme_override_constants/separation = 2
+
+[node name="PropertiesHeader" type="PanelContainer" parent="Margin/Layout/Sections/PropertiesSection"]
+unique_name_in_owner = true
+layout_mode = 2
+
+[node name="HeaderMargin" type="MarginContainer" parent="Margin/Layout/Sections/PropertiesSection/PropertiesHeader"]
+layout_mode = 2
+theme_override_constants/margin_left = 4
+theme_override_constants/margin_top = 1
+theme_override_constants/margin_right = 4
+theme_override_constants/margin_bottom = 1
+
+[node name="PropertiesTitle" type="Label" parent="Margin/Layout/Sections/PropertiesSection/PropertiesHeader/HeaderMargin"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Properties"
+clip_text = true
+text_overrun_behavior = 3
+
+[node name="PropertiesScroll" type="ScrollContainer" parent="Margin/Layout/Sections/PropertiesSection"]
+unique_name_in_owner = true
 layout_mode = 2
 size_flags_vertical = 3
 horizontal_scroll_mode = 0
 
-[node name="PropertiesList" type="VBoxContainer" parent="Margin/InspectorScroll/Sections/PropertiesScroll"]
-unique_name_in_owner = true
+[node name="PropertiesBody" type="VBoxContainer" parent="Margin/Layout/Sections/PropertiesSection/PropertiesScroll"]
 layout_mode = 2
 size_flags_horizontal = 3
+theme_override_constants/separation = 1
 
-[node name="PropertiesEmpty" type="Label" parent="Margin/InspectorScroll/Sections"]
+[node name="PropertiesList" type="VBoxContainer" parent="Margin/Layout/Sections/PropertiesSection/PropertiesScroll/PropertiesBody"]
 unique_name_in_owner = true
 layout_mode = 2
-theme_override_colors/font_color = Color(0.55, 0.58, 0.63, 1)
+theme_override_constants/separation = 1
+
+[node name="PropertiesEmpty" type="Label" parent="Margin/Layout/Sections/PropertiesSection/PropertiesScroll/PropertiesBody"]
+unique_name_in_owner = true
+layout_mode = 2
 text = "Select a node"
 
-[node name="BlackboardTitle" type="Label" parent="Margin/InspectorScroll/Sections"]
-layout_mode = 2
-theme_override_colors/font_color = Color(0.65, 0.72, 0.82, 1)
-theme_type_variation = "HeaderSmall"
-text = "BLACKBOARD"
-
-[node name="BlackboardScroll" type="ScrollContainer" parent="Margin/InspectorScroll/Sections"]
+[node name="BlackboardSection" type="VBoxContainer" parent="Margin/Layout/Sections"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(0, 56)
+custom_minimum_size = Vector2(0, 36)
+layout_mode = 2
+theme_override_constants/separation = 2
+
+[node name="BlackboardHeader" type="PanelContainer" parent="Margin/Layout/Sections/BlackboardSection"]
+unique_name_in_owner = true
+layout_mode = 2
+
+[node name="HeaderMargin" type="MarginContainer" parent="Margin/Layout/Sections/BlackboardSection/BlackboardHeader"]
+layout_mode = 2
+theme_override_constants/margin_left = 4
+theme_override_constants/margin_top = 1
+theme_override_constants/margin_right = 4
+theme_override_constants/margin_bottom = 1
+
+[node name="BlackboardTitle" type="Label" parent="Margin/Layout/Sections/BlackboardSection/BlackboardHeader/HeaderMargin"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Blackboard"
+clip_text = true
+text_overrun_behavior = 3
+
+[node name="BlackboardScroll" type="ScrollContainer" parent="Margin/Layout/Sections/BlackboardSection"]
+unique_name_in_owner = true
 layout_mode = 2
 size_flags_vertical = 3
 horizontal_scroll_mode = 0
 
-[node name="BlackboardList" type="VBoxContainer" parent="Margin/InspectorScroll/Sections/BlackboardScroll"]
-unique_name_in_owner = true
+[node name="BlackboardBody" type="VBoxContainer" parent="Margin/Layout/Sections/BlackboardSection/BlackboardScroll"]
 layout_mode = 2
 size_flags_horizontal = 3
+theme_override_constants/separation = 1
 
-[node name="BlackboardEmpty" type="Label" parent="Margin/InspectorScroll/Sections"]
+[node name="BlackboardList" type="VBoxContainer" parent="Margin/Layout/Sections/BlackboardSection/BlackboardScroll/BlackboardBody"]
 unique_name_in_owner = true
 layout_mode = 2
-theme_override_colors/font_color = Color(0.55, 0.58, 0.63, 1)
+theme_override_constants/separation = 1
+
+[node name="BlackboardEmpty" type="Label" parent="Margin/Layout/Sections/BlackboardSection/BlackboardScroll/BlackboardBody"]
+unique_name_in_owner = true
+layout_mode = 2
 text = "No blackboard"
 
-[node name="EventsTitle" type="Label" parent="Margin/InspectorScroll/Sections"]
-layout_mode = 2
-theme_override_colors/font_color = Color(0.65, 0.72, 0.82, 1)
-theme_type_variation = "HeaderSmall"
-text = "RECENT EVENTS"
-
-[node name="EventsScroll" type="ScrollContainer" parent="Margin/InspectorScroll/Sections"]
+[node name="EventsSection" type="VBoxContainer" parent="Margin/Layout/Sections"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(0, 56)
+custom_minimum_size = Vector2(0, 36)
+layout_mode = 2
+theme_override_constants/separation = 2
+
+[node name="EventsHeader" type="PanelContainer" parent="Margin/Layout/Sections/EventsSection"]
+unique_name_in_owner = true
+layout_mode = 2
+
+[node name="HeaderMargin" type="MarginContainer" parent="Margin/Layout/Sections/EventsSection/EventsHeader"]
+layout_mode = 2
+theme_override_constants/margin_left = 4
+theme_override_constants/margin_top = 1
+theme_override_constants/margin_right = 4
+theme_override_constants/margin_bottom = 1
+
+[node name="EventsTitle" type="Label" parent="Margin/Layout/Sections/EventsSection/EventsHeader/HeaderMargin"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Recent events"
+clip_text = true
+text_overrun_behavior = 3
+
+[node name="EventsScroll" type="ScrollContainer" parent="Margin/Layout/Sections/EventsSection"]
+unique_name_in_owner = true
 layout_mode = 2
 size_flags_vertical = 3
 horizontal_scroll_mode = 0
 
-[node name="EventsList" type="VBoxContainer" parent="Margin/InspectorScroll/Sections/EventsScroll"]
-unique_name_in_owner = true
+[node name="EventsBody" type="VBoxContainer" parent="Margin/Layout/Sections/EventsSection/EventsScroll"]
 layout_mode = 2
 size_flags_horizontal = 3
+theme_override_constants/separation = 1
 
-[node name="EventsEmpty" type="Label" parent="Margin/InspectorScroll/Sections"]
+[node name="EventsList" type="VBoxContainer" parent="Margin/Layout/Sections/EventsSection/EventsScroll/EventsBody"]
 unique_name_in_owner = true
 layout_mode = 2
-theme_override_colors/font_color = Color(0.55, 0.58, 0.63, 1)
+theme_override_constants/separation = 1
+
+[node name="EventsEmpty" type="Label" parent="Margin/Layout/Sections/EventsSection/EventsScroll/EventsBody"]
+unique_name_in_owner = true
+layout_mode = 2
 text = "No recent events"

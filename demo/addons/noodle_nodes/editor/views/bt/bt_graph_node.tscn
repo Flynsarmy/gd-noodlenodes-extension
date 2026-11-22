@@ -19,6 +19,8 @@ corner_radius_bottom_right = 3
 corner_radius_bottom_left = 3
 
 [node name="BTGraphNode" type="PanelContainer"]
+mouse_filter = 1
+mouse_default_cursor_shape = 2
 theme_override_styles/panel = SubResource("StyleBoxFlat_item")
 script = ExtResource("1_node")
 
@@ -31,6 +33,7 @@ theme_override_constants/separation = 6
 unique_name_in_owner = true
 custom_minimum_size = Vector2(18, 18)
 layout_mode = 2
+mouse_filter = 2
 size_flags_vertical = 4
 expand_mode = 1
 stretch_mode = 5
