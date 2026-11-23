@@ -30,6 +30,17 @@ jobs:
         with:
           platform: ${{ inputs.platform }}
           ndk-version: r29
+          # Its MinGW step pins a Windows-host package version apt can't install; MinGW is installed below.
+          windows-compiler: msvc
+
+      # Cross-compiled on Linux: GNU ld on Windows runners spends 13+ minutes linking the DLL.
+      - name: Install MinGW
+        if: inputs.platform == 'windows'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends g++-mingw-w64-x86-64-posix
+          sudo update-alternatives --set x86_64-w64-mingw32-gcc /usr/bin/x86_64-w64-mingw32-gcc-posix
+          sudo update-alternatives --set x86_64-w64-mingw32-g++ /usr/bin/x86_64-w64-mingw32-g++-posix
 
       - name: Restore .scons-cache
         uses: actions/cache/restore@v6
