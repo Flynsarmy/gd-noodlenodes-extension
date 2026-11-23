@@ -142,10 +142,8 @@ Ref<Curve> NNResponseCurve::get_preview() const {
 }
 
 void NNResponseCurve::_on_parameters_changed() {
-	// Rebaked in place so an inspector already showing the preview redraws from its changed signal.
-	if (_preview.is_valid()) {
-		_bake_preview();
-	}
+	// A new Curve rather than an in-place rebake: the inspector caches the preview per Curve object.
+	_preview.unref();
 	emit_changed();
 }
 

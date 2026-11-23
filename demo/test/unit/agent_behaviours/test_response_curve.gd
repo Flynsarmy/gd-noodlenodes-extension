@@ -132,6 +132,14 @@ func test_preview_reflects_the_parameters() -> void:
 	assert_almost_eq(curve.get_preview().sample(0.5), 0.125, 0.001)
 
 
+func test_preview_is_replaced_when_parameters_change() -> void:
+	# The inspector only redraws the preview when it receives a different Curve.
+	var curve := _curve(NNResponseCurve.CURVE_LINEAR)
+	var before: Curve = curve.get_preview()
+	curve.slope = 0.5
+	assert_ne(curve.get_preview(), before)
+
+
 func test_exponent_is_hidden_for_types_that_ignore_it() -> void:
 	var curve := NNResponseCurve.new()
 	var exponent_visible := func() -> bool:
