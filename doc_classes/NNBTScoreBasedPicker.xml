@@ -1,12 +1,10 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <class name="NNBTScoreBasedPicker" inherits="NNBTCompositeNodes" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
 	<brief_description>
-		Evaluates its enabled child nodes using their child considerations and ticks the highest-scoring one.
+		Scores its child branches with considerations and runs the highest-scoring one.
 	</brief_description>
 	<description>
-		The score-based picker evaluates its enabled direct behaviour tree children when a run starts, using each child's enabled direct [NNConsiderations] children (such as [NNConsideration], [NNConsiderationGroup] or [NNCustomPropertyConsideration]) aggregated according to that child's [member NNBTNodes.evaluation_method]. The enabled child with the highest score is selected and ticked, and the picker returns that child's result.
-		On a tie, the first enabled child in child order wins. A child with no enabled considerations evaluates to a score of [code]0.0[/code] and is still eligible to be picked if no other child scores higher. If the picker has no enabled behaviour tree children, it returns [constant NNBTNodes.FAILURE].
-		The choice is made when a run starts and kept until the run ends, so a child added during a run joins the next run. If the chosen child is removed during a run the picker returns [constant NNBTNodes.FAILURE], and the next run chooses a new child from the surviving children.
+		Brings utility AI scoring into a behaviour tree. Add [NNConsiderations] nodes as direct children of each candidate branch under this node; at the start of each run, the picker evaluates every enabled branch's score, selects the highest-scoring one (breaking ties by child order), and runs it until it finishes.
 	</description>
 	<tutorials>
 	</tutorials>

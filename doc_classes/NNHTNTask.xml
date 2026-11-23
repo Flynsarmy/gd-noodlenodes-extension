@@ -1,19 +1,12 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <class name="NNHTNTask" inherits="NNHTNNodes" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
 	<brief_description>
-		A primitive HTN task: an action the plan executes.
+		A primitive HTN action executed as a step in a plan.
 	</brief_description>
 	<description>
-		A primitive task is a template. Each time planning uses it, it creates one [NNHTNPlanStep] occurrence with its own arguments, runtime data and captured effects, so the same task can appear several times in a plan through [NNHTNSubtaskCall]. Keep per-occurrence progress in [member NNHTNPlanStep.runtime], not on the task.
-		While planning, a task is accepted when it is available (see [NNHTNNodes]). Its effects, from [method on_get_effects] or [member effects], are then captured once and applied to the predicted state, so later tasks can depend on them. When the board has a [member NNBlackboard.schema], every predicted effect must satisfy it, otherwise the occurrence is rejected with an error. An occurrence whose arguments hold a freed [Object] is rejected too.
-		A script implements [method on_execute] to perform the action, or the task hosts a root that does (see [b]Hosting[/b]). The captured effects are written to the board only after it returns [code]SUCCESS[/code]. Declared effects are promises of success, not observations: anything the action changes in the world beyond them should be written by [method NNHTNRoot.on_sense] or the script itself.
-		[b]Hosting.[/b] A task can host roots placed under it, such as an [NNBTRoot], an [NNSTRoot], an [NNAgent] or another [NNHTNRoot], like an [NNAction] does. The roots are activated when an occurrence first executes, in the tick it starts, and are ticked with the root's tick delta while it runs; their own [code]process_thread[/code] and [code]tick_rate[/code] are ignored. The first [code]finished[/code] report of a hosted root during the occurrence gives its result: success returns [constant SUCCESS] and failure returns [constant FAILURE], exactly as if [method on_execute] had returned it. A hosted [NNAgent] never reports, so its occurrence runs until something else ends it. When the script also implements [method on_execute], it runs first every tick: a [constant SUCCESS] or [constant FAILURE] from it ends the occurrence before the hosted roots tick, and [constant RUNNING] lets them tick and report. The hosted roots are deactivated as soon as the occurrence stops running, whether it succeeded, failed, entered verification or was cancelled, so a later occurrence starts them afresh. Verification and effect commits apply as usual. Only one occurrence of a task can run its hosted roots at a time, so a second occurrence of the same task running alongside it, such as another branch of an [NNHTNParallelTask], reports an error and fails. The hosted roots share the HTN root's board and actor unless they assign their own.
-		[b]Verification.[/b] By default ([constant TRUST_SUCCESS]) a [code]SUCCESS[/code] from [method on_execute] is trusted and the effects are committed at once. With [constant VERIFY] the occurrence instead enters [constant NNHTNPlanStep.VERIFYING] and the root waits for observed state to confirm the action before committing anything: in the same tick and on every later tick it adds the tick delta to [member NNHTNPlanStep.verification_elapsed] and calls [method on_verify], which by default evaluates [member postconditions] against the live board. [method on_execute] is never called again. [constant SUCCESS] commits the effects and the occurrence succeeds. [constant FAILURE], or an invalid result, fails it with [code]"verification_failed"[/code]. [constant RUNNING] waits, unless [member NNHTNPlanStep.verification_elapsed] has reached [member verification_timeout], which fails it with [code]"verification_timeout"[/code]; the root enforces this for a custom [method on_verify] too. A timeout of [code]0.0[/code] therefore allows exactly one check. Either failure emits [signal NNHTNRoot.verification_failed] and commits nothing. While verifying, the start [member NNHTNNodes.conditions] are not rechecked, because the action may have consumed them (a closed door is now open); the template and arguments must still be valid, and [method on_can_continue_verification] must return [code]true[/code]. Keep verification progress in [member NNHTNPlanStep.runtime], never on the shared template.
-		[b]Runtime effects.[/b] [member runtime_effect_commit_mode] chooses which captured effects are written on success, so sensors can own the others. Planning always predicts every effect. The mode and [member runtime_commit_effect_keys] are captured on each occurrence when it is planned. The commit is one [method NNBlackboard.apply_values] batch: if the board's schema rejects any key, nothing is written, [signal NNHTNRoot.effect_commit_failed] is emitted and the occurrence fails with [code]"effect_commit_failed"[/code].
-		[b]Parallel safety.[/b] [member actor_resources], [member concurrency_read_keys], [member concurrency_write_keys] and [member concurrency_contract_complete] are only consulted when the task is a branch of an [NNHTNParallelTask], which runs it alongside other tasks only when their declarations prove it safe.
-		An occurrence of a task with invalid verification or commit settings (see the configuration warnings) is rejected while planning, with an error.
-		The [signal started], [signal succeeded] and [signal failed] signals fire once per occurrence. Use [signal NNHTNRoot.step_state_changed] to tell occurrences apart.
-		The editor warns when a task has HTN children, which are never planned, a negative [member estimated_cost], invalid verification or commit settings, or an empty or repeated [member actor_resources], [member concurrency_read_keys] or [member concurrency_write_keys] entry.
+		Defines an executable action in an HTN domain along with the blackboard [member effects] it predicts during planning and commits on success.
+		Implement the action by overriding [method on_execute] (and optionally [method on_cancel]), or place a child AI root ([NNBTRoot], [NNSTRoot], [NNHTNRoot], or [NNAgent]) under this task to host it while the step runs. Store per-step runtime state in [member NNHTNPlanStep.runtime] rather than on the task node so the same template can be reused via [NNHTNSubtaskCall].
+		Optionally configure [member verification_mode] to wait for observed [member postconditions] before committing effects, [member runtime_effect_commit_mode] to let sensors own certain keys, [member resumable] to avoid restarting when a replan keeps the same first step, and concurrency properties when used inside an [NNHTNParallelTask].
 	</description>
 	<tutorials>
 	</tutorials>
@@ -22,14 +15,14 @@
 			<return type="bool" />
 			<param index="0" name="step" type="NNHTNPlanStep" />
 			<description>
-				Optional hook called before each verification tick of [param step], and when a new plan checks whether a verifying occurrence is still available. Return [code]false[/code] to fail the occurrence with [code]"verification_unsafe"[/code] without cancelling it. Without it verification continues while the template and arguments are valid. A result that is not a [bool] is reported and treated as [code]false[/code].
+				Optional hook checked before each verification tick in [constant VERIFY] mode. Return [code]false[/code] to abort verification with [code]"verification_unsafe"[/code].
 			</description>
 		</method>
 		<method name="on_cancel" qualifiers="virtual">
 			<return type="void" />
 			<param index="0" name="step" type="NNHTNPlanStep" />
 			<description>
-				Optional hook called exactly once for a started occurrence that is abandoned before [method on_execute] returned its own result: replaced by a new plan, invalidated, or stopped because the root was disabled or its host deactivated it. A verifying occurrence counts as started. Stop actor-side actions here. It is never called for an occurrence that succeeded, failed on its own (including a failed verification), was kept by a new plan (see [member resumable]) or never started. When the root is disabled from inside [method on_execute], this hook runs after [method on_execute] returns.
+				Optional hook called once when a running or verifying [param step] is abandoned (replaced by a new plan, invalidated, or disabled). Clean up actor-side actions here.
 			</description>
 		</method>
 		<method name="on_execute" qualifiers="virtual">
@@ -37,8 +30,7 @@
 			<param index="0" name="delta" type="float" />
 			<param index="1" name="step" type="NNHTNPlanStep" />
 			<description>
-				Performs the action for [param step], once per tick while it runs. Return [constant RUNNING] to be called again next tick, or [constant SUCCESS] or [constant FAILURE] to finish. [param delta] is the tick delta. Read the actor with [method NoodleNodes.get_actor] and the occurrence's arguments with [member NNHTNPlanStep.args].
-				A task without this override and without a hosted root reports one error and fails. With a hosted root it is optional; see [b]Hosting[/b] above for how the two combine. Any other return value is reported as an error and treated as [constant FAILURE].
+				Override to perform the task each tick, returning [constant RUNNING], [constant SUCCESS], or [constant FAILURE]. Optional if this task hosts a child AI root instead.
 			</description>
 		</method>
 		<method name="on_get_effects" qualifiers="virtual">
@@ -46,8 +38,7 @@
 			<param index="0" name="state" type="Dictionary" />
 			<param index="1" name="args" type="Dictionary" />
 			<description>
-				Optional planning hook returning the effects of one occurrence, for effects that depend on its arguments or on the predicted [param state]. Without it, [member effects] is used. It is called once per occurrence while planning; the result is deep-copied into [member NNHTNPlanStep.effects] and never recomputed. Anything other than a [Dictionary] with non-empty [String] keys rejects the occurrence with an error.
-				Each search that calls it makes every board key a replanning trigger, unless [member NNHTNNodes.dependencies_complete] is [code]true[/code]. A search that never calls it, for example under a policy that does not consult it, does not.
+				Optional planning hook returning dynamic predicted effects based on [param state] and [param args]. Overrides [member effects].
 			</description>
 		</method>
 		<method name="on_get_estimated_cost" qualifiers="virtual">
@@ -55,97 +46,96 @@
 			<param index="0" name="state" type="Dictionary" />
 			<param index="1" name="args" type="Dictionary" />
 			<description>
-				Optional planning hook returning the cost of one occurrence, for costs that depend on its arguments or on the predicted [param state]. Without it, [member estimated_cost] is used. It is called only under [constant NNHTNSearchSettings.LOWEST_COST], once per occurrence; the result is captured in [member NNHTNPlanStep.cost] and never recomputed. A result that is not a finite, non-negative number rejects the occurrence with an error.
-				Each search that calls it makes every board key a replanning trigger, unless [member NNHTNNodes.dependencies_complete] is [code]true[/code]. A search that never calls it, for example under a policy that does not consult it, does not.
+				Optional planning hook returning a dynamic non-negative cost under [constant NNHTNSearchSettings.LOWEST_COST]. Overrides [member estimated_cost].
 			</description>
 		</method>
 		<method name="on_verify" qualifiers="virtual">
 			<return type="int" enum="NNHTNTask.Status" />
 			<param index="0" name="step" type="NNHTNPlanStep" />
 			<description>
-				Optional hook confirming, in [constant VERIFY] mode, that [param step]'s action took effect. Called once per tick from the tick in which [method on_execute] returned [constant SUCCESS], before any effect is committed. Read the live board with [method NoodleNodes.get_blackboard_resource]. Return [constant SUCCESS], [constant RUNNING] to keep waiting, or [constant FAILURE]. Any other value is reported and treated as [constant FAILURE]. [member verification_timeout] is enforced whatever this returns. Without it, [member postconditions] are evaluated against the live board with the step's arguments: [constant SUCCESS] when all hold, [constant RUNNING] otherwise, and [constant FAILURE] for an empty entry.
+				Optional hook in [constant VERIFY] mode to confirm the action took effect against the live blackboard before committing effects. Defaults to checking [member postconditions].
 			</description>
 		</method>
 	</methods>
 	<members>
 		<member name="actor_resources" type="PackedStringArray" setter="set_actor_resources" getter="get_actor_resources" default="PackedStringArray()">
-			Exclusive actor-side resources this task uses while it runs, such as [code]"locomotion"[/code] or [code]"left_hand"[/code]. Entries are names of your choosing. Two branches of an [NNHTNParallelTask] may not use the same resource, whatever their arguments. Checked only while planning.
+			Exclusive actor resources used while running (such as [code]"locomotion"[/code] or [code]"hands"[/code]), checked by [NNHTNParallelTask] during planning to prevent conflicting branches.
 		</member>
 		<member name="concurrency_contract_complete" type="bool" setter="set_concurrency_contract_complete" getter="get_concurrency_contract_complete" default="false">
-			Declares that [member actor_resources], [member concurrency_read_keys], [member concurrency_write_keys] and the captured effects cover everything this task touches while it runs. An [NNHTNParallelTask] treats a branch without it as a conflict, because unknown reads and writes cannot be proven safe to overlap.
+			Must be [code]true[/code] for this task to run concurrently inside an [NNHTNParallelTask], confirming its resources and read/write keys are fully declared.
 		</member>
 		<member name="concurrency_read_keys" type="PackedStringArray" setter="set_concurrency_read_keys" getter="get_concurrency_read_keys" default="PackedStringArray()">
-			Board keys this task reads while it runs, beyond those its [member NNHTNNodes.conditions], [member NNHTNNodes.dependency_keys] and, when verifying, [member postconditions] already read, which are counted automatically. Inside an [NNHTNParallelTask], a key one branch reads and another writes is a conflict.
+			Additional blackboard keys read during execution (beyond conditions, dependency keys, and postconditions), used by [NNHTNParallelTask] conflict checking.
 		</member>
 		<member name="concurrency_write_keys" type="PackedStringArray" setter="set_concurrency_write_keys" getter="get_concurrency_write_keys" default="PackedStringArray()">
-			Board keys this task's action writes while it runs that are not among its captured effects, which are counted automatically. Inside an [NNHTNParallelTask], a key two branches write is a conflict, even when they write the same value.
+			Additional blackboard keys written during execution (beyond declared effects), used by [NNHTNParallelTask] conflict checking.
 		</member>
 		<member name="effects" type="Dictionary" setter="set_effects" getter="get_effects" default="{}">
-			The board values this task guarantees on success, as key-value pairs. A [code]null[/code] value makes the key absent. Ignored when the script implements [method on_get_effects].
+			Blackboard key/value updates predicted during planning and committed on success. A [code]null[/code] value clears the key. Ignored if [method on_get_effects] is overridden.
 		</member>
 		<member name="estimated_cost" type="float" setter="set_estimated_cost" getter="get_estimated_cost" default="0.0">
-			The abstract cost of one occurrence, which must be finite and non-negative. Only [constant NNHTNSearchSettings.LOWEST_COST] reads it, and rejects the occurrence with an error when it is invalid; the other policies neither read nor validate it. Ignored when the script implements [method on_get_estimated_cost].
+			Non-negative estimated cost used by [constant NNHTNSearchSettings.LOWEST_COST]. Ignored if [method on_get_estimated_cost] is overridden.
 		</member>
 		<member name="postconditions" type="NNHTNCondition[]" setter="set_postconditions" getter="get_postconditions" default="[]">
-			The conditions the default [method on_verify] waits for, evaluated against the live board, never the predicted effects, so an occurrence cannot confirm itself by declaring the same key. An empty array verifies at once. An empty entry is a configuration error. Shown in the inspector only in [constant VERIFY] mode; the value is kept in the other mode.
+			Conditions evaluated against the live blackboard in [constant VERIFY] mode before committing effects.
 		</member>
 		<member name="resumable" type="bool" setter="set_resumable" getter="get_resumable" default="false">
-			When a new plan is installed while an occurrence of this task is running or verifying, keep that occurrence instead of cancelling it, provided the new plan's first step is the same occurrence and it is still available. The same means the same template and call path, equal arguments, captured effects and committed keys, and the same decompositions: each enclosing compound, method, method path, method arguments and child position. The kept occurrence keeps its [member NNHTNPlanStep.runtime], [member NNHTNPlanStep.verification_elapsed] and [member NNHTNPlanStep.occurrence_id], [method on_cancel] is not called and [method on_execute] continues where it was; a verifying occurrence continues verifying. When [code]false[/code], a new plan always cancels and replaces it.
+			If [code]true[/code], keeps the running occurrence intact (without cancelling or restarting) when a replan produces a new plan starting with the exact same step.
 		</member>
 		<member name="runtime_commit_effect_keys" type="PackedStringArray" setter="set_runtime_commit_effect_keys" getter="get_runtime_commit_effect_keys" default="PackedStringArray()">
-			The effect keys written on success in [constant ALLOWLIST] mode. Shown in the inspector only in that mode; the value is kept in the others.
+			Subset of effect keys written to the blackboard on success when [member runtime_effect_commit_mode] is [constant ALLOWLIST].
 		</member>
 		<member name="runtime_effect_commit_mode" type="int" setter="set_runtime_effect_commit_mode" getter="get_runtime_effect_commit_mode" enum="NNHTNTask.RuntimeEffectCommitMode" default="0">
-			Which captured effects are written to the board on success: [constant ALL] writes every captured effect, [constant NONE] writes none (sensors update the board instead), and [constant ALLOWLIST] writes only keys listed in [member runtime_commit_effect_keys]. Captured per occurrence when it is planned.
+			Controls which predicted effects are written to the blackboard on success ([constant ALL], [constant NONE], or [constant ALLOWLIST]). Planning always predicts all effects.
 		</member>
 		<member name="verification_mode" type="int" setter="set_verification_mode" getter="get_verification_mode" enum="NNHTNTask.VerificationMode" default="0">
-			Whether a successful [method on_execute] is trusted or verified: [constant TRUST_SUCCESS] commits effects immediately, while [constant VERIFY] waits for [method on_verify] (or [member postconditions]) within [member verification_timeout] before committing. See [b]Verification[/b] in the class description.
+			Whether [constant SUCCESS] from [method on_execute] commits effects immediately ([constant TRUST_SUCCESS]) or waits for [method on_verify] / [member postconditions] first ([constant VERIFY]).
 		</member>
 		<member name="verification_timeout" type="float" setter="set_verification_timeout" getter="get_verification_timeout" default="0.0">
-			The most tick delta, in seconds, an occurrence may spend verifying. Verification fails with [code]"verification_timeout"[/code] once [member NNHTNPlanStep.verification_elapsed] reaches it while [method on_verify] still returns [constant RUNNING]; a [constant SUCCESS] at the threshold is accepted. [code]0.0[/code] allows one immediate check. Must be finite and non-negative. Shown in the inspector only in [constant VERIFY] mode; the value is kept in the other mode.
+			Maximum seconds to wait for verification in [constant VERIFY] mode before failing with [code]"verification_timeout"[/code]. [code]0.0[/code] allows one immediate check.
 		</member>
 	</members>
 	<signals>
 		<signal name="failed">
 			<description>
-				Emitted when a started occurrence of this task fails: [method on_execute] returned [constant FAILURE], verification failed, its effects could not be committed, or it was invalidated while running or verifying.
+				Emitted when a started occurrence fails, fails verification, fails to commit effects, or is invalidated.
 			</description>
 		</signal>
 		<signal name="started">
 			<description>
-				Emitted when an occurrence of this task starts, just before its first [method on_execute].
+				Emitted when an occurrence starts executing.
 			</description>
 		</signal>
 		<signal name="succeeded">
 			<description>
-				Emitted when an occurrence of this task succeeded, passed verification if it verifies, and its effects were committed.
+				Emitted when an occurrence succeeds and commits its effects.
 			</description>
 		</signal>
 	</signals>
 	<constants>
 		<constant name="FAILURE" value="-1" enum="Status">
-			The occurrence failed. The plan ends.
+			The step failed and ends the plan.
 		</constant>
 		<constant name="RUNNING" value="0" enum="Status">
-			The occurrence is still running and is executed again next tick.
+			The step is still in progress and will be ticked again.
 		</constant>
 		<constant name="SUCCESS" value="1" enum="Status">
-			The occurrence succeeded. Its effects are committed, after verification in [constant VERIFY] mode, and the next step starts.
+			The step succeeded.
 		</constant>
 		<constant name="TRUST_SUCCESS" value="0" enum="VerificationMode">
-			A [constant SUCCESS] from [method on_execute] commits the effects at once. [method on_verify] is never called.
+			Commits effects immediately when [method on_execute] returns [constant SUCCESS].
 		</constant>
 		<constant name="VERIFY" value="1" enum="VerificationMode">
-			After [method on_execute] returns [constant SUCCESS], wait for [method on_verify] to confirm the action before committing the effects.
+			Waits for [method on_verify] (or [member postconditions]) to confirm the outcome before committing effects.
 		</constant>
 		<constant name="ALL" value="0" enum="RuntimeEffectCommitMode">
-			Every captured effect is written on success.
+			Writes all predicted effects to the blackboard on success.
 		</constant>
 		<constant name="NONE" value="1" enum="RuntimeEffectCommitMode">
-			No captured effect is written; sensors write all of them.
+			Writes no effects on success (expecting sensors to observe the changes instead).
 		</constant>
 		<constant name="ALLOWLIST" value="2" enum="RuntimeEffectCommitMode">
-			Only the captured effects whose keys are in [member runtime_commit_effect_keys] are written.
+			Writes only the effect keys listed in [member runtime_commit_effect_keys].
 		</constant>
 	</constants>
 </class>

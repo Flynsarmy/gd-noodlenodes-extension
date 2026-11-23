@@ -1,12 +1,10 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <class name="NNActionGroup" inherits="NNActions" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
 	<brief_description>
-		Creates sequences of actions, or picks one random action from several choices.
+		Groups child actions to run them in sequence, randomly, conditionally, or via a custom rule.
 	</brief_description>
 	<description>
-		This node type should be added as child nodes of the [NNBehaviour] node. They are used when a behaviour is being executed by the AI agent.
-		Action groups can be used to create sequences of actions, pick one random action from several choices, branch with an if/else condition, or select actions with a custom script rule. This allows for more complex actions to be performed by a behaviour. You can nest as many action groups as you need, and they can contain any number and combination of actions or action groups.
-		With [code]PickOneAtRandom[/code], only enabled child actions and action groups are candidates when the group starts; if none are enabled, or if the chosen child is later disabled, the group does not reroll and ends without running another child. With [code]IfElse[/code], if the chosen branch (child 0 or child 1) is missing or disabled, the group does not fall back to the other branch and ends without running an action.
+		Add as a child of an [NNBehaviour] or another [NNActionGroup] to combine multiple [NNAction] nodes into structured workflows. Use [member action_execution_rule] to run children in sequence, pick one at random, branch on a boolean ([member if_else_boolean_value]), or choose the next child in script via [method on_select_child]. Action groups can be nested arbitrarily deep.
 	</description>
 	<tutorials>
 	</tutorials>
@@ -14,22 +12,22 @@
 		<method name="on_select_child" qualifiers="virtual">
 			<return type="int" />
 			<description>
-				Called by the [code]CustomRule[/code] execution rule whenever the group needs its next child. Return the index of an enabled [NNAction] or [NNActionGroup] child to run, or [code]-1[/code] to end the group. When not overridden, the group runs no child under [code]CustomRule[/code].
+				Called under [code]CustomRule[/code] to pick the next child to run. Return the index of an enabled [NNAction] or [NNActionGroup] child, or [code]-1[/code] to finish the group.
 			</description>
 		</method>
 	</methods>
 	<members>
 		<member name="action_execution_rule" type="int" setter="set_action_execution_rule" getter="get_action_execution_rule" default="0">
-			How child actions and nested action groups are executed: [code]Sequence[/code] ([code]0[/code]), [code]PickOneAtRandom[/code] ([code]1[/code]), [code]IfElse[/code] ([code]2[/code]), or [code]CustomRule[/code] ([code]3[/code]). [code]Sequence[/code] executes enabled child actions from top to bottom, skipping disabled ones. [code]PickOneAtRandom[/code] picks one enabled child uniformly at random when the group starts. [code]IfElse[/code] uses [member if_else_boolean_value] to choose child 0 ([code]true[/code]) or child 1 ([code]false[/code]). [code]CustomRule[/code] calls [method on_select_child] when the group starts (with [member current_action_index] reset to [code]-1[/code]) and again whenever the group needs the next child (after a child finishes, becomes disabled, fails under [code]ContinueExecution[/code], or if [method on_select_child] returned [code]-1[/code] on start). It returns the index of an enabled child to run, or [code]-1[/code] to end the group.
+			How child actions are selected: [code]Sequence[/code] ([code]0[/code]) runs enabled children in order, [code]PickOneAtRandom[/code] ([code]1[/code]) picks one enabled child at random, [code]IfElse[/code] ([code]2[/code]) runs child [code]0[/code] or [code]1[/code] based on [member if_else_boolean_value], and [code]CustomRule[/code] ([code]3[/code]) calls [method on_select_child].
 		</member>
 		<member name="current_action_index" type="int" setter="set_current_action_index" getter="get_current_action_index" default="0">
-			The child index of the currently active [NNAction] or nested [NNActionGroup]. Defaults to [code]0[/code] before the group has run, and is set to [code]-1[/code] when the group ends. Under the [code]CustomRule[/code] execution rule it is assigned the value returned by [method on_select_child], which selects the child index to run or [code]-1[/code] to stop the group.
+			Child index of the currently active [NNAction] or nested [NNActionGroup], or [code]-1[/code] when finished.
 		</member>
 		<member name="error_handling_rule" type="int" setter="set_error_handling_rule" getter="get_error_handling_rule" default="0">
-			How a child that finishes with [member NNActions.has_failed] set is handled: [code]EndExecution[/code] ([code]0[/code]) or [code]ContinueExecution[/code] ([code]1[/code]). A direct [NNAction] child failure emits [signal action_failed] under both rules. [code]EndExecution[/code] stops the group and sets [member NNActions.has_failed] to [code]true[/code], so its parent treats the whole group as failed. [code]ContinueExecution[/code] leaves [member NNActions.has_failed] [code]false[/code] and continues with [member action_execution_rule].
+			What happens when a child finishes with [member NNActions.has_failed] set: [code]EndExecution[/code] ([code]0[/code]) stops and fails the group; [code]ContinueExecution[/code] ([code]1[/code]) ignores the failure and moves on.
 		</member>
 		<member name="if_else_boolean_value" type="bool" setter="set_if_else_boolean_value" getter="get_if_else_boolean_value" default="true">
-			The condition used by the [code]IfElse[/code] execution rule: [code]true[/code] runs child index [code]0[/code], [code]false[/code] runs child index [code]1[/code]. If the chosen child is missing or disabled, the group ends without running the other branch.
+			Branch selector for [code]IfElse[/code]: [code]true[/code] runs child [code]0[/code], [code]false[/code] runs child [code]1[/code].
 		</member>
 	</members>
 	<signals>
@@ -37,7 +35,7 @@
 			<param index="0" name="action_node" type="Object" />
 			<param index="1" name="action_group_node" type="Object" />
 			<description>
-				Emitted when a child [param action_node] of this group finishes with [member NNActions.has_failed] set. With the EndExecution [member error_handling_rule] the group is marked as failed before the signal is emitted.
+				Emitted when a direct child [NNAction] finishes with [member NNActions.has_failed] set.
 			</description>
 		</signal>
 	</signals>

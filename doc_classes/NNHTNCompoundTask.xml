@@ -1,12 +1,10 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <class name="NNHTNCompoundTask" inherits="NNHTNNodes" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
 	<brief_description>
-		An HTN task that is achieved by one of its methods.
+		A high-level HTN goal that decomposes into one of its child [NNHTNMethod] approaches.
 	</brief_description>
 	<description>
-		A compound task decomposes into the children of one of its [NNHTNMethod] children. When it is available (see [NNHTNNodes]), planning tries its enabled methods in the order given by [member NNHTNSearchSettings.policy]: scene order under [constant NNHTNSearchSettings.ORDERED], or descending [member NNHTNMethod.priority] (or [method NNHTNMethod.on_get_priority]), keeping scene order between equal priorities, under [constant NNHTNSearchSettings.RANKED] and [constant NNHTNSearchSettings.LOWEST_COST]. Planning backtracks into the next method whenever the current method, or anything planned after it, cannot be decomposed. Children that are not methods are ignored.
-		The compound passes the arguments it was called with to its methods. A compound that is already being decomposed cannot be entered again, which rejects recursive template calls.
-		The editor warns when a compound has no method child, and names any child that is not a method.
+		Represents an abstract goal in an HTN domain (such as "AttackEnemy" or "GetToSafety"). Give it one or more [NNHTNMethod] children describing alternative ways to accomplish the goal; during planning, the planner tries enabled methods in order (or by priority under ranked/cost policies) and backtracks if a method cannot be completed.
 	</description>
 	<tutorials>
 	</tutorials>

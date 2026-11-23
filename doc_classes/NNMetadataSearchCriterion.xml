@@ -1,20 +1,19 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <class name="NNMetadataSearchCriterion" inherits="NNNQSSearchCriteria" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
 	<brief_description>
-		Filters nodes based on their metadata.
+		Search criterion that filters candidate nodes by a Godot metadata entry.
 	</brief_description>
 	<description>
-		The metadata search criterion filters nodes based on their metadata. A candidate node must have a metadata entry named [member metadata_name] whose value equals [member metadata_value]; nodes that lack the key or have a different value are filtered out.
-		[member metadata_value] is compared as a [Variant], so any [Variant] type can be set from code (the editor inspector exposes it as a [String]). This criterion only filters and always outputs a score of [code]1.0[/code].
+		Keeps only candidates whose [member metadata_name] metadata equals [member metadata_value] (always scoring [code]1.0[/code]). Use to filter nodes tagged with [method Object.set_meta] (for example, cover type, team, or item category) without writing a custom criterion script.
 	</description>
 	<tutorials>
 	</tutorials>
 	<members>
 		<member name="metadata_name" type="StringName" setter="set_metadata_name" getter="get_metadata_name" default="&amp;&quot;&quot;">
-			Name of the metadata key each candidate must have. Nodes lacking this key or with a value unequal to [member metadata_value] are filtered out.
+			Metadata key each candidate node must have.
 		</member>
 		<member name="metadata_value" type="Variant" setter="set_metadata_value" getter="get_metadata_value" default="null">
-			Expected value of the [member metadata_name] metadata entry, matched with exact [Variant] equality. Exposed as a [String] in the inspector; any [Variant] type can be assigned from code.
+			Required value of the metadata entry. Exposed as a [String] in the inspector; any [Variant] type can be set from code.
 		</member>
 	</members>
 </class>

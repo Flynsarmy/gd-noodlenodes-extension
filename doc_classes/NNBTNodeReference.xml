@@ -1,19 +1,17 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <class name="NNBTNodeReference" inherits="NNBTTaskNodes" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
 	<brief_description>
-		Reference any behaviour tree node type anywhere in your scene.
+		Delegates execution to another behaviour tree node anywhere in the scene.
 	</brief_description>
 	<description>
-		The node reference node can be used to reference any behaviour tree node type anywhere in your scene. This gives a lot of flexibility when designing your AI behaviours.
-		For instance, you can have an AI agent that has a node reference in its behaviour tree for any items it picks up. Each item can then contain a sub behaviour tree that describes how the item can be used by the AI. When the AI picks up an item, the node reference is set to point to the sub-tree within the item node, and immediately the AI agent can use the item.
-		The [NNBTNodes] blackboard and actor helpers on a node reference resolve from the target's own position in the tree, so a target under a different [NNBTRoot] uses that root's blackboard and actor. A reparent-created reference cycle resolves to [code]null[/code] instead of recursing forever.
-		The same target can be referenced from several places, which forms a DAG rather than a tree. In that case the reference that most recently drove the target owns its active run. When another reference starts driving a shared target that is still running for a different reference, the old run is interrupted first so the new owner gets a fresh [code]on_before_run[/code]. A reference only forwards an interrupt to the target while it owns the run, and it only resets the target while the target is not being driven by another caller, so abandoning, disabling or resetting the previous reference does not cancel the new owner's run.
+		Ticks [member node_reference] in place, letting you reuse shared subtrees or swap behaviour branches dynamically at runtime. For example, an item or smart object can carry its own behaviour subtree, and an AI can point an [NNBTNodeReference] at it when picking up or interacting with the item.
+		Multiple references can safely share the same target subtree; cycles are rejected.
 	</description>
 	<tutorials>
 	</tutorials>
 	<members>
 		<member name="node_reference" type="NNBTNodes" setter="set_node_reference" getter="get_node_reference">
-			The target [NNBTNodes] node ticked by this reference. Stored by object ID, so a freed target reads back as [code]null[/code]. Assignments that would form a cycle (the node itself, a scene ancestor or descendant, or any target that can already reach this node) are rejected with an error and leave the previous reference unchanged. When the target is [code]null[/code] or disabled, ticking this node returns [constant NNBTNodes.FAILURE].
+			Target [NNBTNodes] subtree to tick. Returns [constant NNBTNodes.FAILURE] if unset or disabled. Assignments that would create a cycle are rejected.
 		</member>
 	</members>
 </class>

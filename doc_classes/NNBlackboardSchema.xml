@@ -1,12 +1,10 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <class name="NNBlackboardSchema" inherits="Resource" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
 	<brief_description>
-		Typed key declarations and defaults that an [NNBlackboard] validates its writes against.
+		Defines allowed key types and default values for an [NNBlackboard].
 	</brief_description>
 	<description>
-		Assign a schema to [member NNBlackboard.schema] to type-check every write to that board and to install defaults for absent keys. Each entry in [member keys] declares one key with its [member NNBlackboardKey.value_type]. Keys not listed are governed by [member allow_unknown_keys].
-		Writing [code]null[/code] is always accepted, because a [code]null[/code] value means the key is absent.
-		A schema is only checked when it is attached. Changes made to it afterwards apply to later writes but do not re-check stored values or install new defaults; reassign the schema to do that.
+		Assign an [NNBlackboardSchema] to [member NNBlackboard.schema] when you want to enforce expected key types, reject unknown keys, or automatically populate default values for a blackboard.
 		[codeblock]
 		var health := NNBlackboardKey.new()
 		health.key = "health"
@@ -28,28 +26,28 @@
 			<param index="0" name="key" type="String" />
 			<param index="1" name="value" type="Variant" />
 			<description>
-				Returns whether writing [param value] to [param key] is allowed. [code]null[/code] is always allowed. A declared key accepts values of its exact [member NNBlackboardKey.value_type], or any value when that is [constant TYPE_NIL]. An undeclared key is accepted only when [member allow_unknown_keys] is [code]true[/code].
+				Returns [code]true[/code] if writing [param value] to [param key] is permitted by this schema. [code]null[/code] is always allowed.
 			</description>
 		</method>
 		<method name="get_defaults" qualifiers="const">
 			<return type="Dictionary" />
 			<description>
-				Returns the default of every key with [member NNBlackboardKey.has_default] set, keyed by name. [Array] and [Dictionary] defaults are deep-copied.
+				Returns a [Dictionary] of default values for every key with [member NNBlackboardKey.has_default] enabled.
 			</description>
 		</method>
 		<method name="get_validation_errors" qualifiers="const">
 			<return type="PackedStringArray" />
 			<description>
-				Returns one message per problem: an empty entry in [member keys], an empty or duplicate key name, an out-of-range [member NNBlackboardKey.value_type], or a default that does not match its type. An empty result means the schema is valid. [NNBlackboard] refuses to attach a schema that has errors.
+				Returns a list of configuration errors in [member keys], or an empty array if the schema is valid.
 			</description>
 		</method>
 	</methods>
 	<members>
 		<member name="allow_unknown_keys" type="bool" setter="set_allow_unknown_keys" getter="get_allow_unknown_keys" default="true">
-			When [code]true[/code], keys not declared in [member keys] accept any value. When [code]false[/code], writing a non-[code]null[/code] value to an undeclared key is rejected.
+			If [code]true[/code], keys not listed in [member keys] accept any value. If [code]false[/code], writes to undeclared keys are rejected.
 		</member>
 		<member name="keys" type="NNBlackboardKey[]" setter="set_keys" getter="get_keys" default="[]">
-			Declared [NNBlackboardKey] entries that define allowed types and optional defaults for their keys.
+			Declared [NNBlackboardKey] entries defining allowed types and optional defaults.
 		</member>
 	</members>
 </class>

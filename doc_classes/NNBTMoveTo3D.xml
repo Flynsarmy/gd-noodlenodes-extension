@@ -1,41 +1,36 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <class name="NNBTMoveTo3D" inherits="NNBTSpatialActionLeaf" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
 	<brief_description>
-		Moves a [Node3D] to a target along a [NavigationAgent3D] path.
+		Action leaf that navigates a [Node3D] to a target using a [NavigationAgent3D].
 	</brief_description>
 	<description>
-		Sets the target position on a [NavigationAgent3D], follows its path, and returns [constant NNBTNodes.RUNNING] until the body reaches the target. Returns [constant NNBTNodes.SUCCESS] when the body's global position is within [member arrival_distance] of the target. Returns [constant NNBTNodes.FAILURE] when the target is unreachable, when the target is gone at runtime, or when the leaf or agent is misconfigured.
-		The moved body is the [NavigationAgent3D]'s parent, which is what the agent itself assumes. The body must be a [Node3D]; another parent type reports a configuration error once per node instance and returns [constant NNBTNodes.FAILURE]. The agent is [member navigation_agent] when set, otherwise the first direct child of the actor that is a [NavigationAgent3D]. With neither, the leaf reports a configuration error once per node instance and returns [constant NNBTNodes.FAILURE].
-		The target is read every tick, so a moving node or a changing blackboard value is followed. The agent's [code]target_position[/code] is submitted on the first tick of a run and again only when the target has moved farther than [member repath_distance] from the last submitted target, so a moving target does not re-query a path every tick.
-		The leaf does not own the body's physics by default. It always publishes the desired velocity through [method NavigationAgent3D.set_velocity] and, when [member velocity_key] is non-empty, to the blackboard. [member apply_movement] opts in to movement: a [CharacterBody3D] gets its [code]velocity[/code] set and [method CharacterBody3D.move_and_slide] called, any other [Node3D] is translated by the velocity times the tick delta. When the agent has [code]avoidance_enabled[/code], the leaf never moves the body from its tick; it connects to [signal NavigationAgent3D.velocity_computed] for the run and applies the safe velocity from that signal instead. Movement therefore expects the root to tick every physics frame.
-		On a [CharacterBody3D] in [constant CharacterBody3D.MOTION_MODE_GROUNDED], movement uses only the horizontal direction, at the full speed of the velocity it applies, and keeps the body's current vertical velocity so the user's gravity survives. The body's vertical position is not steered by the leaf, so targets should sit at the height of the body's origin.
-		When the run ends, whether by success, failure or interrupt, the leaf disconnects from [signal NavigationAgent3D.velocity_computed], sets the agent's [code]target_position[/code] to the body's current global position and its velocity to zero, zeroes the body's horizontal velocity when [member apply_movement] is set and the body is a [CharacterBody3D], and writes a zero vector to [member velocity_key]. The agent is remembered by object ID for the run, so changing the properties mid-run does not leave the previous agent following a stale target. A freed agent or body ends the run with [constant NNBTNodes.FAILURE] instead of crashing.
-		With avoidance, the agent reports a zero safe velocity once it considers its path finished. Keep the agent's [code]target_desired_distance[/code] and [code]path_desired_distance[/code] below [member arrival_distance] so an avoiding body can still reach the target.
-		A navigation map that has not synchronized yet, or a path query that has not resolved, keeps the leaf [constant NNBTNodes.RUNNING] with a zero velocity rather than reporting a failure. A target that resolves to a point farther than [member arrival_distance] from the submitted target, such as a target outside the navigation mesh or on a disconnected region, returns [constant NNBTNodes.FAILURE].
+		Drives a [NavigationAgent3D] toward the target configured by [member NNBTSpatialActionLeaf.target_source], returning [constant NNBTNodes.RUNNING] until within [member arrival_distance] ([constant NNBTNodes.SUCCESS]) or if the target is unreachable or missing ([constant NNBTNodes.FAILURE]). Moving targets are tracked automatically and repathed when they move past [member repath_distance].
+		By default, this leaf only computes and publishes the desired velocity (to the [NavigationAgent3D] and optionally [member velocity_key]) so your character script keeps full control over movement, gravity, and physics. Enable [member apply_movement] if you want the leaf to move a [CharacterBody3D] or [Node3D] directly, including RVO avoidance via [signal NavigationAgent3D.velocity_computed]. Grounded [CharacterBody3D] nodes preserve their existing vertical velocity so gravity still works.
+		Uses [member navigation_agent] if assigned, or automatically finds the actor's first [NavigationAgent3D] child.
 	</description>
 	<tutorials>
 	</tutorials>
 	<members>
 		<member name="apply_movement" type="bool" setter="set_apply_movement" getter="get_apply_movement" default="false">
-			If [code]true[/code], the leaf moves the body itself. A [CharacterBody3D] gets its [code]velocity[/code] set and [method CharacterBody3D.move_and_slide] called; any other [Node3D] is translated by the velocity times the tick delta. With avoidance enabled on the agent, the body is moved from [signal NavigationAgent3D.velocity_computed] with the safe velocity instead, and the leaf does not move it from the tick. The root must tick every physics frame for this. If [code]false[/code], the body is never moved and only the desired velocity is published.
+			If [code]true[/code], moves the body directly (calling [method CharacterBody3D.move_and_slide] on a [CharacterBody3D] or translating any other [Node3D]). Preserves vertical velocity on grounded [CharacterBody3D] bodies and supports avoidance automatically. Expects the root to tick every physics frame.
 		</member>
 		<member name="arrival_distance" type="float" setter="set_arrival_distance" getter="get_arrival_distance" default="0.5">
-			Distance in metres from the target at which the leaf returns [constant NNBTNodes.SUCCESS]. Measured as full 3D distance between the body's global position and the target, so a target at a different height counts too. Set targets at the height of the body's origin.
+			3D distance in metres from the target at which the leaf completes with [constant NNBTNodes.SUCCESS]. With avoidance enabled, keep the agent's desired distances smaller than this value.
 		</member>
 		<member name="navigation_agent" type="NavigationAgent3D" setter="set_navigation_agent" getter="get_navigation_agent">
-			The agent to drive. Stored by object ID: a freed agent reads back as [code]null[/code] and makes the leaf return [constant NNBTNodes.FAILURE]. When never assigned, the first direct child of the actor that is a [NavigationAgent3D] is used. The agent's parent is the body, and must be a [Node3D].
+			Optional [NavigationAgent3D] to drive. When unset, uses the first direct [NavigationAgent3D] child of the actor.
 		</member>
 		<member name="repath_distance" type="float" setter="set_repath_distance" getter="get_repath_distance" default="0.5">
-			How far in metres the target must move from the last submitted target before the agent's [code]target_position[/code] is submitted again. The target is always submitted on the first tick of a run.
+			Minimum target movement in metres before submitting a new path query.
 		</member>
 		<member name="speed" type="float" setter="set_speed" getter="get_speed" default="4.0">
-			Desired movement speed in metres per second. The desired velocity is the normalized direction to the next path point scaled to this speed.
+			Desired movement speed in metres per second.
 		</member>
 		<member name="target_position" type="Vector3" setter="set_target_position" getter="get_target_position" default="Vector3(0, 0, 0)">
-			The target in global coordinates when [member NNBTSpatialActionLeaf.target_source] is [constant NNBTSpatialActionLeaf.TARGET_POSITION].
+			Global target position when [member NNBTSpatialActionLeaf.target_source] is [constant NNBTSpatialActionLeaf.TARGET_POSITION].
 		</member>
 		<member name="velocity_key" type="String" setter="set_velocity_key" getter="get_velocity_key" default="&quot;&quot;">
-			Blackboard key that receives the desired velocity as a [Vector3] on every [constant NNBTNodes.RUNNING] tick. A zero vector is written when the run ends. An empty key disables the write. Nothing is written when no blackboard is reachable.
+			Optional blackboard key where the desired [Vector3] velocity is written each tick (reset to zero when the run ends).
 		</member>
 	</members>
 </class>

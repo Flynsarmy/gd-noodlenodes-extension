@@ -1,17 +1,16 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <class name="NNSTNotGuard" inherits="NNSTGuard" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
 	<brief_description>
-		Negates the result of the [member guard].
+		Guard that inverts the result of another [NNSTGuard].
 	</brief_description>
 	<description>
-		This guard negates the result of the [member guard]. If the [member guard] is satisfied, this guard will return [code]false[/code], and vice versa. This is useful for creating guards that are the opposite of another guard.
-		It reports the trigger types of [member guard] from [method NNSTGuard.get_supported_trigger_types], or [constant NNSTRoot.NONE] when no guard is set.
+		Negates [member guard] (logical NOT), returning [code]true[/code] when it fails and [code]false[/code] when it passes. Use to express "not active" or opposite conditions without duplicating guard logic.
 	</description>
 	<tutorials>
 	</tutorials>
 	<members>
 		<member name="guard" type="NNSTGuard" setter="set_guard" getter="get_guard">
-			The guard whose result is inverted. When [code]null[/code], this guard evaluates to [code]true[/code].
+			Guard whose result is inverted. Evaluates to [code]true[/code] if unset.
 		</member>
 	</members>
 </class>

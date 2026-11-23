@@ -1,11 +1,11 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <class name="NNCustomPropertyConsideration" inherits="NNConsiderations" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
 	<brief_description>
-		Scores a behaviour from a numeric property of any node.
+		Scores directly from a numeric property on any scene node.
 	</brief_description>
 	<description>
-		Reads a numeric property named [member property_name] from [member node_with_property] on every evaluation and divides its float value by [member property_max_value] to produce [member NNConsiderations.score]. When [member activation_curve] is assigned, the normalized value is passed through it to produce the score.
-		Scores [code]0.0[/code] when disabled, in the editor, when [member node_with_property] is not set, or while [member NNConsiderations.has_vetoed] is [code]true[/code]. Unlike [NNConsideration], it does not read a sensor input or [member NNConsideration.activation_input_value].
+		Reads [member property_name] from [member node_with_property], normalizes it by dividing by [member property_max_value], and optionally passes the result through [member activation_curve].
+		Use this when you want to score an existing node property (such as a character's [code]health[/code] or [code]ammo[/code]) without adding a separate [NNSensor] or writing glue code. If several considerations share the same value, prefer a sensor instead.
 	</description>
 	<tutorials>
 	</tutorials>
@@ -14,22 +14,22 @@
 			<return type="float" />
 			<param index="0" name="input_value" type="float" />
 			<description>
-				Returns the y-value of the activation curve at [param input_value], or [code]0.0[/code] when no curve is set.
+				Evaluates [member activation_curve] at [param input_value], or returns [code]0.0[/code] if no curve is assigned.
 			</description>
 		</method>
 	</methods>
 	<members>
 		<member name="activation_curve" type="Resource" setter="set_activation_curve" getter="get_activation_curve">
-			Optional [Curve] or [NNResponseCurve] applied to the normalized property value to produce [member NNConsiderations.score]. When [code]null[/code], the normalized value is used directly. Assigning any other resource type reports an error and keeps the previous curve.
+			Optional [Curve] or [NNResponseCurve] applied to the normalized property value. If unset, the normalized value is used directly.
 		</member>
 		<member name="node_with_property" type="Node" setter="set_node_with_property" getter="get_node_with_property">
-			The node whose [member property_name] property is read. The consideration scores [code]0.0[/code] when this is not set. If the node is freed, this property reads as [code]null[/code] and is treated as unset.
+			Node to read [member property_name] from. Scores [code]0.0[/code] if unset.
 		</member>
 		<member name="property_max_value" type="float" setter="set_property_max_value" getter="get_property_max_value" default="1.0">
-			Divisor applied to the float value of [member property_name] to produce [member NNConsiderations.score]. Must be finite and non-zero; invalid assignments report an error and keep the previous value.
+			Maximum expected value used to normalize the property into [code]0..1[/code]. Must be finite and non-zero.
 		</member>
 		<member name="property_name" type="StringName" setter="set_property_name" getter="get_property_name" default="&amp;&quot;&quot;">
-			The name of the numeric property read from [member node_with_property] via [method Object.get] and cast to [float].
+			Name of the numeric property to read from [member node_with_property].
 		</member>
 	</members>
 </class>

@@ -1,10 +1,11 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <class name="NNHTNBinding" inherits="Resource" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
 	<brief_description>
-		Binds a method argument to each value of a world state collection in turn.
+		Resource that iterates candidate targets from a world-state array as method arguments.
 	</brief_description>
 	<description>
-		Used in [member NNHTNMethod.bindings]. While planning, a binding reads the [Array] at [member state_key] from the predicted world state and offers each entry, or each entry's [member entry_field], as the argument [member variable]. Every value is a separate alternative: when it fails, or anything planned after it fails, the search retries with the next value.
+		Add to [member NNHTNMethod.bindings] when a method should try each item from an [Array] in the blackboard (such as nearby coins, cover points, or enemies) as a candidate value for [member variable], backtracking to the next item if planning fails.
+		Candidates can be sorted with [member order] (for example, [constant NEAREST] to the agent) and filtered with [member conditions] before planning tries them.
 		[codeblock]
 		var binding := NNHTNBinding.new()
 		binding.state_key = "coins"
@@ -14,8 +15,6 @@
 		binding.origin_key = "agent_position"
 		method.bindings.append(binding)
 		[/codeblock]
-		Values are ordered by [member order]; ties keep source order. [member conditions] then filter them, and at most [member NNHTNSearchSettings.max_binding_candidates] values that pass are used. When more pass than the cap allows, the search is incomplete: an empty result is reported as [constant NNHTNRoot.BUDGET_EXHAUSTED] instead of [constant NNHTNRoot.NO_PLAN]. Values are deep-copied per alternative, while [Object] values keep their identity. Entries whose bound value is a freed [Object], or a [Node] queued for deletion, are skipped silently. Entries without the field the binding needs are reported and skipped. A [member state_key] that does not hold an [Array], or a [constant NEAREST] origin that is not a [Vector3], is reported and offers no values.
-		[member state_key], the [member origin_key] of a [constant NEAREST] binding, and the keys read by [member conditions] are replanning triggers.
 	</description>
 	<tutorials>
 	</tutorials>
@@ -23,48 +22,48 @@
 		<method name="get_validation_errors" qualifiers="const">
 			<return type="PackedStringArray" />
 			<description>
-				Returns one message per configuration problem: an empty [member state_key] or [member variable], an [member entry_field] with an empty segment, an invalid [member order], a missing or malformed [member origin_key] and [member position_field] for [constant NEAREST], a missing or malformed [member order_field] for [constant NUMERIC_FIELD], and empty or unparseable [member conditions]. Empty when the binding is valid. A method with an invalid binding is skipped by planning with an error, and shows these problems as configuration warnings.
+				Returns configuration error messages for this binding, or an empty array if valid.
 			</description>
 		</method>
 	</methods>
 	<members>
 		<member name="conditions" type="NNHTNCondition[]" setter="set_conditions" getter="get_conditions" default="[]">
-			Filters every value must pass. They are evaluated like [member NNHTNNodes.conditions], against the predicted world state, with [code]args[/code] holding the method's arguments plus this binding's [member variable], so [code]args.target.score &gt; 2[/code] filters on the bound value. They can read the variables of earlier bindings, but not of later ones.
+			Optional filter conditions each candidate must pass (with the candidate available under [code]args.&lt;variable&gt;[/code]).
 		</member>
 		<member name="descending" type="bool" setter="set_descending" getter="get_descending" default="false">
-			Reverses [member order]: [constant SOURCE] runs from the last entry to the first, and the sorted orders run from the largest key down. Ties still keep source order.
+			If [code]true[/code], reverses [member order].
 		</member>
 		<member name="entry_field" type="String" setter="set_entry_field" getter="get_entry_field" default="&quot;&quot;">
-			An optional dot-separated path read from each entry, which must then be a [Dictionary]. The value at that path is bound instead of the whole entry, while [member position_field] and [member order_field] can still read other fields of the entry. Uses the same syntax as [member NNHTNArgumentReference.field_path].
+			Optional dot-separated [Dictionary] field path extracted from each array entry as the bound value.
 		</member>
 		<member name="order" type="int" setter="set_order" getter="get_order" enum="NNHTNBinding.Order" default="0">
-			How the values are ordered before they are tried: [constant SOURCE] keeps array order, [constant NEAREST] sorts closest first from [member origin_key] using [member position_field], and [constant NUMERIC_FIELD] sorts ascending by [member order_field]. Use [member descending] to reverse.
+			Order in which candidates are tried ([constant SOURCE], [constant NEAREST], or [constant NUMERIC_FIELD]).
 		</member>
 		<member name="order_field" type="String" setter="set_order_field" getter="get_order_field" default="&quot;&quot;">
-			For [constant NUMERIC_FIELD], the dot-separated path of the [int] or [float] sort key, read from the entry and, when the entry has no such field, from the bound value. Ignored by the other orders.
+			Dot-separated path to a numeric sort key when [member order] is [constant NUMERIC_FIELD].
 		</member>
 		<member name="origin_key" type="String" setter="set_origin_key" getter="get_origin_key" default="&quot;&quot;">
-			For [constant NEAREST], the world state key holding the [Vector3] distances are measured from. Ignored by the other orders.
+			World-state blackboard key holding the [Vector3] origin when [member order] is [constant NEAREST].
 		</member>
 		<member name="position_field" type="String" setter="set_position_field" getter="get_position_field" default="&quot;position&quot;">
-			For [constant NEAREST], the dot-separated path of each entry's [Vector3] position. When the entry has no such field, the bound value is used if it is a [Vector3] or a [Node3D] (its [member Node3D.position]), then the entry itself if it is a [Vector3]. Ignored by the other orders.
+			Dot-separated path to each entry's [Vector3] position when [member order] is [constant NEAREST].
 		</member>
 		<member name="state_key" type="String" setter="set_state_key" getter="get_state_key" default="&quot;&quot;">
-			The world state key holding the [Array] of entries. Must not be empty.
+			World-state blackboard key holding the source [Array] of candidates.
 		</member>
 		<member name="variable" type="String" setter="set_variable" getter="get_variable" default="&quot;&quot;">
-			The method argument that receives each value. Must not be empty. A later binding with the same variable overrides the earlier value.
+			Method argument name that receives each bound candidate.
 		</member>
 	</members>
 	<constants>
 		<constant name="SOURCE" value="0" enum="Order">
-			Keeps the order of the source [Array].
+			Tries candidates in their original array order.
 		</constant>
 		<constant name="NEAREST" value="1" enum="Order">
-			Orders by squared distance from the [Vector3] at [member origin_key] to each entry's position (see [member position_field]), closest first.
+			Sorts candidates closest first relative to the [Vector3] at [member origin_key].
 		</constant>
 		<constant name="NUMERIC_FIELD" value="2" enum="Order">
-			Orders by the number at [member order_field], smallest first.
+			Sorts candidates ascending by the numeric value at [member order_field].
 		</constant>
 	</constants>
 </class>

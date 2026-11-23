@@ -1,14 +1,11 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <class name="NNBTSucceeder" inherits="NNBTDecoratorNodes" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
 	<brief_description>
-		Ticks its child node and always completes with [code]SUCCESS[/code] once the child finishes.
+		Runs its child to completion and always returns [constant NNBTNodes.SUCCESS].
 	</brief_description>
 	<description>
-		The succeeder node ticks its first enabled child node. While the child returns [code]RUNNING[/code] the succeeder also returns [code]RUNNING[/code]. When the child returns [code]SUCCESS[/code] or [code]FAILURE[/code] the succeeder completes with [code]SUCCESS[/code].
-
-		This differs from [NNBTFixedResult], which reports its configured result immediately and regardless of the child. The succeeder waits for the child to finish and only then reports [code]SUCCESS[/code].
-
-		The succeeder must have exactly one enabled behaviour-tree child. With no enabled child it completes with [code]FAILURE[/code].
+		Waits while its child returns [constant NNBTNodes.RUNNING], then completes with [constant NNBTNodes.SUCCESS] whether the child succeeded or failed. Use for optional steps in an [NNBTSequence] whose failure should not abort the rest of the sequence.
+		Unlike [NNBTFixedResult], this node does not override [constant NNBTNodes.RUNNING] while the child is still in progress.
 	</description>
 	<tutorials>
 	</tutorials>

@@ -1,10 +1,11 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <class name="NNPerformanceMonitor" inherits="Object" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
 	<brief_description>
-		Collects per-frame timings for agents, trees and HTN roots and exposes them as custom performance monitors.
+		Singleton that reports Noodle Nodes AI timings to Godot's custom performance monitors.
 	</brief_description>
 	<description>
-		Available as the [NNPerformanceMonitor] engine singleton: call its methods through [code]NNPerformanceMonitor[/code] directly; it cannot be instantiated, and variables should not be typed as it. Call [method initialize_performance_counters] once at startup and [method update_performance_counters] once per physics frame, then read the values in the editor's Debugger &gt; Monitors tab.
+		Engine singleton for profiling Noodle Nodes agents, behaviour trees, state trees, and HTN roots in Godot's Debugger &gt; Monitors tab.
+		Call [method initialize_performance_counters] once at startup and [method update_performance_counters] once per physics frame. Access it directly through [code]NNPerformanceMonitor[/code] without instantiating it.
 	</description>
 	<tutorials>
 	</tutorials>

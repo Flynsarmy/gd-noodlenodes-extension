@@ -1,29 +1,26 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <class name="NNBlackboardSensor" inherits="NNSensor" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
 	<brief_description>
-		Scores a blackboard value normalised into a configurable range.
+		Reads a numeric or boolean blackboard key and maps it into [code]0..1[/code].
 	</brief_description>
 	<description>
-		Reads [member key] from the effective [NNBlackboard] and scores it as a 0..1 sensor value, using [member range_min_value] and [member range_max_value] exactly like [NNFloatRangeSensor].
-		The board is resolved through the [NoodleNodes] blackboard helpers, which means the nearest ancestor root decides it. A root with no board assigned inherits the board of the nearest ancestor root, and only the outermost root owns a private board, so the sensor usually needs no setup.
-		A [bool] value reads as 1.0 or 0.0, and an [int] or [float] value is used as the number. Any other stored type, a [code]null[/code] value, a missing key or no board at all falls back to [member default_value].
-		The number is normalised into the range and clamped to 0..1: values below [member range_min_value] score 0 and values above [member range_max_value] score 1. Equal, reversed or non-finite bounds score 0.
-		The sensor is re-evaluated wherever sensors are evaluated: by [NNAgent] before it evaluates its behaviours, by [NNBTRoot] before it ticks its child, and by [NNSTRoot] before it ticks its states. It therefore works under an agent as well as under behaviour-tree and state-tree roots.
+		Reads [member key] from the owning root's [NNBlackboard] and normalizes it between [member range_min_value] and [member range_max_value] into a [code]0..1[/code] sensor value. Works under [NNAgent], [NNBTRoot], and [NNSTRoot].
+		Use this when your game already stores values like health, threat, or boolean flags on the blackboard and you want considerations to score them without writing extra sensor scripts. Missing or non-numeric values fall back to [member default_value].
 	</description>
 	<tutorials>
 	</tutorials>
 	<members>
 		<member name="default_value" type="float" setter="set_default_value" getter="get_default_value" default="0.0">
-			Fallback raw input value used before normalising against [member range_min_value] and [member range_max_value] when [member key] is missing, holds [code]null[/code], holds a type other than [bool], [int] or [float], or no blackboard is available.
+			Fallback raw value used before normalization when [member key] is missing, [code]null[/code], or not a [bool], [int], or [float].
 		</member>
 		<member name="key" type="String" setter="set_key" getter="get_key" default="&quot;&quot;">
-			The blackboard key to read. An empty key falls back to [member default_value]. When the effective board has a schema, the inspector offers its keys as suggestions while still accepting any key.
+			Blackboard key to read.
 		</member>
 		<member name="range_max_value" type="float" setter="set_range_max_value" getter="get_range_max_value" default="1.0">
-			Upper bound of the input range, mapping to [code]1.0[/code] for [member NNSensors.sensor_value]. Values above this clamp to [code]1.0[/code], and equal, reversed, or non-finite bounds evaluate to [code]0.0[/code]. The default [code]0..1[/code] range scores a [bool] key as [code]0.0[/code] or [code]1.0[/code] directly.
+			Upper bound of the input range, mapping to [code]1.0[/code]. The default [code]0..1[/code] range maps a [bool] key directly to [code]0.0[/code] or [code]1.0[/code].
 		</member>
 		<member name="range_min_value" type="float" setter="set_range_min_value" getter="get_range_min_value" default="0.0">
-			Lower bound of the input range, mapping to [code]0.0[/code] for [member NNSensors.sensor_value]. Values below this clamp to [code]0.0[/code].
+			Lower bound of the input range, mapping to [code]0.0[/code].
 		</member>
 	</members>
 </class>

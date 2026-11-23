@@ -1,16 +1,10 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <class name="NNBTDelayer" inherits="NNBTDecoratorNodes" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
 	<brief_description>
-		Waits for [member wait_time] seconds of accumulated delta before ticking its child node for the first time.
+		Waits for [member wait_time] seconds before running its child branch.
 	</brief_description>
 	<description>
-		The delayer node waits for [member wait_time] seconds before it ticks its first enabled child node. The wait time is accumulated from the [code]delta[/code] passed to every tick that is spent waiting; it never uses the wall clock, so the delay is deterministic and pause-safe.
-
-		If [member wait_time] is [code]0[/code] or negative the child is ticked immediately on the first tick. On the tick where the accumulated time reaches [member wait_time] the child is ticked in that same tick, so the child's first result is never skipped or duplicated. Once the delay has elapsed the child is ticked directly on every subsequent tick, including while it returns [code]RUNNING[/code].
-
-		When the child returns a terminal result the delayer returns it unchanged and completes the run, so the next run starts with a fresh delay. An explicit reset, and disabling the node, also restart the delay. An interrupt, such as an ancestor switching to another branch, also restarts the delay.
-
-		The delayer must have exactly one enabled behaviour-tree child. With no enabled child it completes with [code]FAILURE[/code].
+		Returns [constant NNBTNodes.RUNNING] while accumulating tick [code]delta[/code] until [member wait_time] seconds have elapsed, then ticks its child and passes through its result. Use this to add pauses, reaction delays, or wind-ups before an action in a sequence. The delay resets on each new run or interrupt.
 	</description>
 	<tutorials>
 	</tutorials>
@@ -18,13 +12,13 @@
 		<method name="get_time_waited" qualifiers="const">
 			<return type="float" />
 			<description>
-				Returns the amount of delta seconds accumulated towards [member wait_time] in the current delay.
+				Returns the seconds accumulated toward [member wait_time] in the current run.
 			</description>
 		</method>
 	</methods>
 	<members>
 		<member name="wait_time" type="float" setter="set_wait_time" getter="get_wait_time" default="0.0">
-			The delay in seconds of accumulated delta before the child node is ticked. [code]0[/code] or a negative value ticks the child immediately on the first tick. The property range hint is for authoring only.
+			Delay in seconds before ticking the child. Set to [code]0.0[/code] or less to tick the child immediately.
 		</member>
 	</members>
 </class>

@@ -1,16 +1,16 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <class name="NNNodeChildrenSearchSpace" inherits="NNNQSSearchSpaces" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
 	<brief_description>
-		Returns the direct children of the given node as a search space.
+		Search space containing the direct children of a chosen [Node].
 	</brief_description>
 	<description>
-		This node uses the children of a node to construct the search space. The direct children of the given node are returned as the search space.
+		Use when your candidate targets (such as waypoints, cover markers, or spawn points) are organized under a single container node in the scene tree.
 	</description>
 	<tutorials>
 	</tutorials>
 	<members>
 		<member name="parent_node" type="Node" setter="set_parent_node" getter="get_parent_node">
-			The node whose direct children form the search space. When [code]null[/code] or freed, the search space is empty.
+			Container node whose direct children form the candidate list.
 		</member>
 	</members>
 </class>

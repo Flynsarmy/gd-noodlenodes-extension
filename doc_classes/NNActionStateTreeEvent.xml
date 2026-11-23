@@ -1,20 +1,20 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <class name="NNActionStateTreeEvent" inherits="NNAction" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
 	<brief_description>
-		Sends an event to a state tree when the action starts.
+		An action that fires a state tree event and finishes immediately.
 	</brief_description>
 	<description>
-		An action that sends [member event_name] to the [NNSTRoot] at [member state_tree_path] when it starts, then finishes immediately. The agent never waits on it: the next action step moves past it, so this is the usual way for a behaviour to hand a goal to a state chart and let the chart decide the outcome.
-		An empty [member state_tree_path] targets the nearest ancestor [NNSTRoot], so an agent hosted under a state can signal its own chart. When there is no ancestor chart no event is sent and the action still finishes. An explicit path that does not resolve to an [NNSTRoot] reports an error.
+		Sends [member event_name] to an [NNSTRoot] when this action starts, then finishes right away. Use this inside an [NNBehaviour] when you want a utility AI decision to trigger a transition in a state tree without writing a script.
+		Leave [member state_tree_path] empty to target the nearest ancestor [NNSTRoot] (for example, when an [NNAgent] is hosted inside a state).
 	</description>
 	<tutorials>
 	</tutorials>
 	<members>
 		<member name="event_name" type="String" setter="set_event_name" getter="get_event_name" default="&quot;&quot;">
-			The name of the event sent to the state tree when this action starts. Empty sends nothing; the action still finishes immediately.
+			Name of the event sent to the target [NNSTRoot] when this action starts.
 		</member>
 		<member name="state_tree_path" type="NodePath" setter="set_state_tree_path" getter="get_state_tree_path" default="NodePath(&quot;&quot;)">
-			The path to the [NNSTRoot] that receives [member event_name]. The path is relative to this action unless it starts with a [code]/[/code]. Empty targets the nearest ancestor [NNSTRoot]; an explicit path that does not resolve to an [NNSTRoot] reports an error.
+			Path to the target [NNSTRoot]. Leave empty to target the nearest ancestor [NNSTRoot].
 		</member>
 	</members>
 </class>

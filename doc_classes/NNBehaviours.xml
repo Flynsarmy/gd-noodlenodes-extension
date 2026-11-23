@@ -1,19 +1,19 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <class name="NNBehaviours" inherits="NoodleNodes" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
 	<brief_description>
-		Base node for [NNBehaviour] and [NNBehaviourGroup].
+		Base class for [NNBehaviour] and [NNBehaviourGroup].
 	</brief_description>
 	<description>
-		The [method NoodleNodes.get_blackboard] family and [method NoodleNodes.get_actor] resolve through the owning [NNAgent] and its effective board and actor.
+		Shared base node for utility AI behaviours and behaviour groups. Holds the computed [member score] and the [member evaluation_method] used to combine child consideration scores.
 	</description>
 	<tutorials>
 	</tutorials>
 	<members>
 		<member name="evaluation_method" type="int" setter="set_evaluation_method" getter="get_evaluation_method" enum="NoodleNodes.EvaluationMethod" default="4">
-			How the scores of the enabled considerations are combined into the score of this node. The default is [constant NoodleNodes.EVALUATION_MULTIPLY].
+			How child consideration scores are combined into [member score]. Defaults to [constant NoodleNodes.EVALUATION_MULTIPLY].
 		</member>
 		<member name="score" type="float" setter="" getter="get_score" default="0.0">
-			The score for the behaviour after the behaviour has evaluated its considerations. Read-only runtime state: it is written by evaluation and is never saved with the scene.
+			Most recently evaluated utility score for this node.
 		</member>
 	</members>
 </class>

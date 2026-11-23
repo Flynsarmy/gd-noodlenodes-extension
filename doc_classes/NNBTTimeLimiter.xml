@@ -1,20 +1,11 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <class name="NNBTTimeLimiter" inherits="NNBTDecoratorNodes" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
 	<brief_description>
-		Fails its child node's run when the deadline is up, checking that deadline before the child is ticked.
+		Interrupts and fails its child if it runs longer than [member time_limit] seconds.
 	</brief_description>
 	<description>
-		The time limiter accumulates the [code]delta[/code] of every tick of the current run, including the run's first tick, and checks the [member time_limit] deadline before it ticks its first enabled child node. A child whose time is up is therefore never given one more tick of work.
-
-		The limit is exceeded only when the accumulated time is strictly greater than [member time_limit], so a tick that lands exactly on the limit still ticks the child. This is symmetric with [NNBTDelayer], which ticks its child on the tick where the accumulated time reaches [code]wait_time[/code].
-
-		When the limit is exceeded the child is not ticked on that tick, its active run is closed (its subtree is interrupted and reset), the accumulated time is cleared, and the node completes with [code]FAILURE[/code]. A first tick whose [code]delta[/code] already exceeds the limit fails the run without ticking the child at all.
-
-		Time is accumulated from delta only and never from the wall clock, so the limit is deterministic and pause-safe. The accumulated time belongs to the current run and starts at zero when the run starts. A [member time_limit] of [code]0[/code] or any negative value means unlimited and never times the child out; negative values are accepted unchanged and the property range hint is for authoring only. An explicit reset of this node or of an ancestor, such as disabling and re-enabling the root, also clears the accumulated time. An interrupt, such as an ancestor switching to another branch, also clears the accumulated time.
-
-		A terminal child result passes through unchanged and completes the node immediately, so a fast [code]SUCCESS[/code] or [code]FAILURE[/code] is never altered.
-
-		The time limiter must have exactly one enabled behaviour-tree child. With no enabled child it completes with [code]FAILURE[/code].
+		Enforces a deadline on a child branch using accumulated tick [code]delta[/code] (so it pauses safely with the tree). If the child finishes within [member time_limit] seconds, its result passes through unchanged; if the deadline is exceeded, the child is interrupted and this node returns [constant NNBTNodes.FAILURE].
+		Use this to give actions like chasing a target or searching an area a maximum duration before giving up.
 	</description>
 	<tutorials>
 	</tutorials>
@@ -22,13 +13,13 @@
 		<method name="get_time_spent" qualifiers="const">
 			<return type="float" />
 			<description>
-				Returns the delta seconds accumulated by the current run so far. Every tick's [code]delta[/code] is counted at the start of the tick, before the child is ticked.
+				Returns the elapsed seconds accumulated in the current run.
 			</description>
 		</method>
 	</methods>
 	<members>
 		<member name="time_limit" type="float" setter="set_time_limit" getter="get_time_limit" default="0.0">
-			The maximum accumulated delta seconds a run may spend. When a tick's [code]delta[/code] would push the accumulated time strictly past the limit, the child is not ticked and the run fails. [code]0[/code] or a negative value means unlimited. The property range hint is for authoring only.
+			Maximum duration in seconds before interrupting and failing the child. Set to [code]0.0[/code] or less for no limit.
 		</member>
 	</members>
 </class>

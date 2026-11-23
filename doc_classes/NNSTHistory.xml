@@ -1,24 +1,13 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <class name="NNSTHistory" inherits="NNSTNodes" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
 	<brief_description>
-		Remembers the active child state(s) of a compound state and restores them when the compound is entered again.
+		Pseudo-state that remembers a compound state's last active child so it can resume where it left off.
 	</brief_description>
 	<description>
-		A history state is a pseudo-state that must be a direct child of an [NNSTNode]. It does not take part in state selection and is never entered, ticked or activated itself.
-		When its parent compound state is left, the compound records its complete active configuration: its active child and, recursively, every active child below it. This includes every active region of every parallel state in the hierarchy, so all of them resume where they left off. When the compound is entered again through this node, the recorded configuration is restored instead of restarting at the compound's initial state. The history can be used both as an explicit [method NNSTTickedNodes.transition_to] target and as the parent compound's [member NNSTNode.initial_state].
-		On entry, each remembered parallel state re-selects its regions with its own [method NNSTTickedNodes.on_enter_condition]. Every selected region has its remembered inner state restored; a region that is not selected starts from normal selection. If a state's own entry callback enters a different child during the restore, that replacement wins: the remembered state of that branch is not applied on top of it.
-		A remembered state that was freed, removed or reparented while the compound was inactive is dropped together with its own subtree only, so a stale node in one branch (for example one parallel region) never invalidates its siblings. A partially stale deep snapshot therefore still restores everything it can. [member default_state] is only used when nothing at the top level of the snapshot survives, i.e. when the compound's remembered direct child itself can no longer be restored. [member default_state] is an explicit target rather than remembered state: it may be a descendant of the compound and its whole chain is entered regardless of [member deep].
-		When neither a recorded state nor a valid [member default_state] can be restored, a transition to the history state is rejected and the tree is left unchanged.
-		History states cannot have children.
+		Add as a direct child of a compound [NNSTNode] (with no children of its own) when you want returning to that compound state to resume whichever substate was active before leaving (for example, returning to the previous combat substate after being stunned).
+		Target this node from an [NNSTTransition], [method NNSTTickedNodes.transition_to], or the compound's [member NNSTNode.initial_state]. Set [member deep] to [code]true[/code] to restore nested substates and parallel regions recursively, and set [member default_state] as the fallback before any state has been recorded.
 		[gdscript]
-		# Parent compound state children: Idle, Attack, History
-		# History: deep = false, default_state = "../Idle"
-
-		# Leave the compound while Attack is active, then come back through the
-		# history state: Attack is entered again instead of Idle.
-		func on_exit_state() -&gt; void:
-		    transition_to("../Patrol")
-
+		# Combat compound children: Idle, Attack, History (default_state = "../Idle")
 		func return_to_combat() -&gt; void:
 		    transition_to("../Combat/History")
 		[/gdscript]
@@ -29,34 +18,34 @@
 		<method name="clear_history">
 			<return type="void" />
 			<description>
-				Forgets the recorded state. The next entry through this history state uses [member default_state].
+				Clears the remembered state so the next entry falls back to [member default_state].
 			</description>
 		</method>
 		<method name="get_has_history" qualifiers="const">
 			<return type="bool" />
 			<description>
-				Returns [code]true[/code] when a recorded state still exists and can be restored.
+				Returns [code]true[/code] if a valid remembered state is available to restore.
 			</description>
 		</method>
 		<method name="get_remembered_state" qualifiers="const">
 			<return type="NodePath" />
 			<description>
-				Returns the path to the compound state's first remembered active child, relative to the compound state. This is the state a restore enters. Returns an empty [NodePath] when there is no usable history.
+				Returns the path to the remembered direct child state (relative to the parent compound), or an empty [NodePath] if none is recorded.
 			</description>
 		</method>
 		<method name="get_remembered_states" qualifiers="const">
 			<return type="NodePath[]" />
 			<description>
-				Returns the configuration that would be restored, as paths relative to the compound state and in pre-order (parents before children). For a shallow history this is only the compound's direct active child; for a deep history it is the whole hierarchy, including every active parallel region. Returns an empty array when there is no usable history.
+				Returns the paths of all states that will be restored (relative to the parent compound), or an empty array if none are recorded.
 			</description>
 		</method>
 	</methods>
 	<members>
 		<member name="deep" type="bool" setter="set_deep" getter="get_deep" default="false">
-			If [code]true[/code], the whole active configuration below the parent compound is remembered and restored (deep history), including every active parallel region. If [code]false[/code], only the compound's direct active child is remembered; that child then selects its own initial state when it is entered again (shallow history). A partially stale configuration only drops the stale branch, so everything else is still restored.
+			If [code]true[/code], restores the entire nested active hierarchy (including parallel regions). If [code]false[/code], restores only the direct child state, which then selects its own initial child normally.
 		</member>
 		<member name="default_state" type="NodePath" setter="set_default_state" getter="get_default_state" default="NodePath(&quot;&quot;)">
-			The state to enter when nothing usable can be remembered. The path is relative to this history node and must point at a state node inside the parent compound, for example [code]../Idle[/code]. It may be a descendant of the compound and its whole chain is entered regardless of [member deep].
+			Fallback state inside the parent compound to enter when no valid history is recorded (for example, [code]../Idle[/code]).
 		</member>
 	</members>
 </class>

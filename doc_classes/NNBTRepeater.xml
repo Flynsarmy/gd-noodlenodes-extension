@@ -1,16 +1,11 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <class name="NNBTRepeater" inherits="NNBTDecoratorNodes" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
 	<brief_description>
-		Repeats its child node [member repeat_times] times and returns [code]SUCCESS[/code] after the final successful repetition.
+		Repeats its child a fixed number of times (or indefinitely) until it completes or fails.
 	</brief_description>
 	<description>
-		The repeater node ticks its first enabled child node [member repeat_times] times. It returns [code]RUNNING[/code] while repetitions remain and returns [code]SUCCESS[/code] immediately after the final successful repetition.
-
-		If the child returns [code]FAILURE[/code] the repeater immediately returns [code]FAILURE[/code] without counting that tick as a repetition. Every [code]SUCCESS[/code] from the child counts as one completed repetition. If the child returns [code]RUNNING[/code] the repeater returns [code]RUNNING[/code] without counting that tick as a repetition either.
-
-		If [member repeat_times] is set to [code]-1[/code] the child is ticked indefinitely and the repeater never completes on its own. If [member repeat_times] is set to [code]0[/code] the repeater returns [code]SUCCESS[/code] immediately without ticking its child node.
-
-		A terminal result completes the run. The next tick starts a fresh run with a new repetition count, so a repeater that finishes starts over instead of holding its result. Wrap the repeater in [NNBTRunOnce] to hold the completed result instead.
+		Runs its child until it succeeds [member repeat_times] times (returning [constant NNBTNodes.RUNNING] in between), then completes with [constant NNBTNodes.SUCCESS]. If the child returns [constant NNBTNodes.FAILURE], the repeater fails immediately.
+		Set [member repeat_times] to [code]-1[/code] to loop indefinitely, or wrap this node in [NNBTRunOnce] if it should not start over on subsequent tree runs. To loop until a specific status is returned, use [NNBTRepeatUntil] or [NNBTUntilFail].
 	</description>
 	<tutorials>
 	</tutorials>
@@ -18,13 +13,13 @@
 		<method name="get_times_repeated" qualifiers="const">
 			<return type="int" />
 			<description>
-				Returns the number of successful repetitions in the current run.
+				Returns the number of successful repetitions completed in the current run.
 			</description>
 		</method>
 	</methods>
 	<members>
 		<member name="repeat_times" type="int" setter="set_repeat_times" getter="get_repeat_times" default="-1">
-			Number of completed ([constant NNBTNodes.SUCCESS]) child runs before this node succeeds. A child returning [constant NNBTNodes.FAILURE] ends the repeater immediately with failure. A negative value (such as [code]-1[/code]) repeats indefinitely; [code]0[/code] succeeds immediately without ticking the child.
+			Number of child successes required to finish. Set to [code]-1[/code] to repeat indefinitely, or [code]0[/code] to succeed immediately without ticking the child.
 		</member>
 	</members>
 </class>

@@ -1,12 +1,11 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <class name="NNSTTransition" inherits="NNSTNodes" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
 	<brief_description>
-		Transition between active states through [method NNSTBranchNodes.send_event], [method take], or automatically on state/property changes.
+		Defines a transition from its parent state to another state or history node.
 	</brief_description>
 	<description>
-		Defines a transition to [member to], optionally gated by [member guard] and delayed by [member delay_in_seconds]. Add this node as a child of a state ([NNSTTickedNodes]), or directly under [NNSTRoot] for fallback event transitions.
-		A transition can be triggered in three ways: by sending a matching [member event_name] with [method NNSTBranchNodes.send_event], automatically when [member event_name] is empty, or directly from code with [method take] (which skips [member guard] and can bypass [member delay_in_seconds]).
-		When [member event_name] is empty, the transition is automatic: it is tried when its parent state is entered and remains in play while that state is active. Automatic transitions are re-evaluated on the trigger types reported by [member guard], never every frame.
+		Add as a child of a state ([NNSTTickedNodes]) to switch to [member to], or directly under [NNSTRoot] for fallback event transitions.
+		Set [member event_name] to trigger the transition via [method NNSTBranchNodes.send_event], or leave [member event_name] empty for an automatic transition triggered on state entry and whenever its [member guard] conditions change. Optionally add a [member guard] resource to gate the transition and [member delay_in_seconds] to wait before taking it.
 	</description>
 	<tutorials>
 	</tutorials>
@@ -14,60 +13,60 @@
 		<method name="evaluate_delay" qualifiers="const">
 			<return type="float" />
 			<description>
-				Evaluates [member delay_in_seconds] to a non-negative number of seconds. Plain numeric strings are returned directly, otherwise the string is evaluated as an expression against the values of the root's [member NNSTRoot.assigned_blackboard]. Empty, invalid, non-numeric and negative results return [code]0.0[/code].
+				Evaluates [member delay_in_seconds] (as a number or blackboard expression) and returns a non-negative delay in seconds.
 			</description>
 		</method>
 		<method name="take">
 			<return type="bool" />
 			<param index="0" name="immediately" type="bool" default="true" />
 			<description>
-				Triggers this transition from code. The parent state must be active, otherwise an error is pushed and nothing happens. When [param immediately] is [code]true[/code] the delay is skipped; when it is [code]false[/code] the delay is honored and the transition is taken once it elapses. Returns [code]true[/code] if the transition was taken or queued, and [code]false[/code] if it cannot currently be applied, for example because the [member to] target is invalid, the target is the parent state itself, or the transition is rejected because of a parallel common ancestor or an exiting lineage. The guard is not evaluated by this method.
+				Triggers this transition directly from code while its parent state is active, skipping [member guard]. Set [param immediately] to [code]false[/code] to honor [member delay_in_seconds]. Returns [code]true[/code] if applied or queued.
 			</description>
 		</method>
 		<method name="is_automatic" qualifiers="const">
 			<return type="bool" />
 			<description>
-				Returns [code]true[/code] when [member event_name] is empty.
+				Returns [code]true[/code] if [member event_name] is empty.
 			</description>
 		</method>
 		<method name="get_supported_trigger_types" qualifiers="const">
 			<return type="int" />
 			<description>
-				Returns a bit mask of [enum NNSTRoot.TriggerType] values that can trigger this transition. Non-automatic transitions support only [constant NNSTRoot.EVENT]. Automatic transitions always support [constant NNSTRoot.STATE_ENTER] and additionally the trigger types reported by their guard.
+				Returns the bit mask of [enum NNSTRoot.TriggerType] flags that can trigger this transition.
 			</description>
 		</method>
 		<method name="is_triggered_by" qualifiers="const">
 			<return type="bool" />
 			<param index="0" name="trigger_type" type="int" />
 			<description>
-				Returns [code]true[/code] if this transition can be triggered by the given [enum NNSTRoot.TriggerType] flag.
+				Returns [code]true[/code] if this transition responds to the given [enum NNSTRoot.TriggerType] flag.
 			</description>
 		</method>
 		<method name="evaluate_guard">
 			<return type="bool" />
 			<description>
-				Evaluates the guard and returns [code]true[/code] if the guard is satisfied (or if there is no guard).
+				Returns [code]true[/code] if [member guard] is unset or currently satisfied.
 			</description>
 		</method>
 	</methods>
 	<members>
 		<member name="delay_in_seconds" type="String" setter="set_delay_in_seconds" getter="get_delay_in_seconds" default="&quot;0.0&quot;">
-			An expression for the delay in seconds before this transition is taken. A plain number is used directly. The expression can use the keys of the root's [member NNSTRoot.assigned_blackboard] as input names. Identifiers the expression reads are looked up in the blackboard; a key that is missing from the blackboard is passed as [code]null[/code] and is not an error. A delay on a missing key therefore falls back to [code]0.0[/code]. Invalid or negative results also fall back to [code]0.0[/code], which takes the transition immediately. While a delay is pending, [signal NNSTTickedNodes.transition_pending] is emitted on the parent state every tick, and the pending transition is cancelled when the state exits.
+			Delay in seconds before taking the transition. Accepts a number or an expression referencing blackboard keys. Cancelled if the parent state exits first.
 		</member>
 		<member name="event_name" type="String" setter="set_event_name" getter="get_event_name" default="&quot;&quot;">
-			Case sensitive event name that will trigger this [NNSTTransition]. An empty name makes the transition automatic.
+			Case-sensitive event name that triggers this transition. Leave empty to make the transition automatic.
 		</member>
 		<member name="guard" type="NNSTGuard" setter="set_guard" getter="get_guard">
-			Optional condition that must be satisfied for the transition to be taken. With no guard, the transition is taken whenever it is triggered.
+			Optional [NNSTGuard] that must be satisfied before this transition is taken.
 		</member>
 		<member name="to" type="NodePath" setter="set_to" getter="get_to" default="NodePath(&quot;&quot;)">
-			Path to the target [NNSTTickedNodes] state, relative to this transition unless it starts with a [code]/[/code]. Can also target an [NNSTHistory] child of a compound state (for example [code]../../Combat/History[/code]), in which case the state the history remembers (or its [member NNSTHistory.default_state]) is entered instead.
+			Path to the destination [NNSTTickedNodes] state or [NNSTHistory] node.
 		</member>
 	</members>
 	<signals>
 		<signal name="taken">
 			<description>
-				Emitted when this transition is actually executed, either immediately or when its pending delay elapses. Emitted before any state exit callback. Not emitted when the transition is only queued, and not emitted for transitions that are rejected (for example an invalid target, a self-transition, or a parallel or exiting-lineage rejection).
+				Emitted right before the transition executes (after any delay elapses).
 			</description>
 		</signal>
 	</signals>

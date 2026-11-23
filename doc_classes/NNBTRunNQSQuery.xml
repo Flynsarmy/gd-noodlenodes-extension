@@ -1,36 +1,32 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <class name="NNBTRunNQSQuery" inherits="NNBTTaskNodes" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
 	<brief_description>
-		Runs a Node Query System query asynchronously.
+		Action leaf that runs an NQS spatial query asynchronously and writes the results to the blackboard.
 	</brief_description>
 	<description>
-		Returns [constant NNBTNodes.RUNNING] until its query completes, then [constant NNBTNodes.SUCCESS], including when no results match. Returns [constant NNBTNodes.FAILURE] if the search space is missing, posting is rejected, or its own query is cancelled or replaced.
-		A search space runs one query at a time. If another caller, such as an [NNNQSQuerySensor] or another leaf, already has a query running on the search space, the leaf joins that query instead of posting its own, as long as the running query's [member NNNQSSearchSpaces.top_n_to_find] is at least [member top_n_to_find]. A joined query's results are written as if the leaf had posted it, cut down to [member top_n_to_find] entries, and the other caller's query and its result limit are left untouched. If the other caller stops the joined query before it completes, the leaf posts or joins a fresh one on its next tick and keeps returning [constant NNBTNodes.RUNNING]. When the running query asks for fewer results than the leaf needs, posting is rejected.
-		Results are written to the blackboard that this leaf resolves through its nearest ancestor root when this leaf's own query completes, before its next tick. [member best_result_key] receives the best result node, [member results_key] receives all results as an [Array] of nodes, and [member result_scores_key] receives their scores as a [PackedFloat64Array], all sorted best first. Results and scores hold at most [member top_n_to_find] entries. An empty key disables that value. Writes go results, then scores, then the best result, so a [signal NNBlackboard.value_changed] listener for [member best_result_key] always sees the arrays the best node came from.
-		When the query completes with no results, the configured keys are erased and the leaf still returns [constant NNBTNodes.SUCCESS]. This keeps a completed query a success while removing a stale target from an earlier run, so a tree can branch on [NNBTBlackboardHas]. Cancelled or replaced queries, and completions of another caller's query that the leaf has not joined, write nothing.
-		Blackboard values do not keep nodes alive. A node freed after it was written reads back as [code]null[/code], and the results array keeps a [code]null[/code] entry in its place.
-		Resetting, reassigning, or removing the leaf stops only the query registration it posted. Queries posted by another caller, including one the leaf joined, are left untouched. A reset does not start a new query until the leaf is ticked again.
+		Posts [member nqs_search_space] to [NNNodeQuerySystem] and returns [constant NNBTNodes.RUNNING] until the query finishes, then writes the winning node, result list, and scores to the configured blackboard keys and returns [constant NNBTNodes.SUCCESS].
+		Use this inside a sequence right before checking [NNBTBlackboardHas] and moving to or acting on the found target (for example, finding the best cover point or nearest health pack). If the query finds no matches, the configured keys are cleared and the leaf still returns [constant NNBTNodes.SUCCESS]; it returns [constant NNBTNodes.FAILURE] only if the search space is missing or the query is cancelled or rejected.
 	</description>
 	<tutorials>
 	</tutorials>
 	<members>
 		<member name="best_result_key" type="String" setter="set_best_result_key" getter="get_best_result_key" default="&quot;nqs_result&quot;">
-			The blackboard key that receives the best result node, written last on completion. Erased when the query completes with no results. An empty key neither writes nor erases.
+			Blackboard key receiving the highest-scoring node (erased if no results matched). Leave empty to skip.
 		</member>
 		<member name="is_high_priority" type="bool" setter="set_is_high_priority" getter="get_is_high_priority" default="true">
-			If [code]true[/code], the query is posted to the [NNNodeQuerySystem] high-priority queue, which receives the larger share of the per-frame time budget.
+			If [code]true[/code], posts the query to the [NNNodeQuerySystem] high-priority queue.
 		</member>
 		<member name="nqs_search_space" type="NNNQSSearchSpaces" setter="set_nqs_search_space" getter="get_nqs_search_space">
-			The [NNNQSSearchSpaces] node to query. Stored by object ID, so a freed search space reads back as [code]null[/code]. Reassigning or clearing it cancels any query this leaf posted on the previous search space, leaving queries posted by other callers untouched. When [code]null[/code], ticking the leaf returns [constant NNBTNodes.FAILURE].
+			The [NNNQSSearchSpaces] node to query.
 		</member>
 		<member name="result_scores_key" type="String" setter="set_result_scores_key" getter="get_result_scores_key" default="&quot;&quot;">
-			The blackboard key that receives the result scores as a [PackedFloat64Array], sorted best first. Erased when the query completes with no results. An empty key neither writes nor erases.
+			Optional blackboard key receiving the top [member top_n_to_find] scores as a [PackedFloat64Array], best first.
 		</member>
 		<member name="results_key" type="String" setter="set_results_key" getter="get_results_key" default="&quot;&quot;">
-			The blackboard key that receives all results as an [Array] of nodes, sorted best first. Erased when the query completes with no results. An empty key neither writes nor erases.
+			Optional blackboard key receiving the top [member top_n_to_find] nodes as an [Array], best first.
 		</member>
 		<member name="top_n_to_find" type="int" setter="set_top_n_to_find" getter="get_top_n_to_find" default="1">
-			Maximum number of results to write to the blackboard. Overrides [member NNNQSSearchSpaces.top_n_to_find] when posting a new query, or slices results when joining an existing query with a larger limit. Must be at least [code]1[/code]; smaller values are rejected with an error.
+			Maximum number of results to write to the blackboard. Must be at least [code]1[/code].
 		</member>
 	</members>
 </class>

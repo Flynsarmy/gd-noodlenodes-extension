@@ -1,11 +1,10 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <class name="NNBTTaskNodes" inherits="NNBTNodes" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
 	<brief_description>
-		Base class for Noodle Nodes behaviour tree task nodes.
+		Base class for behaviour tree leaf and decorator nodes that run script hooks.
 	</brief_description>
 	<description>
-		Provides a [method on_tick] method for task nodes to implement to run their custom logic. Implementations must override [method on_tick]; the default returns [code]Status.FAILURE[/code].
-		Scripts may also implement the optional lifecycle hooks [method on_before_run], [method on_after_run] and [method on_interrupt]. They receive the [param delta] of the run they belong to. A script may omit any of them; the hooks are simply not called when they are not defined.
+		Provides the [method on_tick] virtual method and optional run lifecycle hooks ([method on_before_run], [method on_after_run], and [method on_interrupt]) for scripted behaviour tree tasks.
 	</description>
 	<tutorials>
 	</tutorials>
@@ -14,29 +13,28 @@
 			<return type="void" />
 			<param index="0" name="delta" type="float" />
 			<description>
-				Optional hook called exactly once when a run starts, before the first [method on_tick] of that run. May be omitted by scripts.
+				Optional hook called once when a new run starts, before the first [method on_tick].
 			</description>
 		</method>
 		<method name="on_after_run" qualifiers="virtual">
 			<return type="void" />
 			<param index="0" name="delta" type="float" />
 			<description>
-				Optional hook called exactly once when a run ends with [code]SUCCESS[/code] or [code]FAILURE[/code]. It is not called for an interrupted run. May be omitted by scripts.
+				Optional hook called once when a run finishes with [constant NNBTNodes.SUCCESS] or [constant NNBTNodes.FAILURE]. Not called on interrupt.
 			</description>
 		</method>
 		<method name="on_interrupt" qualifiers="virtual">
 			<return type="void" />
 			<param index="0" name="delta" type="float" />
 			<description>
-				Optional hook called exactly once when an active run is abandoned, for example because the node was disabled, reset or explicitly interrupted. The [param delta] is that of the interrupted run. May be omitted by scripts.
+				Optional hook called once when an active run is cancelled (for example, by a reactive parent switching branches, a timeout, or disabling the node).
 			</description>
 		</method>
 		<method name="on_tick" qualifiers="virtual">
 			<return type="int" enum="NNBTNodes.Status" />
 			<param index="0" name="delta" type="float" />
 			<description>
-				Logic to be executed each tick. The node's data lives in the nearest [NoodleNodes] root blackboard, reachable with the [NoodleNodes] blackboard helpers, and the actor is available with [method NoodleNodes.get_actor].
-				Must return one of [code]SKIP[/code] (-2), [code]FAILURE[/code] (-1), [code]RUNNING[/code] (0) or [code]SUCCESS[/code] (1). Task nodes that use the return value report any other type or value as an engine error naming the node and handle it as [code]FAILURE[/code].
+				Override to implement the task's per-tick logic. Return one of [enum NNBTNodes.Status] ([constant NNBTNodes.SUCCESS], [constant NNBTNodes.FAILURE], [constant NNBTNodes.RUNNING], or [constant NNBTNodes.SKIP]). Access shared data via [method NoodleNodes.get_blackboard] and the actor via [method NoodleNodes.get_actor].
 			</description>
 		</method>
 	</methods>

@@ -1,18 +1,17 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <class name="NNBTLimiter" inherits="NNBTDecoratorNodes" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
 	<brief_description>
-		Ticks its first enabled behaviour tree child for at most [member max_repeat_times] ticks in total and then completes with -1 (failure). The budget is node-lifetime state that survives run boundaries and interrupts, and an explicit reset refills it.
+		Limits how many total ticks its child can run before always returning [constant NNBTNodes.FAILURE].
 	</brief_description>
 	<description>
-		The limiter node ticks its first enabled behaviour tree child for at most [member max_repeat_times] ticks in total and then completes with -1 (failure). A child that returns [code]RUNNING[/code] keeps the limiter running, and each tick consumes one unit of the budget.
-		The tick budget is node-lifetime state, so it is not refilled when a run starts or ends, nor by an interrupt. Once the budget is spent the node completes with [code]FAILURE[/code] on every tick. An explicit [method reset], disabling the node (or an ancestor), or an ancestor reset refills it.
-		Only the first enabled behaviour tree child is ticked. Any additional enabled behaviour tree children are ignored, and the node reports a one-time error the first time it is ticked with more than one enabled behaviour tree child.
+		Allows its child to be ticked at most [member max_repeat_times] times across the node's lifetime, then returns [constant NNBTNodes.FAILURE] on all further ticks. Unlike [NNBTRepeater], the budget persists across runs and interrupts until [method NNBTNodes.reset] is called or the node is disabled and re-enabled.
+		Use this to cap how many attempts an AI can make at a branch (such as trying to open a locked door at most 3 times).
 	</description>
 	<tutorials>
 	</tutorials>
 	<members>
 		<member name="max_repeat_times" type="int" setter="set_max_repeat_times" getter="get_max_repeat_times" default="3">
-			Maximum number of child ticks allowed before this node returns [constant NNBTNodes.FAILURE] (including ticks where the child returns [constant NNBTNodes.RUNNING]). The budget persists across runs; setting this property, calling [method NNBTNodes.reset], or disabling the node refills it.
+			Maximum total child ticks allowed before returning [constant NNBTNodes.FAILURE]. Setting this property or resetting/disabling the node refills the budget.
 		</member>
 	</members>
 </class>

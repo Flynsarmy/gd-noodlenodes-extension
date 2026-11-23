@@ -1,19 +1,17 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <class name="NNBTSelector" inherits="NNBTCompositeNodes" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
 	<brief_description>
-		Executes its child nodes from top-to-bottom order until one of them succeeds (returning [code]1[/code]) or all of them fail (returning [code]-1[/code]).
+		Tries child branches in order until one succeeds, or fails if all fail.
 	</brief_description>
 	<description>
-		This node type is used to create fallbacks.
-		The [NNBTSelector] node executes its child nodes from top-to-bottom order until one of them succeeds (returning [code]1[/code]) or all of them fail (returning [code]-1[/code]). If a child returns running (0) the selector will return running to its parent.
-		The [NNBTRandomSelector] works similarly, it just shuffles the nodes into a random order before ticking them.
-		By default the selector resumes from the child that was running on the previous tick. When [member reactive] is [code]true[/code] the selector instead starts evaluating at child 0 on every tick, so the highest-priority branch is re-checked while a lower-priority branch is running. In both modes disabled children are skipped and a child that returns [code]SKIP[/code] is skipped over, so the selector continues with the next child.
+		Use to create prioritized fallback logic (try the highest-priority branch first; if it fails, try the next). Returns [constant NNBTNodes.SUCCESS] as soon as a child succeeds, [constant NNBTNodes.RUNNING] while a child is running, and [constant NNBTNodes.FAILURE] only if every enabled child fails.
+		Enable [member reactive] if higher-priority branches should be re-checked every tick while a lower-priority branch is running (interrupting it if a higher-priority branch takes over). For randomized fallback order, use [NNBTRandomSelector].
 	</description>
 	<tutorials>
 	</tutorials>
 	<members>
 		<member name="reactive" type="bool" setter="set_reactive" getter="get_reactive" default="false">
-			When [code]true[/code], every tick starts evaluating at child 0 instead of resuming from the previously running child. Disabled children are skipped and a [code]SKIP[/code] result makes the selector continue with the next child.
+			If [code]true[/code], restarts from the first child on every tick instead of resuming the previously running child.
 		</member>
 	</members>
 </class>

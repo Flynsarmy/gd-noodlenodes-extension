@@ -1,11 +1,10 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <class name="NNCustomSearchCriterion" inherits="NNNQSSearchCriteria" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
 	<brief_description>
-		Filters and scores candidate nodes with [method on_apply_criterion].
+		Scriptable NQS search criterion for custom filtering and scoring logic.
 	</brief_description>
 	<description>
-		With the custom search criterion, you override [method on_apply_criterion]. For each candidate node in the search space, [member NNNQSSearchCriteria.is_filtered] is reset to [code]false[/code] and [member NNNQSSearchCriteria.score] is reset to [code]1.0[/code] before [method on_apply_criterion] is called with the candidate [Node].
-		Inside [method on_apply_criterion], set [member NNNQSSearchCriteria.is_filtered] to [code]true[/code] to filter the node out, and set [member NNNQSSearchCriteria.score] to the desired score. If the script does not override [method on_apply_criterion], nodes are left unfiltered with a score of [code]1.0[/code].
+		Use when the built-in distance, angle, dot-product, and metadata criteria are not enough (for example, checking line of sight or custom gameplay properties). Override [method on_apply_criterion] to set [member NNNQSSearchCriteria.is_filtered] and [member NNNQSSearchCriteria.score] for each candidate node.
 	</description>
 	<tutorials>
 	</tutorials>
@@ -14,7 +13,7 @@
 			<return type="void" />
 			<param index="0" name="node" type="Node" />
 			<description>
-				Decides whether the candidate [param node] is filtered out and how it scores. Set [member NNNQSSearchCriteria.is_filtered] to [code]true[/code] to filter the node out, and set [member NNNQSSearchCriteria.score] to the desired score. May be omitted by scripts.
+				Override to evaluate each candidate [param node]. Set [member NNNQSSearchCriteria.is_filtered] to [code]true[/code] to discard it, or set [member NNNQSSearchCriteria.score] to rank it (defaults to unfiltered with score [code]1.0[/code]).
 			</description>
 		</method>
 	</methods>

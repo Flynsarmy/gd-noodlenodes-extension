@@ -1,19 +1,19 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <class name="NNSensorGroup" inherits="NNSensors" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
 	<brief_description>
-		Aggregates input from several sensors (or sensor groups) for a higher-level input to the consideration nodes.
+		Combines multiple child sensors into a single [member NNSensors.sensor_value].
 	</brief_description>
 	<description>
-		Aggregates input from child [NNSensor] and nested [NNSensorGroup] nodes into a single [member NNSensors.sensor_value] using [member evaluation_method], with optional inversion via [member invert_sensor_value]. Add as a child of [NNAgent], [NNBTRoot], [NNSTRoot], or another [NNSensorGroup].
+		Add as a child of an [NNAgent], [NNBTRoot], [NNSTRoot], or another [NNSensorGroup] to aggregate several sensors into one higher-level input for considerations, using [member evaluation_method] and optional inversion via [member invert_sensor_value].
 	</description>
 	<tutorials>
 	</tutorials>
 	<members>
 		<member name="evaluation_method" type="int" setter="set_evaluation_method" getter="get_evaluation_method" enum="NoodleNodes.EvaluationMethod" default="3">
-			How the child sensors and sensor groups are aggregated into [member NNSensors.sensor_value]. Every enabled child sensor is evaluated regardless of the method, so its value stays current. The default is [constant NoodleNodes.EVALUATION_MEAN].
+			How child sensor values are combined into [member NNSensors.sensor_value]. Defaults to [constant NoodleNodes.EVALUATION_MEAN].
 		</member>
 		<member name="invert_sensor_value" type="bool" setter="set_invert_sensor_value" getter="get_invert_sensor_value" default="false">
-			If [code]true[/code], inverts the aggregated [member NNSensors.sensor_value] as [code]1.0 - sensor_value[/code] after all enabled child sensors have been evaluated.
+			If [code]true[/code], inverts the combined value ([code]1.0 - sensor_value[/code]).
 		</member>
 	</members>
 </class>

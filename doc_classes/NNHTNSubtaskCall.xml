@@ -1,24 +1,22 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <class name="NNHTNSubtaskCall" inherits="NNHTNNodes" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
 	<brief_description>
-		Uses a task template elsewhere in the scene as a step of a method.
+		Calls a reusable [NNHTNTask] or [NNHTNCompoundTask] template from inside an [NNHTNMethod].
 	</brief_description>
 	<description>
-		A call is a child of an [NNHTNMethod] that plans [member task] at its position, so one template can be reused by several methods or several times in one plan. Keep templates outside the domain, for example under a plain [Node] child of the [NNHTNRoot].
-		When the call is available (its own [member NNHTNNodes.conditions] are checked with the inherited arguments), the template is planned with the inherited arguments merged with [member args], then with the values of [member argument_bindings]. The resulting [member NNHTNPlanStep.call_path] contains both the call's and the template's names. A call without a valid template never decomposes. A call into a compound that is already being decomposed, such as one of its own ancestors, is rejected.
-		The editor warns when a call has children, has no template, calls a compound that contains it, or has an empty or invalid [member argument_bindings] entry.
+		Add as a child of an [NNHTNMethod] to reuse a task template defined elsewhere in the scene (for example, under a sibling "Templates" node) without duplicating it. Pass literal arguments via [member args] or dynamic values from arguments and world state via [member argument_bindings].
 	</description>
 	<tutorials>
 	</tutorials>
 	<members>
 		<member name="args" type="Dictionary" setter="set_args" getter="get_args" default="{}">
-			Literal arguments merged over the inherited ones, replacing values with the same key. Values are deep-copied for each occurrence; strings and other values have no special meaning.
+			Literal arguments merged over inherited arguments before planning [member task].
 		</member>
 		<member name="argument_bindings" type="Dictionary[String, NNHTNArgumentReference]" setter="set_argument_bindings" getter="get_argument_bindings" default="{}">
-			Computed arguments, by name. Each [NNHTNArgumentReference] is resolved while planning and its value, deep-copied, replaces the argument with that name. They apply after [member args], in sorted name order, so a reference with [constant NNHTNArgumentReference.ARGUMENT] can read the values of earlier ones. An entry with an empty name, no reference or an invalid reference rejects the call in every search, and is reported once, again only after the problem changes or was fixed and reappeared. A valid reference whose value cannot be read reports an error and rejects the branch each time.
+			Computed [NNHTNArgumentReference] values resolved from arguments or world state and merged after [member args].
 		</member>
 		<member name="task" type="NNHTNNodes" setter="set_task" getter="get_task">
-			The [NNHTNTask] or [NNHTNCompoundTask] template to plan. Reads as [code]null[/code] once the template is freed.
+			The [NNHTNTask] or [NNHTNCompoundTask] template to plan.
 		</member>
 	</members>
 </class>

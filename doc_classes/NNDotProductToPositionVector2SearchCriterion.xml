@@ -1,23 +1,22 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <class name="NNDotProductToPositionVector2SearchCriterion" inherits="NNNQSSearchCriteria" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
 	<brief_description>
-		Checks if a specific position is in front of or behind a search space node.
+		Filters and scores [Node2D] candidates by whether a global 2D position is in front of or behind them.
 	</brief_description>
 	<description>
-		The [Vector2] dot product to position search criterion checks whether [member dot_product_position] is in front of or behind a [Node2D] candidate. It computes the normalized direction vector from the node's global position to [member dot_product_position] and takes the dot product with the node's facing direction ([code]Vector2(1, 0)[/code] rotated by its global rotation).
-		When used for scoring, the raw score is computed as [code]dot * 0.5 + 0.5[/code] (mapping [code]-1.0..1.0[/code] to [code]0.0..1.0[/code]), then passed through [member NNNQSSearchCriteria.activation_curve] if one is set.
+		Takes the dot product between each [Node2D] candidate's facing direction (+X rotated by global rotation) and the direction toward [member dot_product_position], mapping [code]-1..1[/code] to [code]0..1[/code] when scoring. Use to select cover spots or targets facing toward (or away from) a 2D position. To compare against a fixed direction vector instead of a position, use [NNDotProductVector2SearchCriterion].
 	</description>
 	<tutorials>
 	</tutorials>
 	<members>
 		<member name="dot_product_position" type="Vector2" setter="set_dot_product_position_vector" getter="get_dot_product_position_vector" default="Vector2(1, 0)">
-			Global target position tested against each candidate's facing direction ([code]Vector2(1, 0)[/code] rotated by its global rotation).
+			Global 2D position checked against each candidate's facing direction.
 		</member>
 		<member name="filtering_rule" type="int" setter="set_filtering_rule" getter="get_filtering_rule" default="1">
-			How the dot product is compared to [member filtering_value] when [member NNNQSSearchCriteria.use_for_filtering] is [code]true[/code]: [code]LessThan:0[/code], [code]LessOrEqual:1[/code], [code]Equal:2[/code], [code]MoreOrEqual:3[/code], or [code]MoreThan:4[/code]. Nodes for which the comparison is [code]true[/code] are filtered out (for example, with [code]LessThan[/code], any node whose dot product is less than [member filtering_value] is filtered out).
+			Comparison rule ([code]LessThan[/code], [code]LessOrEqual[/code], [code]Equal[/code], [code]MoreOrEqual[/code], or [code]MoreThan[/code]) against [member filtering_value]. Candidates matching this comparison are filtered out when filtering is enabled.
 		</member>
 		<member name="filtering_value" type="float" setter="set_filtering_value" getter="get_filtering_value" default="0.0">
-			Dot product threshold (typically in [code]-1.0..1.0[/code]) compared using [member filtering_rule] when [member NNNQSSearchCriteria.use_for_filtering] is [code]true[/code].
+			Dot product threshold ([code]-1.0..1.0[/code]) used by [member filtering_rule] when filtering is enabled.
 		</member>
 	</members>
 </class>

@@ -1,52 +1,45 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <class name="NNPointGrid3DSearchSpace" inherits="NNNQSSearchSpaces" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
 	<brief_description>
-		Creates and uses a [Node3D] point grid to define the search space.
+		Search space that generates a grid of 3D sample points around a node.
 	</brief_description>
 	<description>
-		Creates and uses a [Node3D] point grid to define the search space. Set [member point_grid_parent_node] to the [Node3D] under which the generated point nodes will be added. The points are created relative to the parent node's position and inherit its transform, with the parent node at the center of the grid.
-		Points are generated in pairs: a base point and a lattice point.
-		For example, in a flat square grid on the XZ plane, a base point might be placed every 2 units on X and 1 unit on Z. This step between base points is controlled by [member point_grid_base_spacing_vector], which also controls grid density: smaller spacing produces more points to fill the volume defined by [member grid_size].
-		The lattice point is placed at [member point_grid_lattice_vector] relative to each base point. For the square grid above, setting [member point_grid_lattice_vector] to [code]Vector3(1, 0, 0)[/code] places the lattice point 1 unit along +X from each base point.
-		During grid generation, the X, Y, and Z axes are stepped from [code]-0.5 * grid_size[/code] to [code]0.5 * grid_size[/code] in increments of [member point_grid_base_spacing_vector] (with the default [code]grid_size.y == 0[/code], a single horizontal layer at [code]y = 0[/code] is generated). At each step, both the base point and [code]base_point + point_grid_lattice_vector[/code] are added. Shifting the lattice point (for example, to [code]Vector3(1, 0, 0.5)[/code]) produces staggered or triangular layouts.
-		[b]Warning:[/b] When creating point grids, it is very easy to generate a large number of points for a search space.
-		When [member use_navigation_mesh_positions] is [code]true[/code] and [member navigation_map_rid] is valid (initialized automatically from the viewport's 3D world navigation map), each point's global position is snapped during query preprocessing to the closest point on that navigation map using [method NavigationServer3D.map_get_closest_point].
-		To give generated points a visible debug representation or custom script, add a [Node3D] (or derived node, such as [MeshInstance3D]) named [code]DEBUG[/code] as a direct child of this [NNPointGrid3DSearchSpace]. Grid generation duplicates that [code]DEBUG[/code] child for every generated point instead of creating plain [Node3D] nodes.
-		Before duplicating the template node, grid creation calls [method Object.set] for [code]score[/code] ([code]0.0[/code]) and [code]is_filtered[/code] ([code]false[/code]). If your [code]DEBUG[/code] node's script defines those properties and [member NNNQSSearchSpaces.is_run_in_debug_mode] is enabled, they are updated on each point node as criteria evaluate it.
+		Generates a lattice of [Node3D] candidate positions centered on [member point_grid_parent_node] (a flat XZ layer when [code]grid_size.y == 0[/code], or a 3D volume), optionally snapped to the 3D navigation mesh ([member use_navigation_mesh_positions]). Use this for tactical positioning queries in 3D (such as finding cover, flanking positions, or safe spots) when no hand-placed marker nodes exist.
+		Choose a layout preset with [member point_grid_lattice_type] or customize density with [member grid_size], [member point_grid_base_spacing_vector], and [member point_grid_lattice_vector]. Keep spacing reasonable to avoid generating too many points.
+		To visualize points while debugging, add a direct [Node3D] child named [code]DEBUG[/code] (for example, a [MeshInstance3D]); it will be duplicated for each generated point instead of plain [Node3D]s.
 	</description>
 	<tutorials>
 	</tutorials>
 	<members>
 		<member name="grid_size" type="Vector3" setter="set_grid_size" getter="get_grid_size" default="Vector3(15, 0, 15)">
-			The grid width, height, and depth, centered on [member point_grid_parent_node].
+			Width, height, and depth of the generated grid, centered on [member point_grid_parent_node]. A height of [code]0[/code] generates a single horizontal layer.
 		</member>
 		<member name="navigation_map_rid" type="RID" setter="set_navigation_map_rid" getter="get_navigation_map_rid" default="RID()">
-			The [NavigationServer3D] map [RID] used when [member use_navigation_mesh_positions] is [code]true[/code]. Populated automatically from the viewport's 3D world navigation map when the search space initializes.
+			[NavigationServer3D] map [RID] used when [member use_navigation_mesh_positions] is enabled. Defaults to the viewport's 3D navigation map.
 		</member>
 		<member name="offset_vector" type="Vector3" setter="set_offset_vector" getter="get_offset_vector" default="Vector3(0, 0, 0)">
-			Offset added to the local position of every point in the grid. With [member use_navigation_mesh_positions], the offset point is the one snapped to the navigation map.
+			Local offset applied to all generated points before navigation snapping.
 		</member>
 		<member name="point_grid" type="Node3D[]" setter="set_point_grid" getter="get_point_grid" default="[]">
-			The generated [Node3D] point nodes parented under [member point_grid_parent_node]. Populated when the search space initializes.
+			Generated [Node3D] candidate points parented under [member point_grid_parent_node].
 		</member>
 		<member name="point_grid_base_spacing_vector" type="Vector3" setter="set_point_grid_base_spacing_vector" getter="get_point_grid_base_spacing_vector" default="Vector3(2, 1, 1)">
-			The step size along the X, Y, and Z axes between consecutive base points. All three components must be finite and greater than [code]0[/code]; invalid values are ignored and keep the previous spacing.
+			Step size between consecutive base points along X, Y, and Z. Smaller values increase density. Must be positive.
 		</member>
 		<member name="point_grid_lattice_type" type="int" setter="set_point_grid_lattice_type" getter="get_point_grid_lattice_type" default="0">
-			Selects a lattice preset that overwrites [member point_grid_base_spacing_vector] and [member point_grid_lattice_vector]. Values are: [code]Square:0[/code] (spacing [code](2, 1, 1)[/code], lattice [code](1, 0, 0)[/code]), [code]Triangular:1[/code] (spacing [code](1, 1, 2)[/code], lattice [code](-0.5, 0, 1)[/code]), [code]CenteredRectangular:2[/code] (spacing [code](2, 1, 1)[/code], lattice [code](1, 0, 0.5)[/code]), [code]Rectangular:3[/code] (spacing [code](2, 1, 0.5)[/code], lattice [code](1, 0, 0)[/code]), and [code]Custom:4[/code] (leaves the spacing and lattice vectors unchanged).
+			Preset lattice pattern ([code]Square[/code], [code]Triangular[/code], [code]CenteredRectangular[/code], [code]Rectangular[/code], or [code]Custom[/code]). Choosing a preset updates [member point_grid_base_spacing_vector] and [member point_grid_lattice_vector].
 		</member>
 		<member name="point_grid_lattice_vector" type="Vector3" setter="set_point_grid_lattice_vector" getter="get_point_grid_lattice_vector" default="Vector3(1, 0, 0)">
-			Local offset from each base point where its paired lattice point is placed. Together with [member point_grid_base_spacing_vector], this defines the repeating pattern of the grid.
+			Local offset from each base point to its paired lattice point (for creating square, staggered, or triangular grids).
 		</member>
 		<member name="point_grid_parent_node" type="Node3D" setter="set_point_grid_parent_node" getter="get_point_grid_parent_node">
-			The node the generated point nodes are added to. The grid is positioned relative to this node, so moving it moves the grid. No grid is created when this is not set.
+			[Node3D] that owns and centers the generated point grid (usually the AI actor).
 		</member>
 		<member name="point_grid_type" type="int" setter="set_point_grid_type" getter="get_point_grid_type" default="0">
-			The overall shape of the generated grid. Only [code]Rectangle:0[/code] is implemented, which fills the box region defined by [member grid_size].
+			Overall grid shape ([code]Rectangle[/code]).
 		</member>
 		<member name="use_navigation_mesh_positions" type="bool" setter="set_use_navigation_mesh_positions" getter="get_use_navigation_mesh_positions" default="true">
-			If [code]true[/code] and [member navigation_map_rid] is valid, each point's global position is snapped to the closest point on the navigation map via [method NavigationServer3D.map_get_closest_point] during query preprocessing.
-			The closest point queries run on worker threads according to [member NNNQSSearchSpaces.threading_mode], and the snapped positions are written back to the point nodes on the main thread.
+			If [code]true[/code], snaps each candidate point onto the closest point on the 3D navigation mesh before scoring.
 		</member>
 	</members>
 </class>

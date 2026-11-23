@@ -1,14 +1,11 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <class name="NNBTSequenceStar" inherits="NNBTSequence" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
 	<brief_description>
-		A memory sequence that resumes at the child that failed instead of re-ticking the children that already succeeded.
+		A sequence with memory that resumes at the failed or interrupted child instead of restarting from the first child.
 	</brief_description>
 	<description>
-		This node type is a memory sequence (also known as a sequence star).
-		It behaves like [NNBTSequence], but it remembers the current child index across a [code]FAILURE[/code]. The next run resumes at the failed child, so children that already succeeded are not ticked again. A [code]RUNNING[/code] child is resumed as usual.
-		The node only returns [code]SUCCESS[/code] when every enabled child succeeded. That success resets the memory, so the next run starts at child 0 again. A [code]FAILURE[/code] is terminal for the current run, but the memory is kept for the next run.
-		The memory (the stored child index) survives failed and interrupted runs, so a node that is ticked again after a failure or an interrupt continues at the stored child. It is cleared when the node succeeds, when it is explicitly reset, and when it is disabled.
-		The inherited [member NNBTSequence.reactive] property takes precedence: when it is [code]true[/code], every tick starts at child 0 and the memory is unused.
+		Works like [NNBTSequence], except it remembers which child failed or was interrupted and resumes there on the next run so already-completed steps are not repeated. The memory resets once all children succeed, or when the node is reset or disabled.
+		Use this for multi-step routines where earlier steps should not re-run after an interruption. Setting [member NNBTSequence.reactive] to [code]true[/code] overrides this memory and restarts from child 0 every tick.
 	</description>
 	<tutorials>
 	</tutorials>

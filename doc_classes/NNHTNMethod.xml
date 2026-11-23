@@ -1,13 +1,11 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <class name="NNHTNMethod" inherits="NNHTNNodes" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
 	<brief_description>
-		One way to achieve its parent compound task.
+		One strategy for accomplishing its parent [NNHTNCompoundTask].
 	</brief_description>
 	<description>
-		A method is a child of an [NNHTNCompoundTask]. Its enabled [NNHTNTask], [NNHTNCompoundTask], [NNHTNSubtaskCall] and [NNHTNParallelTask] children are decomposed one after another, each seeing the predicted effects of the ones before it. With [constant SEQUENTIAL] they run in scene order; with [constant PARTIAL_ORDER] their [member NNHTNNodes.predecessors] decide which orders are allowed. A method with no enabled children never decomposes, and a method with an enabled [NNHTNMethod] child is unusable.
-		A method receives the compound's arguments and may turn them into several argument candidates with [method on_resolve_arguments]. Each candidate is then joined with the values of [member bindings], and every combination is one alternative: its [member NNHTNNodes.conditions] are checked with that combination's arguments, and its children inherit them. When an alternative fails, or anything planned after it fails, the search retries with the next combination, then the next candidate, then the next method, rolling back the predicted state.
-		Which method is tried first depends on [member NNHTNSearchSettings.policy]: [constant NNHTNSearchSettings.ORDERED] uses scene order, while [constant NNHTNSearchSettings.RANKED] and [constant NNHTNSearchSettings.LOWEST_COST] use descending [member priority] (or [method on_get_priority]), keeping scene order between equal priorities.
-		The editor warns when a method is not a child of a compound, has no task children, has a method child, has a negative [member priority], has an invalid binding, has ordering errors (see [method get_ordering_errors]), or has unused predecessors (see [method get_ordering_warnings]).
+		Add as a child of an [NNHTNCompoundTask] to define a sequence (or partial order) of subtasks ([NNHTNTask], nested [NNHTNCompoundTask], [NNHTNSubtaskCall], or [NNHTNParallelTask]) that achieve the compound goal when this method's conditions hold.
+		Use [member bindings] or [method on_resolve_arguments] to try alternative targets from world state (backtracking automatically if one fails), [member priority] to prefer this method under ranked planning, and [member ordering_mode] when subtasks can be reordered flexibly.
 	</description>
 	<tutorials>
 	</tutorials>
@@ -15,13 +13,13 @@
 		<method name="get_ordering_errors" qualifiers="const">
 			<return type="PackedStringArray" />
 			<description>
-				Returns one message per problem with this method's ordering. Always empty for [constant SEQUENTIAL]. For [constant PARTIAL_ORDER], every [member NNHTNNodes.predecessors] entry of an enabled child must be a different, enabled task, compound or call child of this same method, listed once. A null or freed entry, the child itself, a node outside this method, a disabled sibling and a duplicate are each reported, as is a cycle. A method with ordering errors fails closed: every search skips it. The errors are reported once, and again only after they change or after they were fixed and reappeared.
+				Returns any invalid or cyclic [member NNHTNNodes.predecessors] errors under [constant PARTIAL_ORDER], or an empty array if valid.
 			</description>
 		</method>
 		<method name="get_ordering_warnings" qualifiers="const">
 			<return type="PackedStringArray" />
 			<description>
-				Returns one message per child with [member NNHTNNodes.predecessors] while [member ordering_mode] is [constant SEQUENTIAL], which ignores them. Empty for [constant PARTIAL_ORDER].
+				Returns warnings for children that specify [member NNHTNNodes.predecessors] while [member ordering_mode] is [constant SEQUENTIAL].
 			</description>
 		</method>
 		<method name="on_get_priority" qualifiers="virtual">
@@ -29,8 +27,7 @@
 			<param index="0" name="state" type="Dictionary" />
 			<param index="1" name="args" type="Dictionary" />
 			<description>
-				Optional planning hook returning this method's priority for the compound's predicted [param state] and arguments [param args], for rankings that [member priority] cannot express. Called once each time the compound is decomposed, and only under [constant NNHTNSearchSettings.RANKED] and [constant NNHTNSearchSettings.LOWEST_COST]. A result that is not a finite, non-negative number is reported as an error and skips this method only.
-				Each search that calls it makes every board key a replanning trigger, unless [member NNHTNNodes.dependencies_complete] is [code]true[/code]. A search that never calls it, for example under a policy that does not consult it, does not.
+				Optional planning hook returning a dynamic non-negative priority for this method under [constant NNHTNSearchSettings.RANKED] and [constant NNHTNSearchSettings.LOWEST_COST]. Overrides [member priority].
 			</description>
 		</method>
 		<method name="on_resolve_arguments" qualifiers="virtual">
@@ -38,29 +35,27 @@
 			<param index="0" name="state" type="Dictionary" />
 			<param index="1" name="args" type="Dictionary" />
 			<description>
-				Optional planning hook returning the argument candidates for this method, tried in order. [param args] are the arguments the compound was called with, and each candidate replaces them for this method's conditions and children. Without it, the only candidate is [param args]. An empty array rejects the method.
-				Candidates are deep-copied, so [Array] and [Dictionary] values are independent per candidate, while [Object] values keep their identity. Anything other than an [Array] is reported as an error and rejects the method; entries that are not dictionaries are reported and skipped. At most [member NNHTNSearchSettings.max_binding_candidates] candidates are used.
-				Each search that calls it makes every board key a replanning trigger, unless [member NNHTNNodes.dependencies_complete] is [code]true[/code]. A search that never calls it, for example under a policy that does not consult it, does not.
+				Optional planning hook returning an array of argument dictionaries to try in order as alternatives for this method.
 			</description>
 		</method>
 	</methods>
 	<members>
 		<member name="bindings" type="NNHTNBinding[]" setter="set_bindings" getter="get_bindings" default="[]">
-			World state collections whose values are bound to this method's arguments, joined in array order: for each argument candidate, every value of the first binding is combined with every value of the second, and so on. The combinations are produced lazily, one at a time, so the full product is never built; each binding's values are collected once per value of the bindings before it, and each collection counts as one expansion (see [member NNHTNSearchSettings.max_expansions]). A binding sees the arguments bound by the bindings before it. An empty or invalid binding makes every search skip the method; the problem is reported once, like ordering errors (see [method get_ordering_errors]). Bindings apply under every policy.
+			World-state collection bindings that bind method arguments to candidate values (such as nearby items or enemies), trying each alternative in order.
 		</member>
 		<member name="ordering_mode" type="int" setter="set_ordering_mode" getter="get_ordering_mode" enum="NNHTNMethod.OrderingMode" default="0">
-			How this method's children are ordered during planning: [constant SEQUENTIAL] plans them in scene order (ignoring [member NNHTNNodes.predecessors]), while [constant PARTIAL_ORDER] tries valid topological orders allowed by their [member NNHTNNodes.predecessors].
+			Whether subtasks are planned strictly in scene order ([constant SEQUENTIAL]) or in any order satisfying their [member NNHTNNodes.predecessors] ([constant PARTIAL_ORDER]).
 		</member>
 		<member name="priority" type="float" setter="set_priority" getter="get_priority" default="0.0">
-			A preference score, which must be finite and non-negative. Higher priorities are tried first by [constant NNHTNSearchSettings.RANKED] and [constant NNHTNSearchSettings.LOWEST_COST], and the priorities of the methods that produced a plan add up to its [code]utility[/code] (see [method NNHTNRoot.get_last_search_result]). [constant NNHTNSearchSettings.ORDERED] ignores it. Under the ranking policies an invalid value is reported and skips this method only. Ignored when the script implements [method on_get_priority].
+			Non-negative preference score used by [constant NNHTNSearchSettings.RANKED] and [constant NNHTNSearchSettings.LOWEST_COST]. Higher priorities are tried first. Ignored if [method on_get_priority] is overridden.
 		</member>
 	</members>
 	<constants>
 		<constant name="SEQUENTIAL" value="0" enum="OrderingMode">
-			The children are planned in scene order. [member NNHTNNodes.predecessors] are ignored, with a configuration warning.
+			Plans child subtasks strictly in scene order.
 		</constant>
 		<constant name="PARTIAL_ORDER" value="1" enum="OrderingMode">
-			A child is planned only after all of its [member NNHTNNodes.predecessors]. Among the children whose predecessors are planned, scene order is tried first. When anything planned later fails, the search backtracks into the other allowed orders, one at a time, before trying the method's next alternative; the orders are never all built up front. A graph with no predecessors plans like [constant SEQUENTIAL]. The plan is still one sequence of steps. An invalid or cyclic graph makes the method unusable; see [method get_ordering_errors].
+			Allows the planner to try any valid topological ordering of subtasks that respects their [member NNHTNNodes.predecessors], backtracking across orders if needed.
 		</constant>
 	</constants>
 </class>

@@ -1,26 +1,23 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <class name="NNNQSQuerySensor" inherits="NNSensor" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
 	<brief_description>
-		Runs a Node Query System query asynchronously and reports the score of its best result.
+		Runs an NQS query asynchronously, exposing its best score and writing the winning node to the blackboard.
 	</brief_description>
 	<description>
-		The query advances inside the Node Query System's per-frame time budget, so the sensor never blocks and never executes the query itself.
-		[member NNSensors.sensor_value] is the score of the best result once a query completes, and [code]0.0[/code] before the first completion or when a completed query found nothing.
-		The best result node is written to the nearest ancestor root's blackboard under [member best_result_key] on completion, and erased when a completed query found nothing. An empty [member best_result_key] writes and erases nothing. Blackboard nodes are not kept alive: if the best result is freed, the key remains and reads back as [code]null[/code].
-		The last completed result is reported until a new query completes. Posting a query sets [member NNNQSSearchSpaces.top_n_to_find] on [member nqs_search_space] to [code]1[/code]. After a query completes, the sensor returns to idle and posts a fresh query on its next sensor evaluation while enabled, rather than immediately in the completion callback.
-		Cancelling, disabling or freeing the sensor stops only the query it posted itself and leaves the blackboard untouched. A query posted by another caller is never stopped.
+		Posts [member nqs_search_space] to [NNNodeQuerySystem] so spatial queries run within the per-frame time budget without blocking. Once a query finishes, [member NNSensors.sensor_value] holds the best result's score (or [code]0.0[/code] if nothing matched) and the winning node is written to [member best_result_key] on the owning root's blackboard.
+		Use this when a utility AI behaviour needs to both check whether a good target/spot exists (via the sensor score) and act on the chosen node (via the blackboard).
 	</description>
 	<tutorials>
 	</tutorials>
 	<members>
 		<member name="best_result_key" type="String" setter="set_best_result_key" getter="get_best_result_key" default="&quot;nqs_result&quot;">
-			Blackboard key the best result node is written to on completion, or erased from when a completed query finds no results. Empty neither writes nor erases.
+			Blackboard key where the winning node is stored on completion (or erased if no results matched). Leave empty to skip blackboard writes.
 		</member>
 		<member name="is_high_priority" type="bool" setter="set_is_high_priority" getter="get_is_high_priority" default="true">
-			If [code]true[/code], the query is posted to the [NNNodeQuerySystem] high-priority queue, which receives the larger share of the per-frame time budget.
+			If [code]true[/code], posts the query to the [NNNodeQuerySystem] high-priority queue.
 		</member>
 		<member name="nqs_search_space" type="NNNQSSearchSpaces" setter="set_nqs_search_space" getter="get_nqs_search_space">
-			The [NNNQSSearchSpaces] node to query. Stored by object ID, so a freed search space reads back as [code]null[/code]. Assigning a different search space cancels any query this sensor posted on the previous one (leaving queries posted by other callers untouched), and assigning [code]null[/code] stops querying.
+			The [NNNQSSearchSpaces] node to query.
 		</member>
 		<member name="sensor_value" type="float" setter="set_sensor_value" getter="get_sensor_value" overrides="NNSensors" default="0.0" />
 	</members>

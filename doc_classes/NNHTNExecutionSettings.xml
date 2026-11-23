@@ -1,11 +1,10 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <class name="NNHTNExecutionSettings" inherits="Resource" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
 	<brief_description>
-		How an [NNHTNRoot] replaces a running plan and recovers from a failed step.
+		Resource configuring how an [NNHTNRoot] switches plans and recovers from failed steps.
 	</brief_description>
 	<description>
-		Assign to [member NNHTNRoot.execution_settings]. Without it the root uses these defaults: a new plan replaces the running one at once, there is no switching threshold, and a failed plan is followed by a search from the domain. See [b]Replacing a running plan[/b] and [b]Local repair[/b] in [NNHTNRoot].
-		Invalid values are not clamped: they are listed by [method get_validation_errors], shown as configuration warnings on the root, and make the root do nothing until fixed.
+		Assign to [member NNHTNRoot.execution_settings] when you want to customize plan-switching behaviour instead of immediately replacing plans on every replan. Use [member interruption_policy] to let the active step finish first, [member switch_hysteresis] to reduce plan thrashing under ranked search, and [member local_repair] to patch failed plans locally before replanning from scratch.
 	</description>
 	<tutorials>
 	</tutorials>
@@ -13,27 +12,27 @@
 		<method name="get_validation_errors" qualifiers="const">
 			<return type="PackedStringArray" />
 			<description>
-				Returns one message per invalid value. Empty when the settings are valid.
+				Returns error messages for any invalid settings, or an empty array if valid.
 			</description>
 		</method>
 	</methods>
 	<members>
 		<member name="interruption_policy" type="int" setter="set_interruption_policy" getter="get_interruption_policy" enum="NNHTNExecutionSettings.InterruptionPolicy" default="0">
-			What a newly found plan does to a step that has started and is still available: [constant IMMEDIATE] replaces the running plan at once (cancelling the step unless [member NNHTNTask.resumable] keeps it), while [constant FINISH_CURRENT_STEP] lets the started step finish before installing or replanning.
+			Whether a new plan replaces the running plan right away ([constant IMMEDIATE]) or waits for the current step to finish ([constant FINISH_CURRENT_STEP]).
 		</member>
 		<member name="local_repair" type="bool" setter="set_local_repair" getter="get_local_repair" default="false">
-			After a step fails or is invalidated, first try to re-decompose only the method around it, keeping the completed steps and the rest of the plan, before searching from the domain. See [b]Local repair[/b] in [NNHTNRoot].
+			If [code]true[/code], attempts to repair a failed or invalidated plan around the failed method while preserving completed and remaining steps before falling back to a full replan.
 		</member>
 		<member name="switch_hysteresis" type="float" setter="set_switch_hysteresis" getter="get_switch_hysteresis" default="0.0">
-			Under [constant NNHTNSearchSettings.RANKED], a new plan replaces a running plan whose current step is still available only when its utility exceeds the running plan's by more than this. Utility is the sum of the [member NNHTNMethod.priority] of the methods that produced a plan (see [method NNHTNRoot.get_last_search_result]). Must be finite and non-negative; [code]0.0[/code] switches on any change. A proven [constant NNHTNRoot.NO_PLAN], an unavailable current step and [method NNHTNRoot.request_replan] with [code]urgent[/code] still switch immediately. The other policies ignore it.
+			Minimum utility improvement required under [constant NNHTNSearchSettings.RANKED] before replacing a running plan whose current step is still valid. Set to [code]0.0[/code] to switch on any improvement.
 		</member>
 	</members>
 	<constants>
 		<constant name="IMMEDIATE" value="0" enum="InterruptionPolicy">
-			A new plan replaces the running one as soon as it is found. The started step is cancelled unless it is kept because it is [member NNHTNTask.resumable].
+			Installs the new plan immediately, cancelling the active step unless [member NNHTNTask.resumable] keeps it.
 		</constant>
 		<constant name="FINISH_CURRENT_STEP" value="1" enum="InterruptionPolicy">
-			A new plan found while a step is running, or verifying, and still available waits for that step to finish. Meanwhile no later step of the running plan starts. When the new plan's first step is the same occurrence as the running step (see [member NNHTNTask.resumable] for what counts as the same), the rest of the new plan is installed once the step succeeds, without searching again. Otherwise the root searches again once the step has finished. Only the newest plan waits. A failure or invalidation of the step, a proven [constant NNHTNRoot.NO_PLAN] and [method NNHTNRoot.request_replan] with [code]urgent[/code] end the wait at once. Dependency changes raised during the wait are searched right after the waiting plan is installed; [method NNHTNRoot.request_replan] still searches on the next tick and replaces the waiting plan with a newer one.
+			Lets the currently running step finish before switching to the new plan (unless bypassed by an urgent replan or step failure).
 		</constant>
 	</constants>
 </class>

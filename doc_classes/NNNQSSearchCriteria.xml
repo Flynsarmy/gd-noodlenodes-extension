@@ -1,29 +1,28 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <class name="NNNQSSearchCriteria" inherits="NoodleNodes" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
 	<brief_description>
-		Filter and score the nodes fetched using the search spaces.
+		Base class for Node Query System (NQS) criteria that filter and score candidate nodes.
 	</brief_description>
 	<description>
-		The search criteria nodes are used to filter and score the nodes fetched using the search spaces. There are general criteria that can be used with any Godot node and specific criteria for 2D and 3D related search spaces.
-		Each criterion has an internal [code]apply_criterion()[/code] method that is applied to the node passed to it. This method updates the [member is_filtered] and [member score] properties of the criterion and the results are visible in the Godot Engine editor inspector.
+		Add concrete [NNNQSSearchCriteria] nodes as children of an [NNNQSSearchSpaces] node to discard unwanted candidates ([member use_for_filtering]) and rank the remaining ones ([member use_for_scoring]). Optionally assign a [Curve] or [NNResponseCurve] to [member activation_curve] to shape how raw scores map to preference.
 	</description>
 	<tutorials>
 	</tutorials>
 	<members>
 		<member name="activation_curve" type="Resource" setter="set_activation_curve" getter="get_activation_curve">
-			Optional [Curve] or [NNResponseCurve] that maps the criterion's raw [code]0..1[/code] score to the final score when [member use_for_scoring] is [code]true[/code]. Assigning any other resource type reports an error and keeps the previous curve.
+			Optional [Curve] or [NNResponseCurve] that shapes the raw [code]0..1[/code] score when [member use_for_scoring] is [code]true[/code].
 		</member>
 		<member name="is_filtered" type="bool" setter="set_is_filtered" getter="get_is_filtered" default="true">
-			Filter result for the last evaluated node, updated by [code]apply_criterion()[/code]. When [code]true[/code] and [member use_for_filtering] is enabled, the candidate node is excluded. Concrete criteria reset this to [code]false[/code] before evaluating each node.
+			Whether the last evaluated candidate was filtered out. Set to [code]true[/code] inside [method NNCustomSearchCriterion.on_apply_criterion] to exclude a node.
 		</member>
 		<member name="score" type="float" setter="set_score" getter="get_score" default="0.0">
-			Score calculated by [code]apply_criterion()[/code] for the last evaluated node. Concrete criteria reset this to [code]1.0[/code] before evaluating each node.
+			Score computed for the last evaluated candidate. Set inside [method NNCustomSearchCriterion.on_apply_criterion] for custom scoring.
 		</member>
 		<member name="use_for_filtering" type="bool" setter="set_use_for_filtering" getter="get_use_for_filtering" default="false">
-			If [code]true[/code], candidate nodes for which this criterion sets [member is_filtered] to [code]true[/code] are excluded from the query results.
+			If [code]true[/code], candidates that fail this criterion are removed from the query results.
 		</member>
 		<member name="use_for_scoring" type="bool" setter="set_use_for_scoring" getter="get_use_for_scoring" default="true">
-			If [code]true[/code], this criterion's [member score] contributes to each surviving candidate node's score.
+			If [code]true[/code], this criterion's [member score] contributes to each candidate's total score.
 		</member>
 	</members>
 </class>

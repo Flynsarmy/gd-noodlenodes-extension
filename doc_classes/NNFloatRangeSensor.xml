@@ -1,22 +1,22 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <class name="NNFloatRangeSensor" inherits="NNSensor" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
 	<brief_description>
-		Accepts a minimum and maximum value that defines a value range. The input value given is scaled to 0..1 range within the given min and max values.
+		Maps a [float] value within a min/max range into [code]0..1[/code].
 	</brief_description>
 	<description>
-		Normalises [member range_value] linearly across the interval from [member range_min_value] ([code]0.0[/code]) to [member range_max_value] ([code]1.0[/code]) when evaluated, clamping the resulting [member NNSensors.sensor_value] to [code]0.0..1.0[/code]. If [member range_min_value] is greater than or equal to [member range_max_value] (equal or reversed bounds), or the span is non-finite, [member NNSensors.sensor_value] evaluates to [code]0.0[/code].
+		Linearly maps [member range_value] between [member range_min_value] ([code]0.0[/code]) and [member range_max_value] ([code]1.0[/code]), clamped to [code]0..1[/code]. Use this for continuous stats such as health, stamina, speed, or temperature.
 	</description>
 	<tutorials>
 	</tutorials>
 	<members>
 		<member name="range_max_value" type="float" setter="set_range_max_value" getter="get_range_max_value" default="100.0">
-			Upper bound of the input range, mapping to [code]1.0[/code] for [member NNSensors.sensor_value]. Equal, reversed, or non-finite bounds evaluate to [code]0.0[/code].
+			Upper bound of the range, mapping to [code]1.0[/code].
 		</member>
 		<member name="range_min_value" type="float" setter="set_range_min_value" getter="get_range_min_value" default="0.0">
-			Lower bound of the input range, mapping to [code]0.0[/code] for [member NNSensors.sensor_value].
+			Lower bound of the range, mapping to [code]0.0[/code].
 		</member>
 		<member name="range_value" type="float" setter="set_range_value" getter="get_range_value" default="0.0">
-			Raw input value for the sensor, normalised between [member range_min_value] and [member range_max_value] into [code]0..1[/code] on evaluation. Assignments outside those bounds are immediately clamped.
+			Current input value, clamped to [member range_min_value]..[member range_max_value].
 		</member>
 	</members>
 </class>

@@ -1,10 +1,11 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <class name="NNSTTickedNodes" inherits="NNSTBranchNodes" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
 	<brief_description>
-		Base class for state tree nodes that are ticked by [NNSTRoot].
+		Base class for active states ticked by an [NNSTRoot] ([NNSTNode] and [NNSTParallel]).
 	</brief_description>
 	<description>
-		An active state can host roots under it. It starts them when it is entered, ticks them with the state's tick delta after its own [method on_tick] and any pending transition, and deactivates them when it is exited. A root counts as hosted when this state is its nearest host ancestor, so the enclosing [NNSTRoot]'s rate and process thread drive it and the root's own [code]process_thread[/code] is ignored. An [NNAgent]'s [member NNAgent.tick_rate] still throttles its thinking on the host's steps. A root nested inside another root's subtree is not hosted across that root; the nearest ancestor root owns its subtree. When a hosted root finishes, this state sends an event to its chart root with [method NNSTBranchNodes.send_event]: [member hosted_success_event] when it reported success and [member hosted_failure_event] when it reported failure. An empty event name sends nothing. [signal hosted_root_finished] also reports the same completion to any connection you make.
+		Provides state lifecycle hooks ([method on_enter_condition], [method on_enter_state], [method on_tick], and [method on_exit_state]), matching signals, utility scoring, and [method transition_to].
+		A state can also host child AI roots ([NNBTRoot], [NNSTRoot], [NNHTNRoot], or [NNAgent]). Hosted roots run while the state is active and automatically send [member hosted_success_event] or [member hosted_failure_event] to the chart when they finish, letting [NNSTTransition] nodes react without extra script code.
 	</description>
 	<tutorials>
 	</tutorials>
@@ -12,119 +13,118 @@
 		<method name="get_activation_generation" qualifiers="const">
 			<return type="int" />
 			<description>
-				Returns a monotonically increasing token identifying the current (or most recent) activation of this state. It is incremented every time the state is entered, before any user callback runs. Queued automatic [constant NNSTRoot.STATE_ENTER] transitions carry this token so a request from an earlier activation can be discarded after a re-entry.
+				Returns a counter that increments each time this state is entered, useful for distinguishing separate activations of the same state.
 			</description>
 		</method>
 		<method name="get_on_entered_condition" qualifiers="const">
 			<return type="bool" />
 			<description>
-				Returns the value used to determine if the state may be entered. Change by calling [method set_on_entered_condition].
+				Returns the fallback enter-condition result used when [method on_enter_condition] is not overridden.
 			</description>
 		</method>
 		<method name="get_root" qualifiers="const">
 			<return type="NNSTRoot" />
 			<description>
-				Returns the [NNSTRoot] chart this node belongs to, resolved from its ancestors. A state that is removed from its chart while still active keeps reporting the chart it last belonged to, so [method on_exit_state] can still reach it. Returns [code]null[/code] when the node is not part of a state tree.
+				Returns the owning [NNSTRoot] for this state, or [code]null[/code] if not inside a state tree.
 			</description>
 		</method>
 		<method name="on_enter_condition" qualifiers="virtual">
 			<return type="bool" />
 			<description>
-				Do your logic here to decide when this node should be activated. Return [code]true[/code] or [code]false[/code] based on your logic. When this method is implemented, [signal state_check_enter_condition] is not emitted. If this method is not implemented on your node, [signal state_check_enter_condition] is emitted and the value set by [method set_on_entered_condition] is returned (defaulting to [code]true[/code]).
+				Override to decide whether this state may be entered. If not overridden, emits [signal state_check_enter_condition] and uses [method get_on_entered_condition] (default [code]true[/code]).
 			</description>
 		</method>
 		<method name="on_enter_state" qualifiers="virtual">
 			<return type="void" />
 			<description>
-				Logic to initialize your state. This will execute before the corresponding signal.
+				Override to initialize the state when entered (runs before [signal state_entered]).
 			</description>
 		</method>
 		<method name="on_exit_state" qualifiers="virtual">
 			<return type="void" />
 			<description>
-				Logic to clean up before exiting. This will execute before the corresponding signal. A valid [method transition_to] call from this method replaces the transition that triggered the exit. Targets whose state or ancestors are still exiting are rejected to prevent activation of a lineage that the ongoing exit would undo.
+				Override to clean up when leaving the state (runs before [signal state_exited]).
 			</description>
 		</method>
 		<method name="on_tick" qualifiers="virtual">
 			<return type="void" />
 			<param index="0" name="delta" type="float" />
 			<description>
-				Logic to run when a state is ticked. This will execute before the corresponding signal.
+				Override to run per-tick logic while this state is active (runs before [signal state_ticked]).
 			</description>
 		</method>
 		<method name="set_on_entered_condition">
 			<return type="void" />
 			<param index="0" name="is_entered" type="bool" />
 			<description>
-				If [method on_enter_condition] is not overridden on this node, this value will be used to determine if the state may be entered.
+				Sets the enter-condition result from a [signal state_check_enter_condition] handler when [method on_enter_condition] is not overridden.
 			</description>
 		</method>
 		<method name="transition_to">
 			<return type="bool" />
 			<param index="0" name="new_state_nodepath" type="NodePath" />
 			<description>
-				Transitions between states in the State Tree. Requires a [NodePath] (relative to the node calling this method) for the target state. During a transition, all active children of the [i]from[/i] state will be exited and any children of the [i]to[/i] state will be evaluated for entering. Returns [code]true[/code] if the transition was applied, or [code]false[/code] if it could not be (for example an invalid target, an inapplicable guard, or a branch that has not been entered yet).
-				The transition runs synchronously, including the [method on_exit_state] and [method on_enter_state] callbacks of the states it leaves and enters. Events sent from those callbacks with [method NNSTBranchNodes.send_event] are queued on the [NNSTRoot] and only processed after this transition and every nested transition it caused have finished.
+				Transitions directly to the state or [NNSTHistory] node at [param new_state_nodepath] (relative to this node). Returns [code]true[/code] if applied, or [code]false[/code] if the target is invalid.
 			</description>
 		</method>
 	</methods>
 	<members>
 		<member name="evaluation_method" type="int" setter="set_evaluation_method" getter="get_evaluation_method" enum="NoodleNodes.EvaluationMethod" default="4">
-			Defines how the child [NNConsiderations] nodes are aggregated into [member score]. The default is [constant NoodleNodes.EVALUATION_MULTIPLY].
+			How child [NNConsiderations] scores are combined into [member score]. Defaults to [constant NoodleNodes.EVALUATION_MULTIPLY].
 		</member>
 		<member name="hosted_failure_event" type="String" setter="set_hosted_failure_event" getter="get_hosted_failure_event" default="&quot;hosted_failed&quot;">
-			The event this state sends to its chart root with [method NNSTBranchNodes.send_event] when a root hosted under it reports failure. An empty name sends nothing. The event is queued and handled by ordinary [NNSTTransition] nodes exactly like any other event, including transitions on this state or any of its ancestors. Every report sends an event, and a hosted behaviour tree that reached a terminal result starts a new run on the next host tick and reports again, so transition out of this state if it should only run once.
+			Event sent to the state tree when a hosted child root finishes with failure. Leave empty to send nothing.
 		</member>
 		<member name="hosted_success_event" type="String" setter="set_hosted_success_event" getter="get_hosted_success_event" default="&quot;hosted_succeeded&quot;">
-			The event this state sends to its chart root with [method NNSTBranchNodes.send_event] when a root hosted under it reports success. An empty name sends nothing. The event is queued and handled by ordinary [NNSTTransition] nodes exactly like any other event, including transitions on this state or any of its ancestors. Every report sends an event, and a hosted behaviour tree that reached a terminal result starts a new run on the next host tick and reports again, so transition out of this state if it should only run once.
+			Event sent to the state tree when a hosted child root finishes with success. Leave empty to send nothing.
 		</member>
 		<member name="is_final" type="bool" setter="set_is_final" getter="get_is_final" default="false">
-			Marks this state as a final state of the chart. Entering it reports the chart as finished by emitting [signal NNSTRoot.finished] with [code]succeeded[/code] set to [code]true[/code]. This applies to every state type. A final state keeps ticking like any other state: it does not stop the chart or exit itself, so the chart keeps running until a host deactivates it or it is transitioned out.
+			If [code]true[/code], entering this state emits [signal NNSTRoot.finished] to signal that the state tree has reached a terminal state (useful when this state tree is hosted by another AI system).
 		</member>
 		<member name="score" type="float" setter="" getter="get_score" default="0.0">
-			Aggregated utility score from this state's enabled [NNConsiderations] children, used when the parent's [member NNSTBranchNodes.child_state_selection_rule] is set to [code]UtilityScoring[/code] (the highest-scoring child is selected). Read-only runtime state: written by evaluation and never saved with the scene.
+			Most recently computed utility score from child considerations (used when the parent selects children with [code]UtilityScoring[/code]).
 		</member>
 	</members>
 	<signals>
 		<signal name="event_received">
 			<param index="0" name="name" type="String" />
 			<description>
-				Emitted when this state receives an event sent with [method NNSTBranchNodes.send_event]. The event is delivered to the innermost active state first and bubbles up until a state consumes it, so a state only receives an event that reached it through its active child chain.
+				Emitted when an event sent with [method NNSTBranchNodes.send_event] reaches this state.
 			</description>
 		</signal>
 		<signal name="hosted_root_finished">
 			<param index="0" name="root" type="Node" />
 			<param index="1" name="succeeded" type="bool" />
 			<description>
-				Emitted when a root hosted under this state reports that a run finished. [param root] is the hosted root and [param succeeded] is its completion result. The same report also sends [member hosted_success_event] or [member hosted_failure_event] to the chart.
+				Emitted when a hosted child root finishes its run.
 			</description>
 		</signal>
 		<signal name="state_check_enter_condition">
 			<description>
-				Emitted when the [method on_enter_condition] check needs to be done and [method on_enter_condition] is not implemented on this node. A handler can call [method set_on_entered_condition] with either [code]true[/code] or [code]false[/code] as the parameter to indicate if the state should be entered or not.
+				Emitted before entering if [method on_enter_condition] is not overridden. Call [method set_on_entered_condition] in the handler to allow or deny entry.
 			</description>
 		</signal>
 		<signal name="state_entered">
 			<description>
-				Emitted when the state is entered. Add any state initialization to this signal handler.
+				Emitted when the state is entered.
 			</description>
 		</signal>
 		<signal name="state_exited">
 			<description>
-				Emitted when the state is exited. Add any state deinitialization to this signal handler.
+				Emitted when the state is exited.
 			</description>
 		</signal>
 		<signal name="state_ticked">
 			<param index="0" name="delta" type="float" />
 			<description>
-				Emitted when the state is ticked. Add state update logic to this signal handler.
+				Emitted on each tick while the state is active.
 			</description>
 		</signal>
 		<signal name="transition_pending">
 			<param index="0" name="initial_delay" type="float" />
 			<param index="1" name="remaining_delay" type="float" />
 			<description>
-				Emitted every tick while a delayed transition is pending for this state. [param initial_delay] is the delay that was requested and [param remaining_delay] is the time left, clamped at [code]0.0[/code] on the tick that takes the transition. Use [method NNSTTransition.take] with [code]immediately[/code] set to [code]false[/code], or give the transition a [member NNSTTransition.delay_in_seconds] value, to queue a transition.
+				Emitted each tick while a delayed [NNSTTransition] from this state is counting down.
 			</description>
 		</signal>
 	</signals>

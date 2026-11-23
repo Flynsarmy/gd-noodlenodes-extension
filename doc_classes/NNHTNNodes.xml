@@ -1,13 +1,11 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <class name="NNHTNNodes" inherits="NoodleNodes" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
 	<brief_description>
-		Base class of the HTN domain nodes.
+		Base class for Hierarchical Task Network (HTN) domain nodes.
 	</brief_description>
 	<description>
-		Base class of [NNHTNTask], [NNHTNCompoundTask], [NNHTNMethod], [NNHTNSubtaskCall] and [NNHTNParallelTask]. A node is available when all of its [member conditions] hold and [method on_check_preconditions], if the script implements it, returns [code]true[/code]. A disabled node ([member NoodleNodes.is_enabled] [code]false[/code]) is skipped by planning without evaluating anything.
-		Planning hooks receive [code]state[/code], a read-only deep copy of the predicted world state, and [code]args[/code], the read-only arguments of the occurrence being planned. They must not change the scene, resources or other external state, because the search calls them for alternatives it later abandons.
-		The node reaches the live world state and the actor through the inherited [NoodleNodes] helpers, such as [method NoodleNodes.get_blackboard_resource], [method NoodleNodes.get_blackboard] and [method NoodleNodes.get_actor], which resolve through the nearest ancestor root, normally the owning [NNHTNRoot]. Planning hooks should read their [code]state[/code] argument instead of the live board.
-		The editor shows configuration warnings for empty or malformed [member conditions] and empty [member dependency_keys] entries, plus the structural problems listed by each subclass.
+		Shared base node for [NNHTNCompoundTask], [NNHTNMethod], [NNHTNTask], [NNHTNSubtaskCall], and [NNHTNParallelTask].
+		Provides preconditions ([member conditions] and [method on_check_preconditions]), replanning dependency hints ([member dependency_keys]), and partial-order links ([member predecessors]). Planning hooks receive a read-only predicted world [code]state[/code] and [code]args[/code] dictionary and must not modify scene state.
 	</description>
 	<tutorials>
 	</tutorials>
@@ -15,7 +13,7 @@
 		<method name="get_htn_root" qualifiers="const">
 			<return type="NNHTNRoot" />
 			<description>
-				Returns the nearest [NNHTNRoot] ancestor, or [code]null[/code].
+				Returns the nearest ancestor [NNHTNRoot], or [code]null[/code].
 			</description>
 		</method>
 		<method name="on_check_preconditions" qualifiers="virtual">
@@ -23,23 +21,22 @@
 			<param index="0" name="state" type="Dictionary" />
 			<param index="1" name="args" type="Dictionary" />
 			<description>
-				Optional planning hook for availability that [member conditions] cannot express. It is evaluated after [member conditions] and only when they all hold, both while planning (with the predicted [param state]) and, for tasks, before every execution tick (with the live state). Any result other than a [bool] is reported as an error and treated as [code]false[/code].
-				Each search that calls it makes every board key a replanning trigger, unless [member dependencies_complete] is [code]true[/code]. A search that never calls it, for example because [member conditions] already failed, does not.
+				Optional planning hook for availability checks that [member conditions] cannot express. Called after [member conditions] pass, both during planning (against predicted [param state]) and before task execution ticks (against live state).
 			</description>
 		</method>
 	</methods>
 	<members>
 		<member name="conditions" type="NNHTNCondition[]" setter="set_conditions" getter="get_conditions" default="[]">
-			Expressions that must all hold for the node to be available. An empty entry makes the node unavailable and reports an error. The keys they read are inferred and become replanning triggers automatically.
+			Boolean expressions that must all pass for this node to be available. Referenced blackboard keys automatically trigger replanning.
 		</member>
 		<member name="dependencies_complete" type="bool" setter="set_dependencies_complete" getter="get_dependencies_complete" default="false">
-			Declares that [member dependency_keys] lists every board key this node's planning hooks read. When [code]false[/code], a search in which one of this node's planning hooks actually runs makes every key a replanning trigger. Hooks the search does not call, such as [method NNHTNMethod.on_get_priority] under [constant NNHTNSearchSettings.ORDERED] or [method NNHTNTask.on_get_estimated_cost] outside [constant NNHTNSearchSettings.LOWEST_COST], never do. An incomplete declaration can make the root miss a relevant change, so set it only when the list is exhaustive. It has no effect on a node without planning hooks.
+			If [code]true[/code], tells the planner that [member dependency_keys] lists every blackboard key read by this node's script planning hooks, avoiding unnecessary replans on unrelated blackboard changes.
 		</member>
 		<member name="dependency_keys" type="PackedStringArray" setter="set_dependency_keys" getter="get_dependency_keys" default="PackedStringArray()">
-			Board keys this node reads in ways the root cannot infer, typically in planning hooks. A change to any of them triggers a replan whenever a search visited this node. Keys read by [member conditions], by [member NNHTNMethod.bindings] and by [member NNHTNSubtaskCall.argument_bindings] need not be listed.
+			Blackboard keys read by this node's script planning hooks so changes to those keys trigger replanning. Keys used in [member conditions], bindings, or argument references are tracked automatically.
 		</member>
 		<member name="predecessors" type="NNHTNNodes[]" setter="set_predecessors" getter="get_predecessors" default="[]">
-			Sibling children of the same [NNHTNMethod] that must be planned before this node when the method's [member NNHTNMethod.ordering_mode] is [constant NNHTNMethod.PARTIAL_ORDER]. Entries are node references, so a sibling moved out of the method is detected rather than silently ignored. Invalid entries make the method unusable; see [method NNHTNMethod.get_ordering_errors]. Ignored, with a configuration warning on the method, under [constant NNHTNMethod.SEQUENTIAL], and on nodes that are not method children.
+			Sibling nodes under the same [NNHTNMethod] that must be planned before this node when the method uses [constant NNHTNMethod.PARTIAL_ORDER].
 		</member>
 	</members>
 </class>

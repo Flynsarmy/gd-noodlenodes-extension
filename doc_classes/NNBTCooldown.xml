@@ -1,13 +1,11 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <class name="NNBTCooldown" inherits="NNBTDecoratorNodes" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
 	<brief_description>
-		Sets a branch of the behaviour tree into a cooldown of a number of seconds after it has completed a run.
+		Prevents its child branch from running again for a duration in seconds after it finishes.
 	</brief_description>
 	<description>
-		When ticked while not cooling down, the cooldown node ticks its first enabled child and returns whatever the child returned. A terminal result ([code]SUCCESS[/code] or [code]FAILURE[/code]) starts the cooldown, and the node then returns [member cooldown_return_value] instead of ticking its child until the cooldown has elapsed. A [code]RUNNING[/code] child does not start a cooldown.
-		The cooldown measures tree time: it records [method NNBTRoot.get_elapsed_time] of the nearest [NNBTRoot] ancestor when it starts and compares the current value against it. Tree time advances by the [code]delta[/code] of each tick of the tree, so the cooldown keeps elapsing while the tree is ticked even when a higher-priority branch keeps this node from being reached. It freezes while the tree is not ticked, for example while the game is paused, while the tree is disabled or in the editor, and it scales with the delta the tree is ticked with, such as a delta already scaled by [code]Engine.time_scale[/code]. Wall-clock time never advances it.
-		Without an [NNBTRoot] ancestor there is no tree time to measure, so the node never enters a cooldown and ticks its child on every tick.
-		Interrupting the node preserves a running cooldown, because an interrupt only cancels the child's run. [method NNBTNodes.reset] clears it, which also happens when the node is disabled, so a re-enabled node starts out of cooldown.
+		Use to rate-limit an ability or branch in real time. Once the child finishes ([constant NNBTNodes.SUCCESS] or [constant NNBTNodes.FAILURE]), this decorator returns [member cooldown_return_value] without ticking the child until [member cooldown_seconds] of tree time have elapsed.
+		Time is measured by the owning [NNBTRoot]'s elapsed tick time, so cooldowns pause when the tree is paused or disabled and continue counting down even when other branches are active. For a tick-count cooldown instead of seconds, use [NNBTCooldownTicks].
 	</description>
 	<tutorials>
 	</tutorials>
@@ -15,16 +13,16 @@
 		<method name="get_remaining_cooldown" qualifiers="const">
 			<return type="float" />
 			<description>
-				Returns the tree time left of the current cooldown in seconds, or [code]0.0[/code] when the node is not cooling down or has no [NNBTRoot] ancestor.
+				Returns the remaining cooldown time in seconds, or [code]0.0[/code] when ready.
 			</description>
 		</method>
 	</methods>
 	<members>
 		<member name="cooldown_return_value" type="int" setter="set_cooldown_return_value" getter="get_cooldown_return_value" enum="NNBTNodes.Status" default="-1">
-			The status returned while cooling down ([constant NNBTNodes.FAILURE], [constant NNBTNodes.RUNNING], or [constant NNBTNodes.SUCCESS]).
+			Status returned while the cooldown is active. Defaults to [constant NNBTNodes.FAILURE].
 		</member>
 		<member name="cooldown_seconds" type="float" setter="set_cooldown_seconds" getter="get_cooldown_seconds" default="0.0">
-			Cooldown duration in seconds of tree time ([method NNBTRoot.get_elapsed_time]), started when the child returns any status other than [constant NNBTNodes.RUNNING]. A value of [code]0.0[/code] or less disables the cooldown. Requires an [NNBTRoot] ancestor.
+			Cooldown duration in seconds of tree time. Set to [code]0.0[/code] or less to disable.
 		</member>
 	</members>
 </class>

@@ -1,45 +1,39 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <class name="NNSTRoot" inherits="NNSTBranchNodes" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
 	<brief_description>
-		The root node for a State Tree.
+		Root node that owns and ticks a State Tree.
 	</brief_description>
 	<description>
-		This is the root node for a State Tree. The root ticks itself: while it is in the scene tree and enabled, the SceneTree's [code]process_frame[/code] or [code]physics_frame[/code] signal selected by [member process_thread] calls [method tick], which updates the child sensors and lets every active state run its [method NNSTTickedNodes.on_tick] method from the root down to the leaf.
-		Automatic ticking is on by default. The root does not override or disable this node's own [code]_process[/code]/[code]_physics_process[/code], so a script attached to the root keeps its own callbacks and cannot shadow automatic ticking. Connections exist only while the root is in the tree with [member is_enabled] true and a [member process_thread] other than [constant MANUAL], and no tick happens while the root cannot process (paused or process mode disabled). [constant MANUAL] connects neither signal, so a custom scheduler calls [method tick] or [method auto_tick_step] itself.
-		An inactive chart is never ticked automatically. A root that was transitioned out stays dormant until its owner re-enters it, because [method tick] on a root with no active states transitions the chart in again; its owner decides when that should happen. A root placed in a scene becomes active on [constant NOTIFICATION_READY], so the normal flow ticks from the first frame. Call [method tick] directly to re-enter an inactive root by hand.
-		[member tick_rate] counts eligible frame signal emissions, starting with the first one. A rate of 2 ticks on emissions 1, 3, 5 and so on. The schedule counts emissions, not time, but each tick receives the delta accumulated since the previous tick. Re-arming the schedule (changing [member tick_rate], [member process_thread] or [member is_enabled], and entering or leaving the tree) restarts the count and discards any accumulated delta, so the next eligible emission is due.
-		The root can be hosted. A host is an ancestor state ([NNSTTickedNodes]) that is active, an ancestor agent action ([NNAction]) that is the agent's current action, or an ancestor HTN task ([NNHTNTask]) whose step is running, and the nearest host ancestor is the one that drives the root. A root nested inside another root's subtree is not hosted across that root; the nearest ancestor root owns its subtree. A host starts the chart when it activates and ticks it with the host's own delta on the host's schedule, so a hosted root never ticks from the SceneTree frame signals and never enters the chart on [constant NOTIFICATION_READY]: the first host tick transitions it in. The host owns the timing, so the root's [member process_thread] and [member tick_rate] are ignored and the editor shows a configuration warning when either would be. Deactivating the host exits the active states and leaves the root inactive, so a later activation starts a fresh chart.
-		Events sent with [method NNSTBranchNodes.send_event] are queued and processed one at a time in FIFO order. The root is the last state to see an event: the event is delivered to the innermost active state first and bubbles up to its ancestors until a state consumes it. Only when no active child consumed the event are transitions attached directly to the root tried.
-		A transition attached directly to the root can only leave the root's current active child: when its target is the child that is already active, the transition does nothing. Re-entering a state directly is not supported either, because [method NNSTTickedNodes.transition_to] rejects a transition whose source and target are the same state. Transition to a different state first and then back to re-enter a state.
-		The root also owns the change pipeline used by automatic transitions. Pending state changes and property changes are processed before queued events, under a reentrancy lock, so a transition caused by a change is fully applied before the next change is handled.
-		[member assigned_blackboard] is the explicitly assigned [NNBlackboard], and an explicit assignment always wins. When it is null the root inherits the effective board of the nearest ancestor root of any Noodle Nodes system, and falls back to its own private per-instance board only when it has no root ancestor. The private board is never a property, so it is never serialised. [member assigned_actor] is the explicitly assigned actor; read the resolved actor with [method get_actor], which resolves the live assigned actor, then the actor of the nearest ancestor root, then the root's parent. Both are resolved from the root's current position in the scene tree on demand, so reparenting re-resolves them, and a freed assigned actor falls through to the inherited actor or the parent.
+		Entry point for a hierarchical state tree. Add [NNSTNode] and [NNSTParallel] children to define states, optional [NNSensors] children for utility-based state selection, and optional fallback [NNSTTransition] children for root-level event handling.
+		By default the root enters its initial state on ready and ticks automatically on physics frames according to [member process_thread] and [member tick_rate]. Set [member process_thread] to [constant MANUAL] to tick it yourself with [method tick], or nest it under a state, agent action, [NNBTRunHostedRoot], or HTN task to let that host drive it.
+		Provides the [NNBlackboard] (also storing expression properties for [NNSTExpressionGuard]) and actor context for all states below it, and emits [signal finished] when entering a state marked [member NNSTTickedNodes.is_final].
 	</description>
 	<tutorials>
 	</tutorials>
 	<constants>
 		<constant name="IDLE" value="0" enum="ProcessThread">
-			The root is ticked automatically from the SceneTree's [code]process_frame[/code] signal.
+			Ticks automatically on idle (process) frames.
 		</constant>
 		<constant name="PHYSICS" value="1" enum="ProcessThread">
-			The root is ticked automatically from the SceneTree's [code]physics_frame[/code] signal. This is the default.
+			Ticks automatically on physics frames. This is the default.
 		</constant>
 		<constant name="MANUAL" value="2" enum="ProcessThread">
-			Neither signal is connected and the root never ticks automatically, so a custom scheduler calls [method tick] or [method auto_tick_step] itself.
+			Disables automatic ticking so your own code can call [method tick] or [method auto_tick_step].
 		</constant>
 		<constant name="NONE" value="0" enum="TriggerType">
-			No trigger type. Used as a default value.
+			No automatic trigger.
 		</constant>
 		<constant name="EVENT" value="1" enum="TriggerType">
-			The transition is triggered by an event sent with [method NNSTBranchNodes.send_event].
+			Triggered by a matching event sent with [method NNSTBranchNodes.send_event].
 		</constant>
 		<constant name="STATE_ENTER" value="2" enum="TriggerType">
-			The transition is automatic and is triggered when its state is entered. Supported by every automatic transition.
+			Triggered automatically when the parent state is entered.
 		</constant>
 		<constant name="PROPERTY_CHANGE" value="4" enum="TriggerType">
-			The transition is automatic and is triggered by a change to an expression property. Reported by [NNSTExpressionGuard].
+			Triggered automatically when an expression property changes (used by [NNSTExpressionGuard]).
 		</constant>
 		<constant name="STATE_CHANGE" value="8" enum="TriggerType">
-			The transition is automatic and is triggered by a change of which states are active. Reported by [NNSTStateIsActiveGuard].
+			Triggered automatically when active states change (used by [NNSTStateIsActiveGuard]).
 		</constant>
 	</constants>
 	<methods>
@@ -48,23 +42,20 @@
 			<param index="0" name="process_thread" type="int" enum="NNSTRoot.ProcessThread" />
 			<param index="1" name="delta" type="float" />
 			<description>
-				The shared body of the frame-signal handlers, and the deterministic driver for custom schedulers. Ticks the chart when the call is due, and returns [code]true[/code] only when it actually ticked. The tick receives the [param delta] plus the deltas of the non-due calls since the previous tick, so states measure the elapsed time rather than one frame's worth.
-				The call is ignored, returning [code]false[/code], when [param process_thread] is not the selected [member process_thread], when the selected thread is [constant MANUAL], when the root is disabled, in the editor, when the chart is inactive (see [method get_is_active]), or when [member tick_rate] makes this invocation not due. An ignored call does not advance the [member tick_rate] schedule.
-				This method also works outside the tree, so tests and custom schedulers can drive the schedule deterministically without frame signals.
+				Runs one scheduled step using the same enabled checks and [member tick_rate] throttle as automatic ticking. Returns [code]true[/code] if the chart ticked. Useful for custom schedulers and deterministic tests.
 			</description>
 		</method>
 		<method name="get_child_sensors">
 			<return type="NNSensors[]" />
 			<description>
-				Returns the cached array of direct child [NNSensors] nodes attached to this root, in child order. Both enabled and disabled sensors are included (disabled sensors are skipped during [method tick]). The cache is populated at runtime on [constant NOTIFICATION_READY] and refreshed on [constant NOTIFICATION_CHILD_ORDER_CHANGED] once the root is ready; it is empty before ready and in the editor.
+				Returns the direct child [NNSensors] nodes attached to this root.
 			</description>
 		</method>
 		<method name="tick">
 			<return type="void" />
 			<param index="0" name="delta" type="float" />
 			<description>
-				Updates the State Tree. When no states are active the chart is transitioned in, then the child sensors are evaluated and every active state's [method NNSTTickedNodes.on_tick] method is called from the root down to the leaf with [param delta]. The tree reads and writes its data through the effective [NNBlackboard], which any state reaches with [method NoodleNodes.get_blackboard] and the other blackboard helpers. The resolved actor is available to every state as [method NoodleNodes.get_actor].
-				This is the manual entry point: automatic ticking calls it too. Calling it is the only way to re-enter an inactive chart by hand, so with [member process_thread] set to [constant MANUAL] a custom scheduler can own the timing.
+				Updates child sensors and ticks all active states top-down with [param delta]. If no states are currently active, enters the initial state first.
 			</description>
 		</method>
 		<method name="set_expression_property">
@@ -72,7 +63,7 @@
 			<param index="0" name="name" type="StringName" />
 			<param index="1" name="value" type="Variant" />
 			<description>
-				Sets a property that expression guards can reference by name (for example [code]flag[/code] can be used as [code]flag == true[/code] in an expression). The value is stored in [member assigned_blackboard]. Setting the property marks a property change pending and re-evaluates automatic transitions that support [constant PROPERTY_CHANGE].
+				Writes a named property to the blackboard and notifies [NNSTExpressionGuard] transitions to re-evaluate.
 			</description>
 		</method>
 		<method name="get_expression_property" qualifiers="const">
@@ -80,41 +71,41 @@
 			<param index="0" name="name" type="StringName" />
 			<param index="1" name="default" type="Variant" default="null" />
 			<description>
-				Returns the value of a previously set expression property, or [param default] when it has not been set. Expression property values are stored in [member assigned_blackboard] under the property name.
+				Returns the value of an expression property from the blackboard, or [param default] if unset.
 			</description>
 		</method>
 	</methods>
 	<members>
 		<member name="assigned_actor" type="Node" setter="set_assigned_actor" getter="get_assigned_actor">
-			The explicitly assigned actor, or [code]null[/code] when none is assigned or the assigned actor was freed. Assigning [code]null[/code] clears the assignment. No resolved fallback is ever stored here. Like any node export, it is saved in scenes as a path, so it can only point at a node in the same scene; a root instanced as its own scene under an entity picks that entity up through the ancestor root or parent fallback. Read the resolved actor with [method NoodleNodes.get_actor], which resolves this live assigned actor, then the actor of the nearest ancestor root of any Noodle Nodes system, then the root's parent.
+			Optional actor [Node] this state tree acts for. When unset, [method NoodleNodes.get_actor] inherits from the nearest ancestor root or falls back to this node's parent.
 		</member>
 		<member name="assigned_blackboard" type="NNBlackboard" setter="set_assigned_blackboard" getter="get_assigned_blackboard">
-			The explicitly assigned typed state tree blackboard resource, or [code]null[/code] when none is assigned. Assigning [code]null[/code] clears the assignment and returns to inherited resolution. No resolved board is ever stored here. Read the effective board with [method NoodleNodes.get_blackboard_resource], which resolves this assigned board, then the effective board of the nearest ancestor root of any Noodle Nodes system, then the root's private per-instance board, so the blackboard helpers work without any setup. The private board is never a property, so it is never serialised. Blackboards default to [code]resource_local_to_scene = true[/code], so an assigned inspector board is per scene instance unless you deliberately untick it to share one board. Expression properties are stored in this board as well.
+			Optional [NNBlackboard] resource for this state tree (also used for expression properties). When unset, inherits from the nearest ancestor root or creates a private blackboard automatically.
 		</member>
 		<member name="initial_expression_properties" type="Dictionary[String, Variant]" setter="set_initial_expression_properties" getter="get_initial_expression_properties" default="{}">
-			Initial values for expression properties. They are written into [member assigned_blackboard] when the root first transitions in, before any state is entered, so expressions are always valid on the first evaluation.
+			Initial expression properties written to the blackboard before the first state is entered.
 		</member>
 		<member name="process_thread" type="int" enum="NNSTRoot.ProcessThread" setter="set_process_thread" getter="get_process_thread" default="1">
-			Selects the SceneTree frame signal that drives automatic ticking, not this node's processing flags. Defaults to [constant PHYSICS], so a root auto-ticks once added to a scene. [constant IDLE] uses [code]process_frame[/code], [constant PHYSICS] uses [code]physics_frame[/code] and [constant MANUAL] connects neither so a custom scheduler calls [method tick] or [method auto_tick_step]. Exactly one signal is connected at a time. Out-of-range values fall back to [constant PHYSICS]. Setting this property re-arms the [member tick_rate] schedule. Ignored while an ancestor host (a state, agent action, [NNBTRunHostedRoot], or [NNHTNTask]) drives the root, because the host drives every tick; the editor reports a configuration warning when the value would be ignored.
+			Controls when the state tree ticks automatically ([constant PHYSICS], [constant IDLE], or [constant MANUAL]). Ignored when hosted under another AI node.
 		</member>
 		<member name="tick_rate" type="int" setter="set_tick_rate" getter="get_tick_rate" default="1">
-			The number of eligible frame signal emissions between automatic ticks. The default of [code]1[/code] ticks every eligible emission, and a rate of [code]2[/code] ticks on emissions 1, 3, 5 and so on. Values below 1 are clamped to 1. Ineligible emissions, such as those for a signal that is not selected, do not advance the count. A tick receives the delta accumulated over the emissions since the previous tick, so the states measure the same elapsed time whatever the rate. Setting this property or [member process_thread], a change to [member NoodleNodes.is_enabled], and entering or leaving the tree re-arm the schedule and discard the accumulated delta. The rate gates the whole tick, including running actions, so it stays at [code]1[/code] by default; [NNAgent] defaults to [code]6[/code] because its rate only throttles thinking. Ignored while an ancestor host drives the root, and the editor reports a configuration warning when the value would be ignored.
+			Ticks every [code]N[/code]th frame (default [code]1[/code], every frame), passing the accumulated delta since the previous tick. Ignored when hosted under another AI node.
 		</member>
 		<member name="total_tick_usec" type="int" setter="set_total_tick_usec" getter="get_total_tick_usec" default="0">
-			Duration in microseconds of the most recent [method tick] call (covering initial entry if needed, sensor evaluation, and active state ticking), overwritten on every tick rather than accumulated. Only available in debug builds ([code]DEBUG_ENABLED[/code]); each tick also adds this duration to [NNPerformanceMonitor].
+			Duration in microseconds of the last [method tick] call (debug builds only).
 		</member>
 	</members>
 	<signals>
 		<signal name="event_received">
 			<param index="0" name="name" type="String" />
 			<description>
-				Emitted once for each event processed by this root, before the event is delivered to the active states. See [method NNSTBranchNodes.send_event].
+				Emitted when an event is dispatched to this root before being delivered to active states.
 			</description>
 		</signal>
 		<signal name="finished">
 			<param index="0" name="succeeded" type="bool" />
 			<description>
-				Emitted with [param succeeded] set to [code]true[/code] when a state with [member NNSTTickedNodes.is_final] is entered, which reports the chart as finished. Final states do not stop ticking by themselves; the chart keeps running until a host deactivates it or it is transitioned out.
+				Emitted with [param succeeded] set to [code]true[/code] when a state with [member NNSTTickedNodes.is_final] is entered.
 			</description>
 		</signal>
 	</signals>

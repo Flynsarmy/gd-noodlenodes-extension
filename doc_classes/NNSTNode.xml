@@ -1,29 +1,24 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <class name="NNSTNode" inherits="NNSTTickedNodes" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
 	<brief_description>
-		Runs business logic for a state tree.
+		A state (leaf or compound) in a State Tree.
 	</brief_description>
 	<description>
-		This is the workhorse of the State Tree. It acts as all the other levels of the state tree other than the tree root. If a [NNSTNode] has no child nodes, it is considered a leaf node. If it has child nodes, it is considered like a selector in a behaviour tree: it will evaluate its child nodes to find a leaf node to activate.
-		To make use of the [NNSTNode], override the following virtual methods in each state's script:
+		The standard state node in a State Tree. Without child states, it acts as a leaf state; with child states, it acts as a compound state that activates one child at a time (starting with [member initial_state] if set, or choosing by [member NNSTBranchNodes.child_state_selection_rule]).
+		Override the lifecycle methods in a script (or connect to the corresponding signals on [NNSTTickedNodes]) to implement state behaviour:
 		[gdscript]
 		extends NNSTNode
 
 		func on_enter_condition() -&gt; bool:
-		    # Do your logic here to decide when this node should be activated.
-		    # Return true or false based on your logic.
 		    return true
 
 		func on_enter_state() -&gt; void:
-		    # Initialize your state here.
 		    pass
 
 		func on_exit_state() -&gt; void:
-		    # Clean up before exiting the state here.
 		    pass
 
 		func on_tick(delta: float) -&gt; void:
-		    # Do what ever the state needs to do here.
 		    pass
 		[/gdscript]
 	</description>
@@ -31,7 +26,7 @@
 	</tutorials>
 	<members>
 		<member name="initial_state" type="NodePath" setter="set_initial_state" getter="get_initial_state" default="NodePath(&quot;&quot;)">
-			Optional path to a direct child state or [NNSTHistory] node. Non-direct-child paths are cleared to empty on assignment. When pointing at a state, that child is evaluated first when choosing a child to enter, followed by the remaining children in tree order. When pointing at an [NNSTHistory], this state restores the history's remembered or default state instead of running normal child selection (falling back to normal child selection if nothing can be restored).
+			Optional direct child state or [NNSTHistory] node entered first when this compound state becomes active.
 		</member>
 	</members>
 </class>

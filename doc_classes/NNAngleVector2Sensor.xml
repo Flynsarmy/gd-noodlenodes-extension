@@ -1,37 +1,37 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <class name="NNAngleVector2Sensor" inherits="NNSensor" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
 	<brief_description>
-		Accepts two vectors, calculates the angle between them and scales it to [code]0..1[/code] range.
+		Measures the signed 2D angle between two vectors and maps it to [code]0..1[/code].
 	</brief_description>
 	<description>
-		Calculates the signed angle from [member from_vector] to [member to_vector] via [method Vector2.angle_to], clamps it to the configured range, and normalises it so [member min_angle_radian] maps to [code]0.0[/code] and [member max_angle_radian] maps to [code]1.0[/code]. A range whose minimum is greater than or equal to its maximum scores [code]0.0[/code].
+		Computes the signed angle from [member from_vector] to [member to_vector] and normalizes it across [member min_angle_degrees]..[member max_angle_degrees] into a [code]0..1[/code] sensor value. Useful for checking whether a 2D target lies to the left, right, or in front of an entity's facing direction.
 	</description>
 	<tutorials>
 	</tutorials>
 	<members>
 		<member name="angle_degrees" type="float" setter="set_angle_degrees" getter="get_angle_degrees" default="0.0">
-			The angle from [member from_vector] to [member to_vector] in degrees, clamped to [member min_angle_degrees] and [member max_angle_degrees]. Updated when the sensor is evaluated.
+			Computed signed angle in degrees, clamped to the configured min/max range.
 		</member>
 		<member name="angle_radian" type="float" setter="set_angle_radian" getter="get_angle_radian" default="0.0">
-			The angle from [member from_vector] to [member to_vector] in radians, clamped to [member min_angle_radian] and [member max_angle_radian]. Updated when the sensor is evaluated.
+			Computed signed angle in radians, clamped to the configured min/max range.
 		</member>
 		<member name="from_vector" type="Vector2" setter="set_from_vector" getter="get_from_vector" default="Vector2(0, 0)">
-			Reference direction vector for the signed angle calculation ([code]from_vector.angle_to(to_vector)[/code]), for example the facing direction of an AI entity.
+			Reference direction vector (for example, the entity's facing direction).
 		</member>
 		<member name="max_angle_degrees" type="float" setter="set_max_angle_degrees" getter="get_max_angle_degrees" default="180.0">
-			The maximum signed angle from [member from_vector] to [member to_vector] in degrees, corresponding to [code]1.0[/code] for [member NNSensors.sensor_value]. Automatically updates [member max_angle_radian].
+			Maximum signed angle in degrees, mapping to [code]1.0[/code]. Syncs with [member max_angle_radian].
 		</member>
 		<member name="max_angle_radian" type="float" setter="set_max_angle_radian" getter="get_max_angle_radian" default="3.1415927">
-			The maximum signed angle from [member from_vector] to [member to_vector] in radians, corresponding to [code]1.0[/code] for [member NNSensors.sensor_value]. Automatically updates [member max_angle_degrees].
+			Maximum signed angle in radians, mapping to [code]1.0[/code]. Syncs with [member max_angle_degrees].
 		</member>
 		<member name="min_angle_degrees" type="float" setter="set_min_angle_degrees" getter="get_min_angle_degrees" default="-180.0">
-			The minimum signed angle from [member from_vector] to [member to_vector] in degrees, corresponding to [code]0.0[/code] for [member NNSensors.sensor_value]. Automatically updates [member min_angle_radian].
+			Minimum signed angle in degrees, mapping to [code]0.0[/code]. Syncs with [member min_angle_radian].
 		</member>
 		<member name="min_angle_radian" type="float" setter="set_min_angle_radian" getter="get_min_angle_radian" default="-3.1415927">
-			The minimum signed angle from [member from_vector] to [member to_vector] in radians, corresponding to [code]0.0[/code] for [member NNSensors.sensor_value]. Automatically updates [member min_angle_degrees].
+			Minimum signed angle in radians, mapping to [code]0.0[/code]. Syncs with [member min_angle_degrees].
 		</member>
 		<member name="to_vector" type="Vector2" setter="set_to_vector" getter="get_to_vector" default="Vector2(0, 0)">
-			Target direction vector compared against [member from_vector] via [method Vector2.angle_to], for example the direction toward the closest enemy entity. Swapping [member from_vector] and [member to_vector] negates the resulting signed angle.
+			Target direction vector compared against [member from_vector] (for example, the direction toward an enemy).
 		</member>
 	</members>
 </class>

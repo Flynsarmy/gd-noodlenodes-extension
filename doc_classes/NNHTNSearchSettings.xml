@@ -1,13 +1,10 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <class name="NNHTNSearchSettings" inherits="Resource" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
 	<brief_description>
-		Policy and budgets for an [NNHTNRoot]'s planning.
+		Resource configuring an [NNHTNRoot]'s search policy, planning budgets, and trace limits.
 	</brief_description>
 	<description>
-		Assign to [member NNHTNRoot.search_settings]. Without it the root uses these defaults.
-		One expansion is counted for each method alternative whose conditions are checked, for each primitive task occurrence attempted, and for each collection of an [NNHTNBinding]'s values. Entering compounds, following calls and choosing among [constant NNHTNMethod.PARTIAL_ORDER] orders is free. When a budget runs out the search stops with [constant NNHTNRoot.BUDGET_EXHAUSTED]; see [method NNHTNRoot.get_last_cutoff_reason].
-		The history settings apply only while [member NNHTNRoot.track_search] is [code]true[/code]; see [method NNHTNRoot.get_search_history].
-		Invalid values are not clamped: they are listed by [method get_validation_errors], shown as configuration warnings on the root, and make the root do nothing until fixed.
+		Assign to [member NNHTNRoot.search_settings] to choose how the planner selects plans ([member policy]), cap search work with [member max_expansions], [member max_time_ms], and [member max_binding_candidates], or adjust history retention when [member NNHTNRoot.track_search] is enabled.
 	</description>
 	<tutorials>
 	</tutorials>
@@ -15,43 +12,42 @@
 		<method name="get_validation_errors" qualifiers="const">
 			<return type="PackedStringArray" />
 			<description>
-				Returns one message per invalid value. Empty when the settings are valid.
+				Returns error messages for any invalid settings, or an empty array if valid.
 			</description>
 		</method>
 	</methods>
 	<members>
 		<member name="max_binding_candidates" type="int" setter="set_max_binding_candidates" getter="get_max_binding_candidates" default="256">
-			The most argument candidates used from one [method NNHTNMethod.on_resolve_arguments] call, and the most values used from one collection of an [NNHTNBinding]. Must be at least 1. Leaving candidates or values out makes the search incomplete and sets [method NNHTNRoot.get_last_cutoff_reason]: when no plan is found, the search reports [constant NNHTNRoot.BUDGET_EXHAUSTED] instead of [constant NNHTNRoot.NO_PLAN], and under [constant LOWEST_COST] a plan found is reported with [constant NNHTNRoot.BUDGET_EXHAUSTED] and is not optimal.
+			Maximum candidates considered per [NNHTNBinding] or [method NNHTNMethod.on_resolve_arguments] call (minimum [code]1[/code]).
 		</member>
 		<member name="max_expansions" type="int" setter="set_max_expansions" getter="get_max_expansions" default="10000">
-			The most expansions one search may use. Must be at least 1. For a fixed domain and state, a search bounded only by expansions is deterministic.
+			Maximum planning expansions allowed per search before stopping with [constant NNHTNRoot.BUDGET_EXHAUSTED] (minimum [code]1[/code]).
 		</member>
 		<member name="max_history_attempts" type="int" setter="set_max_history_attempts" getter="get_max_history_attempts" default="100">
-			The most search attempts [method NNHTNRoot.get_search_history] keeps. Must be at least 1. The oldest attempts are dropped first.
+			Maximum search traces retained when [member NNHTNRoot.track_search] is enabled (minimum [code]1[/code]).
 		</member>
 		<member name="max_history_bytes" type="int" setter="set_max_history_bytes" getter="get_max_history_bytes" default="2097152">
-			The most bytes of search history kept, measured as the [method @GlobalScope.var_to_bytes] size of each attempt. Must be at least 1024. The oldest attempts are dropped first, but the newest is always kept: its events stop once they and its initial state would exceed half of this limit, its initial state is dropped beyond a quarter, and its plan entries stop beyond a quarter, each marking the attempt [code]truncated[/code].
+			Maximum total byte size of retained search traces when [member NNHTNRoot.track_search] is enabled (minimum [code]1024[/code]).
 		</member>
 		<member name="max_time_ms" type="int" setter="set_max_time_ms" getter="get_max_time_ms" default="0">
-			The most wall-clock time one search may take, in milliseconds. [code]0[/code] means no limit. Must not be negative.
+			Maximum wall-clock milliseconds allowed per search. Set to [code]0[/code] for no time limit.
 		</member>
 		<member name="max_trace_events" type="int" setter="set_max_trace_events" getter="get_max_trace_events" default="5000">
-			The most decision events recorded for one search attempt. Must be at least 1. Later events are dropped and the attempt is marked [code]truncated[/code]; a truncated trace is not a complete account of the search.
+			Maximum decision events recorded per traced search attempt (minimum [code]1[/code]).
 		</member>
 		<member name="policy" type="int" setter="set_policy" getter="get_policy" enum="NNHTNSearchSettings.Policy" default="0">
-			How alternatives are ordered and which plan wins: [constant ORDERED] tries methods in scene order and takes the first plan, [constant RANKED] tries methods by descending [member NNHTNMethod.priority] and takes the first plan, and [constant LOWEST_COST] searches for the plan with the lowest total [member NNHTNTask.estimated_cost].
+			Plan selection strategy ([constant ORDERED], [constant RANKED], or [constant LOWEST_COST]).
 		</member>
 	</members>
 	<constants>
 		<constant name="ORDERED" value="0" enum="Policy">
-			Tries methods in scene order and returns the first complete plan. Ignores [member NNHTNMethod.priority] and [member NNHTNTask.estimated_cost].
+			Tries methods in scene order and returns the first valid plan. Ignores method priority and task cost.
 		</constant>
 		<constant name="RANKED" value="1" enum="Policy">
-			Tries methods by descending [member NNHTNMethod.priority] or [method NNHTNMethod.on_get_priority], keeping scene order between equal priorities, and returns the first complete plan. Priority is a preference, not a cost; costs are neither read nor validated.
+			Tries methods from highest to lowest [member NNHTNMethod.priority] and returns the first valid plan. Ignores task cost.
 		</constant>
 		<constant name="LOWEST_COST" value="2" enum="Policy">
-			Orders methods like [constant RANKED], then keeps searching after each complete plan and returns the one with the lowest total cost: the sum of every step's [member NNHTNPlanStep.cost], from [member NNHTNTask.estimated_cost] or [method NNHTNTask.on_get_estimated_cost]. Of plans with equal cost, the first found wins. Because costs are non-negative, any partial plan that already costs at least as much as the best plan is abandoned (branch and bound). An invalid cost rejects its occurrence with an error.
-			The result is [code]optimal[/code] only when the whole search space was explored. When a budget or the candidate cap cuts the search short, the cheapest plan found so far is still returned and installed, with [constant NNHTNRoot.BUDGET_EXHAUSTED] and [code]optimal[/code] [code]false[/code].
+			Orders methods by priority and searches for the valid plan with the lowest total [member NNHTNTask.estimated_cost]. If a budget runs out, returns the cheapest plan found so far.
 		</constant>
 	</constants>
 </class>

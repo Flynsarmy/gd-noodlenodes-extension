@@ -1,11 +1,11 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <class name="NNArea2DVisibilitySensor" inherits="NNSensor" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
 	<brief_description>
-		Provides a visibility query based on [Area2D]s.
+		Detects overlapping 2D areas and bodies with optional line-of-sight raycasting.
 	</brief_description>
 	<description>
-		This sensor is used for visibility queries based on [Area2D]s. It returns the number of entities seen by the AI Agent and the sensor value is scaled to 0..1 by comparing the number of seen entities to a defined, expected, maximum number.
-		The sensor will store a list of the found [Area2D]s that are within the defined visibility volume and a separate list with only those that are not occluded by other geometry.
+		Tracks [Area2D]s and 2D physics bodies inside [member visibility_volume] and scores how many are visible relative to [member max_expected_entities_found]. Enable [member do_occlusion_test] to filter out targets blocked by walls or obstacles on [member collision_mask].
+		Use this for 2D vision cones or awareness radii when you need both a normalized count score for considerations and lists of nearby or unoccluded targets (along with closest-target indices and squared distances).
 	</description>
 	<tutorials>
 	</tutorials>

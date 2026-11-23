@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <class name="NNBTInverter" inherits="NNBTDecoratorNodes" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
 	<brief_description>
-		Ticks the first enabled behaviour tree child node it has and returns the inverted result to its parent.
+		Inverts its child's [constant NNBTNodes.SUCCESS] and [constant NNBTNodes.FAILURE] results.
 	</brief_description>
 	<description>
-		The inverter node ticks its first enabled behaviour tree child node and returns the inverted result to its parent: [constant NNBTNodes.SUCCESS] becomes [constant NNBTNodes.FAILURE], and [constant NNBTNodes.FAILURE] becomes [constant NNBTNodes.SUCCESS]. If the child returns [constant NNBTNodes.RUNNING] or [constant NNBTNodes.SKIP], that result is returned unchanged. If no behaviour tree child is enabled, the inverter returns [constant NNBTNodes.FAILURE].
+		Flips [constant NNBTNodes.SUCCESS] to [constant NNBTNodes.FAILURE] and [constant NNBTNodes.FAILURE] to [constant NNBTNodes.SUCCESS], passing [constant NNBTNodes.RUNNING] and [constant NNBTNodes.SKIP] through unchanged. Use to negate a condition leaf (for example, turning "HasTarget" into "NoTarget") without writing a second script.
 	</description>
 	<tutorials>
 	</tutorials>

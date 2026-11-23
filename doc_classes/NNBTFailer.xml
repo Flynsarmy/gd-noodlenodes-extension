@@ -1,14 +1,11 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <class name="NNBTFailer" inherits="NNBTDecoratorNodes" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
 	<brief_description>
-		Ticks its child node and always completes with [code]FAILURE[/code] once the child finishes.
+		Runs its child to completion and always returns [constant NNBTNodes.FAILURE].
 	</brief_description>
 	<description>
-		The failer node ticks its first enabled child node. While the child returns [code]RUNNING[/code] the failer also returns [code]RUNNING[/code]. When the child returns [code]SUCCESS[/code] or [code]FAILURE[/code] the failer completes with [code]FAILURE[/code].
-
-		This differs from [NNBTFixedResult], which reports its configured result immediately and regardless of the child. The failer waits for the child to finish and only then reports [code]FAILURE[/code].
-
-		The failer must have exactly one enabled behaviour-tree child. With no enabled child it completes with [code]FAILURE[/code].
+		Waits while its child returns [constant NNBTNodes.RUNNING], then completes with [constant NNBTNodes.FAILURE] whether the child succeeded or failed. Use when you want a branch to finish its work and still fall through to the next option in an [NNBTSelector].
+		Unlike [NNBTFixedResult], this node does not override [constant NNBTNodes.RUNNING] while the child is still in progress.
 	</description>
 	<tutorials>
 	</tutorials>

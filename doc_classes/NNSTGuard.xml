@@ -1,11 +1,11 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <class name="NNSTGuard" inherits="Resource" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
 	<brief_description>
-		Base class for all State Tree guard resources.
+		Base resource for conditions that gate an [NNSTTransition].
 	</brief_description>
 	<description>
-		Guards decide whether a transition may be taken. Repeated evaluation of automatic transitions is driven by the trigger types a guard reports through [method get_supported_trigger_types].
-		Write a custom guard by deriving from this class in a script and implementing [method on_is_satisfied], plus [method on_get_supported_trigger_types] to say which changes make the result stale. The built-in guards evaluate themselves natively instead of using those hooks.
+		Assign a built-in guard ([NNSTExpressionGuard], [NNSTStateIsActiveGuard], [NNSTAllOfGuard], [NNSTAnyOfGuard], or [NNSTNotGuard]) to [member NNSTTransition.guard] to control when a transition may fire.
+		To create a custom guard in GDScript, extend this class and override [method on_is_satisfied] and [method on_get_supported_trigger_types].
 	</description>
 	<tutorials>
 	</tutorials>
@@ -13,8 +13,7 @@
 		<method name="get_supported_trigger_types" qualifiers="const">
 			<return type="int" />
 			<description>
-				Returns a bit mask of [enum NNSTRoot.TriggerType] values describing which changes can affect this guard's result. Automatic transitions use this to decide when they need to be re-evaluated.
-				The base implementation asks the guard script for [method on_get_supported_trigger_types]; when that hook is missing it reports an error and returns [constant NNSTRoot.NONE], so the guard's transitions are only checked on [constant NNSTRoot.STATE_ENTER] unless the transition's guard composition reports additional trigger types.
+				Returns the [enum NNSTRoot.TriggerType] bit mask indicating which changes can affect this guard's result on automatic transitions.
 			</description>
 		</method>
 		<method name="is_satisfied">
@@ -22,14 +21,13 @@
 			<param index="0" name="p_transition" type="NNSTTransition" />
 			<param index="1" name="p_state" type="NNSTTickedNodes" />
 			<description>
-				Returns [code]true[/code] if the guard is satisfied, [code]false[/code] otherwise.
-				Guards are used to determine if a transition can be taken or not. If the guard is satisfied, the transition can be taken. The built-in guards evaluate themselves natively; for a custom guard the result comes from [method on_is_satisfied]. When that hook is missing an error is reported and [code]false[/code] is returned.
+				Evaluates the guard and returns [code]true[/code] if the transition may be taken.
 			</description>
 		</method>
 		<method name="on_get_supported_trigger_types" qualifiers="virtual const">
 			<return type="int" />
 			<description>
-				Implement this hook in a guard script to return the bit mask of [enum NNSTRoot.TriggerType] values that can change its result, as described in [method get_supported_trigger_types]. Built-in guards report their trigger types natively and never call this hook.
+				Override in a custom guard script to return the [enum NNSTRoot.TriggerType] flags that should re-evaluate automatic transitions using this guard.
 			</description>
 		</method>
 		<method name="on_is_satisfied" qualifiers="virtual">
@@ -37,7 +35,7 @@
 			<param index="0" name="transition" type="NNSTTransition" />
 			<param index="1" name="state" type="NNSTTickedNodes" />
 			<description>
-				Implement this hook in a guard script to decide whether the guard is satisfied, returning [code]true[/code] when the transition may be taken. [param transition] is the transition being evaluated and [param state] the state it belongs to. Built-in guards evaluate themselves natively and never call this hook.
+				Override in a custom guard script to return [code]true[/code] when [param transition] on [param state] should be allowed.
 			</description>
 		</method>
 	</methods>

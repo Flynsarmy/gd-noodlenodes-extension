@@ -1,16 +1,16 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <class name="NNBTFixedResult" inherits="NNBTDecoratorNodes" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
 	<brief_description>
-		Ticks the first behaviour tree child node it has and returns its [member fixed_result] property back to its parent.
+		Ticks its child and immediately returns [member fixed_result], ignoring the child's status.
 	</brief_description>
 	<description>
-		The fixed result node ticks its first enabled behaviour tree child node and, regardless of what the child returns, returns whatever value is set in [member fixed_result] to its parent. Any additional enabled behaviour tree children are ignored, with a one-time error reported on the first tick. With no enabled behaviour tree child it returns [member fixed_result] directly, so it can also be used as a leaf node at runtime (though because it inherits [NNBTDecoratorNodes], the editor shows a configuration warning when it does not have exactly one enabled behaviour tree child).
+		Ticks its child once and always returns [member fixed_result] right away, even if the child returned [constant NNBTNodes.RUNNING]. Use for stubbing branches during prototyping or forcing a specific status on every tick. If you want to wait for a running child to finish before forcing success or failure, use [NNBTSucceeder] or [NNBTFailer] instead.
 	</description>
 	<tutorials>
 	</tutorials>
 	<members>
 		<member name="fixed_result" type="int" setter="set_fixed_result" getter="get_fixed_result" enum="NNBTNodes.Status" default="1">
-			The status always returned by this node, regardless of what its first enabled child returns (the child is still ticked first, if present).
+			Status always returned after ticking the child.
 		</member>
 	</members>
 </class>

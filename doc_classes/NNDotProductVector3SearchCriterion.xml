@@ -1,23 +1,22 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <class name="NNDotProductVector3SearchCriterion" inherits="NNNQSSearchCriteria" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
 	<brief_description>
-		Scores and filters based on the dot product between [member dot_product_vector] and the search space node direction.
+		Filters and scores [Node3D] candidates by how closely their forward direction aligns with a 3D vector.
 	</brief_description>
 	<description>
-		The [Vector3] dot product search criterion scores and filters [Node3D] candidates based on the dot product between [member dot_product_vector] and the node's forward direction ([code]-global_transform.basis.z[/code]).
-		When used for scoring, the raw score is computed as [code]dot * 0.5 + 0.5[/code] (mapping [code]-1.0..1.0[/code] to [code]0.0..1.0[/code] for normalized vectors), then passed through [member NNNQSSearchCriteria.activation_curve] if one is set.
+		Takes the dot product between each [Node3D] candidate's forward direction (-Z) and [member dot_product_vector], mapping [code]-1..1[/code] to [code]0..1[/code] when scoring. Faster than [NNAngleToVector3SearchCriterion] when you only need a rough alignment check rather than exact degrees.
 	</description>
 	<tutorials>
 	</tutorials>
 	<members>
 		<member name="dot_product_vector" type="Vector3" setter="set_dot_product_direction_vector" getter="get_dot_product_direction_vector" default="Vector3(0, 0, -1)">
-			Direction compared against each candidate's forward direction ([code]-global_transform.basis.z[/code]). Should be normalised.
+			Normalized 3D reference direction compared against each candidate's forward direction (-Z).
 		</member>
 		<member name="filtering_rule" type="int" setter="set_filtering_rule" getter="get_filtering_rule" default="1">
-			How the dot product is compared to [member filtering_value] when [member NNNQSSearchCriteria.use_for_filtering] is [code]true[/code]: [code]LessThan:0[/code], [code]LessOrEqual:1[/code], [code]Equal:2[/code], [code]MoreOrEqual:3[/code], or [code]MoreThan:4[/code]. Nodes for which the comparison is [code]true[/code] are filtered out (for example, with [code]LessThan[/code], any node whose dot product is less than [member filtering_value] is filtered out).
+			Comparison rule ([code]LessThan[/code], [code]LessOrEqual[/code], [code]Equal[/code], [code]MoreOrEqual[/code], or [code]MoreThan[/code]) against [member filtering_value]. Candidates matching this comparison are filtered out when filtering is enabled.
 		</member>
 		<member name="filtering_value" type="float" setter="set_filtering_value" getter="get_filtering_value" default="0.0">
-			Dot product threshold (typically in [code]-1.0..1.0[/code]) compared using [member filtering_rule] when [member NNNQSSearchCriteria.use_for_filtering] is [code]true[/code].
+			Dot product threshold ([code]-1.0..1.0[/code]) used by [member filtering_rule] when filtering is enabled.
 		</member>
 	</members>
 </class>

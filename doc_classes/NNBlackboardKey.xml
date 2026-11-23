@@ -1,25 +1,25 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <class name="NNBlackboardKey" inherits="Resource" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
 	<brief_description>
-		One typed key declared by an [NNBlackboardSchema].
+		A typed key definition for an [NNBlackboardSchema].
 	</brief_description>
 	<description>
-		Declares a blackboard key, the [Variant] type its values must have, and an optional default. A [code]null[/code] value always means the key is absent, so it is accepted for every key regardless of [member value_type].
+		Defines a single key name, its expected [Variant] type, and an optional default value inside an [NNBlackboardSchema]. Add [NNBlackboardKey] entries to [member NNBlackboardSchema.keys] to catch typos or wrong value types written to a blackboard.
 	</description>
 	<tutorials>
 	</tutorials>
 	<members>
 		<member name="default_value" type="Variant" setter="set_default_value" getter="get_default_value" default="null">
-			The value installed when [member has_default] is [code]true[/code] and the key is absent. It must match [member value_type]. [Array] and [Dictionary] defaults are deep-copied each time they are installed, so boards never share a default container.
+			Value populated when [member has_default] is [code]true[/code] and the key is absent. Must match [member value_type].
 		</member>
 		<member name="has_default" type="bool" setter="set_has_default" getter="get_has_default" default="false">
-			Whether [member default_value] is installed into absent keys. See [member NNBlackboard.schema].
+			If [code]true[/code], [member default_value] is installed when the schema is attached and the key is absent.
 		</member>
 		<member name="key" type="String" setter="set_key" getter="get_key" default="&quot;&quot;">
-			The blackboard key name. Must be non-empty and unique within its schema.
+			Name of the blackboard key. Must be non-empty and unique within the schema.
 		</member>
 		<member name="value_type" type="int" setter="set_value_type" getter="get_value_type" enum="Variant.Type" default="0">
-			The required [Variant] type of non-[code]null[/code] values. Types are matched exactly, so [constant TYPE_INT] does not accept a [float]. [constant TYPE_NIL] (shown as [code]Any[/code] in the inspector) accepts every type.
+			Required [Variant] type for non-[code]null[/code] values. [constant TYPE_NIL] accepts any type; [code]null[/code] is always allowed to clear a key.
 		</member>
 	</members>
 </class>

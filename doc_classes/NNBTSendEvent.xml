@@ -1,22 +1,19 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <class name="NNBTSendEvent" inherits="NNBTTaskNodes" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
 	<brief_description>
-		Sends a state tree event from a behaviour tree.
+		Action leaf that sends an event to a state tree.
 	</brief_description>
 	<description>
-		Returns [constant NNBTNodes.SUCCESS] after dispatching [member event_name] to the target chart, and [constant NNBTNodes.FAILURE] when [member event_name] is empty or no target resolves.
-		The target is [member target] when it is set, resolved relative to this leaf; otherwise the nearest [NNSTRoot] ancestor is used, which is the common case for a behaviour tree hosted below a state. The target is resolved again on every tick, so reparenting the leaf or freeing the target never leaves a stale reference behind.
-		Events are dispatched by the chart: while a transition is in flight the event is queued and processed afterwards.
-		This leaf is fully data-driven: it is configured entirely by its properties, does not call and is not affected by an [code]on_tick[/code] override in an attached script.
+		Dispatches [member event_name] to an [NNSTRoot] and returns [constant NNBTNodes.SUCCESS] (or [constant NNBTNodes.FAILURE] if the event name is empty or no target state tree is found). Leave [member target] empty to signal the nearest ancestor [NNSTRoot] when this behaviour tree is hosted inside a state.
 	</description>
 	<tutorials>
 	</tutorials>
 	<members>
 		<member name="event_name" type="String" setter="set_event_name" getter="get_event_name" default="&quot;&quot;">
-			The event name to send. An empty name returns [constant NNBTNodes.FAILURE] without sending anything.
+			Name of the event to send.
 		</member>
 		<member name="target" type="NodePath" setter="set_target" getter="get_target" default="NodePath(&quot;&quot;)">
-			Path to the [NNSTRoot] that receives [member event_name], relative to this leaf unless it starts with a [code]/[/code]. When empty, targets the nearest [NNSTRoot] ancestor. Returns [constant NNBTNodes.FAILURE] if no [NNSTRoot] resolves.
+			Path to the target [NNSTRoot]. Leave empty to target the nearest ancestor [NNSTRoot].
 		</member>
 	</members>
 </class>

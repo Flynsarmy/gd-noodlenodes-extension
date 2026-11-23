@@ -1,31 +1,31 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <class name="NNAngleVector3Sensor" inherits="NNSensor" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
 	<brief_description>
-		Accepts two vectors, calculates the angle between them and scales it to [code]0..1[/code] range.
+		Measures the unsigned 3D angle between two vectors and maps it to [code]0..1[/code].
 	</brief_description>
 	<description>
-		The unsigned angle between the vectors, from [code]0[/code] to 180 degrees, is clamped to [member max_angle_radian] and divided by it. With the default maximum of 180 degrees, perpendicular vectors produce a [member NNSensors.sensor_value] of [code]0.5[/code] and opposite vectors [code]1.0[/code].
+		Computes the unsigned angle (from [code]0[/code] to [code]180[/code] degrees) between [member from_vector] and [member to_vector] and normalizes it against [member max_angle_degrees] into a [code]0..1[/code] sensor value. Useful for checking how closely a 3D entity is facing a target or direction.
 	</description>
 	<tutorials>
 	</tutorials>
 	<members>
 		<member name="angle_degrees" type="float" setter="set_angle_degrees" getter="get_angle_degrees" default="0.0">
-			The unsigned angle between [member from_vector] and [member to_vector] in degrees ([code]0[/code] to [code]180[/code]). Updated when the sensor is evaluated.
+			Computed unsigned angle in degrees ([code]0..180[/code]).
 		</member>
 		<member name="angle_radian" type="float" setter="set_angle_radian" getter="get_angle_radian" default="0.0">
-			The unsigned angle between [member from_vector] and [member to_vector] in radians ([code]0[/code] to [code]PI[/code]). [member NNSensors.sensor_value] is this angle clamped to [member max_angle_radian] and divided by [member max_angle_radian]. Updated when the sensor is evaluated.
+			Computed unsigned angle in radians ([code]0..PI[/code]).
 		</member>
 		<member name="from_vector" type="Vector3" setter="set_from_vector" getter="get_from_vector" default="Vector3(0, 0, 0)">
-			Reference direction vector for the unsigned angle calculation ([code]from_vector.angle_to(to_vector)[/code]), for example the facing direction of an AI entity.
+			Reference direction vector (for example, the entity's facing direction).
 		</member>
 		<member name="max_angle_degrees" type="float" setter="set_max_angle_degrees" getter="get_max_angle_degrees" default="180.0">
-			The maximum unsigned angle between [member from_vector] and [member to_vector] in degrees, corresponding to [code]1.0[/code] for [member NNSensors.sensor_value]. Angles above it also score [code]1.0[/code]. Must be greater than [code]0[/code]; invalid assignments report an error and leave the value unchanged. Automatically updates [member max_angle_radian].
+			Maximum angle in degrees that maps to [code]1.0[/code]. Must be greater than [code]0[/code]. Syncs with [member max_angle_radian].
 		</member>
 		<member name="max_angle_radian" type="float" setter="set_max_angle_radian" getter="get_max_angle_radian" default="3.1415927">
-			The maximum unsigned angle between [member from_vector] and [member to_vector] in radians, corresponding to [code]1.0[/code] for [member NNSensors.sensor_value]. Angles above it also score [code]1.0[/code]. Must be greater than [code]0[/code]; invalid assignments report an error and leave the value unchanged. Automatically updates [member max_angle_degrees].
+			Maximum angle in radians that maps to [code]1.0[/code]. Must be greater than [code]0[/code]. Syncs with [member max_angle_degrees].
 		</member>
 		<member name="to_vector" type="Vector3" setter="set_to_vector" getter="get_to_vector" default="Vector3(0, 0, 0)">
-			Target direction vector compared against [member from_vector] via [method Vector3.angle_to], for example the direction toward the closest enemy entity.
+			Target direction vector compared against [member from_vector] (for example, the direction toward an enemy).
 		</member>
 	</members>
 </class>

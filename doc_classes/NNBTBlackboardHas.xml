@@ -1,18 +1,16 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <class name="NNBTBlackboardHas" inherits="NNBTConditionLeaf" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
 	<brief_description>
-		Checks whether a key exists in the behaviour tree blackboard.
+		Condition leaf that checks whether a blackboard key is set.
 	</brief_description>
 	<description>
-		Returns [code]SUCCESS[/code] when [member key] exists in the effective [NNBlackboard] of the nearest [NNBTRoot] ancestor and its stored value is not [code]null[/code]. Returns [code]FAILURE[/code] for a missing key or a null-valued key without an engine error.
-		A missing [NNBTRoot] ancestor with a blackboard, or an empty [member key], is a configuration error that is reported once per node instance and returns [code]FAILURE[/code].
-		This leaf is fully data-driven: it is configured entirely by its properties, does not call and is not affected by an [code]on_tick[/code] override in an attached script, and works on the effective [NNBlackboard] of the nearest [NNBTRoot] ancestor through the [NoodleNodes] blackboard helpers.
+		Returns [constant NNBTNodes.SUCCESS] if [member key] exists in the tree's blackboard with a non-[code]null[/code] value, and [constant NNBTNodes.FAILURE] otherwise. Use to guard a branch until a target or flag has been populated (for example, after [NNBTRunNQSQuery]).
 	</description>
 	<tutorials>
 	</tutorials>
 	<members>
 		<member name="key" type="String" setter="set_key" getter="get_key" default="&quot;&quot;">
-			The blackboard key to check. Must be non-empty; an empty key reports an error once and returns [constant NNBTNodes.FAILURE]. Missing or [code]null[/code] values return [constant NNBTNodes.FAILURE].
+			Blackboard key to check.
 		</member>
 	</members>
 </class>

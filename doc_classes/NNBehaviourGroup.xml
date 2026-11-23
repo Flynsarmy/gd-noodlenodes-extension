@@ -1,37 +1,34 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <class name="NNBehaviourGroup" inherits="NNBehaviours" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
 	<brief_description>
-		Allows logical grouping of behaviours and allows group-based activation and deactivation of Behaviour nodes.
+		Groups related [NNBehaviour] nodes so they can be enabled or gated together.
 	</brief_description>
 	<description>
-		The [NNBehaviourGroup] node type should be added as child node of the [NNAgent] node, preferably after any sensor and sensor group nodes. There can only be one level of child nodes for the Behaviour Groups, which means you cannot have nested Behaviour Group nodes.
-		The purpose of the behaviour group nodes is to allow logical grouping of behaviours and allows group-based activation and deactivation of Behaviour nodes.
-		The behaviour group node evaluates its enabled child considerations and consideration groups to determine a score for itself. If that score is greater than or equal to [member activation_score], its enabled child behaviours are evaluated during the owning [NNAgent]'s [method NNAgent.evaluate_options] call. With no enabled considerations the group evaluates to [code]0.0[/code], so child behaviours are evaluated only when [member activation_score] is [code]0.0[/code].
-		As an example, you can have an enemy AI with the behaviour groups "on foot combat" and "vehicle combat" which contain the relevant behaviours for each group. By default the "on foot combat" would be active and the "vehicle combat" inactive. The "vehicle combat" behaviour group would be set as active when the enemy AI enters a vehicle, adding the vehicle-related behaviours to the enemy AI's list of options.
-		You can group your behaviours any way you want but it can make sense to do the grouping based on the goal the behaviours will achieve.
+		Add as a direct child of an [NNAgent] to organize related [NNBehaviour] nodes (for example, "OnFootCombat" and "VehicleCombat") and gate them behind shared considerations. Behaviour groups cannot be nested.
+		When the agent evaluates options, it scores this group's child considerations first; its child behaviours are only evaluated if the group's score meets or exceeds [member activation_score]. This saves work and keeps whole sets of behaviours inactive until a context applies.
 	</description>
 	<tutorials>
 	</tutorials>
 	<members>
 		<member name="activation_score" type="float" setter="set_activation_score" getter="get_activation_score" default="0.0">
-			Minimum [member NNBehaviours.score] required for this group's enabled child behaviours to be evaluated. When the group scores below this threshold, none of its child behaviours are evaluated.
+			Minimum [member NNBehaviours.score] required before this group's child behaviours are evaluated.
 		</member>
 	</members>
 	<signals>
 		<signal name="behaviour_group_entered">
 			<description>
-				Emitted when a behaviour within the behaviour group gets selected during the [NNAgent] evaluate_options call.
+				Emitted when the agent selects a behaviour inside this group.
 			</description>
 		</signal>
 		<signal name="behaviour_group_exited">
 			<description>
-				Emitted for the current behaviour group during [method NNAgent.evaluate_options] when a behaviour in another group or an ungrouped behaviour is selected, when no valid candidate behaviours remain, or when a newly entered group's chosen child becomes unavailable during [signal behaviour_group_entered]. Also emitted when the tracked group is removed or reparented away from the agent while still alive. Not emitted when a behaviour inside the group completes or is aborted.
+				Emitted when the agent switches away from this group or has no valid candidates left.
 			</description>
 		</signal>
 		<signal name="frame_tick">
 			<param index="0" name="delta" type="float" />
 			<description>
-				Emitted on every eligible agent step while this behaviour group is selected. Use it to handle behaviour group related update logic. The signal fires on the agent's selected frame signal, so its cadence is set by [member NNAgent.process_thread].
+				Emitted on every agent step while a behaviour in this group is active.
 			</description>
 		</signal>
 	</signals>

@@ -1,13 +1,11 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <class name="NNResponseCurve" inherits="Resource" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
 	<brief_description>
-		A parametric curve that maps a [code]0..1[/code] input to a [code]0..1[/code] output.
+		A parametric curve resource for shaping [code]0..1[/code] AI scores.
 	</brief_description>
 	<description>
-		Assign to any [code]activation_curve[/code] property, such as [member NNConsideration.activation_curve] or [member NNNQSSearchCriteria.activation_curve], instead of drawing a [Curve].
-		[method sample] clamps the input to [code]0..1[/code], applies [member curve_type] using [member slope] and [member exponent], shifts the result by [member y_shift], clamps it to [code]0..1[/code], and finally inverts it when [member invert] is [code]true[/code].
-		With the default parameters each type gives its canonical [code]0..1[/code] shape: [constant CURVE_LINEAR] is [code]x[/code], [constant CURVE_POLYNOMIAL] is [code]x^2[/code], [constant CURVE_LOGISTIC] is an S centred at [code]0.5[/code], [constant CURVE_NORMAL] a bell peaking at [code]0.5[/code], [constant CURVE_SINE] a hump that rises from [code]0[/code] through [code]1[/code] at [code]0.5[/code] back to [code]0[/code], and [constant CURVE_STEP] a threshold at [code]0.5[/code]. [member x_shift] moves the curve horizontally, so the centre of the symmetric shapes sits at [code]0.5 + x_shift[/code]. [member slope] scales the output and [member exponent] controls how sharply each shape bends; see each [enum CurveType] constant for its formula, where [code]u = x - x_shift[/code].
-		[member preview] is a [Curve] baked from these parameters for the inspector only; evaluation never samples it.
+		A reusable curve resource defined by a preset shape ([enum CurveType]) and tuning parameters rather than hand-placed control points. Assign it to any [code]activation_curve[/code] property, such as [member NNConsideration.activation_curve] or [member NNNQSSearchCriteria.activation_curve].
+		Use [NNResponseCurve] instead of Godot's [Curve] when you want standard utility AI shapes (linear, polynomial, exponential, S-curve, bell curve, sine, or step) that are quick to adjust with sliders and easy to keep consistent across considerations. Use a regular [Curve] when you need an arbitrary hand-drawn shape.
 	</description>
 	<tutorials>
 	</tutorials>
@@ -16,57 +14,57 @@
 			<return type="float" />
 			<param index="0" name="x" type="float" />
 			<description>
-				Returns the curve's value at [param x]. The input is clamped to [code]0..1[/code], a non-finite result becomes [code]0.0[/code], and the result is clamped to [code]0..1[/code] and then inverted when [member invert] is [code]true[/code].
+				Evaluates the curve at [param x] (clamped to [code]0..1[/code]) and returns a score in [code]0..1[/code].
 			</description>
 		</method>
 	</methods>
 	<members>
 		<member name="curve_type" type="int" setter="set_curve_type" getter="get_curve_type" enum="NNResponseCurve.CurveType" default="0">
-			The shape sampled by [method sample]. See each [enum CurveType] constant for its formula. [constant CURVE_LINEAR] and [constant CURVE_STEP] ignore [member exponent].
+			The curve shape to evaluate. See [enum CurveType].
 		</member>
 		<member name="exponent" type="float" setter="set_exponent" getter="get_exponent" default="2.0">
-			Steepness of the [constant CURVE_POLYNOMIAL], [constant CURVE_EXPONENTIAL], [constant CURVE_LOGISTIC], [constant CURVE_LOGIT], [constant CURVE_NORMAL] and [constant CURVE_SINE] shapes. Larger values sharpen the curve, except [constant CURVE_LOGIT], which flattens as its inverse logistic sharpens; the default [code]2.0[/code] gives each type its canonical shape. Ignored when [member curve_type] is [constant CURVE_LINEAR] or [constant CURVE_STEP], where it is also hidden in the inspector.
+			Controls how sharply the curve bends. Higher values make the transition steeper (or flatter in the middle for [constant CURVE_LOGIT]). Unused by [constant CURVE_LINEAR] and [constant CURVE_STEP].
 		</member>
 		<member name="invert" type="bool" setter="set_invert" getter="get_invert" default="false">
-			If [code]true[/code], the clamped result is flipped: [code]y[/code] becomes [code]1 - y[/code].
+			If [code]true[/code], flips the output vertically ([code]1.0 - y[/code]) after clamping.
 		</member>
 		<member name="preview" type="Curve" setter="" getter="get_preview">
-			A read-only, non-saved [Curve] with 65 evenly spaced points baked from the current parameters so the inspector can draw the shape. It is regenerated after a parameter changes.
+			Read-only visual preview of the curve for the inspector.
 		</member>
 		<member name="slope" type="float" setter="set_slope" getter="get_slope" default="1.0">
-			Multiplier applied before [member y_shift]. With the default [code]1.0[/code] each type covers the full [code]0..1[/code] output range.
+			Vertical scale applied to the curve output before shifting and clamping.
 		</member>
 		<member name="x_shift" type="float" setter="set_x_shift" getter="get_x_shift" default="0.0">
-			Horizontal offset subtracted from the clamped input before the curve is evaluated. Positive values move the curve to the right; the centre of [constant CURVE_LOGISTIC], [constant CURVE_LOGIT], [constant CURVE_NORMAL] and [constant CURVE_SINE], and the threshold of [constant CURVE_STEP], sit at [code]0.5 + x_shift[/code].
+			Horizontal offset applied to the input. Positive values shift the curve to the right.
 		</member>
 		<member name="y_shift" type="float" setter="set_y_shift" getter="get_y_shift" default="0.0">
-			Vertical offset added after the curve is evaluated and before the result is clamped to [code]0..1[/code] and inverted.
+			Vertical offset added to the output before clamping to [code]0..1[/code].
 		</member>
 	</members>
 	<constants>
 		<constant name="CURVE_EXPONENTIAL" value="2" enum="CurveType">
-			An exponential ramp: [code]slope * (exp(exponent * u) - 1) / (exp(exponent) - 1)[/code], falling back to [code]slope * u[/code] when [member exponent] is nearly [code]0[/code]. Rises slowly and then steeply from [code]0[/code] at [code]u = 0[/code] to [code]slope[/code] at [code]u = 1[/code].
+			An exponential ramp that rises slowly at first and then steeply.
 		</constant>
 		<constant name="CURVE_LINEAR" value="0" enum="CurveType">
-			A straight line from [code]0[/code] at [code]u = 0[/code] to [code]slope[/code] at [code]u = 1[/code]: [code]slope * u[/code]. Ignores [member exponent].
+			A straight line from [code]0[/code] to [code]1[/code]. Ignores [member exponent].
 		</constant>
 		<constant name="CURVE_LOGISTIC" value="3" enum="CurveType">
-			An S-curve crossing [code]slope * 0.5[/code] at [code]u = 0.5[/code]: [code]slope / (1 + exp(-5 * exponent * (u - 0.5)))[/code]. Steeper as [member exponent] grows.
+			An S-curve centered at [code]0.5[/code] that transitions smoothly from low to high.
 		</constant>
 		<constant name="CURVE_LOGIT" value="4" enum="CurveType">
-			The inverse of the logistic curve: [code]slope * (0.5 + ln(u / (1 - u)) / (5 * exponent))[/code], with [code]u[/code] clamped to [code]0.0001..0.9999[/code]. Crosses [code]slope * 0.5[/code] at [code]u = 0.5[/code]; a larger [member exponent] flattens its middle, mirroring the steeper logistic curve.
+			An inverse S-curve that changes quickly near [code]0[/code] and [code]1[/code] and stays flatter through the middle.
 		</constant>
 		<constant name="CURVE_NORMAL" value="5" enum="CurveType">
-			A bell curve peaking at [code]slope[/code] when [code]u = 0.5[/code]: [code]slope * exp(-10 * exponent * (u - 0.5)^2)[/code]. Narrower as [member exponent] grows.
+			A bell curve peaking at [code]0.5[/code], useful for preferring a target value in the middle of a range.
 		</constant>
 		<constant name="CURVE_POLYNOMIAL" value="1" enum="CurveType">
-			A power curve from [code]0[/code] at [code]u = 0[/code] to [code]slope[/code] at [code]u = 1[/code]: [code]slope * u ^ exponent[/code]. With the default [member exponent] of [code]2.0[/code] it is a parabola that rises slowly and then steeply.
+			A power curve ([code]x^exponent[/code]). With the default [member exponent] of [code]2.0[/code], it forms a parabola that rises slowly and then accelerates.
 		</constant>
 		<constant name="CURVE_SINE" value="6" enum="CurveType">
-			A smooth hump: [code]slope * 0.5 * (1 - cos(PI * exponent * u))[/code]. With the default [member exponent] of [code]2.0[/code] it rises from [code]0[/code] through [code]slope[/code] at [code]u = 0.5[/code] back to [code]0[/code]; with [code]1.0[/code] it is a smooth ease from [code]0[/code] to [code]slope[/code].
+			A smooth sine hump peaking at [code]0.5[/code] with the default [member exponent] of [code]2.0[/code], or a smooth ease-in-out ramp with [code]1.0[/code].
 		</constant>
 		<constant name="CURVE_STEP" value="7" enum="CurveType">
-			A threshold: [code]slope[/code] when [code]u >= 0.5[/code] and [code]0[/code] otherwise. Ignores [member exponent].
+			A hard threshold that outputs [code]0[/code] below [code]0.5[/code] and [code]1[/code] at or above [code]0.5[/code] (shifted by [member x_shift]). Ignores [member exponent].
 		</constant>
 	</constants>
 </class>

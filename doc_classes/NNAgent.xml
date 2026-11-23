@@ -1,36 +1,32 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <class name="NNAgent" inherits="NoodleNodes" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
 	<brief_description>
-		Main node that drives a utility AI agent, evaluating sensors and behaviours to select and run actions.
+		Root node for a utility AI agent that scores and runs behaviours.
 	</brief_description>
 	<description>
-		This is the main node for a utility AI agent. A [NNAgent] node represents an AI entity that can reason based on sensor input and choose behaviours to react to that input using scores calculated with considerations. Behaviours can contain optional actions that allow reuse of action logic.
-		The agent updates itself automatically. Every eligible step of the frame signal selected with [member process_thread] performs the thinking step with [method evaluate_options] and [method update_current_behaviour], and then emits [code]frame_tick[/code] on the selected behaviour group, behaviour and action. Thinking happens first, so an action chosen on a step receives its frame tick in that same step. [member tick_rate] is the single thinking throttle: a rate of [code]N[/code] thinks on every [code]N[/code]th eligible step, while [code]frame_tick[/code] still fires on every eligible step.
-		Frame steps are driven by the SceneTree's [code]process_frame[/code] and [code]physics_frame[/code] signals rather than by this node's own [code]_process[/code]/[code]_physics_process[/code] overrides, so a script attached to the agent keeps its own callbacks and cannot shadow the automatic steps. The signal connections exist only while the agent is in the tree and enabled, and no step happens while the agent cannot process (paused or process mode disabled). Because stepping no longer depends on this node's process callbacks, [code]set_process()[/code] and [code]set_physics_process()[/code] do not stop the agent.
-		Both thinking primitives stay callable by hand. Set [member process_thread] to [code]Manual[/code] and call [method tick] from a custom scheduler, or call [method auto_tick_step] to reuse the scheduler's guards and rate schedule.
-		The agent can be hosted. A host is an ancestor state ([NNSTTickedNodes]) that is active, an ancestor action ([NNAction]) that is the current action of another agent, or an ancestor HTN task ([NNHTNTask]) whose step is running, and the nearest host ancestor is the one that drives the agent. A host drives the agent with its own delta at its own rate, so a hosted agent never steps from the SceneTree frame signals and its [member process_thread] is ignored, with an editor configuration warning. Its [member tick_rate] still throttles thinking on the host's eligible steps, while [code]frame_tick[/code] still fires on every host tick. A root nested inside another root's subtree is not hosted across that root; the nearest ancestor root owns its subtree. Deactivating the host aborts the current behaviour. The agent reports no completion of its own: it runs until its host deactivates it.
-		Noodle Nodes systems can be susceptible to oscillation, which means that two or more evaluated options get the highest score and the system ends up switching several times between the options. The agent only picks a new behaviour when its running behaviour is no longer a valid candidate, so it does not re-roll the selection on every thinking step. The [member current_behaviour_bias] property adds to the running behaviour's score before the candidates are ranked, so a positive bias keeps it among the [member num_behaviours_to_select] candidates for longer and a negative bias makes it drop out sooner. In a sense the AI Agent is "more determined" to continue with the currently selected behaviour.
-		The agent is a root of the shared blackboard and actor context. [member assigned_blackboard] is the explicitly assigned [NNBlackboard], and an explicit assignment always wins. When it is [code]null[/code] the agent inherits the effective board of the nearest ancestor root of any Noodle Nodes system (a behaviour tree root, a state tree root or another agent), and falls back to its own private per-instance board only when it has no root ancestor, so the blackboard helpers work without any setup. The private board is never a property, so it is never serialised. Assigning [code]null[/code] clears the assignment and returns to inherited resolution. [member assigned_actor] is the explicitly assigned actor; read the resolved actor with [method get_actor], which resolves the live assigned actor, then the actor of the nearest ancestor root of any Noodle Nodes system, then the agent's parent. Both are resolved from the agent's current position in the scene tree on demand, so reparenting re-resolves them, and a freed assigned actor falls through to the inherited actor or the parent.
-		Behaviours, actions, sensors and considerations below the agent reach the same board and actor through the [NoodleNodes] helpers, and because the rule follows the nearest ancestor root, a behaviour tree or state tree nested anywhere below the agent shares its context too.
+		Drives a utility AI entity. Add [NNSensor] nodes to gather inputs and [NNBehaviour] (or [NNBehaviourGroup]) nodes to define the options the agent can choose from. On each thinking step, the agent scores its behaviours from their considerations, picks one, and steps through its child [NNAction] nodes.
+		By default the agent updates automatically on physics frames according to [member process_thread] and throttles decision-making with [member tick_rate] while still ticking the active behaviour and action every frame. Set [member process_thread] to [constant MANUAL] if you want to drive it yourself with [method tick], or nest it under a state, action, or HTN task to let that host drive it.
+		Use [member current_behaviour_bias] to keep the agent from rapidly oscillating between similarly scored behaviours, and [member num_behaviours_to_select] to pick weighted-randomly among the top candidates for more varied behaviour.
+		The agent provides the [NNBlackboard] and actor context for all Noodle Nodes children beneath it.
 	</description>
 	<tutorials>
 	</tutorials>
 	<constants>
 		<constant name="IDLE" value="0" enum="ProcessThread">
-			The agent steps automatically from the SceneTree's [code]process_frame[/code] signal.
+			Updates automatically on idle (process) frames.
 		</constant>
 		<constant name="PHYSICS" value="1" enum="ProcessThread">
-			The agent steps automatically from the SceneTree's [code]physics_frame[/code] signal. This is the default.
+			Updates automatically on physics frames. This is the default.
 		</constant>
 		<constant name="MANUAL" value="2" enum="ProcessThread">
-			Neither signal is connected and the agent never steps automatically, so a custom scheduler calls [method tick] or [method auto_tick_step] itself.
+			Disables automatic updates so your own code can call [method tick] or [method auto_tick_step].
 		</constant>
 	</constants>
 	<methods>
 		<method name="abort_current_behaviour">
 			<return type="void" />
 			<description>
-				Immediately stops the currently selected behaviour and action. Used for stopping behaviours that have Can Be Interrupted property as [code]false[/code].
+				Immediately stops the active behaviour and action, even if [member NNBehaviour.can_be_interrupted] is [code]false[/code].
 			</description>
 		</method>
 		<method name="auto_tick_step">
@@ -38,129 +34,128 @@
 			<param index="0" name="process_thread" type="int" enum="NNAgent.ProcessThread" />
 			<param index="1" name="delta" type="float" />
 			<description>
-				The shared body of the frame-signal handlers, and the deterministic driver for custom schedulers. Runs the agent's scheduled step and returns [code]true[/code] when it actually stepped. It applies the same guards and [member tick_rate] schedule as the frame-signal handlers, so tests and custom schedulers can drive the agent directly, even outside the tree. A thinking step receives the [param delta] plus the deltas of the non-due calls since the previous thinking step, while [code]frame_tick[/code] receives only the [param delta] of this call.
-				The call is ignored, returning [code]false[/code], when [param process_thread] is not the selected [member process_thread], when the selected thread is [constant MANUAL], when the agent is disabled, in the editor, or when [member tick_rate] makes the thinking step not due. An ignored call does not advance the [member tick_rate] schedule; an eligible step that is not a thinking step still emits [code]frame_tick[/code]. Every eligible step also counts down the [member NNBehaviour.cooldown_seconds] of all enabled behaviours by [param delta], whether or not the step thinks.
+				Runs one scheduled step using the same enabled checks and [member tick_rate] throttle as automatic ticking. Returns [code]true[/code] if the agent stepped. Useful for custom schedulers and deterministic tests.
 			</description>
 		</method>
 		<method name="evaluate_options">
 			<return type="void" />
 			<param index="0" name="delta" type="float" />
 			<description>
-				Gathers input from enabled child sensors and evaluates enabled behaviours by calculating a score for each of them, then keeps up to the top [member num_behaviours_to_select] behaviours whose final score is greater than [code]0.0[/code] as candidates. Evaluation is skipped completely while the currently running behaviour has [member NNBehaviour.can_be_interrupted] set to [code]false[/code]. For each enabled [NNBehaviourGroup], the group is scored first and its enabled child behaviours are evaluated only when the group's score is greater than or equal to [member NNBehaviourGroup.activation_score]. The running behaviour keeps running while it is still one of the candidates; otherwise a new candidate is picked with a probability proportional to its score. Candidates must still be enabled and belong to this agent after evaluation and exit callbacks run. The automatic step calls this on every step selected by [member tick_rate], passing the time elapsed since the previous thinking step; it remains callable by hand for custom schedulers.
+				Updates enabled sensors, scores enabled behaviours, and selects a behaviour if the current one is no longer among the top [member num_behaviours_to_select] candidates. Skipped while the active behaviour has [member NNBehaviour.can_be_interrupted] set to [code]false[/code].
 			</description>
 		</method>
 		<method name="get_current_action_node" qualifiers="const">
 			<return type="NNAction" />
 			<description>
-				Returns the action the agent is currently running, or [code]null[/code] when no action is running or it was freed.
+				Returns the currently running [NNAction], or [code]null[/code] if none is active.
 			</description>
 		</method>
 		<method name="get_current_behaviour_group_node" qualifiers="const">
 			<return type="NNBehaviourGroup" />
 			<description>
-				Returns the behaviour group of the currently selected behaviour, or [code]null[/code] when the behaviour is not in a group or none is selected.
+				Returns the [NNBehaviourGroup] of the currently selected behaviour, or [code]null[/code] if none is active or it is ungrouped.
 			</description>
 		</method>
 		<method name="get_current_behaviour_node" qualifiers="const">
 			<return type="NNBehaviour" />
 			<description>
-				Returns the currently selected behaviour, or [code]null[/code] when none is selected or it was freed.
+				Returns the currently selected [NNBehaviour], or [code]null[/code] if none is active.
 			</description>
 		</method>
 		<method name="get_random_seed" qualifiers="const">
 			<return type="int" />
 			<description>
-				Returns the seed of the random number generator that picks between selection candidates. The generator is randomized when the agent is created, so agents do not share a selection stream by default.
+				Returns the seed used when picking among top-scoring candidate behaviours.
 			</description>
 		</method>
 		<method name="set_random_seed">
 			<return type="void" />
 			<param index="0" name="random_seed" type="int" />
 			<description>
-				Seeds the random number generator used to choose between selection candidates. A given seed produces the same sequence of picks, which makes selection reproducible. The generator is randomized when the agent is created, so agents do not share a selection stream by default.
+				Sets a fixed seed for candidate selection when [member num_behaviours_to_select] is greater than [code]1[/code], making choices reproducible.
 			</description>
 		</method>
 		<method name="tick">
 			<return type="void" />
 			<param index="0" name="delta" type="float" />
 			<description>
-				Runs one full unguarded agent step: [method evaluate_options], [method update_current_behaviour], then [code]frame_tick[/code] on the selected nodes. The [member NNBehaviour.cooldown_seconds] of all enabled behaviours counts down by [param delta] before the thinking step. Use it with [member process_thread] set to [code]Manual[/code] when a custom scheduler owns the timing. The scheduler guards do not apply, so it also works outside the tree.
+				Runs one full step immediately: updates cooldowns, calls [method evaluate_options] and [method update_current_behaviour], and emits [code]frame_tick[/code] on active nodes. Use with [constant MANUAL] mode.
 			</description>
 		</method>
 		<method name="update_current_behaviour">
 			<return type="void" />
 			<description>
-				Updates the currently selected behaviour, advancing to the next enabled action when the current action has been marked as finished and emitting [signal action_changed] when the active action changes (or when reporting the initial action started during [method evaluate_options]). If no actions are left, an action fails, or no actions have been defined for the current behaviour, ends the behaviour and emits [signal behaviour_changed] with [code]null[/code].
+				Advances the active behaviour to the next action if the current action finished, or ends the behaviour if no actions remain or an action failed.
 			</description>
 		</method>
 	</methods>
 	<members>
 		<member name="assigned_actor" type="Node" setter="set_assigned_actor" getter="get_assigned_actor">
-			The explicitly assigned actor, or [code]null[/code] when none is assigned or the assigned actor was freed. Assigning [code]null[/code] clears the assignment. No resolved fallback is ever stored here. Like any node export, it is saved in scenes as a path, so it can only point at a node in the same scene; a root instanced as its own scene under an entity picks that entity up through the ancestor root or parent fallback. Read the resolved actor with [method NoodleNodes.get_actor], which resolves this live assigned actor, then the actor of the nearest ancestor root of any Noodle Nodes system, then the agent's parent.
+			Optional actor [Node] this agent acts for. When unset, [method NoodleNodes.get_actor] inherits from the nearest ancestor root or falls back to this node's parent.
 		</member>
 		<member name="assigned_blackboard" type="NNBlackboard" setter="set_assigned_blackboard" getter="get_assigned_blackboard">
-			The explicitly assigned [NNBlackboard] resource, or [code]null[/code] when none is assigned. Assigning [code]null[/code] clears the assignment and returns to inherited resolution. No resolved board is ever stored here. Read the effective board with [method NoodleNodes.get_blackboard_resource], which resolves this assigned board, then the effective board of the nearest ancestor root of any Noodle Nodes system, then the agent's private per-instance board, so the blackboard helpers work without any setup. The private board is never a property, so it is never serialised. Blackboards default to [code]resource_local_to_scene = true[/code], so an assigned inspector board is per scene instance unless you deliberately untick it to share one board.
+			Optional [NNBlackboard] resource for this agent. When unset, inherits from the nearest ancestor root or creates a private blackboard automatically.
 		</member>
 		<member name="current_behaviour_bias" type="float" setter="set_current_behaviour_bias" getter="get_current_behaviour_bias" default="0.1">
-			Bias added to the running behaviour's consideration score before candidates are ranked, helping reduce oscillation between behaviours. A positive bias keeps the running behaviour among the top [member num_behaviours_to_select] candidates for longer, while a negative bias makes it drop out sooner. Has no effect when no behaviour is running.
+			Score bonus added to the currently running behaviour before ranking candidates. Positive values reduce oscillation by making the agent stick with its current behaviour longer.
 		</member>
 		<member name="current_behaviour_name" type="String" setter="" getter="get_current_behaviour_name" default="&quot;&quot;">
-			Name of the currently running behaviour, or empty when none is running. Read-only runtime state: written by the agent and never saved with the scene.
+			Name of the currently running behaviour, or empty if none is active.
 		</member>
 		<member name="num_behaviours_to_select" type="int" setter="set_num_behaviours_to_select" getter="get_num_behaviours_to_select" default="1">
-			The number of highest scoring behaviours kept as selection candidates. The running behaviour keeps running while it is still one of them, so it is only replaced when it drops out of this list. When a new behaviour has to be chosen, the pick is random with a probability proportional to score, so higher scoring candidates are preferred. Equal scores retain evaluation order when the list is full. A value of [code]1[/code] always follows the single highest scoring candidate, which makes selection deterministic. Any value of [code]1[/code] or greater is accepted; smaller assignments report an error and leave the value unchanged.
+			Number of top-scoring behaviours kept as candidates. A value of [code]1[/code] deterministically picks the highest scorer; higher values pick randomly weighted by score when switching behaviours.
 		</member>
 		<member name="process_thread" type="int" enum="NNAgent.ProcessThread" setter="set_process_thread" getter="get_process_thread" default="1">
-			Selects the SceneTree frame signal that drives the automatic steps, not this node's processing flags. Defaults to [constant PHYSICS], so an agent steps automatically once added to a scene. [constant IDLE] uses [code]process_frame[/code], [constant PHYSICS] uses [code]physics_frame[/code] and [constant MANUAL] connects neither so a custom scheduler calls [method tick]. Exactly one signal is connected at a time. Out-of-range values fall back to [constant PHYSICS]. Setting this property re-arms the [member tick_rate] schedule. Ignored while an ancestor host (a state, agent action, [NNBTRunHostedRoot], or [NNHTNTask]) drives the agent, because the host drives every step; the editor reports a configuration warning when the value would be ignored.
+			Controls when the agent ticks automatically ([constant PHYSICS], [constant IDLE], or [constant MANUAL]). Ignored when the agent is hosted under another AI node.
 		</member>
 		<member name="tick_rate" type="int" setter="set_tick_rate" getter="get_tick_rate" default="6">
-			The single thinking throttle. A rate of [code]N[/code] performs [method evaluate_options] and [method update_current_behaviour] on every [code]N[/code]th eligible step, while the selected nodes still receive [code]frame_tick[/code] on every eligible step. A thinking step receives the delta accumulated over the steps since the previous thinking step; [code]frame_tick[/code] receives only the current step's delta. The default of [code]6[/code] thinks about ten times per second at 60 physics ticks per second, and the first eligible step always thinks, so a new agent picks a behaviour immediately. Values below 1 clamp to 1, and ineligible emissions do not advance the count. Setting this property or [member process_thread], a change to [member NoodleNodes.is_enabled], and entering or leaving the tree re-arm the schedule so the next eligible step is due and discard the accumulated delta. While an ancestor host drives the agent, the host's ticks are the eligible steps, so this rate still throttles thinking and [code]frame_tick[/code] still fires on every host tick; [member process_thread] does not apply.
+			How often the agent re-evaluates behaviours. A value of [code]N[/code] runs thinking every [code]N[/code]th step (default [code]6[/code], roughly 10 times per second at 60 FPS), while [code]frame_tick[/code] still runs every step.
 		</member>
 		<member name="top_scoring_behaviour_name" type="String" setter="" getter="get_top_scoring_behaviour_name" default="&quot;&quot;">
-			Name of the top scoring behaviour after the latest [method evaluate_options] call, or empty when no candidate scored above [code]0.0[/code]. Read-only runtime state: written by the agent and never saved with the scene.
+			Name of the highest-scoring behaviour from the last evaluation, or empty if none scored above [code]0.0[/code].
 		</member>
 		<member name="total_evaluate_options_usec" type="int" setter="" getter="get_total_evaluate_options_usec" default="0">
-			Duration in microseconds of the latest [method evaluate_options] call. Read-only runtime state, only available in debug builds, and never saved with the scene.
+			Duration in microseconds of the last [method evaluate_options] call (debug builds only).
 		</member>
 		<member name="total_update_behaviour_usec" type="int" setter="" getter="get_total_update_behaviour_usec" default="0">
-			Duration in microseconds of the latest [method update_current_behaviour] call. Read-only runtime state, only available in debug builds, and never saved with the scene.
+			Duration in microseconds of the last [method update_current_behaviour] call (debug builds only).
 		</member>
 	</members>
 	<signals>
 		<signal name="action_changed">
 			<param index="0" name="action_node" type="Object" />
 			<description>
-				Emitted when the current action changes: during [method update_current_behaviour] when the behaviour advances to another action, reports the initial action started during [method evaluate_options], or runs out of actions ([code]null[/code]); during [method evaluate_options] with [code]null[/code] if no valid candidates remain while an action was running; and during [method abort_current_behaviour] with [code]null[/code] when no replacement action was selected by callbacks.
+				Emitted when the active action changes, or with [code]null[/code] when no action is running.
 			</description>
 		</signal>
 		<signal name="action_exited">
 			<param index="0" name="action_node" type="Object" />
 			<description>
-				Emitted when the agent ends the current action itself: when the behaviour is deselected or aborted, when no candidate behaviour is left, or when the tracked action was freed or reparented away. An action that finishes normally during [method update_current_behaviour] is ended without this signal, which [signal action_changed] reports instead.
+				Emitted when the active action is cut short because the behaviour changed, was aborted, or had no candidates left.
 			</description>
 		</signal>
 		<signal name="behaviour_changed">
 			<param index="0" name="behaviour_node" type="Object" />
 			<description>
-				Emitted when a new behaviour is selected during [method evaluate_options] (passing the selected [NNBehaviour], or [code]null[/code] if it was freed by callbacks before emission), and with [code]null[/code] when the running behaviour completes during [method update_current_behaviour] or is stopped with [method abort_current_behaviour].
+				Emitted when a new behaviour is selected, or with [code]null[/code] when the running behaviour finishes or is aborted.
 			</description>
 		</signal>
 		<signal name="behaviour_exited">
 			<param index="0" name="behaviour_node" type="Object" />
 			<description>
-				Emitted when the running behaviour is deselected: when another behaviour replaces it or no valid candidates remain during [method evaluate_options], or when the tracked behaviour is freed, removed, or reparented away (passing [code]null[/code] if freed). Not emitted when a behaviour completes during [method update_current_behaviour] or is stopped with [method abort_current_behaviour]; those paths emit [signal behaviour_changed] with [code]null[/code] instead.
+				Emitted when the active behaviour is replaced by another behaviour or no valid candidates remain.
 			</description>
 		</signal>
 		<signal name="behaviour_group_changed">
 			<param index="0" name="behaviour_group_node" type="Object" />
 			<description>
-				Emitted when a new behaviour is selected during [method evaluate_options], passing the selected behaviour's [NNBehaviourGroup] or [code]null[/code] if the behaviour is ungrouped (or the group was freed before emission). Not emitted when a behaviour completes during [method update_current_behaviour] or is aborted.
+				Emitted when a new behaviour is selected, passing its parent [NNBehaviourGroup] or [code]null[/code] if ungrouped.
 			</description>
 		</signal>
 		<signal name="behaviour_group_exited">
 			<param index="0" name="behaviour_group_node" type="Object" />
 			<description>
-				Emitted when the tracked behaviour group exits: during [method evaluate_options] when a behaviour in another group or an ungrouped behaviour is selected, when no valid candidates remain, or when a newly entered group's chosen child becomes unavailable during [signal NNBehaviourGroup.behaviour_group_entered]; also emitted when the tracked group is freed, removed, or reparented away (passing [code]null[/code] if freed). Not emitted when a behaviour completes during [method update_current_behaviour] or is aborted.
+				Emitted when the agent switches away from the active behaviour group or has no valid candidates left.
 			</description>
 		</signal>
 	</signals>

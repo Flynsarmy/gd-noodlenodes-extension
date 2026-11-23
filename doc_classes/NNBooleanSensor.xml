@@ -1,16 +1,16 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <class name="NNBooleanSensor" inherits="NNSensor" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
 	<brief_description>
-		Accepts a boolean value and scales it to [code]0..1[/code] range.
+		Converts a boolean flag into a [code]0.0[/code] or [code]1.0[/code] sensor value.
 	</brief_description>
 	<description>
-		Converts [member boolean_value] to a float [member NNSensors.sensor_value] when evaluated: [code]false[/code] maps to [code]0.0[/code] and [code]true[/code] maps to [code]1.0[/code].
+		Exposes a simple [bool] input ([member boolean_value]) as [code]0.0[/code] ([code]false[/code]) or [code]1.0[/code] ([code]true[/code]) for considerations to read. Pairs naturally with [NNBooleanConsideration].
 	</description>
 	<tutorials>
 	</tutorials>
 	<members>
 		<member name="boolean_value" type="bool" setter="set_boolean_value" getter="get_boolean_value" default="false">
-			Boolean input for the sensor. Evaluates [member NNSensors.sensor_value] to [code]1.0[/code] when [code]true[/code] and [code]0.0[/code] when [code]false[/code].
+			Boolean input mapped to [code]1.0[/code] when [code]true[/code] and [code]0.0[/code] when [code]false[/code].
 		</member>
 	</members>
 </class>

@@ -1,14 +1,10 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <class name="NNBTUntilFail" inherits="NNBTDecoratorNodes" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
 	<brief_description>
-		Repeats its child node until the child returns [code]FAILURE[/code], then completes with [code]SUCCESS[/code].
+		Repeats its child until it fails, then completes with [constant NNBTNodes.SUCCESS].
 	</brief_description>
 	<description>
-		The until-fail node ticks its first enabled child node repeatedly. A [code]FAILURE[/code] child completes the node with [code]SUCCESS[/code]. A successful child does not complete this node; it repeats the child on the following tick and only a child [code]FAILURE[/code] completes it with [code]SUCCESS[/code]. A [code]RUNNING[/code] child keeps the node running and is ticked again on the next tick.
-
-		The child is never reset on success; the normal run lifecycle starts the child's next run on the next tick.
-
-		The until-fail node must have exactly one enabled behaviour-tree child. With no enabled child it completes with [code]FAILURE[/code].
+		Keeps running its child on every tick while it returns [constant NNBTNodes.SUCCESS] or [constant NNBTNodes.RUNNING], and completes with [constant NNBTNodes.SUCCESS] once the child returns [constant NNBTNodes.FAILURE]. Use for loops that continue doing work until a condition stops holding (such as patrolling waypoints until an enemy is spotted).
 	</description>
 	<tutorials>
 	</tutorials>

@@ -1,22 +1,20 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <class name="NNDebugger" inherits="Object" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
 	<brief_description>
-		Runtime side of the Noodle Nodes debugger: the root registry, snapshot and event access, and the pause/step gate.
+		Runtime singleton for inspecting, recording, pausing, and stepping Noodle Nodes AI roots.
 	</brief_description>
 	<description>
-		The [b]NNDebugger[/b] engine singleton. It lists every Noodle Nodes root that is currently in the scene tree, exposes each root's snapshot, events and node properties, and forwards them to the editor over [EngineDebugger]. It also owns the process-wide pause scope and step state.
-		The singleton only exists in a debug build of a running game. It is not registered while editing, and not registered at all in a release build, where the [NNDebugger] class and its methods are compiled out too. GDScript callers must guard every use with [code]Engine.has_singleton("NNDebugger")[/code], fetch it with [code]Engine.get_singleton("NNDebugger")[/code] and keep the result untyped: it cannot be instantiated, and variables should not be typed as it.
-		Roots register themselves while they are in the tree. Watching a root is reference counted and starts its event recording. The editor debugger plugin subscribes to roots for you; custom tools can call [method watch], [method get_snapshot] and [method get_events] directly. Root information, snapshot and event schemas and the EngineDebugger messages are documented in [code]tutorial/Debugger_reference.md[/code].
-		Pausing only affects roots that step from the SceneTree's frame signals. Roots with [code]process_thread[/code] set to [code]MANUAL[/code] and direct [code]tick()[/code] calls keep running, and hosted roots follow their host. By default pausing stops only those AI ticks; see [method set_pause_scope] to pause the whole game as well.
+		Engine singleton that tracks live Noodle Nodes roots in the scene tree, exposes snapshots and event logs for debugging tools, and lets you pause or single-step AI ticks.
+		Only registered in debug builds of a running game (not in the editor or release builds). Always check [code]Engine.has_singleton("NNDebugger")[/code] and access it untyped via [code]Engine.get_singleton("NNDebugger")[/code]. Most users only need the built-in editor debugger dock; use this API when building custom in-game overlays or test tools.
 	</description>
 	<tutorials>
 	</tutorials>
 	<constants>
 		<constant name="PAUSE_SCOPE_AI" value="0" enum="PauseScope">
-			Pausing stops only the scheduled Noodle Nodes ticks. The rest of the game keeps running.
+			Pausing stops only scheduled Noodle Nodes AI ticks while the rest of the game keeps running.
 		</constant>
 		<constant name="PAUSE_SCOPE_GAME" value="1" enum="PauseScope">
-			Pausing stops the scheduled Noodle Nodes ticks and pauses the [SceneTree]. The tree's own pause state is restored when the debugger resumes.
+			Pausing stops both scheduled Noodle Nodes AI ticks and the [SceneTree].
 		</constant>
 	</constants>
 	<methods>
@@ -25,13 +23,13 @@
 			<param index="0" name="previous" type="Dictionary" />
 			<param index="1" name="current" type="Dictionary" />
 			<description>
-				Returns a delta that turns [param previous] into [param current]; [code]Protocol.apply_snapshot_delta(previous, diff)[/code] rebuilds [param current] from it. Top-level keys that differ go into [code]"set"[/code], the node array excepted. When the sequence of node [code]id[/code] and [code]parent[/code] pairs is unchanged, only the changed node entries go into [code]"nodes_changed"[/code]; otherwise the whole node array goes into [code]"nodes"[/code]. Neither argument is modified.
+				Returns a delta dictionary describing the changes from [param previous] to [param current], without modifying either input.
 			</description>
 		</method>
 		<method name="get_event_capacity" qualifiers="const">
 			<return type="int" />
 			<description>
-				Returns the event ring-buffer capacity applied to every root, current and future. See [method set_event_capacity].
+				Returns the maximum number of events kept per watched root.
 			</description>
 		</method>
 		<method name="get_events" qualifiers="const">
@@ -39,94 +37,94 @@
 			<param index="0" name="root_id" type="int" />
 			<param index="1" name="after_seq" type="int" default="0" />
 			<description>
-				Returns the events recorded by the root with [param root_id] whose [code]seq[/code] is greater than [param after_seq], oldest first. Returns an empty array when the root is gone. Events are only recorded while the root is watched, and the ring buffer drops the oldest events first.
+				Returns recorded events for [param root_id] with a sequence number greater than [param after_seq], oldest first. Events are only recorded while the root is watched via [method watch].
 			</description>
 		</method>
 		<method name="get_node_properties" qualifiers="const">
 			<return type="Dictionary" />
 			<param index="0" name="node_id" type="int" />
 			<description>
-				Returns the current values of the properties of any live [Object] that have storage, editor or script-variable usage, keyed by property name. That includes exported and plain script variables, but not groups, categories or internal engine properties. Integer properties with an enum hint report the matching enum name (for example [code]"Multiply"[/code]) instead of the raw number, falling back to the number when no name matches; flags and other hints keep their values. Values are sanitised like [method NNBlackboard.get_debug_data], so they hold no [Object]. Returns an empty dictionary when the object is gone.
+				Returns a sanitized dictionary of inspector-visible and script properties for the live object with [param node_id], or an empty dictionary if it no longer exists.
 			</description>
 		</method>
 		<method name="get_pause_scope" qualifiers="const">
 			<return type="int" enum="NNDebugger.PauseScope" />
 			<description>
-				Returns the [enum PauseScope] applied by [method set_paused]. Defaults to [constant PAUSE_SCOPE_AI].
+				Returns the active [enum PauseScope]. Defaults to [constant PAUSE_SCOPE_AI].
 			</description>
 		</method>
 		<method name="get_root_info" qualifiers="const">
 			<return type="Dictionary" />
 			<param index="0" name="root_id" type="int" />
 			<description>
-				Returns the information dictionary of one registered root, or an empty dictionary when the root is gone. See [method get_roots] for the keys.
+				Returns metadata for a single registered root, or an empty dictionary if it no longer exists.
 			</description>
 		</method>
 		<method name="get_roots" qualifiers="const">
 			<return type="Array[Dictionary]" />
 			<description>
-				Returns one information dictionary for every live registered root, in registration order. Each dictionary holds [code]id[/code], [code]type[/code] ([code]"agent"[/code], [code]"bt"[/code], [code]"st"[/code] or [code]"htn"[/code]), [code]class[/code], [code]name[/code], [code]path[/code], [code]owner_id[/code], [code]owner_name[/code], [code]owner_path[/code], [code]actor_id[/code], [code]actor_name[/code], [code]actor_path[/code], [code]host_root_id[/code], [code]host_node_id[/code], [code]host_node_name[/code] and [code]host_node_class[/code]. The owner is the scene owner; the actor is the node the root acts for, which is the one worth drawing the root against. Both come back as [code]0[/code] and empty strings when there is none, and the host fields are [code]0[/code] and empty strings for a top-level root.
+				Returns metadata dictionaries for all live registered Noodle Nodes roots in registration order.
 			</description>
 		</method>
 		<method name="get_snapshot" qualifiers="const">
 			<return type="Dictionary" />
 			<param index="0" name="root_id" type="int" />
 			<description>
-				Returns the latest snapshot of the root with [param root_id], or an empty dictionary when the root is gone. The snapshot is built on demand and does not require watching.
+				Returns the current debugger snapshot for [param root_id], or an empty dictionary if it no longer exists.
 			</description>
 		</method>
 		<method name="is_paused" qualifiers="const">
 			<return type="bool" />
 			<description>
-				Returns [code]true[/code] while the debugger is paused. This is the debugger's own flag; [method set_pause_scope] decides whether the [SceneTree] is paused as well. See [method set_paused].
+				Returns [code]true[/code] while the debugger is paused.
 			</description>
 		</method>
 		<method name="is_watched" qualifiers="const">
 			<return type="bool" />
 			<param index="0" name="root_id" type="int" />
 			<description>
-				Returns [code]true[/code] while the root has at least one watcher. Returns [code]false[/code] when the root is gone.
+				Returns [code]true[/code] while [param root_id] has at least one active watcher.
 			</description>
 		</method>
 		<method name="set_event_capacity">
 			<return type="void" />
 			<param index="0" name="capacity" type="int" />
 			<description>
-				Sets the number of events each root keeps. It applies to every current root and to roots that register later. Values below [code]1[/code] clamp to [code]1[/code]. Dropping events makes gaps in the [code]seq[/code] numbers reported by [method get_events].
+				Sets the maximum number of events retained per root (minimum [code]1[/code]). Oldest events are dropped when full.
 			</description>
 		</method>
 		<method name="set_pause_scope">
 			<return type="void" />
 			<param index="0" name="scope" type="int" enum="NNDebugger.PauseScope" />
 			<description>
-				Sets what pausing stops. [constant PAUSE_SCOPE_AI] only pauses the scheduled AI ticks. [constant PAUSE_SCOPE_GAME] also pauses the [SceneTree]; resuming restores the pause state the tree had before the debugger paused it, so a tree the game paused itself stays paused. Changing the scope while paused applies or releases the tree pause immediately. Emits [signal pause_scope_changed]. Values other than [constant PAUSE_SCOPE_GAME] fall back to [constant PAUSE_SCOPE_AI].
+				Sets whether pausing stops only AI ticks ([constant PAUSE_SCOPE_AI]) or also pauses the [SceneTree] ([constant PAUSE_SCOPE_GAME]). Emits [signal pause_scope_changed].
 			</description>
 		</method>
 		<method name="set_paused">
 			<return type="void" />
 			<param index="0" name="paused" type="bool" />
 			<description>
-				Pauses or resumes the scheduled steps of every root that steps from the SceneTree's [code]process_frame[/code] or [code]physics_frame[/code] signal. With [constant PAUSE_SCOPE_GAME] it also pauses the [SceneTree], and resuming restores the tree's previous pause state. Frames that pass while paused are dropped, so resuming does not produce a catch-up tick. Roots with [code]process_thread[/code] set to [code]MANUAL[/code] and direct [code]tick()[/code] calls are never blocked. Emits [signal paused_changed] when the state changes.
+				Pauses or resumes scheduled AI root ticks (and the [SceneTree] when [constant PAUSE_SCOPE_GAME] is active). Manual [code]tick()[/code] calls are unaffected. Emits [signal paused_changed].
 			</description>
 		</method>
 		<method name="step">
 			<return type="void" />
 			<description>
-				While paused, advances every scheduled root by one of its own frames on its process thread, then pauses again. Each root consumes its own step, so a [code]PHYSICS[/code] root and an [code]IDLE[/code] root each tick exactly once regardless of how many physics steps the next process frame contains. With [constant PAUSE_SCOPE_GAME] it also unpauses the [SceneTree] for exactly one complete frame, so one frame of ordinary node processing runs in addition to the AI tick, then pauses the tree again. Does nothing while not paused.
+				While paused, advances every scheduled AI root by one frame and then pauses again. With [constant PAUSE_SCOPE_GAME], also runs one game frame.
 			</description>
 		</method>
 		<method name="unwatch">
 			<return type="void" />
 			<param index="0" name="root_id" type="int" />
 			<description>
-				Removes one watcher from the root. Event recording stops, and the recorded events are dropped, when the last watcher leaves. Unknown or freed root ids are ignored.
+				Removes a watcher from [param root_id]. Stops event recording and clears stored events when the last watcher leaves.
 			</description>
 		</method>
 		<method name="watch">
 			<return type="void" />
 			<param index="0" name="root_id" type="int" />
 			<description>
-				Adds one watcher to the root and starts its event recording. Watching is reference counted, so every [method watch] must be matched by one [method unwatch]. Unknown or freed root ids are ignored.
+				Adds a watcher to [param root_id] and begins recording its events. Match each call with [method unwatch].
 			</description>
 		</method>
 	</methods>

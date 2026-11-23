@@ -1,40 +1,36 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <class name="NNBTMoveTo2D" inherits="NNBTSpatialActionLeaf" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
 	<brief_description>
-		Moves a [Node2D] to a target along a [NavigationAgent2D] path.
+		Action leaf that navigates a [Node2D] to a target using a [NavigationAgent2D].
 	</brief_description>
 	<description>
-		Sets the target position on a [NavigationAgent2D], follows its path, and returns [constant NNBTNodes.RUNNING] until the body reaches the target. Returns [constant NNBTNodes.SUCCESS] when the body's global position is within [member arrival_distance] of the target. Returns [constant NNBTNodes.FAILURE] when the target is unreachable, when the target is gone at runtime, or when the leaf or agent is misconfigured.
-		The moved body is the [NavigationAgent2D]'s parent, which is what the agent itself assumes. The body must be a [Node2D]; another parent type reports a configuration error once per node instance and returns [constant NNBTNodes.FAILURE]. The agent is [member navigation_agent] when set, otherwise the first direct child of the actor that is a [NavigationAgent2D]. With neither, the leaf reports a configuration error once per node instance and returns [constant NNBTNodes.FAILURE].
-		The target is read every tick, so a moving node or a changing blackboard value is followed. The agent's [code]target_position[/code] is submitted on the first tick of a run and again only when the target has moved farther than [member repath_distance] from the last submitted target, so a moving target does not re-query a path every tick.
-		The leaf does not own the body's physics by default. It always publishes the desired velocity through [method NavigationAgent2D.set_velocity] and, when [member velocity_key] is non-empty, to the blackboard. [member apply_movement] opts in to movement: a [CharacterBody2D] gets its [code]velocity[/code] set and [method CharacterBody2D.move_and_slide] called, any other [Node2D] is translated by the velocity times the tick delta. When the agent has [code]avoidance_enabled[/code], the leaf never moves the body from its tick; it connects to [signal NavigationAgent2D.velocity_computed] for the run and applies the safe velocity from that signal instead. Movement therefore expects the root to tick every physics frame.
-		When the run ends, whether by success, failure or interrupt, the leaf disconnects from [signal NavigationAgent2D.velocity_computed], sets the agent's [code]target_position[/code] to the body's current global position and its velocity to zero, zeroes the body's velocity when [member apply_movement] is set and the body is a [CharacterBody2D], and writes a zero vector to [member velocity_key]. The agent is remembered by object ID for the run, so changing the properties mid-run does not leave the previous agent following a stale target. A freed agent or body ends the run with [constant NNBTNodes.FAILURE] instead of crashing.
-		With avoidance, the agent reports a zero safe velocity once it considers its path finished. Keep the agent's [code]target_desired_distance[/code] and [code]path_desired_distance[/code] below [member arrival_distance] so an avoiding body can still reach the target.
-		A navigation map that has not synchronized yet, or a path query that has not resolved, keeps the leaf [constant NNBTNodes.RUNNING] with a zero velocity rather than reporting a failure. A target that resolves to a point farther than [member arrival_distance] from the submitted target, such as a target outside the navigation mesh or on a disconnected region, returns [constant NNBTNodes.FAILURE].
+		Drives a [NavigationAgent2D] toward the target configured by [member NNBTSpatialActionLeaf.target_source], returning [constant NNBTNodes.RUNNING] until within [member arrival_distance] ([constant NNBTNodes.SUCCESS]) or if the target is unreachable or missing ([constant NNBTNodes.FAILURE]). Moving targets are tracked automatically and repathed when they move past [member repath_distance].
+		By default, this leaf only computes and publishes the desired velocity (to the [NavigationAgent2D] and optionally [member velocity_key]) so your character script keeps full control over movement and physics. Enable [member apply_movement] if you want the leaf to move a [CharacterBody2D] or [Node2D] directly, including RVO avoidance via [signal NavigationAgent2D.velocity_computed].
+		Uses [member navigation_agent] if assigned, or automatically finds the actor's first [NavigationAgent2D] child.
 	</description>
 	<tutorials>
 	</tutorials>
 	<members>
 		<member name="apply_movement" type="bool" setter="set_apply_movement" getter="get_apply_movement" default="false">
-			If [code]true[/code], the leaf moves the body itself. A [CharacterBody2D] gets its [code]velocity[/code] set and [method CharacterBody2D.move_and_slide] called; any other [Node2D] is translated by the velocity times the tick delta. With avoidance enabled on the agent, the body is moved from [signal NavigationAgent2D.velocity_computed] with the safe velocity instead, and the leaf does not move it from the tick. The root must tick every physics frame for this. If [code]false[/code], the body is never moved and only the desired velocity is published.
+			If [code]true[/code], moves the body directly (calling [method CharacterBody2D.move_and_slide] on a [CharacterBody2D] or translating any other [Node2D]). Supports [NavigationAgent2D] avoidance automatically. Expects the root to tick every physics frame.
 		</member>
 		<member name="arrival_distance" type="float" setter="set_arrival_distance" getter="get_arrival_distance" default="8.0">
-			Distance in pixels from the target at which the leaf returns [constant NNBTNodes.SUCCESS]. Measured as plain 2D distance between the body's global position and the target, so a target offset in either axis counts.
+			Distance in pixels from the target at which the leaf completes with [constant NNBTNodes.SUCCESS]. With avoidance enabled, keep the agent's desired distances smaller than this value.
 		</member>
 		<member name="navigation_agent" type="NavigationAgent2D" setter="set_navigation_agent" getter="get_navigation_agent">
-			The agent to drive. Stored by object ID: a freed agent reads back as [code]null[/code] and makes the leaf return [constant NNBTNodes.FAILURE]. When never assigned, the first direct child of the actor that is a [NavigationAgent2D] is used. The agent's parent is the body, and must be a [Node2D].
+			Optional [NavigationAgent2D] to drive. When unset, uses the first direct [NavigationAgent2D] child of the actor.
 		</member>
 		<member name="repath_distance" type="float" setter="set_repath_distance" getter="get_repath_distance" default="16.0">
-			How far in pixels the target must move from the last submitted target before the agent's [code]target_position[/code] is submitted again. The target is always submitted on the first tick of a run.
+			Minimum target movement in pixels before submitting a new path query.
 		</member>
 		<member name="speed" type="float" setter="set_speed" getter="get_speed" default="200.0">
-			Desired movement speed in pixels per second. The desired velocity is the normalized direction to the next path point scaled to this speed.
+			Desired movement speed in pixels per second.
 		</member>
 		<member name="target_position" type="Vector2" setter="set_target_position" getter="get_target_position" default="Vector2(0, 0)">
-			The target in global coordinates when [member NNBTSpatialActionLeaf.target_source] is [constant NNBTSpatialActionLeaf.TARGET_POSITION].
+			Global target position when [member NNBTSpatialActionLeaf.target_source] is [constant NNBTSpatialActionLeaf.TARGET_POSITION].
 		</member>
 		<member name="velocity_key" type="String" setter="set_velocity_key" getter="get_velocity_key" default="&quot;&quot;">
-			Blackboard key that receives the desired velocity as a [Vector2] on every [constant NNBTNodes.RUNNING] tick. A zero vector is written when the run ends. An empty key disables the write. Nothing is written when no blackboard is reachable.
+			Optional blackboard key where the desired [Vector2] velocity is written each tick (reset to zero when the run ends).
 		</member>
 	</members>
 </class>

@@ -1,18 +1,16 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <class name="NNSTAllOfGuard" inherits="NNSTGuard" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
 	<brief_description>
-		Returns [code]true[/code] if all of the [member guards] are satisfied.
+		Composite guard that succeeds only when all of its [member guards] are satisfied.
 	</brief_description>
 	<description>
-		This guard returns [code]true[/code] only if all of the [member guards] are satisfied, and [code]false[/code] otherwise. Use it to require multiple conditions to hold at the same time.
-		An empty [member guards] array returns [code]true[/code]. Any [code]null[/code] entries in [member guards] are skipped, so an array containing only [code]null[/code] entries also returns [code]true[/code].
-		It reports the bitwise OR of the trigger types of all non-null entries in [member guards] from [method NNSTGuard.get_supported_trigger_types].
+		Combines multiple [NNSTGuard] resources with logical AND. Use when a transition requires several conditions to hold at the same time.
 	</description>
 	<tutorials>
 	</tutorials>
 	<members>
 		<member name="guards" type="NNSTGuard[]" setter="set_guards" getter="get_guards" default="[]">
-			Guards that must all be satisfied for this guard to return [code]true[/code] (evaluated in order, short-circuiting on the first failure). [code]null[/code] entries are skipped, and an empty array evaluates to [code]true[/code].
+			Guards that must all pass for this guard to return [code]true[/code].
 		</member>
 	</members>
 </class>

@@ -1,15 +1,11 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <class name="NNConsideration" inherits="NNConsiderations" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
 	<brief_description>
-		Scores a behaviour from an input value and an optional activation curve.
+		Scores a behaviour, branch, or state from a sensor or numeric input and an optional curve.
 	</brief_description>
 	<description>
-		Add [NNConsideration] nodes as children of [NNBehaviour], [NNBehaviourGroup], [NNConsiderationGroup], or scored [NNBTNodes] and [NNSTTickedNodes] nodes to contribute a score during evaluation.
-		Each consideration node can contain an activation curve that can be defined in the node properties. The [member activation_input_value] property is used as the x-axis value to find the y-value on the activation curve. The y-value is then the resulting score for the consideration. If no curve has been set, the [member activation_input_value] will be used as the consideration score as-is.
-		If a sensor or a sensor group is used as the input value for a consideration, the [member activation_input_value] for the consideration will be overwritten with the [member NNSensors.sensor_value] of the sensor node during evaluation. Otherwise the value of the consideration's [member activation_input_value] property will be used. In simple terms: sensors are optional, you can use considerations without them if you set the [member activation_input_value] directly in your code.
-		A custom evaluation method can be defined for the [NNConsideration] node by extending the node with a script that implements [method on_evaluate], which returns the score.
-		The score is recomputed on every evaluation, reading the [member NNSensors.sensor_value] of [member input_sensor] each time. Editing [member activation_curve]'s points at runtime therefore affects the next evaluation.
-		In [method on_evaluate] you should return a value between [code]0[/code] and [code]1[/code]. You can sample the [member activation_curve] using [method sample_activation_curve]. You can also set [member NNConsiderations.has_vetoed] to [code]true[/code], which causes the parent behaviour or group to score [code]0.0[/code] and stop evaluating further considerations immediately. While [member NNConsiderations.has_vetoed] is [code]true[/code], evaluation returns [code]0.0[/code] immediately without reading [member input_sensor] or calling [method on_evaluate], and it is not reset automatically, so external code must set it back to [code]false[/code] to end the veto state.
+		Add as a child of an [NNBehaviour], [NNBehaviourGroup], [NNConsiderationGroup], or utility-scored behaviour tree or state tree node to contribute a [code]0..1[/code] score during evaluation.
+		Assign an [member input_sensor] (or update [member activation_input_value] from script) and optionally shape the result with [member activation_curve] (using either a [Curve] or an [NNResponseCurve]). For custom scoring logic, override [method on_evaluate] in a script. Set [member NNConsiderations.has_vetoed] to [code]true[/code] to immediately disqualify the parent option with a score of [code]0.0[/code].
 	</description>
 	<tutorials>
 	</tutorials>
@@ -17,26 +13,26 @@
 		<method name="on_evaluate" qualifiers="virtual">
 			<return type="float" />
 			<description>
-				Called on every evaluation in place of sampling [member activation_curve] or using [member activation_input_value]. Return the score, typically between [code]0[/code] and [code]1[/code]. The current input is in [member activation_input_value], and [method sample_activation_curve] maps it through the curve. Setting [member NNConsiderations.has_vetoed] to [code]true[/code] vetoes the parent evaluation.
+				Override to compute a custom score (typically in [code]0..1[/code]) instead of using [member activation_curve]. Call [method sample_activation_curve] if you still want to shape a value with the curve.
 			</description>
 		</method>
 		<method name="sample_activation_curve" qualifiers="const">
 			<return type="float" />
 			<param index="0" name="input_value" type="float" />
 			<description>
-				Returns the y-value of the activation curve at [param input_value], or [code]0.0[/code] when no curve is set.
+				Evaluates [member activation_curve] at [param input_value], or returns [code]0.0[/code] if no curve is assigned.
 			</description>
 		</method>
 	</methods>
 	<members>
 		<member name="activation_curve" type="Resource" setter="set_activation_curve" getter="get_activation_curve">
-			Optional [Curve] or [NNResponseCurve] that maps [member activation_input_value] to [member NNConsiderations.score]. When [code]null[/code], [member activation_input_value] is used directly as the score. Assigning any other resource type reports an error and keeps the previous curve.
+			Optional [Curve] or [NNResponseCurve] that maps [member activation_input_value] to [member NNConsiderations.score]. If unset, [member activation_input_value] is used directly.
 		</member>
 		<member name="activation_input_value" type="float" setter="set_activation_input_value" getter="get_activation_input_value" default="0.0001">
-			The input value passed to [member activation_curve] (or used directly as the score when no curve is set). Typically in the [code]0..1[/code] range, though values outside that range are not clamped. When [member input_sensor] is assigned, evaluation overwrites this property with the sensor's [member NNSensors.sensor_value].
+			Input value (typically [code]0..1[/code]) passed to [member activation_curve] or used directly as the score. Overwritten automatically by [member input_sensor] when one is assigned.
 		</member>
 		<member name="input_sensor" type="NNSensors" setter="set_input_sensor" getter="get_input_sensor">
-			The sensor or sensor group whose [member NNSensors.sensor_value] is used as the [member activation_input_value]. When not set, [member activation_input_value] is used as assigned. If the node is freed, this property reads as [code]null[/code] and is treated as unset.
+			Optional sensor or sensor group whose [member NNSensors.sensor_value] feeds [member activation_input_value] on each evaluation.
 		</member>
 	</members>
 </class>

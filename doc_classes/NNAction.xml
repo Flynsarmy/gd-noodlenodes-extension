@@ -1,47 +1,44 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <class name="NNAction" inherits="NNActions" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
 	<brief_description>
-		Used when a behaviour is being executed by the AI agent.
+		A single step performed while an [NNBehaviour] is active.
 	</brief_description>
 	<description>
-		This node type should be added as child nodes of the [NNBehaviour] node. They are used when a behaviour is being executed by the AI agent.
-		Action groups can be used create sequences of actions, or to pick one random action from several choices. This allows for more complex actions to be performed by a behaviour. You can nest as many action groups as you need, and they can contain any number and combination of actions or action groups.
-		[b]Note:[/b] When the AI agent has chosen a behaviour, the action step function is called to find the first action to execute. The action that is being executed must be set as finished for the AI agent step function to be able to go to the next action. The action logic itself can be implemented anywhere else.
-		The current action can host roots under it. They are started when the action starts, ticked on every [signal frame_tick] it receives with the agent's step delta, and reset when the action ends. The agent's [member NNAgent.process_thread] drives the timing; its [member NNAgent.tick_rate] only throttles thinking, so [signal frame_tick] and the hosted root tick on every eligible agent step. A hosted root's own [code]process_thread[/code] is ignored; an [NNAgent]'s [member NNAgent.tick_rate] still throttles its thinking on those steps.
-		By default a hosted root that finishes finishes this action, so a script can let a behaviour tree or state tree decide the result. A successful run marks the action finished, and a failed run marks it failed and finished, which ends the behaviour. Set [member finish_from_hosted_root] to [code]false[/code] to handle the result in a [signal hosted_root_finished] listener instead.
+		Add as a child of an [NNBehaviour] or [NNActionGroup] to represent one step of a behaviour. Connect to [signal action_entered], [signal frame_tick], and [signal action_exited] to run your action logic, then set [member NNActions.is_finished] to [code]true[/code] when the step completes so the agent advances.
+		An [NNAction] can also host a nested AI root (such as an [NNBTRoot], [NNSTRoot], [NNHTNRoot], or another [NNAgent]) as a child. The hosted root runs while this action is active and, when [member finish_from_hosted_root] is [code]true[/code], its completion automatically finishes or fails the action.
 	</description>
 	<tutorials>
 	</tutorials>
 	<members>
 		<member name="action_id" type="int" setter="set_action_id" getter="get_action_id" default="0">
-			A user-definable numeric ID for the action. Provided as an alternative to using action node names for identifying which is the current action the AI agent is currently executing.
+			Optional user-defined ID for identifying this action in scripts without relying on node names.
 		</member>
 		<member name="finish_from_hosted_root" type="bool" setter="set_finish_from_hosted_root" getter="get_finish_from_hosted_root" default="true">
-			If [code]true[/code], a hosted root that finishes finishes this action. A successful run marks the action finished; a failed run marks it failed and finished, which ends the behaviour. Set this to [code]false[/code] to handle the result only from [signal hosted_root_finished].
+			If [code]true[/code], finishing a hosted child root automatically marks this action finished (and failed if the root failed). Set to [code]false[/code] to handle completion yourself via [signal hosted_root_finished].
 		</member>
 	</members>
 	<signals>
 		<signal name="action_entered">
 			<description>
-				Emitted when the action starts: during [method NNAgent.evaluate_options] when a newly selected behaviour starts its initial action, or during [method NNAgent.update_current_behaviour] when the behaviour or an [NNActionGroup] advances to this action.
+				Emitted when this action starts executing.
 			</description>
 		</signal>
 		<signal name="action_exited">
 			<description>
-				Emitted when the action ends: during [method NNAgent.update_current_behaviour] when it finishes or fails (or becomes disabled inside an [NNActionGroup]), when its owning behaviour is deselected or has no remaining candidates during [method NNAgent.evaluate_options], when the behaviour is aborted with [method NNAgent.abort_current_behaviour], or when the tracked action is removed or reparented away while still alive.
+				Emitted when this action finishes, fails, or is interrupted.
 			</description>
 		</signal>
 		<signal name="frame_tick">
 			<param index="0" name="delta" type="float" />
 			<description>
-				Emitted on every eligible agent step while this action is selected. Use it to handle action update logic. The signal fires on the agent's selected frame signal, so its cadence is set by [member NNAgent.process_thread].
+				Emitted on every agent step while this action is active.
 			</description>
 		</signal>
 		<signal name="hosted_root_finished">
 			<param index="0" name="root" type="Node" />
 			<param index="1" name="succeeded" type="bool" />
 			<description>
-				Emitted when a root hosted under this action reports that a run finished. [param root] is the hosted root and [param succeeded] is its completion result. When [member finish_from_hosted_root] is [code]true[/code] the action has already finished itself from the result, and a failure has marked it failed and finished as well. The signal fires either way, so connect to it for extra handling, or clear the property to handle the result only in a listener.
+				Emitted when a hosted child root finishes its run.
 			</description>
 		</signal>
 	</signals>

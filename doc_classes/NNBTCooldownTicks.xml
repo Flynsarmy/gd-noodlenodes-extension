@@ -1,22 +1,22 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <class name="NNBTCooldownTicks" inherits="NNBTDecoratorNodes" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
 	<brief_description>
-		Sets a branch of the behaviour tree into a cooldown for a number of ticks after its child returns a result other than [constant NNBTNodes.RUNNING].
+		Prevents its child branch from running again for a fixed number of ticks after it finishes.
 	</brief_description>
 	<description>
-		When ticked while not cooling down, the cooldown node ticks its first enabled child and returns whatever the child returned. Any result other than [constant NNBTNodes.RUNNING] ([constant NNBTNodes.SUCCESS], [constant NNBTNodes.FAILURE] or [constant NNBTNodes.SKIP]) starts the cooldown, and the node then returns [member cooldown_return_value] without ticking its child for the next [member cooldown_ticks] ticks. A [constant NNBTNodes.RUNNING] child does not start the cooldown. If no behaviour tree child is enabled, the node starts the cooldown and returns [constant NNBTNodes.FAILURE].
+		Use to rate-limit a branch by tick count (for example, in turn-based or fixed-step AI). Once the child returns a non-[constant NNBTNodes.RUNNING] status, this decorator returns [member cooldown_return_value] without ticking the child for the next [member cooldown_ticks] ticks. For a time-based cooldown in seconds, use [NNBTCooldown].
 	</description>
 	<tutorials>
 	</tutorials>
 	<members>
 		<member name="cooldown_return_value" type="int" setter="set_cooldown_return_value" getter="get_cooldown_return_value" enum="NNBTNodes.Status" default="-1">
-			The status returned while cooling down ([constant NNBTNodes.FAILURE], [constant NNBTNodes.RUNNING], or [constant NNBTNodes.SUCCESS]).
+			Status returned while the cooldown is active. Defaults to [constant NNBTNodes.FAILURE].
 		</member>
 		<member name="cooldown_ticks" type="int" setter="set_cooldown_ticks" getter="get_cooldown_ticks" default="0">
-			Number of subsequent ticks spent cooling down after the child returns any status other than [constant NNBTNodes.RUNNING] (or when no child is enabled). A value of [code]0[/code] or less disables the cooldown.
+			Number of ticks to wait after the child finishes before allowing it to run again. Set to [code]0[/code] or less to disable.
 		</member>
 		<member name="current_cooldown_ticks" type="int" setter="set_current_cooldown_ticks" getter="get_current_cooldown_ticks" default="0">
-			How many ticks of the current cooldown have passed. Equals [member cooldown_ticks] when the node is not cooling down and its child can run.
+			Ticks elapsed in the current cooldown. Equals [member cooldown_ticks] when ready.
 		</member>
 	</members>
 </class>

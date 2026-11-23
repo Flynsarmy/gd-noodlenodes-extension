@@ -1,13 +1,11 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <class name="NNSTParallel" inherits="NNSTTickedNodes" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
 	<brief_description>
-		Runs all its children in parallel.
+		A state that runs all of its eligible child states concurrently as parallel regions.
 	</brief_description>
 	<description>
-		Runs its direct child states as concurrent regions.
-		When entered, this node evaluates every enabled direct child state in tree order using each child's [method NNSTTickedNodes.on_enter_condition] and activates every child that returns [code]true[/code]. [member NNSTBranchNodes.child_state_selection_rule] has no effect on this node.
-		When ticked, this node runs its own [method NNSTTickedNodes.on_tick] (along with any pending transition and hosted roots) and then calls [method NNSTTickedNodes.on_tick] on every active child region in order. When exited, active child regions are exited in reverse order before this node's [method NNSTTickedNodes.on_exit_state].
-		When an event is delivered via [method NNSTBranchNodes.send_event], it is forwarded to every active child region even if an earlier region consumes it, stopping only if this parallel state leaves its current activation or event processing is halted. Transitions attached to this node itself only run if no active region consumed the event. Automatic [constant NNSTRoot.STATE_CHANGE] and [constant NNSTRoot.PROPERTY_CHANGE] triggers similarly fan out across all active regions. Direct transitions between sibling regions whose common ancestor is an [NNSTParallel] are not allowed.
+		Use when an entity needs multiple independent state machines active at the same time (for example, lower-body movement states running alongside upper-body weapon or animation states).
+		When entered, every enabled direct child state whose [method NNSTTickedNodes.on_enter_condition] returns [code]true[/code] becomes active at once. Events and ticks are delivered to every active region independently; direct transitions between sibling regions are not allowed.
 	</description>
 	<tutorials>
 	</tutorials>

@@ -1,13 +1,11 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <class name="NNBTNodes" inherits="NoodleNodes" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
 	<brief_description>
-		Base class for all Noodle Nodes behaviour tree nodes.
+		Base class for all behaviour tree nodes.
 	</brief_description>
 	<description>
-		Behaviour Trees are a commonly used structure that can be used to create artificial intelligence in games for the non-playable characters. A behaviour tree has a root node and under it a tree structure, where the branches of the tree define the behaviour for the AI.
-		The utility enabled Behaviour Trees in Noodle Nodes GDExtension extend the traditional Behaviour Tree with utility functions. The Behaviour Tree nodes can be used as a regular behaviour tree, but the extended utility features allow you to add utility-based branch selection and execution of the Node Query System queries within your trees.
-		The Behaviour Tree in Noodle Nodes GDExtension keeps its data in a typed [NNBlackboard] resource owned by the nearest root of any Noodle Nodes system, so the nodes of one tree share their data without any per-tick plumbing and nothing is passed as a tick argument. That board is authoritative for [method NoodleNodes.get_blackboard_resource], [method NoodleNodes.get_blackboard], [method NoodleNodes.set_blackboard], [method NoodleNodes.has_blackboard], [method NoodleNodes.erase_blackboard] and [method NoodleNodes.get_actor]. With no root ancestor the helpers return their default value, [code]false[/code] or [code]null[/code] without reporting errors. [NNBTNodeReference] resolves these helpers from its target's own position in the tree.
-		Each node tracks a run lifecycle. A run starts with the [code]on_before_run[/code] hook the first time the node is ticked while no run is active, and it ends with either the [code]on_after_run[/code] hook (when the node returns [code]SUCCESS[/code] or [code]FAILURE[/code]) or the [code]on_interrupt[/code] hook (when the active run is abandoned). Every [code]on_before_run[/code] is matched by exactly one [code]on_after_run[/code] or [code]on_interrupt[/code] for the same run, and a node that never started a run receives no lifecycle callback. The [code]on_before_run[/code], [code]on_after_run[/code] and [code]on_interrupt[/code] script hooks are provided by [NNBTTaskNodes]; composite nodes participate in the run lifecycle internally only. The [code]SKIP[/code] result is not terminal: the run stays active until it completes or is interrupted. [method interrupt] is idempotent and does nothing when the node has no active run. Disabling a node interrupts and resets its subtree, so re-enabling the node starts a fresh run on the next tick.
+		Shared base node for Noodle Nodes behaviour trees. Build a behaviour tree by adding an [NNBTRoot] and assembling composite, decorator, and leaf nodes beneath it.
+		Behaviour tree nodes return a [enum Status] on each tick ([constant SUCCESS], [constant FAILURE], [constant RUNNING], or [constant SKIP]) and share state through the owning root's [NNBlackboard]. Direct children of an [NNBTScoreBasedPicker] can also hold [NNConsideration] nodes for utility-based branch selection.
 	</description>
 	<tutorials>
 	</tutorials>
@@ -15,42 +13,42 @@
 		<method name="get_is_running" qualifiers="const">
 			<return type="bool" />
 			<description>
-				Returns [code]true[/code] while a run is active. A run starts on the first tick while no run is active and ends with a terminal [code]SUCCESS[/code] or [code]FAILURE[/code] result, with [method interrupt], or with a disable, which interrupts and resets the node. A [code]SKIP[/code] result is not terminal, so the run stays active. The value is [code]false[/code] before the first tick and after a reset.
+				Returns [code]true[/code] while this node has an active run that has not yet completed or been interrupted.
 			</description>
 		</method>
 		<method name="get_tree_root" qualifiers="const">
 			<return type="NodePath" />
 			<description>
-				Returns a relative node path to the furthest direct [NNBTNodes] ancestor.
+				Returns a relative [NodePath] to the highest contiguous [NNBTNodes] ancestor.
 			</description>
 		</method>
 		<method name="interrupt">
 			<return type="void" />
 			<description>
-				Force-stops the node's active run. Task nodes run their [code]on_interrupt[/code] script hook and every still-active behaviour tree child is interrupted as well. Calling it on a node without an active run is a safe no-op, so it is idempotent.
+				Cancels this node's active run (and any active child runs), invoking [method NNBTTaskNodes.on_interrupt] on active task nodes. Safe to call when not running.
 			</description>
 		</method>
 		<method name="reset">
 			<return type="void" />
 			<description>
-				Interrupts the active run of this node and its whole subtree, propagates the reset to every behaviour tree child, and clears node-lifetime state, such as a memory sequence's stored child, a limiter budget, or a run-once held result. Per-run state is initialised again when the next run starts. Disabling the node, or an ancestor, triggers the same reset.
+				Interrupts this node and its subtree and clears persistent node state (such as [NNBTSequenceStar] memory, [NNBTLimiter] budget, or [NNBTRunOnce] latched results).
 			</description>
 		</method>
 	</methods>
 	<members>
 		<member name="evaluation_method" type="int" setter="set_evaluation_method" getter="get_evaluation_method" enum="NoodleNodes.EvaluationMethod" default="4">
-			Defines how enabled direct [NNConsiderations] child nodes (such as [NNConsideration], [NNConsiderationGroup] and [NNCustomPropertyConsideration]) are aggregated into [member score]. In the behaviour tree, only direct children of [NNBTScoreBasedPicker] are evaluated for their score. The default is [constant NoodleNodes.EVALUATION_MULTIPLY].
+			How child [NNConsiderations] scores are combined into [member score] when this node is a direct child of an [NNBTScoreBasedPicker]. Defaults to [constant NoodleNodes.EVALUATION_MULTIPLY].
 		</member>
 		<member name="score" type="float" setter="" getter="get_score" default="0.0">
-			The score this node received from the Utility-based evaluation. Read-only runtime state: it is written by evaluation and is never saved with the scene.
+			Most recently computed utility score for this node when evaluated by an [NNBTScoreBasedPicker].
 		</member>
 		<member name="tick_result" type="int" setter="" getter="get_tick_result" enum="NNBTNodes.Status" default="1">
-			The result of this node's most recent tick, written automatically by the node's tick handling. Read-only runtime state: the running-action query derives from it, so scripts cannot set it, and it is never saved with the scene.
+			Status returned by this node's most recent tick.
 		</member>
 	</members>
 	<constants>
 		<constant name="RUNNING" value="0" enum="Status">
-			The node has not finished yet and will be ticked again.
+			The node is still in progress and will be ticked again.
 		</constant>
 		<constant name="FAILURE" value="-1" enum="Status">
 			The node finished and failed.
@@ -59,7 +57,7 @@
 			The node finished and succeeded.
 		</constant>
 		<constant name="SKIP" value="-2" enum="Status">
-			The node did not run. [NNBTSequence] and [NNBTSelector] move on to their next child, and [NNBTParallel] counts it as a success. The result is not terminal, so the node's run stays active.
+			The node was skipped. [NNBTSequence] and [NNBTSelector] move on to the next child, and [NNBTParallel] treats it as success.
 		</constant>
 	</constants>
 </class>

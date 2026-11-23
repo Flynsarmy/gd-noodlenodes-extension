@@ -1,23 +1,22 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <class name="NNAngleToVector3XZSearchCriterion" inherits="NNNQSSearchCriteria" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
 	<brief_description>
-		Scores and filters based on the angle on the xz-plane between the search space node direction ([code]-global_transform.basis.z[/code]) compared to the given [member angle_to_direction_vector].
+		Filters and scores [Node3D] candidates by the signed horizontal (XZ-plane) angle between their forward direction and a vector.
 	</brief_description>
 	<description>
-		The [Vector3] XZ angle search criterion scores and filters [Node3D] candidates based on the signed angle on the XZ plane (in [code]-180..180[/code] degrees) from [member angle_to_direction_vector] to the node's forward direction ([code]-global_transform.basis.z[/code]).
-		When used for scoring, the angle is mapped linearly from [code]0.0[/code] at or below [member min_angle_degrees] to [code]1.0[/code] at or above [member max_angle_degrees], then passed through [member NNNQSSearchCriteria.activation_curve] if one is set.
+		Compares each [Node3D] candidate's forward direction (-Z) against [member angle_to_direction_vector] projected onto the horizontal XZ plane ([code]-180..180[/code] degrees). Use for grounded 3D AI where left/right heading matters and vertical pitch should be ignored. For full 3D unsigned angles, use [NNAngleToVector3SearchCriterion].
 	</description>
 	<tutorials>
 	</tutorials>
 	<members>
 		<member name="angle_to_direction_vector" type="Vector3" setter="set_angle_to_direction_vector" getter="get_angle_to_direction_vector" default="Vector3(0, 0, -1)">
-			Reference direction projected onto the XZ plane and compared against each candidate's projected forward direction ([code]-global_transform.basis.z[/code]) as a signed angle in [code]-180..180[/code] degrees.
+			Reference direction projected onto the XZ plane and compared against each candidate's forward direction (-Z).
 		</member>
 		<member name="max_angle_degrees" type="float" setter="set_max_angle_degrees" getter="get_max_angle_degrees" default="90.0">
-			Maximum signed angle in degrees (at most [code]180.0[/code]; larger values are ignored). Angles above this are filtered out when [member NNNQSSearchCriteria.use_for_filtering] is [code]true[/code], and map to a raw score of [code]1.0[/code] when scoring. If less than or equal to [member min_angle_degrees] on ready, adjusted to [code]min_angle_degrees + 1.0[/code].
+			Maximum signed angle in degrees (up to [code]180.0[/code]). Maps to [code]1.0[/code] when scoring; angles above it are filtered out when filtering is enabled.
 		</member>
 		<member name="min_angle_degrees" type="float" setter="set_min_angle_degrees" getter="get_min_angle_degrees" default="-90.0">
-			Minimum signed angle in degrees (at least [code]-180.0[/code]; smaller values are ignored). Angles below this are filtered out when [member NNNQSSearchCriteria.use_for_filtering] is [code]true[/code], and map to a raw score of [code]0.0[/code] when scoring.
+			Minimum signed angle in degrees (down to [code]-180.0[/code]). Maps to [code]0.0[/code] when scoring; angles below it are filtered out when filtering is enabled.
 		</member>
 	</members>
 </class>

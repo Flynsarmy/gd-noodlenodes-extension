@@ -1,23 +1,22 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <class name="NNDistanceToNode3DSearchCriterion" inherits="NNNQSSearchCriteria" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
 	<brief_description>
-		Scores and filters based on minimum and maximum distance to the set [member distance_to] node.
+		Filters and scores [Node3D] candidates by distance to a target [Node3D].
 	</brief_description>
 	<description>
-		The [Node3D] distance search criterion scores and filters [Node3D] candidates based on their global distance to [member distance_to]. If [member distance_to] is not set, nodes are left unfiltered with a score of [code]1.0[/code].
-		Both filtering and scoring use squared distances. When used for scoring, the raw score is mapped linearly in squared distance as [code](distance_squared - min_distance^2) / (max_distance^2 - min_distance^2)[/code], clamped to [code]0.0[/code] at or below [member min_distance] and [code]1.0[/code] at or above [member max_distance], then passed through [member NNNQSSearchCriteria.activation_curve] if one is set.
+		Measures each [Node3D] candidate's distance to [member distance_to] across [member min_distance]..[member max_distance] (using squared distance for speed). Use to find targets near, far from, or within a specific range of a moving 3D node (combine with an inverted [member NNNQSSearchCriteria.activation_curve] to prefer closer candidates). For a fixed coordinate instead of a node, use [NNDistanceToVector3SearchCriterion].
 	</description>
 	<tutorials>
 	</tutorials>
 	<members>
 		<member name="distance_to" type="Node3D" setter="set_distance_to" getter="get_distance_to">
-			The [Node3D] whose global position candidate distances are measured to. When [code]null[/code], candidates are left unfiltered with a score of [code]1.0[/code]. If the node is freed, this property reads as [code]null[/code] and is treated as unset.
+			Target [Node3D] to measure distance to. When unset, candidates pass unfiltered with score [code]1.0[/code].
 		</member>
 		<member name="max_distance" type="float" setter="set_max_distance" getter="get_max_distance" default="100.0">
-			Maximum distance. Distances above this are filtered out when [member NNNQSSearchCriteria.use_for_filtering] is [code]true[/code], and map to a raw score of [code]1.0[/code] when scoring (linear in squared distance). Must be greater than [member min_distance]; smaller or equal values are ignored.
+			Maximum distance. Maps to [code]1.0[/code] when scoring; farther candidates are filtered out when filtering is enabled. Must be greater than [member min_distance].
 		</member>
 		<member name="min_distance" type="float" setter="set_min_distance" getter="get_min_distance" default="0.0">
-			Minimum distance. Distances below this are filtered out when [member NNNQSSearchCriteria.use_for_filtering] is [code]true[/code], and map to a raw score of [code]0.0[/code] when scoring (linear in squared distance). Must be at least [code]0.0[/code] and less than [member max_distance]; invalid values are ignored.
+			Minimum distance. Maps to [code]0.0[/code] when scoring; closer candidates are filtered out when filtering is enabled. Must be non-negative and less than [member max_distance].
 		</member>
 	</members>
 </class>

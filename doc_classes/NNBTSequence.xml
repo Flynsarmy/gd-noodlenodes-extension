@@ -1,18 +1,17 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <class name="NNBTSequence" inherits="NNBTCompositeNodes" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
 	<brief_description>
-		Executes its child nodes from top-to-bottom order until either all of them succeed (returning [code]1[/code]) or one of them fails (returning [code]-1[/code]).
+		Runs child branches in order until all succeed, or fails as soon as one fails.
 	</brief_description>
 	<description>
-		This node type is used to create sequences.
-		The [NNBTSequence] node executes its child nodes from top-to-bottom order until either all of them succeed (returning [code]1[/code]) or one of them fails (returning [code]-1[/code]). If a child returns running (0) the sequence will return running to its parent.
-		By default the sequence resumes from the child that was running on the previous tick. When [member reactive] is [code]true[/code] the sequence instead starts evaluating at child 0 on every tick. In both modes disabled children are skipped and a child that returns [code]SKIP[/code] is treated like a child that succeeded (the sequence continues).
+		Use to build ordered multi-step tasks (such as check condition, move to target, then attack). Returns [constant NNBTNodes.SUCCESS] when every enabled child succeeds, [constant NNBTNodes.RUNNING] while a child is running, and [constant NNBTNodes.FAILURE] immediately if any child fails.
+		Enable [member reactive] if earlier condition checks must keep passing on every tick while a later step is running. To resume from a failed step on the next run instead of restarting from the beginning, use [NNBTSequenceStar].
 	</description>
 	<tutorials>
 	</tutorials>
 	<members>
 		<member name="reactive" type="bool" setter="set_reactive" getter="get_reactive" default="false">
-			When [code]true[/code], every tick starts evaluating at child 0 instead of resuming from the previously running child. Disabled children are skipped and [code]SKIP[/code] is treated like a success (the sequence continues).
+			If [code]true[/code], restarts from the first child on every tick instead of resuming the previously running child.
 		</member>
 	</members>
 </class>

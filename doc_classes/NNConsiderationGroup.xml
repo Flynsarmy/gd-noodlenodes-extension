@@ -1,19 +1,19 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <class name="NNConsiderationGroup" inherits="NNConsiderations" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
 	<brief_description>
-		Aggregates the input from several considerations or consideration groups to create more complex consideration logic.
+		Combines multiple child considerations into a single score.
 	</brief_description>
 	<description>
-		Consideration groups can be used to aggregate the input from several considerations or consideration groups to create more complex consideration logic. You can nest as many consideration groups as you like, and each consideration group may contain any number and combination of child consideration groups or child considerations.
+		Add as a child of an [NNBehaviour], [NNBehaviourGroup], or another [NNConsiderationGroup] to aggregate several considerations using [member evaluation_method] (for example, taking the maximum of two alternative reasons to flee, or inverting a combined score with [member invert_score]). Groups can be nested arbitrarily deep.
 	</description>
 	<tutorials>
 	</tutorials>
 	<members>
 		<member name="evaluation_method" type="int" setter="set_evaluation_method" getter="get_evaluation_method" enum="NoodleNodes.EvaluationMethod" default="4">
-			How the child considerations and consideration groups are aggregated into the group's score. The default is [constant NoodleNodes.EVALUATION_MULTIPLY].
+			How child consideration scores are combined. Defaults to [constant NoodleNodes.EVALUATION_MULTIPLY].
 		</member>
 		<member name="invert_score" type="bool" setter="set_invert_score" getter="get_invert_score" default="false">
-			If [code]true[/code], inverts the aggregated [member NNConsiderations.score] as [code]1.0 - score[/code] after all enabled child considerations have been evaluated.
+			If [code]true[/code], inverts the combined score ([code]1.0 - score[/code]).
 		</member>
 	</members>
 </class>

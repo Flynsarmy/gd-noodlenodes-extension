@@ -1,40 +1,40 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <class name="NNDistanceVector2Sensor" inherits="NNSensor" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
 	<brief_description>
-		Distance sensor. Uses the squared distance when scaling the values to 0..1 range.
+		Measures the 2D distance between two positions and scales it to [code]0..1[/code].
 	</brief_description>
 	<description>
-		Computes the vector [member from_to_vector] ([code]from_vector - to_vector[/code]) and [member distance_squared] on evaluation, setting [member NNSensors.sensor_value] to [code]distance_squared / (max_distance * max_distance)[/code]. Optionally computes the non-squared [member distance] and normalised [member direction_vector].
+		Computes the distance between [member from_vector] and [member to_vector] and scales it relative to [member max_distance] using squared distance for fast evaluation. Useful for scoring proximity in 2D without recalculating distances in each consideration. Can also compute the exact [member distance] and normalized [member direction_vector] on demand.
 	</description>
 	<tutorials>
 	</tutorials>
 	<members>
 		<member name="direction_vector" type="Vector2" setter="set_direction_vector" getter="get_direction_vector" default="Vector2(0, 0)">
-			The normalised [member from_to_vector]. Requires [member is_direction_vector_calculated] to be [code]true[/code]. A zero vector when [member from_vector] and [member to_vector] are equal.
+			Normalized [member from_to_vector]. Only updated when [member is_direction_vector_calculated] is [code]true[/code].
 		</member>
 		<member name="distance" type="float" setter="set_distance" getter="get_distance" default="0.0">
-			Optionally calculated non-squared distance. Updated during evaluation when either [member is_distance_calculated] or [member is_direction_vector_calculated] is [code]true[/code].
+			Exact distance between [member from_vector] and [member to_vector]. Only updated when [member is_distance_calculated] or [member is_direction_vector_calculated] is [code]true[/code].
 		</member>
 		<member name="distance_squared" type="float" setter="set_distance_squared" getter="get_distance_squared" default="0.0">
-			Squared distance between [member from_vector] and [member to_vector]. Updated on every evaluation.
+			Squared distance between [member from_vector] and [member to_vector].
 		</member>
 		<member name="from_to_vector" type="Vector2" setter="set_from_to_vector" getter="get_from_to_vector" default="Vector2(0, 0)">
-			Displacement vector calculated as [code]from_vector - to_vector[/code]. Updated on every evaluation.
+			Displacement vector ([code]from_vector - to_vector[/code]).
 		</member>
 		<member name="from_vector" type="Vector2" setter="set_from_vector" getter="get_from_vector" default="Vector2(0, 0)">
-			The start point of the distance calculation.
+			Start position for the distance calculation.
 		</member>
 		<member name="is_direction_vector_calculated" type="bool" setter="set_is_direction_vector_calculated" getter="get_is_direction_vector_calculated" default="false">
-			If [code]true[/code], calculates [member direction_vector] (and [member distance]) on evaluation.
+			If [code]true[/code], also computes [member direction_vector] and [member distance] on evaluation.
 		</member>
 		<member name="is_distance_calculated" type="bool" setter="set_is_distance_calculated" getter="get_is_distance_calculated" default="false">
-			If [code]true[/code], calculates the non-squared [member distance] on evaluation.
+			If [code]true[/code], also computes the exact [member distance] on evaluation.
 		</member>
 		<member name="max_distance" type="float" setter="set_max_distance" getter="get_max_distance" default="100.0">
-			The distance that maps to a [member NNSensors.sensor_value] of [code]1.0[/code]. The sensor value is [member distance_squared] divided by squared [member max_distance] (not clamped, so distances beyond this score above [code]1.0[/code]). Must be non-zero.
+			Distance that maps to a sensor value of [code]1.0[/code] (using squared distance, unclamped). Must be non-zero.
 		</member>
 		<member name="to_vector" type="Vector2" setter="set_to_vector" getter="get_to_vector" default="Vector2(0, 0)">
-			The end point of the distance calculation.
+			End position for the distance calculation.
 		</member>
 	</members>
 </class>

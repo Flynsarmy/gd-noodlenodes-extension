@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <class name="NNBTPassBy" inherits="NNBTTaskNodes" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
 	<brief_description>
-		Runs an optional [method NNBTTaskNodes.on_tick] and always returns [constant NNBTNodes.SUCCESS].
+		Runs an optional [method NNBTTaskNodes.on_tick] hook and always returns [constant NNBTNodes.SUCCESS].
 	</brief_description>
 	<description>
-		The PassBy node runs an optional [method NNBTTaskNodes.on_tick], ignores the value it returns, and always returns [constant NNBTNodes.SUCCESS] to its parent. Inside an [NNBTSequence] this lets execution continue to the next child, making it useful for running side-effect logic as a step in a sequence (similar to [NNBTPassThrough], without wrapping a child). Inside an [NNBTSelector], however, returning [constant NNBTNodes.SUCCESS] short-circuits the selector and completes it immediately, so later children are not ticked. The method receives only the [param delta] of the tick; the node's data lives in the effective blackboard of the nearest [NNBTRoot] ancestor.
+		Use as a lightweight side-effect step inside an [NNBTSequence] (such as updating a blackboard key or playing a sound) without needing to return a status or wrap a child node. Note that inside an [NNBTSelector], returning [constant NNBTNodes.SUCCESS] stops the selector immediately. To wrap a child node instead, use [NNBTPassThrough].
 	</description>
 	<tutorials>
 	</tutorials>

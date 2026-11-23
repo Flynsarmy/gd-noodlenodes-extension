@@ -1,18 +1,15 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <class name="NNBTLeaf" inherits="NNBTTaskNodes" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
 	<brief_description>
-		Used for conditions and actions. Override [method NNBTTaskNodes.on_tick] to implement custom logic, and optionally add child considerations for scoring.
+		Scriptable behaviour tree leaf for custom conditions and actions.
 	</brief_description>
 	<description>
-		The leaf node is used for conditions and actions. You should define your own [method NNBTTaskNodes.on_tick] method where you do your logic.
-		A leaf that does not override [method NNBTTaskNodes.on_tick] returns [code]Status.FAILURE[/code] and reports an error once per node instance that names the required [code]on_tick(delta: float) -&gt; Status[/code] override.
-		Example:
+		Attach a script overriding [method NNBTTaskNodes.on_tick] to implement custom behaviour tree logic. Prefer [NNBTActionLeaf] for actions that can take multiple ticks and [NNBTConditionLeaf] for instant yes/no checks.
 		[gdscript]
 		func on_tick(delta: float) -&gt; Status:
 		    return Status.SUCCESS
 		[/gdscript]
-		[method NNBTTaskNodes.on_tick] must return [code]SKIP[/code] (-2), [code]FAILURE[/code] (-1), [code]RUNNING[/code] (0) or [code]SUCCESS[/code] (1); any other return value logs an engine error and is treated as [code]FAILURE[/code].
-		A leaf can have direct [NNConsiderations] child nodes (such as [NNConsideration], [NNConsiderationGroup] or [NNCustomPropertyConsideration]); when the leaf is a direct child of an [NNBTScoreBasedPicker], those enabled considerations are aggregated according to [member NNBTNodes.evaluation_method] to produce the leaf's [member NNBTNodes.score].
+		You can also add child [NNConsiderations] nodes when this leaf is a direct child of an [NNBTScoreBasedPicker].
 	</description>
 	<tutorials>
 	</tutorials>

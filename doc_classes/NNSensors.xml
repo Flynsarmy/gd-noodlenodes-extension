@@ -4,13 +4,13 @@
 		Base class for [NNSensor] and [NNSensorGroup].
 	</brief_description>
 	<description>
-		The [method NoodleNodes.get_blackboard] family and [method NoodleNodes.get_actor] resolve through the owning [NNAgent] and its effective board and actor.
+		Shared base node for sensors that produce a numeric [member sensor_value] for considerations to read.
 	</description>
 	<tutorials>
 	</tutorials>
 	<members>
 		<member name="sensor_value" type="float" setter="set_sensor_value" getter="get_sensor_value" default="0.0001">
-			The sensor's evaluated value, typically in the [code]0..1[/code] range (not clamped). Concrete sensors overwrite this on evaluation; on a base [NNSensor], set it directly.
+			Evaluated sensor value, typically in the [code]0..1[/code] range. Specialized sensors compute this automatically; on a plain [NNSensor], set it from your script.
 		</member>
 	</members>
 </class>

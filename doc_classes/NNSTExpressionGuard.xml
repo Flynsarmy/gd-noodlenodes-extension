@@ -1,18 +1,16 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <class name="NNSTExpressionGuard" inherits="NNSTGuard" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
 	<brief_description>
-		[Expression] guard for State Tree transitions.
+		Guard that gates a transition using a Godot [Expression] over blackboard values.
 	</brief_description>
 	<description>
-		Expression guards give you the most flexibility when it comes to guards. You can use expressions to determine whether a transition should be taken or not. Expression guards are evaluated using the [Expression] class. The guard returns [code]true[/code] if [member expression] evaluates to [code]true[/code], and [code]false[/code] otherwise.
-		Returns [code]false[/code] and reports an error when the evaluated state is [code]null[/code] or its state chart root cannot be found. The transition may be [code]null[/code]; it is only used to identify the guard in diagnostic messages.
-		It reports [constant NNSTRoot.PROPERTY_CHANGE] from [method NNSTGuard.get_supported_trigger_types], because its result can change when an expression property changes.
+		Evaluates [member expression] against the state tree's blackboard keys (set via [method NNSTRoot.set_expression_property] or [member NNSTRoot.initial_expression_properties]), allowing the transition when it returns [code]true[/code]. Use for flexible data-driven conditions like [code]health &lt; 25 and not is_invulnerable[/code] without writing a custom guard script.
 	</description>
 	<tutorials>
 	</tutorials>
 	<members>
 		<member name="expression" type="String" setter="set_expression" getter="get_expression" default="&quot;&quot;">
-			An expression to be evaluated by the [Expression] class. Expressions have access to the values of the root's [member NNSTRoot.assigned_blackboard]. For example, when the blackboard has a key called [code]my_variable[/code], you can use it in the expression like this: [code]my_variable == 1[/code]. Identifiers the expression reads are looked up in the blackboard; a key that is missing from the blackboard is passed as [code]null[/code] and is not an error. A guard on a missing key therefore evaluates [code]false[/code], because a [code]null[/code] result is not a boolean.
+			Boolean [Expression] referencing keys on the state tree's blackboard (for example, [code]ammo == 0[/code]). Missing keys evaluate as [code]null[/code].
 		</member>
 	</members>
 </class>

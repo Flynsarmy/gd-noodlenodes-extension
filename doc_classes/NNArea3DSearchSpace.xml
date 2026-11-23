@@ -1,19 +1,19 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <class name="NNArea3DSearchSpace" inherits="NNNQSSearchSpaces" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
 	<brief_description>
-		Returns overlapping [Area3D] nodes within an [Area3D] as a search space.
+		Search space containing all [Area3D] nodes currently overlapping a given [Area3D].
 	</brief_description>
 	<description>
-		This node uses an [Area3D] to define the search space. It connects to the [signal Area3D.area_entered] and [signal Area3D.area_exited] signals of [member area3d] to track overlapping [Area3D] nodes in [member intersecting_areas], and returns those [Area3D] nodes as the search space. Physics bodies are not tracked or included.
+		Use when you want an NQS query to search nearby 3D trigger areas (such as pickups, cover zones, or hazards) overlapping [member area3d]. Physics bodies are not included.
 	</description>
 	<tutorials>
 	</tutorials>
 	<members>
 		<member name="area3d" type="Area3D" setter="set_area3d" getter="get_area3d">
-			The [Area3D] whose overlapping areas form the search space. Tracked via its [signal Area3D.area_entered] and [signal Area3D.area_exited] signals once ready (physics bodies are not included).
+			The [Area3D] whose overlapping [Area3D] nodes form the candidate list.
 		</member>
 		<member name="intersecting_areas" type="Area3D[]" setter="set_intersecting_areas" getter="get_intersecting_areas" default="[]">
-			[Area3D] nodes currently overlapping [member area3d], updated automatically from its signals. Useful for debugging the search space.
+			[Area3D] nodes currently overlapping [member area3d].
 		</member>
 	</members>
 </class>

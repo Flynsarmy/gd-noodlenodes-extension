@@ -1,11 +1,10 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <class name="NNBTConditionLeaf" inherits="NNBTLeaf" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
 	<brief_description>
-		Base class for condition leaves that should return [code]SUCCESS[/code] or [code]FAILURE[/code].
+		Base class for behaviour tree condition leaves that perform instant checks.
 	</brief_description>
 	<description>
-		A condition leaf answers a yes/no question about the world and is expected to return [code]SUCCESS[/code] or [code]FAILURE[/code] from its [method NNBTTaskNodes.on_tick] override.
-		If a condition leaf returns [code]RUNNING[/code], the result is returned unchanged and a single engine error is reported per node instance stating that condition leaves should return [code]SUCCESS[/code] or [code]FAILURE[/code]. The result is never coerced.
+		Use for custom yes/no checks in a behaviour tree. Override [method NNBTTaskNodes.on_tick] to return [constant NNBTNodes.SUCCESS] or [constant NNBTNodes.FAILURE] immediately; returning [constant NNBTNodes.RUNNING] reports an error. For multi-tick actions, use [NNBTActionLeaf] instead.
 	</description>
 	<tutorials>
 	</tutorials>

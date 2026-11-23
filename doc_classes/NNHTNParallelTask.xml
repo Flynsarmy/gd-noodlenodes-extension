@@ -1,36 +1,29 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <class name="NNHTNParallelTask" inherits="NNHTNNodes" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
 	<brief_description>
-		A group of primitive HTN tasks that run at the same time and commit together.
+		Runs multiple independent primitive HTN tasks concurrently and commits their effects together.
 	</brief_description>
 	<description>
-		A parallel group is a child of an [NNHTNMethod], planned like any other child, including as a [member NNHTNNodes.predecessors] entry or target under [constant NNHTNMethod.PARTIAL_ORDER]. Its enabled children are its branches, in scene order. Each branch must be an [NNHTNTask] or an [NNHTNSubtaskCall] whose template is an [NNHTNTask]; a compound task, a nested group or a call to a compound makes the group unplannable, with an error. [member NNHTNNodes.predecessors] on a branch are ignored, with a configuration warning.
-		[b]Planning.[/b] The group is available when its [member NNHTNNodes.conditions] and [method NNHTNNodes.on_check_preconditions] hold. Every branch is then planned against the same predicted state, so the effects of one branch can never satisfy the conditions of another. Next, the branches' concurrency contracts are compared (see [member NNHTNTask.concurrency_contract_complete]). A branch's writes are its captured effects and its [member NNHTNTask.concurrency_write_keys]. Its reads are its [member NNHTNTask.concurrency_read_keys], its [member NNHTNNodes.dependency_keys], the keys read by its conditions and, for a [constant NNHTNTask.VERIFY] task, its postconditions, and, for a call, the call's own dependency keys, condition keys and [constant NNHTNArgumentReference.WORLD_STATE] references. The branches conflict when any of them lacks a complete contract or has an empty contract entry, when two of them share an [member NNHTNTask.actor_resources] entry, when two of them write the same key, or when one reads a key another writes. Writing equal values still conflicts. A key in [member effects] that a branch also writes conflicts too.
-		A group without conflicts becomes one [NNHTNPlanStep] per branch, in scene order, sharing a [member NNHTNPlanStep.parallel_group_id]. The predicted state then receives every branch's effects and then [member effects]. The group's cost is the sum of its branches' costs.
-		When a branch is unavailable in the shared predicted state, or the branches conflict, [member unsafe_policy] decides: [constant REJECT] rejects the group and the search backtracks; [constant SERIALIZE] plans the same branches one after another in scene order as ordinary steps, with a warning, so each branch sees the predictions of the ones before it. A search cut short by its budget is never serialized.
-		[b]Execution.[/b] Once the plan reaches the group, [signal NNHTNRoot.parallel_group_started] is emitted and every unfinished branch advances once per tick. Before any branch runs in a tick, the group and every unfinished branch are checked against the same live board: the group's template must still exist and be enabled, its conditions must hold with the arguments it was planned with, and each branch must pass the checks a single step passes (see [b]Execution[/b] in [NNHTNRoot]). A branch that succeeds, after its own verification if it has any, becomes [constant NNHTNPlanStep.STAGED] and is not ticked again; [signal NNHTNRoot.parallel_branch_staged] is emitted. Its effects stay off the board, so siblings never see them. When every branch is staged, the effects each branch's commit mode allows and [member effects] are written in one [method NNBlackboard.apply_values] batch, then every branch succeeds in order with its [signal NNHTNTask.succeeded] and [signal NNHTNRoot.step_state_changed] signals, and [signal NNHTNRoot.parallel_group_finished] reports success.
-		Any failure fails the whole group: a branch's execution failure, verification failure, verification timeout or invalidation, the group's own invalidation, or a rejected commit. Every other started, unfinished branch is cancelled once with [method NNHTNTask.on_cancel], staged branches stay staged and are never cancelled, nothing is written to the board, and the plan ends with [signal NNHTNRoot.parallel_group_finished] reporting failure. The failed branch is cancelled only when it was invalidated while running, as for a single step. Actions a branch already performed cannot be undone; record them on the board when they must not be repeated.
-		Replacing the plan while the group is under way cancels its started, unfinished branches. A branch is never kept by a new plan, even when it is [member NNHTNTask.resumable]. Under [constant NNHTNExecutionSettings.FINISH_CURRENT_STEP] the whole group counts as the current step, so a new plan waits until the group has committed or failed. Local repair never re-decomposes around a group; see [b]Local repair[/b] in [NNHTNRoot].
-		[b]Serialized groups.[/b] Steps planned from a serialized group run like any other steps and have a [member NNHTNPlanStep.parallel_group_id] of [code]0[/code]. [member effects] are carried by the last branch's [member NNHTNPlanStep.deferred_group_effects] and written in the same batch as its own effects, after them, so a group effect overrides a branch effect with the same key.
-		Actor resources are only checked while planning; the root provides no lock at runtime. Anything a branch touches that is not a key, an effect or a resource is invisible to these checks, so declare it.
-		The editor warns when the group is not a method child, has no enabled branch, has a branch that is not a primitive task or a call to one, has a branch with predecessors, or has an invalid [member unsafe_policy].
+		Add as a child of an [NNHTNMethod] with primitive [NNHTNTask] (or [NNHTNSubtaskCall] to a primitive task) children when an agent should perform multiple non-conflicting actions at once (for example, moving to cover while reloading).
+		During planning, the planner checks each branch's concurrency declarations ([member NNHTNTask.concurrency_contract_complete], [member NNHTNTask.actor_resources], read/write keys, and effects) to ensure branches do not conflict. If any branch is unsafe or conflicts, [member unsafe_policy] chooses whether to reject the group or fall back to running its branches sequentially.
+		At runtime, all branches tick together until every branch succeeds, at which point their effects and [member effects] commit atomically. If any branch fails, unfinished siblings are cancelled and nothing is committed.
 	</description>
 	<tutorials>
 	</tutorials>
 	<members>
 		<member name="effects" type="Dictionary" setter="set_effects" getter="get_effects" default="{}">
-			Effects of the whole group, predicted after every branch's effects and written only when the whole group succeeds. They are captured when the group is planned and must satisfy the board's [member NNBlackboard.schema]. A key a branch also writes is a conflict.
+			Group-level blackboard effects applied after all branches succeed. Must not write keys already written by a branch.
 		</member>
 		<member name="unsafe_policy" type="int" setter="set_unsafe_policy" getter="get_unsafe_policy" enum="NNHTNParallelTask.UnsafePolicy" default="0">
-			What planning does when a branch is unavailable in the shared predicted state or the branches conflict: [constant REJECT] rejects the group so the search backtracks, while [constant SERIALIZE] falls back to planning the branches sequentially in scene order with a warning.
+			How planning handles a conflict or unavailable branch: [constant REJECT] backtracks to another alternative, while [constant SERIALIZE] falls back to planning the branches sequentially.
 		</member>
 	</members>
 	<constants>
 		<constant name="REJECT" value="0" enum="UnsafePolicy">
-			Reject the group, with an error for a conflict, so the search tries other alternatives. Branches never run concurrently unless they are proven safe.
+			Rejects the group on conflict so the planner backtracks.
 		</constant>
 		<constant name="SERIALIZE" value="1" enum="UnsafePolicy">
-			Plan the branches one after another in scene order as ordinary steps, with a warning. Use it only when that order is acceptable.
+			Falls back to planning the branches sequentially in scene order with a warning.
 		</constant>
 	</constants>
 </class>

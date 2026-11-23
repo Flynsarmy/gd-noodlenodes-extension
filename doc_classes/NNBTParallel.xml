@@ -1,60 +1,34 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <class name="NNBTParallel" inherits="NNBTCompositeNodes" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
 	<brief_description>
-		Ticks all its enabled child nodes and combines their accumulated results using [member success_policy] and [member failure_policy]. The policy is evaluated after every child tick and the node early-exits as soon as the outcome is decided.
+		Runs all enabled child branches concurrently and combines their outcomes using success and failure policies.
 	</brief_description>
 	<description>
-		A parallel node runs its enabled children concurrently. Within one run it remembers every child's terminal result and does not tick that child again until the next run. A child that returned [code]RUNNING[/code] has no remembered result yet and is ticked again on the next tick. Disabled children are not ticked and are excluded from every count.
-
-		[code]SKIP[/code] results count as [code]SUCCESS[/code] for the policy evaluation. [code]SKIP[/code] never causes a failure and a lone [code]SKIP[/code] child returns [code]SUCCESS[/code].
-
-		The policies are evaluated after every child tick against the results accumulated so far in the current run:
-		[codeblock]
-		success_met = success_policy == REQUIRE_ALL ? num_success == num_enabled : num_success &gt; 0
-		failure_met = failure_policy == REQUIRE_ALL ? num_failure == num_enabled : num_failure &gt; 0
-		if success_met and failure_met:
-		    result = FAILURE
-		elif success_met:
-		    result = SUCCESS
-		elif failure_met:
-		    result = FAILURE
-		elif num_success + num_failure == num_enabled:
-		    result = FAILURE
-		else:
-		    result = RUNNING
-		[/codeblock]
-		[code]num_enabled[/code] is the number of enabled children and [code]num_success[/code] and [code]num_failure[/code] only count children with a terminal result, so children that are still running do not yet satisfy a "require all" policy. The precedence is therefore the both-met [code]FAILURE[/code] tie first, then [code]SUCCESS[/code], then [code]FAILURE[/code], then [code]RUNNING[/code] while some children have no terminal result yet. The final [code]FAILURE[/code] is the documented fallback for mixed outcomes under [constant SUCCESS_REQUIRE_ALL] and [constant FAILURE_REQUIRE_ALL], where every child is terminal but neither policy is satisfied.
-
-		As soon as the result is [code]SUCCESS[/code] or [code]FAILURE[/code] the node returns it immediately and interrupts the children that are still running. Children that have already finished are not interrupted again. The per-run memory is cleared when a new run starts, on reset, and on interrupt. A child added during a run participates from the next tick, and a removed child is no longer considered.
-
-		The defaults ([constant SUCCESS_REQUIRE_ALL] and [constant FAILURE_REQUIRE_ONE]) fail immediately when any child fails and otherwise return [code]SUCCESS[/code] only once every enabled child has succeeded. Until then they return [code]RUNNING[/code].
-
-		An empty parallel, or one whose children are all disabled, has no enabled children. "Require all" is then trivially true and "require one" is false, so the node returns [code]SUCCESS[/code] only with [constant SUCCESS_REQUIRE_ALL] and [constant FAILURE_REQUIRE_ONE]; every other policy combination returns [code]FAILURE[/code].
+		Use when an AI needs to do multiple things at once (such as moving toward a target while aiming, or running an action alongside a monitoring condition). Children that have already finished in the current run are remembered and not re-ticked until the next run; children still returning [constant NNBTNodes.RUNNING] keep ticking.
+		[member success_policy] and [member failure_policy] decide when the parallel finishes (by default, it succeeds once all children succeed and fails as soon as any child fails). As soon as the outcome is decided, any still-running children are interrupted.
 	</description>
 	<tutorials>
 	</tutorials>
 	<members>
 		<member name="failure_policy" type="int" setter="set_failure_policy" getter="get_failure_policy" enum="FailurePolicy" default="0">
-			How many enabled children must return [code]FAILURE[/code] for the parallel node to fail. [constant FAILURE_REQUIRE_ONE] (default) fails when at least one enabled child fails; [constant FAILURE_REQUIRE_ALL] fails only when every enabled child fails.
-			Values outside the [enum FailurePolicy] range are rejected with a single engine error that names [code]set_failure_policy[/code], the received value and the valid range; the previous policy is kept.
+			Whether failing requires one child ([constant FAILURE_REQUIRE_ONE], default) or all children ([constant FAILURE_REQUIRE_ALL]).
 		</member>
 		<member name="success_policy" type="int" setter="set_success_policy" getter="get_success_policy" enum="SuccessPolicy" default="0">
-			How many enabled children must return [code]SUCCESS[/code] (or [code]SKIP[/code], which counts as a success) for the parallel node to succeed. [constant SUCCESS_REQUIRE_ALL] (default) requires every enabled child to succeed; [constant SUCCESS_REQUIRE_ONE] requires at least one.
-			Values outside the [enum SuccessPolicy] range are rejected with a single engine error that names [code]set_success_policy[/code], the received value and the valid range; the previous policy is kept.
+			Whether succeeding requires all children ([constant SUCCESS_REQUIRE_ALL], default) or just one child ([constant SUCCESS_REQUIRE_ONE]). [constant NNBTNodes.SKIP] counts as success.
 		</member>
 	</members>
 	<constants>
 		<constant name="SUCCESS_REQUIRE_ALL" value="0" enum="SuccessPolicy">
-			The parallel node returns [code]SUCCESS[/code] only when every enabled child succeeded. This is the default.
+			Succeeds only when every enabled child succeeds. This is the default.
 		</constant>
 		<constant name="SUCCESS_REQUIRE_ONE" value="1" enum="SuccessPolicy">
-			The parallel node returns [code]SUCCESS[/code] when at least one enabled child succeeded.
+			Succeeds as soon as at least one enabled child succeeds.
 		</constant>
 		<constant name="FAILURE_REQUIRE_ONE" value="0" enum="FailurePolicy">
-			The parallel node returns [code]FAILURE[/code] when at least one enabled child failed. This is the default.
+			Fails as soon as at least one enabled child fails. This is the default.
 		</constant>
 		<constant name="FAILURE_REQUIRE_ALL" value="1" enum="FailurePolicy">
-			The parallel node returns [code]FAILURE[/code] only when every enabled child failed.
+			Fails only when every enabled child fails.
 		</constant>
 	</constants>
 </class>

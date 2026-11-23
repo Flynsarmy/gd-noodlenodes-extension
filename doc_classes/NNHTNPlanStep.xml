@@ -1,12 +1,10 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <class name="NNHTNPlanStep" inherits="RefCounted" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
 	<brief_description>
-		One occurrence of a primitive task in an HTN plan.
+		Represents one planned instance of an [NNHTNTask] in an HTN plan.
 	</brief_description>
 	<description>
-		Planning creates one step each time it uses an [NNHTNTask], so a template used twice produces two steps with their own [member occurrence_id], [member args], [member effects] and [member runtime]. Steps are passed to [method NNHTNTask.on_execute] and [method NNHTNTask.on_cancel] and are returned by [method NNHTNRoot.get_plan].
-		A branch of an [NNHTNParallelTask] is a step like any other, with the [code]parallel_*[/code] properties describing its group.
-		All properties are read-only. [member args] and [member effects] are read-only dictionaries; [member runtime] is the one place meant for writing.
+		Created by [NNHTNRoot] during planning and passed to [method NNHTNTask.on_execute], [method NNHTNTask.on_verify], and [method NNHTNTask.on_cancel]. Holds the step's resolved [member args], predicted [member effects], lifecycle [member state], and a mutable [member runtime] dictionary for storing per-step progress when the same task template is reused multiple times.
 	</description>
 	<tutorials>
 	</tutorials>
@@ -14,96 +12,96 @@
 		<method name="get_observed_effect_keys" qualifiers="const">
 			<return type="PackedStringArray" />
 			<description>
-				Returns the keys of [member effects] that are not written to the board on success, because of the [member NNHTNTask.runtime_effect_commit_mode] captured when the occurrence was planned. Sensors are expected to write them.
+				Returns the effect keys that will not be written automatically on success because of [member NNHTNTask.runtime_effect_commit_mode].
 			</description>
 		</method>
 		<method name="get_provenance" qualifiers="const">
 			<return type="Array" />
 			<description>
-				Returns the method decompositions that produced this step, from the domain's method inward, as dictionaries with the keys [code]frame_id[/code] (unique among the plans of one root, so a step kept from an earlier plan never shares a frame with an unrelated new one), [code]compound[/code] and [code]method[/code] (the nodes, or [code]null[/code] once freed), [code]args[/code] (the method's arguments), [code]method_path[/code], [code]child_index[/code] (the position, among the method's enabled children, of the child this step descends from) and [code]span_start[/code] and [code]span_end[/code] (the inclusive plan indices of every step that decomposition produced). Plan indices count the steps that already succeeded, see [method NNHTNRoot.get_completed_steps].
+				Returns the chain of compound/method decompositions that produced this step, used for diagnostics and local repair.
 			</description>
 		</method>
 		<method name="has_valid_references" qualifiers="const">
 			<return type="bool" />
 			<description>
-				Returns [code]true[/code] when [member task] still exists, is enabled and is not queued for deletion, and every [Object] in [member args], at any depth, is still alive and, if it is a [Node], not queued for deletion. The root checks this before every tick of a step.
+				Returns [code]true[/code] if [member task] is still valid and enabled and all [Object] values in [member args] are still alive.
 			</description>
 		</method>
 	</methods>
 	<members>
 		<member name="args" type="Dictionary" setter="" getter="get_args">
-			The occurrence's arguments, fixed when it was planned. Read-only.
+			Read-only dictionary of arguments resolved for this step when it was planned.
 		</member>
 		<member name="call_path" type="String" setter="" getter="get_call_path">
-			The decomposition path from the domain to the task, as slash-separated node names, including the names of any [NNHTNSubtaskCall] nodes followed.
+			Slash-separated decomposition path from the domain to this step's task.
 		</member>
 		<member name="cost" type="float" setter="" getter="get_cost">
-			The estimated cost captured when the occurrence was planned (see [member NNHTNTask.estimated_cost]). Never recomputed. Always [code]0.0[/code] unless the plan was found under [constant NNHTNSearchSettings.LOWEST_COST].
+			Estimated cost captured during [constant NNHTNSearchSettings.LOWEST_COST] planning, or [code]0.0[/code] under other policies.
 		</member>
 		<member name="deferred_group_effects" type="Dictionary" setter="" getter="get_deferred_group_effects">
-			The [member NNHTNParallelTask.effects] of a serialized group, carried by its last branch and written in the same batch as this step's own effects, after them, whatever its [member NNHTNTask.runtime_effect_commit_mode]. Empty for every other step. Read-only.
+			Read-only group effects carried by the final step of a serialized [NNHTNParallelTask]. Empty for other steps.
 		</member>
 		<member name="effects" type="Dictionary" setter="" getter="get_effects">
-			The effects captured when the occurrence was planned. Planning always predicts all of them. When the occurrence succeeds, the keys its captured [member NNHTNTask.runtime_effect_commit_mode] allows are written to the board; see [method get_observed_effect_keys] for the rest. Never recomputed. Read-only.
+			Read-only dictionary of blackboard effects predicted for this step.
 		</member>
 		<member name="failure_reason" type="String" setter="" getter="get_failure_reason">
-			Why the occurrence failed, or empty. One of [code]"invalidated"[/code] (it failed the checks made before each tick), [code]"execution_failed"[/code] ([method NNHTNTask.on_execute] returned [constant NNHTNTask.FAILURE] or an invalid value), [code]"verification_failed"[/code], [code]"verification_timeout"[/code], [code]"verification_unsafe"[/code] ([method NNHTNTask.on_can_continue_verification] returned [code]false[/code]) or [code]"effect_commit_failed"[/code].
+			Reason code if the step failed (such as [code]"invalidated"[/code], [code]"execution_failed"[/code], [code]"verification_failed"[/code], [code]"verification_timeout"[/code], [code]"verification_unsafe"[/code], or [code]"effect_commit_failed"[/code]), or empty.
 		</member>
 		<member name="occurrence_id" type="int" setter="" getter="get_occurrence_id">
-			A positive identifier unique to this occurrence for the lifetime of the program.
+			Unique positive ID identifying this planned step instance.
 		</member>
 		<member name="parallel_branch_count" type="int" setter="" getter="get_parallel_branch_count">
-			The number of branches in this step's group, or [code]0[/code] when it does not come from an [NNHTNParallelTask].
+			Number of branches in this step's [NNHTNParallelTask], or [code]0[/code] if not part of a parallel group.
 		</member>
 		<member name="parallel_branch_index" type="int" setter="" getter="get_parallel_branch_index">
-			This step's position among its group's enabled branches, from [code]0[/code], or [code]-1[/code] when it does not come from an [NNHTNParallelTask].
+			Zero-based index of this branch within its [NNHTNParallelTask], or [code]-1[/code] if not part of one.
 		</member>
 		<member name="parallel_group" type="NNHTNParallelTask" setter="" getter="get_parallel_group">
-			The group this step was planned from, concurrent or serialized, or [code]null[/code] when it does not come from an [NNHTNParallelTask] or the group was freed.
+			The [NNHTNParallelTask] this step belongs to, or [code]null[/code].
 		</member>
 		<member name="parallel_group_args" type="Dictionary" setter="" getter="get_parallel_group_args">
-			The arguments the group was planned with, which its conditions are checked with before every tick of a concurrent group. Read-only.
+			Read-only arguments captured for this step's concurrent [NNHTNParallelTask].
 		</member>
 		<member name="parallel_group_effects" type="Dictionary" setter="" getter="get_parallel_group_effects">
-			The [member NNHTNParallelTask.effects] captured when a concurrent group was planned, written with the branches' effects when the whole group succeeds. Empty for a serialized group, see [member deferred_group_effects]. Read-only.
+			Read-only group effects committed when all branches of a concurrent [NNHTNParallelTask] succeed.
 		</member>
 		<member name="parallel_group_id" type="int" setter="" getter="get_parallel_group_id">
-			A positive identifier shared by every branch of one planned concurrent group, so a template used in two groups gives two ids. [code]0[/code] for every other step, including the branches of a serialized group.
+			Positive ID shared by branches of the same concurrent parallel group, or [code]0[/code] for sequential steps.
 		</member>
 		<member name="runtime" type="Dictionary" setter="" getter="get_runtime">
-			Mutable data for this occurrence alone, such as timers and progress. It starts empty. Write to the returned dictionary.
+			Mutable dictionary for storing per-step runtime progress (such as timers or state) without mutating the shared [NNHTNTask] node.
 		</member>
 		<member name="state" type="int" setter="" getter="get_state" enum="NNHTNPlanStep.State">
-			Where the occurrence is in its life cycle.
+			Current execution state of this step. See [enum State].
 		</member>
 		<member name="task" type="NNHTNTask" setter="" getter="get_task">
-			The template this occurrence instantiates, or [code]null[/code] once it is freed.
+			The [NNHTNTask] template this step executes, or [code]null[/code] if freed.
 		</member>
 		<member name="verification_elapsed" type="float" setter="" getter="get_verification_elapsed">
-			The tick delta accumulated while this occurrence verified, including the tick in which [method NNHTNTask.on_execute] returned [constant NNHTNTask.SUCCESS]. Compared with [member NNHTNTask.verification_timeout].
+			Seconds elapsed while waiting in [constant VERIFYING].
 		</member>
 	</members>
 	<constants>
 		<constant name="PENDING" value="0" enum="State">
-			Planned but not started.
+			Planned but not started yet.
 		</constant>
 		<constant name="RUNNING" value="1" enum="State">
-			Started and being executed.
+			Currently executing.
 		</constant>
 		<constant name="VERIFYING" value="2" enum="State">
-			[method NNHTNTask.on_execute] returned [constant NNHTNTask.SUCCESS] and the occurrence waits for verification (see [member NNHTNTask.verification_mode]). It still counts as started, so replacing it cancels it.
+			Finished executing and waiting for [method NNHTNTask.on_verify] / postconditions to pass.
 		</constant>
 		<constant name="STAGED" value="3" enum="State">
-			A branch of a concurrent [NNHTNParallelTask] that finished successfully and waits for its siblings. Its effects are not yet written. It is never ticked or cancelled again, and stays staged if the group fails.
+			Parallel branch that finished and is waiting for its siblings before effects commit.
 		</constant>
 		<constant name="SUCCEEDED" value="4" enum="State">
-			Finished successfully, with its effects committed. A group's branches succeed together when the group commits.
+			Completed successfully with effects committed.
 		</constant>
 		<constant name="FAILED" value="5" enum="State">
-			Failed, see [member failure_reason].
+			Failed; see [member failure_reason].
 		</constant>
 		<constant name="CANCELLED" value="6" enum="State">
-			Abandoned while running or verifying because the plan was replaced or abandoned, for example by disabling the root.
+			Abandoned before finishing (for example, replaced by a new plan or disabled).
 		</constant>
 	</constants>
 </class>
