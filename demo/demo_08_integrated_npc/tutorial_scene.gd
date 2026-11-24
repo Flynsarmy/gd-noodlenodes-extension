@@ -2,6 +2,7 @@ extends Node2D
 
 const OVERLAY_NAME := "NoodleNodesOverlay"
 const STATUS_INTERVAL := 0.1
+const DESIGN_SIZE := Vector2i(1152, 648)
 
 @onready var agent: NNAgent = $Npc/Movement/NNAgent
 @onready var movement: NNSTRoot = $Npc/Movement
@@ -17,9 +18,13 @@ const STATUS_INTERVAL := 0.1
 
 var _status_cooldown := 0.0
 var _status_labels_visible := true
+var _previous_scale_mode: Window.ContentScaleMode
+var _previous_scale_size: Vector2i
+var _previous_scale_aspect: Window.ContentScaleAspect
 
 
 func _ready() -> void:
+	_scale_to_window()
 	NNNodeQuerySystem.clear_queries()
 	_open_overlay()
 
@@ -51,6 +56,25 @@ func _unhandled_input(event: InputEvent) -> void:
 
 func _exit_tree() -> void:
 	NNNodeQuerySystem.clear_queries()
+	_restore_window_scale()
+
+
+# The window outlives this scene, so the launcher and other demos get their own scaling back.
+func _scale_to_window() -> void:
+	var window := get_window()
+	_previous_scale_mode = window.content_scale_mode
+	_previous_scale_size = window.content_scale_size
+	_previous_scale_aspect = window.content_scale_aspect
+	window.content_scale_size = DESIGN_SIZE
+	window.content_scale_aspect = Window.CONTENT_SCALE_ASPECT_KEEP
+	window.content_scale_mode = Window.CONTENT_SCALE_MODE_CANVAS_ITEMS
+
+
+func _restore_window_scale() -> void:
+	var window := get_window()
+	window.content_scale_mode = _previous_scale_mode
+	window.content_scale_size = _previous_scale_size
+	window.content_scale_aspect = _previous_scale_aspect
 
 
 func _overlay_node() -> Node:
